@@ -34,6 +34,7 @@ debian/files
 **/*.iml
 *.ipr
 *.iws
+*.vscode
 
 # Eclipse
 .classpath

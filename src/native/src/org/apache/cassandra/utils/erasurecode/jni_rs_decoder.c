@@ -24,7 +24,7 @@
 #include "erasure_code.h"
 #include "gf_util.h"
 #include "jni_common.h"
-#include "org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder.h"
+#include "org_apache_cassandra_utils_erasurecode_rawcoder_NativeRSRawDecoder.h"
 
 typedef struct _RSDecoder {
   IsalDecoder decoder;
@@ -33,7 +33,7 @@ typedef struct _RSDecoder {
 } RSDecoder;
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder_initImpl(
+Java_org_apache_cassandra_utils_erasurecode_rawcoder_NativeRSRawDecoder_initImpl(
 JNIEnv *env, jobject thiz, jint numDataUnits, jint numParityUnits) {
   RSDecoder* rsDecoder = (RSDecoder*)malloc(sizeof(RSDecoder));
   memset(rsDecoder, 0, sizeof(*rsDecoder));
@@ -43,7 +43,7 @@ JNIEnv *env, jobject thiz, jint numDataUnits, jint numParityUnits) {
 }
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder_decodeImpl(
+Java_org_apache_cassandra_utils_erasurecode_rawcoder_NativeRSRawDecoder_decodeImpl(
 JNIEnv *env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
 jint dataLen, jintArray erasedIndexes, jobjectArray outputs,
 jintArray outputOffsets) {
@@ -70,7 +70,7 @@ jintArray outputOffsets) {
 }
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeRSRawDecoder_destroyImpl(
+Java_org_apache_cassandra_utils_erasurecode_rawcoder_NativeRSRawDecoder_destroyImpl(
 JNIEnv *env, jobject thiz) {
   RSDecoder* rsDecoder = (RSDecoder*)getCoder(env, thiz);
   if (rsDecoder) {

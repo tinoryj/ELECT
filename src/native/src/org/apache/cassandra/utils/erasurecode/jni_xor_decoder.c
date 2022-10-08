@@ -26,7 +26,7 @@
 #include "erasure_code.h"
 #include "gf_util.h"
 #include "jni_common.h"
-#include "org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder.h"
+#include "org_apache_cassandra_utils_erasurecode_rawcoder_NativeXORRawDecoder.h"
 
 typedef struct _XOREncoder {
   IsalCoder isalCoder;
@@ -35,7 +35,7 @@ typedef struct _XOREncoder {
 } XORDecoder;
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_initImpl(
+Java_org_apache_cassandra_utils_erasurecode_rawcoder_NativeXORRawDecoder_initImpl(
   JNIEnv *env, jobject thiz, jint numDataUnits, jint numParityUnits) {
   XORDecoder* xorDecoder =
                            (XORDecoder*)malloc(sizeof(XORDecoder));
@@ -46,7 +46,7 @@ Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_initImpl(
 }
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_decodeImpl(
+Java_org_apache_cassandra_utils_erasurecode_rawcoder_NativeXORRawDecoder_decodeImpl(
   JNIEnv *env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
   jint dataLen, jintArray erasedIndexes, jobjectArray outputs,
                                                     jintArray outputOffsets) {
@@ -79,7 +79,7 @@ Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_decodeImpl(
 }
 
 JNIEXPORT void JNICALL
-Java_org_apache_hadoop_io_erasurecode_rawcoder_NativeXORRawDecoder_destroyImpl
+Java_org_apache_cassandra_utils_erasurecode_rawcoder_NativeXORRawDecoder_destroyImpl
   (JNIEnv *env, jobject thiz){
   XORDecoder* xorDecoder = (XORDecoder*)getCoder(env, thiz);
   if (xorDecoder) {

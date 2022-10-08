@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,13 +15,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef ERRNO_ENUM_H
-#define ERRNO_ENUM_H
 
-#include <jni.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-void errno_enum_init(JNIEnv *env);
-void errno_enum_deinit(JNIEnv *env);
-jobject errno_to_enum(JNIEnv *env, int errnum);
+#include "org_apache_hadoop.h"
+#include "jni_common.h"
+#include "isal_load.h"
+#include "org_apache_cassandra_utils_erasurecode_ErasureCodeNative.h"
 
+#ifdef UNIX
+#include "config.h"
 #endif
+
+JNIEXPORT void JNICALL
+Java_org_apache_cassandra_utils_erasurecode_ErasureCodeNative_loadLibrary
+(JNIEnv *env, jclass myclass) {
+  loadLib(env);
+}
+
+JNIEXPORT jstring JNICALL
+Java_org_apache_cassandra_utils_erasurecode_ErasureCodeNative_getLibraryName
+(JNIEnv *env, jclass myclass) {
+  if (isaLoader == NULL) {
+    THROW(env, "java/lang/UnsatisfiedLinkError",
+                             "Unavailable: library not loaded yet");
+    return (jstring)NULL;
+  }
+
+  return (*env)->NewStringUTF(env, isaLoader->libname);
+}
