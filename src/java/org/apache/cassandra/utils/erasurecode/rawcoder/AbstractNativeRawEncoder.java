@@ -19,7 +19,6 @@ package org.apache.cassandra.utils.erasurecode.rawcoder;
 
 
 import org.apache.cassandra.utils.erasurecode.ErasureCoderOptions;
-import org.apache.hadoop.util.PerformanceAdvisory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

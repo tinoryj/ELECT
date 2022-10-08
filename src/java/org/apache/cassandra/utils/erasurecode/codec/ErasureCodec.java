@@ -17,8 +17,6 @@
  */
 package org.apache.cassandra.utils.erasurecode.codec;
 
-
-import org.apache.hadoop.conf.Configuration;
 import org.apache.cassandra.utils.erasurecode.ECSchema;
 import org.apache.cassandra.utils.erasurecode.ErasureCodecOptions;
 import org.apache.cassandra.utils.erasurecode.ErasureCoderOptions;

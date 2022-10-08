@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,22 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef ERRNO_ENUM_H
+#define ERRNO_ENUM_H
 
-/**
- *
- * Raw erasure coders.
- *
- * Raw erasure coder is part of erasure codec framework, where erasure coder is
- * used to encode/decode a group of blocks (BlockGroup) according to the codec
- * specific BlockGroup layout and logic. An erasure coder extracts chunks of
- * data from the blocks and can employ various low level raw erasure coders to
- * perform encoding/decoding against the chunks.
- *
- * To distinguish from erasure coder, here raw erasure coder is used to mean the
- * low level constructs, since it only takes care of the math calculation with
- * a group of byte buffers.
- */
+#include <jni.h>
 
-package org.apache.cassandra.utils.erasurecode.rawcoder;
+void errno_enum_init(JNIEnv *env);
+void errno_enum_deinit(JNIEnv *env);
+jobject errno_to_enum(JNIEnv *env, int errnum);
 
-
+#endif

@@ -19,7 +19,6 @@ package org.apache.cassandra.utils.erasurecode.rawcoder;
 
 
 import org.apache.cassandra.utils.erasurecode.ErasureCoderOptions;
-import org.apache.hadoop.util.PerformanceAdvisory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +85,7 @@ abstract class AbstractNativeRawDecoder extends RawErasureDecoder {
   @Override
   protected void doDecode(ByteArrayDecodingState decodingState)
       throws IOException {
-    PerformanceAdvisory.LOG.debug("convertToByteBufferState is invoked, " +
+    logger.debug("convertToByteBufferState is invoked, " +
         "not efficiently. Please use direct ByteBuffer inputs/outputs");
 
     ByteBufferDecodingState bbdState = decodingState.convertToByteBufferState();

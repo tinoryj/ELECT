@@ -19,7 +19,6 @@ package org.apache.cassandra.utils.erasurecode;
 
 // TODO: hadoop functions
 
-import org.apache.hadoop.util.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 
 import org.apache.cassandra.utils.erasurecode.codec.ErasureCodec;
@@ -90,8 +89,6 @@ public final class CodecUtil {
    */
   public static ErasureEncoder createEncoder(Configuration conf,
       ErasureCodecOptions options) {
-    Preconditions.checkNotNull(conf);
-    Preconditions.checkNotNull(options);
 
     String codecKey = getCodecClassName(conf,
         options.getSchema().getCodecName());
@@ -108,8 +105,6 @@ public final class CodecUtil {
    */
   public static ErasureDecoder createDecoder(Configuration conf,
       ErasureCodecOptions options) {
-    Preconditions.checkNotNull(conf);
-    Preconditions.checkNotNull(options);
 
     String codecKey = getCodecClassName(conf,
         options.getSchema().getCodecName());
@@ -127,8 +122,6 @@ public final class CodecUtil {
    */
   public static RawErasureEncoder createRawEncoder(
       Configuration conf, String codec, ErasureCoderOptions coderOptions) {
-    Preconditions.checkNotNull(conf);
-    Preconditions.checkNotNull(codec);
 
     return createRawEncoderWithFallback(conf, codec, coderOptions);
   }
@@ -142,8 +135,6 @@ public final class CodecUtil {
    */
   public static RawErasureDecoder createRawDecoder(
       Configuration conf, String codec, ErasureCoderOptions coderOptions) {
-    Preconditions.checkNotNull(conf);
-    Preconditions.checkNotNull(codec);
 
     return createRawDecoderWithFallback(conf, codec, coderOptions);
   }

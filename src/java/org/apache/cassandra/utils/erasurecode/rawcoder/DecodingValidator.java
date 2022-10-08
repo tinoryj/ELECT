@@ -17,8 +17,6 @@
  */
 package org.apache.cassandra.utils.erasurecode.rawcoder;
 
-
-import org.apache.hadoop.classification.VisibleForTesting;
 import org.apache.cassandra.utils.erasurecode.ECChunk;
 
 import java.io.IOException;
