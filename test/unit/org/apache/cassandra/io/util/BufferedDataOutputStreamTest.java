@@ -37,6 +37,7 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.Random;
 
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.vint.VIntCoding;
 import org.junit.Test;
 
@@ -44,6 +45,7 @@ import com.google.common.primitives.UnsignedBytes;
 import com.google.common.primitives.UnsignedInteger;
 import com.google.common.primitives.UnsignedLong;
 
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.apache.cassandra.utils.FBUtilities.preventIllegalAccessWarnings;
 import static org.junit.Assert.*;
 
@@ -171,7 +173,7 @@ public class BufferedDataOutputStreamTest
 
     static Field baos_bytes;
     static {
-        long seed = System.nanoTime();
+        long seed = nanoTime();
         //seed = 210187780999648L;
         System.out.println("Seed " + seed);
         r = new Random(seed);
@@ -615,4 +617,20 @@ public class BufferedDataOutputStreamTest
         }
     }
 
+    @Test
+    public void testWriteBytes() throws Exception
+    {
+        setUp();
+        DataOutputStreamPlus dosp = new BufferedDataOutputStreamPlus(adapter, 8);
+        for (int i = 0; i < 1000; i++)
+        {
+            long val = r.nextLong();
+            int size = r.nextInt(9);
+            byte[] bytes = ByteBufferUtil.bytes(val).array();
+            canonical.write(bytes, 0, size);
+            dosp.writeBytes(val, size);
+        }
+        dosp.flush();
+        assertArrayEquals(canonical.toByteArray(), generated.toByteArray());
+    }
 }

@@ -18,6 +18,8 @@
 package org.apache.cassandra.cql3;
 
 import static org.apache.cassandra.cql3.Constants.UNSET_VALUE;
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
+import static org.apache.cassandra.utils.TimeUUID.Generator.atUnixMillisAsBytes;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -28,6 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.apache.cassandra.db.guardrails.Guardrails;
 import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import com.google.common.annotations.VisibleForTesting;
@@ -43,7 +46,6 @@ import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.serializers.MarshalException;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.UUIDGen;
 
 /**
  * Static helper methods and classes for lists.
@@ -359,7 +361,7 @@ public abstract class Lists
                 else
                 {
                     // in addition to being at the same millisecond, we handle the unexpected case of the millis parameter
-                    // being in the past. That could happen if the System.currentTimeMillis() not operating montonically
+                    // being in the past. That could happen if the Global.currentTimeMillis() not operating montonically
                     // or if one thread is just a really big loser in the compareAndSet game of life.
                     long millisToUse = millis <= current.millis ? millis : current.millis;
 
@@ -447,6 +449,9 @@ public abstract class Lists
             // we should not get here for frozen lists
             assert column.type.isMultiCell() : "Attempted to set an individual element on a frozen list";
 
+            Guardrails.readBeforeWriteListOperationsEnabled
+            .ensureEnabled("Setting of list items by index requiring read before write", params.clientState);
+
             ByteBuffer index = idx.bindAndGet(params.options);
             ByteBuffer value = t.bindAndGet(params.options);
 
@@ -487,26 +492,43 @@ public abstract class Lists
 
         static void doAppend(Term.Terminal value, ColumnMetadata column, UpdateParameters params) throws InvalidRequestException
         {
-            if (column.type.isMultiCell())
+            if (value == null)
             {
+                // for frozen lists, we're overwriting the whole cell value
+                if (!column.type.isMultiCell())
+                    params.addTombstone(column);
+
                 // If we append null, do nothing. Note that for Setter, we've
                 // already removed the previous value so we're good here too
-                if (value == null)
+                return;
+            }
+
+            List<ByteBuffer> elements = ((Value) value).elements;
+
+            if (column.type.isMultiCell())
+            {
+                if (elements.size() == 0)
                     return;
 
-                for (ByteBuffer buffer : ((Value) value).elements)
+                // Guardrails about collection size are only checked for the added elements without considering
+                // already existent elements. This is done so to avoid read-before-write, having additional checks
+                // during SSTable write.
+                Guardrails.itemsPerCollection.guard(elements.size(), column.name.toString(), false, params.clientState);
+
+                int dataSize = 0;
+                for (ByteBuffer buffer : elements)
                 {
-                    ByteBuffer uuid = ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes());
-                    params.addCell(column, CellPath.create(uuid), buffer);
+                    ByteBuffer uuid = ByteBuffer.wrap(params.nextTimeUUIDAsBytes());
+                    Cell<?> cell = params.addCell(column, CellPath.create(uuid), buffer);
+                    dataSize += cell.dataSize();
                 }
+                Guardrails.collectionSize.guard(dataSize, column.name.toString(), false, params.clientState);
             }
             else
             {
-                // for frozen lists, we're overwriting the whole cell value
-                if (value == null)
-                    params.addTombstone(column);
-                else
-                    params.addCell(column, value.get(ProtocolVersion.CURRENT));
+                Guardrails.itemsPerCollection.guard(elements.size(), column.name.toString(), false, params.clientState);
+                Cell<?> cell = params.addCell(column, value.get(ProtocolVersion.CURRENT));
+                Guardrails.collectionSize.guard(cell.dataSize(), column.name.toString(), false, params.clientState);
             }
         }
     }
@@ -536,12 +558,13 @@ public abstract class Lists
             {
                 if (remainingInBatch == 0)
                 {
-                    long time = PrecisionTime.REFERENCE_TIME - (System.currentTimeMillis() - PrecisionTime.REFERENCE_TIME);
+                    long time = PrecisionTime.REFERENCE_TIME - (currentTimeMillis() - PrecisionTime.REFERENCE_TIME);
                     remainingInBatch = Math.min(PrecisionTime.MAX_NANOS, i) + 1;
                     pt = PrecisionTime.getNext(time, remainingInBatch);
                 }
 
-                ByteBuffer uuid = ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes(pt.millis, (pt.nanos + remainingInBatch--)));
+                // TODO: is this safe as part of LWTs?
+                ByteBuffer uuid = ByteBuffer.wrap(atUnixMillisAsBytes(pt.millis, (pt.nanos + remainingInBatch--)));
                 params.addCell(column, CellPath.create(uuid), toAdd.get(i));
             }
         }
@@ -563,6 +586,9 @@ public abstract class Lists
         public void execute(DecoratedKey partitionKey, UpdateParameters params) throws InvalidRequestException
         {
             assert column.type.isMultiCell() : "Attempted to delete from a frozen list";
+
+            Guardrails.readBeforeWriteListOperationsEnabled
+            .ensureEnabled("Removal of list items requiring read before write", params.clientState);
 
             // We want to call bind before possibly returning to reject queries where the value provided is not a list.
             Term.Terminal value = t.bind(params.options);
@@ -601,6 +627,10 @@ public abstract class Lists
         public void execute(DecoratedKey partitionKey, UpdateParameters params) throws InvalidRequestException
         {
             assert column.type.isMultiCell() : "Attempted to delete an item by index from a frozen list";
+
+            Guardrails.readBeforeWriteListOperationsEnabled
+            .ensureEnabled("Removal of list items by index requiring read before write", params.clientState);
+
             Term.Terminal index = t.bind(params.options);
             if (index == null)
                 throw new InvalidRequestException("Invalid null value for list index");

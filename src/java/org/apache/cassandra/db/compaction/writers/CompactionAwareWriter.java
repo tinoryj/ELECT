@@ -18,11 +18,9 @@
 
 package org.apache.cassandra.db.compaction.writers;
 
-import java.io.File;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,9 +37,8 @@ import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTableRewriter;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.concurrent.Transactional;
-import org.apache.cassandra.db.compaction.OperationType;
-
 
 /**
  * Class that abstracts away the actual writing of files to make it possible to use CompactionTask for more
@@ -57,7 +54,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     protected final long estimatedTotalKeys;
     protected final long maxAge;
     protected final long minRepairedAt;
-    protected final UUID pendingRepair;
+    protected final TimeUUID pendingRepair;
     protected final boolean isTransient;
 
     protected final SSTableRewriter sstableWriter;

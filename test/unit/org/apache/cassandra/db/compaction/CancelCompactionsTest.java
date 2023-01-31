@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -35,7 +34,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.Uninterruptibles;
 import org.junit.Test;
 
-import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.CQLTester;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -58,7 +56,9 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.TimeUUID;
 
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -255,7 +255,7 @@ public class CancelCompactionsTest extends CQLTester
             // make sure that sstables are fully contained so that the metadata gets mutated
             Range<Token> range = new Range<>(token(-1), token(49));
 
-            UUID prsid = UUID.randomUUID();
+            TimeUUID prsid = nextTimeUUID();
             ActiveRepairService.instance.registerParentRepairSession(prsid, InetAddressAndPort.getLocalHost(), Collections.singletonList(cfs), Collections.singleton(range), true, 1, true, PreviewKind.NONE);
 
             InetAddressAndPort local = FBUtilities.getBroadcastAddressAndPort();
@@ -398,7 +398,7 @@ public class CancelCompactionsTest extends CQLTester
             txn = cfs.getTracker().tryModify(sstables, OperationType.COMPACTION);
             assertNotNull(txn);
             controller = new CompactionController(cfs, sstables, Integer.MIN_VALUE);
-            ci = new CompactionIterator(txn.opType(), scanners, controller, FBUtilities.nowInSeconds(), UUID.randomUUID());
+            ci = new CompactionIterator(txn.opType(), scanners, controller, FBUtilities.nowInSeconds(), nextTimeUUID());
             CompactionManager.instance.active.beginCompaction(ci);
         }
 
@@ -462,7 +462,7 @@ public class CancelCompactionsTest extends CQLTester
         for (int i = 0; i < 10; i++)
         {
             execute("insert into %s (id, something) values (?,?)", i, i);
-            getCurrentColumnFamilyStore().forceBlockingFlush();
+            flush();
         }
         AbstractCompactionTask ct = null;
 

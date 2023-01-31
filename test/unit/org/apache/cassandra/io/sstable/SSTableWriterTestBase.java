@@ -18,15 +18,14 @@
 
 package org.apache.cassandra.io.sstable;
 
-import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.util.concurrent.Uninterruptibles;
+import org.apache.cassandra.io.util.File;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -44,12 +43,11 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableWriter;
 import org.apache.cassandra.schema.KeyspaceParams;
-import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.TimeUUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class SSTableWriterTestBase extends SchemaLoader
 {
@@ -68,15 +66,6 @@ public class SSTableWriterTestBase extends SchemaLoader
     {
         DatabaseDescriptor.daemonInitialization();
 
-        if (FBUtilities.isWindows)
-        {
-            standardMode = DatabaseDescriptor.getDiskAccessMode();
-            indexMode = DatabaseDescriptor.getIndexAccessMode();
-
-            DatabaseDescriptor.setDiskAccessMode(Config.DiskAccessMode.standard);
-            DatabaseDescriptor.setIndexAccessMode(Config.DiskAccessMode.standard);
-        }
-
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE,
                                     KeyspaceParams.simple(1),
@@ -84,7 +73,7 @@ public class SSTableWriterTestBase extends SchemaLoader
                                     SchemaLoader.standardCFMD(KEYSPACE, CF_SMALL_MAX_VALUE));
 
         maxValueSize = DatabaseDescriptor.getMaxValueSize();
-        DatabaseDescriptor.setMaxValueSize(1024 * 1024); // set max value size to 1MB
+        DatabaseDescriptor.setMaxValueSize(1024 * 1024); // set max value size to 1MiB
     }
 
     @AfterClass
@@ -135,23 +124,23 @@ public class SSTableWriterTestBase extends SchemaLoader
      */
     public static void validateCFS(ColumnFamilyStore cfs)
     {
-        Set<Integer> liveDescriptors = new HashSet<>();
+        Set<SSTableId> liveDescriptors = new HashSet<>();
         long spaceUsed = 0;
         for (SSTableReader sstable : cfs.getLiveSSTables())
         {
             assertFalse(sstable.isMarkedCompacted());
             assertEquals(1, sstable.selfRef().globalCount());
-            liveDescriptors.add(sstable.descriptor.generation);
+            liveDescriptors.add(sstable.descriptor.id);
             spaceUsed += sstable.bytesOnDisk();
         }
         for (File dir : cfs.getDirectories().getCFDirectories())
         {
-            for (File f : dir.listFiles())
+            for (File f : dir.tryList())
             {
-                if (f.getName().contains("Data"))
+                if (f.name().contains("Data"))
                 {
-                    Descriptor d = Descriptor.fromFilename(f.getAbsolutePath());
-                    assertTrue(d.toString(), liveDescriptors.contains(d.generation));
+                    Descriptor d = Descriptor.fromFilename(f.absolutePath());
+                    assertTrue(d.toString(), liveDescriptors.contains(d.id));
                 }
             }
         }
@@ -163,7 +152,7 @@ public class SSTableWriterTestBase extends SchemaLoader
             assertFalse(CompactionManager.instance.submitMaximal(cfs, cfs.gcBefore((int) (System.currentTimeMillis() / 1000)), false).isEmpty());
     }
 
-    public static SSTableWriter getWriter(ColumnFamilyStore cfs, File directory, LifecycleTransaction txn, long repairedAt, UUID pendingRepair, boolean isTransient)
+    public static SSTableWriter getWriter(ColumnFamilyStore cfs, File directory, LifecycleTransaction txn, long repairedAt, TimeUUID pendingRepair, boolean isTransient)
     {
         Descriptor desc = cfs.newSSTableDescriptor(directory);
         return SSTableWriter.create(desc, 0, repairedAt, pendingRepair, isTransient, new SerializationHeader(true, cfs.metadata(), cfs.metadata().regularAndStaticColumns(), EncodingStats.NO_STATS), cfs.indexManager.listIndexes(), txn);

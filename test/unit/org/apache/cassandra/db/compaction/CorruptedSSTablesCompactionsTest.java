@@ -21,7 +21,8 @@ package org.apache.cassandra.db.compaction;
  */
 
 
-import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.*;
 
 import org.junit.After;
@@ -32,6 +33,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -43,6 +45,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.marshal.LongType;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.schema.*;
 
@@ -71,7 +74,7 @@ public class CorruptedSSTablesCompactionsTest
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
-        long seed = System.nanoTime();
+        long seed = nanoTime();
 
         //long seed = 754271160974509L; // CASSANDRA-9530: use this seed to reproduce compaction failures if reading empty rows
         //long seed = 2080431860597L; // CASSANDRA-12359: use this seed to reproduce undetected corruptions
@@ -108,7 +111,7 @@ public class CorruptedSSTablesCompactionsTest
     public static void closeStdErr()
     {
         // These tests generate an error message per CorruptSSTableException since it goes through
-        // DebuggableThreadPoolExecutor, which will log it in afterExecute.  We could stop that by
+        // ExecutorPlus, which will log it in afterExecute.  We could stop that by
         // creating custom CompactionStrategy and CompactionTask classes, but that's kind of a
         // ridiculous amount of effort, especially since those aren't really intended to be wrapped
         // like that.
@@ -162,7 +165,7 @@ public class CorruptedSSTablesCompactionsTest
                 maxTimestampExpected = Math.max(timestamp, maxTimestampExpected);
                 inserted.add(key);
             }
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
             CompactionsTest.assertMaxTimestamp(cfs, maxTimestampExpected);
             assertEquals(inserted.toString(), inserted.size(), Util.getAll(Util.cmd(cfs).build()).size());
         }
@@ -176,29 +179,29 @@ public class CorruptedSSTablesCompactionsTest
             if (currentSSTable + 1 > SSTABLES_TO_CORRUPT)
                 break;
 
-            RandomAccessFile raf = null;
+            FileChannel fc = null;
 
             try
             {
                 int corruptionSize = 100;
-                raf = new RandomAccessFile(sstable.getFilename(), "rw");
-                assertNotNull(raf);
-                assertTrue(raf.length() > corruptionSize);
-                long pos = random.nextInt((int)(raf.length() - corruptionSize));
-                logger.info("Corrupting sstable {} [{}] at pos {} / {}", currentSSTable, sstable.getFilename(), pos, raf.length());
-                raf.seek(pos);
+                fc = new File(sstable.getFilename()).newReadWriteChannel();
+                assertNotNull(fc);
+                assertTrue(fc.size() > corruptionSize);
+                long pos = random.nextInt((int)(fc.size() - corruptionSize));
+                logger.info("Corrupting sstable {} [{}] at pos {} / {}", currentSSTable, sstable.getFilename(), pos, fc.size());
+                fc.position(pos);
                 // We want to write something large enough that the corruption cannot get undetected
                 // (even without compression)
                 byte[] corruption = new byte[corruptionSize];
                 random.nextBytes(corruption);
-                raf.write(corruption);
+                fc.write(ByteBuffer.wrap(corruption));
                 if (ChunkCache.instance != null)
                     ChunkCache.instance.invalidateFile(sstable.getFilename());
 
             }
             finally
             {
-                FileUtils.closeQuietly(raf);
+                FileUtils.closeQuietly(fc);
             }
 
             currentSSTable++;

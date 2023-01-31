@@ -27,6 +27,8 @@ import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.db.partitions.Partition;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.service.ClientState;
+import org.apache.cassandra.utils.TimeUUID;
 
 /**
  * Groups the parameters of an update query, and make building updates easier.
@@ -35,6 +37,7 @@ public class UpdateParameters
 {
     public final TableMetadata metadata;
     public final RegularAndStaticColumns updatedColumns;
+    public final ClientState clientState;
     public final QueryOptions options;
 
     private final int nowInSec;
@@ -54,6 +57,7 @@ public class UpdateParameters
 
     public UpdateParameters(TableMetadata metadata,
                             RegularAndStaticColumns updatedColumns,
+                            ClientState clientState,
                             QueryOptions options,
                             long timestamp,
                             int nowInSec,
@@ -63,6 +67,7 @@ public class UpdateParameters
     {
         this.metadata = metadata;
         this.updatedColumns = updatedColumns;
+        this.clientState = clientState;
         this.options = options;
 
         this.nowInSec = nowInSec;
@@ -141,17 +146,18 @@ public class UpdateParameters
         builder.addCell(BufferCell.tombstone(column, timestamp, nowInSec, path));
     }
 
-    public void addCell(ColumnMetadata column, ByteBuffer value) throws InvalidRequestException
+    public Cell<?> addCell(ColumnMetadata column, ByteBuffer value) throws InvalidRequestException
     {
-        addCell(column, null, value);
+        return addCell(column, null, value);
     }
 
-    public void addCell(ColumnMetadata column, CellPath path, ByteBuffer value) throws InvalidRequestException
+    public Cell<?> addCell(ColumnMetadata column, CellPath path, ByteBuffer value) throws InvalidRequestException
     {
         Cell<?> cell = ttl == LivenessInfo.NO_TTL
                        ? BufferCell.live(column, timestamp, value, path)
                        : BufferCell.expiring(column, timestamp, ttl, nowInSec, value, path);
         builder.addCell(cell);
+        return cell;
     }
 
     public void addCounter(ColumnMetadata column, long increment) throws InvalidRequestException
@@ -203,6 +209,11 @@ public class UpdateParameters
     public RangeTombstone makeRangeTombstone(Slice slice)
     {
         return new RangeTombstone(slice, deletionTime);
+    }
+
+    public byte[] nextTimeUUIDAsBytes()
+    {
+        return TimeUUID.Generator.nextTimeUUIDAsBytes();
     }
 
     /**

@@ -17,10 +17,8 @@
  */
 package org.apache.cassandra.db.compaction;
 
-import java.io.File;
 import java.util.*;
 import java.util.function.LongPredicate;
-import java.util.function.Predicate;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.Sets;
@@ -34,9 +32,11 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableWriter;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.OutputHandler;
-import org.apache.cassandra.utils.UUIDGen;
+
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
 public class Upgrader
 {
@@ -58,7 +58,7 @@ public class Upgrader
         this.sstable = txn.onlyOne();
         this.outputHandler = outputHandler;
 
-        this.directory = new File(sstable.getFilename()).getParentFile();
+        this.directory = new File(sstable.getFilename()).parent();
 
         this.controller = new UpgradeController(cfs);
 
@@ -90,7 +90,7 @@ public class Upgrader
         int nowInSec = FBUtilities.nowInSeconds();
         try (SSTableRewriter writer = SSTableRewriter.construct(cfs, transaction, keepOriginals, CompactionTask.getMaxDataAge(transaction.originals()));
              AbstractCompactionStrategy.ScannerList scanners = strategyManager.getScanners(transaction.originals());
-             CompactionIterator iter = new CompactionIterator(transaction.opType(), scanners.scanners, controller, nowInSec, UUIDGen.getTimeUUID()))
+             CompactionIterator iter = new CompactionIterator(transaction.opType(), scanners.scanners, controller, nowInSec, nextTimeUUID()))
         {
             writer.switchWriter(createCompactionWriter(sstable.getSSTableMetadata()));
             while (iter.hasNext())

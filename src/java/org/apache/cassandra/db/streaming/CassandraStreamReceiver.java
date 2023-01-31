@@ -28,7 +28,7 @@ import com.google.common.collect.Iterables;
 
 import org.apache.cassandra.db.lifecycle.LifecycleNewTracker;
 import org.apache.cassandra.io.sstable.SSTable;
-import org.apache.cassandra.streaming.StreamReceiveTask;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,11 +181,13 @@ public class CassandraStreamReceiver implements StreamReceiver
      * For CDC-enabled tables, we want to ensure that the mutations are run through the CommitLog so they
      * can be archived by the CDC process on discard.
      */
-    private boolean requiresWritePath(ColumnFamilyStore cfs) {
-        return hasCDC(cfs) || (session.streamOperation().requiresViewBuild() && hasViews(cfs));
+    private boolean requiresWritePath(ColumnFamilyStore cfs)
+    {
+        return hasCDC(cfs) || cfs.streamToMemtable() || (session.streamOperation().requiresViewBuild() && hasViews(cfs));
     }
 
-    private void sendThroughWritePath(ColumnFamilyStore cfs, Collection<SSTableReader> readers) {
+    private void sendThroughWritePath(ColumnFamilyStore cfs, Collection<SSTableReader> readers)
+    {
         boolean hasCdc = hasCDC(cfs);
         ColumnFilter filter = ColumnFilter.all(cfs.metadata());
         for (SSTableReader reader : readers)
@@ -273,7 +275,7 @@ public class CassandraStreamReceiver implements StreamReceiver
         // the streamed sstables.
         if (requiresWritePath)
         {
-            cfs.forceBlockingFlush();
+            cfs.forceBlockingFlush(ColumnFamilyStore.FlushReason.STREAMS_RECEIVED);
             abort();
         }
     }

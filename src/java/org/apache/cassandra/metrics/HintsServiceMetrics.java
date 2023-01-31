@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.metrics;
 
-import com.google.common.util.concurrent.MoreExecutors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +24,7 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.apache.cassandra.concurrent.ImmediateExecutor;
 import org.apache.cassandra.locator.InetAddressAndPort;
 
 import static org.apache.cassandra.metrics.CassandraMetricsRegistry.Metrics;
@@ -47,7 +47,7 @@ public final class HintsServiceMetrics
 
     /** Histograms per-endpoint of hint delivery delays, This is not a cache. */
     private static final LoadingCache<InetAddressAndPort, Histogram> delayByEndpoint = Caffeine.newBuilder()
-                                                                                               .executor(MoreExecutors.directExecutor())
+                                                                                               .executor(ImmediateExecutor.INSTANCE)
                                                                                                .build(address -> Metrics.histogram(factory.createMetricName("Hint_delays-"+address.toString().replace(':', '.')), false));
 
     public static void updateDelayMetrics(InetAddressAndPort endpoint, long delay)

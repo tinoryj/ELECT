@@ -32,10 +32,13 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.SchemaChangeListener;
+import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.concurrent.Refs;
+
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 /**
  * A very simplistic/crude partition count/size estimator.
@@ -46,7 +49,7 @@ import org.apache.cassandra.utils.concurrent.Refs;
  *
  * See CASSANDRA-7688.
  */
-public class SizeEstimatesRecorder extends SchemaChangeListener implements Runnable
+public class SizeEstimatesRecorder implements SchemaChangeListener, Runnable
 {
     private static final Logger logger = LoggerFactory.getLogger(SizeEstimatesRecorder.class);
 
@@ -89,7 +92,7 @@ public class SizeEstimatesRecorder extends SchemaChangeListener implements Runna
             boolean rangesAreEqual = primaryRanges.equals(localPrimaryRanges);
             for (ColumnFamilyStore table : keyspace.getColumnFamilyStores())
             {
-                long start = System.nanoTime();
+                long start = nanoTime();
 
                 // compute estimates for primary ranges for backwards compatability
                 Map<Range<Token>, Pair<Long, Long>> estimates = computeSizeEstimates(table, primaryRanges);
@@ -103,7 +106,7 @@ public class SizeEstimatesRecorder extends SchemaChangeListener implements Runna
                 }
                 SystemKeyspace.updateTableEstimates(table.metadata.keyspace, table.metadata.name, SystemKeyspace.TABLE_ESTIMATES_TYPE_LOCAL_PRIMARY, estimates);
 
-                long passed = System.nanoTime() - start;
+                long passed = nanoTime() - start;
                 if (logger.isTraceEnabled())
                     logger.trace("Spent {} milliseconds on estimating {}.{} size",
                                  TimeUnit.NANOSECONDS.toMillis(passed),
@@ -175,8 +178,8 @@ public class SizeEstimatesRecorder extends SchemaChangeListener implements Runna
     }
 
     @Override
-    public void onDropTable(String keyspace, String table)
+    public void onDropTable(TableMetadata table, boolean dropData)
     {
-        SystemKeyspace.clearEstimates(keyspace, table);
+        SystemKeyspace.clearEstimates(table.keyspace, table.name);
     }
 }

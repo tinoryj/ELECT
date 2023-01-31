@@ -17,13 +17,19 @@
  */
 package org.apache.cassandra.db.commitlog;
 
-import java.io.*;
+
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.FileStore;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.zip.CRC32;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.cassandra.io.util.File;
+import com.google.common.base.Preconditions;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +43,7 @@ import org.apache.cassandra.io.compress.ICompressor;
 import org.apache.cassandra.io.util.BufferedDataOutputStreamPlus;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.io.util.DataOutputBufferFixed;
-import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.io.util.PathUtils;
 import org.apache.cassandra.metrics.CommitLogMetrics;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.CompressionParams;
@@ -46,6 +52,7 @@ import org.apache.cassandra.security.EncryptionContext;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.apache.cassandra.utils.MBeanWrapper;
+import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
 import static org.apache.cassandra.db.commitlog.CommitLogSegment.Allocation;
 import static org.apache.cassandra.db.commitlog.CommitLogSegment.CommitLogSegmentFileComparator;
@@ -146,22 +153,22 @@ public class CommitLog implements CommitLogMBean
      */
     public int recoverSegmentsOnDisk() throws IOException
     {
-        FilenameFilter unmanagedFilesFilter = (dir, name) -> CommitLogDescriptor.isValid(name) && CommitLogSegment.shouldReplay(name);
+        BiPredicate<File, String> unmanagedFilesFilter = (dir, name) -> CommitLogDescriptor.isValid(name) && CommitLogSegment.shouldReplay(name);
 
         // submit all files for this segment manager for archiving prior to recovery - CASSANDRA-6904
         // The files may have already been archived by normal CommitLog operation. This may cause errors in this
         // archiving pass, which we should not treat as serious.
-        for (File file : new File(segmentManager.storageDirectory).listFiles(unmanagedFilesFilter))
+        for (File file : new File(segmentManager.storageDirectory).tryList(unmanagedFilesFilter))
         {
-            archiver.maybeArchive(file.getPath(), file.getName());
-            archiver.maybeWaitForArchiving(file.getName());
+            archiver.maybeArchive(file.path(), file.name());
+            archiver.maybeWaitForArchiving(file.name());
         }
 
         assert archiver.archivePending.isEmpty() : "Not all commit log archive tasks were completed before restore";
         archiver.maybeRestoreArchive();
 
         // List the files again as archiver may have added segments.
-        File[] files = new File(segmentManager.storageDirectory).listFiles(unmanagedFilesFilter);
+        File[] files = new File(segmentManager.storageDirectory).tryList(unmanagedFilesFilter);
         int replayed = 0;
         if (files.length == 0)
         {
@@ -226,7 +233,7 @@ public class CommitLog implements CommitLogMBean
     /**
      * Flushes all dirty CFs, waiting for them to free and recycle any segments they were retaining
      */
-    public void forceRecycleAllSegments(Iterable<TableId> droppedTables)
+    public void forceRecycleAllSegments(Collection<TableId> droppedTables)
     {
         segmentManager.forceRecycleAll(droppedTables);
     }
@@ -414,6 +421,29 @@ public class CommitLog implements CommitLogMBean
         return segmentRatios;
     }
 
+    @Override
+    public boolean getCDCBlockWrites()
+    {
+        return DatabaseDescriptor.getCDCBlockWrites();
+    }
+
+    @Override
+    public void setCDCBlockWrites(boolean val)
+    {
+        Preconditions.checkState(DatabaseDescriptor.isCDCEnabled(),
+                                 "Unable to set block_writes (%s): CDC is not enabled.", val);
+        Preconditions.checkState(segmentManager instanceof CommitLogSegmentManagerCDC,
+                                 "CDC is enabled but we have the wrong CommitLogSegmentManager type: %s. " +
+                                 "Please report this as bug.", segmentManager.getClass().getName());
+        boolean oldVal = DatabaseDescriptor.getCDCBlockWrites();
+        CommitLogSegment currentSegment = segmentManager.allocatingFrom();
+        // Update the current segment CDC state to PERMITTED if block_writes is disabled now, and it was in FORBIDDEN state
+        if (!val && currentSegment.getCDCState() == CommitLogSegment.CDCState.FORBIDDEN)
+            currentSegment.setCDCState(CommitLogSegment.CDCState.PERMITTED);
+        DatabaseDescriptor.setCDCBlockWrites(val);
+        logger.info("Updated CDC block_writes from {} to {}", oldVal, val);
+    }
+
     /**
      * Shuts down the threads used by the commit log, blocking until completion.
      * TODO this should accept a timeout, and throw TimeoutException
@@ -427,7 +457,7 @@ public class CommitLog implements CommitLogMBean
         executor.shutdown();
         executor.awaitTermination();
         segmentManager.shutdown();
-        segmentManager.awaitTermination();
+        segmentManager.awaitTermination(1L, TimeUnit.MINUTES);
     }
 
     /**
@@ -469,13 +499,13 @@ public class CommitLog implements CommitLogMBean
         }
         catch (InterruptedException e)
         {
-            throw new RuntimeException(e);
+            throw new UncheckedInterruptedException(e);
         }
         segmentManager.stopUnsafe(deleteSegments);
         CommitLogSegment.resetReplayLimit();
         if (DatabaseDescriptor.isCDCEnabled() && deleteSegments)
-            for (File f : new File(DatabaseDescriptor.getCDCLogLocation()).listFiles())
-                FileUtils.deleteWithConfirm(f);
+            for (File f : new File(DatabaseDescriptor.getCDCLogLocation()).tryList())
+                f.delete();
     }
 
     /**
@@ -490,7 +520,7 @@ public class CommitLog implements CommitLogMBean
 
     public static long freeDiskSpace()
     {
-        return FileUtils.getFreeSpace(new File(DatabaseDescriptor.getCommitLogLocation()));
+        return PathUtils.tryGetSpace(new File(DatabaseDescriptor.getCommitLogLocation()).toPath(), FileStore::getTotalSpace);
     }
 
     @VisibleForTesting
@@ -574,7 +604,7 @@ public class CommitLog implements CommitLogMBean
          */
         public boolean useEncryption()
         {
-            return encryptionContext.isEnabled();
+            return encryptionContext != null && encryptionContext.isEnabled();
         }
 
         /**

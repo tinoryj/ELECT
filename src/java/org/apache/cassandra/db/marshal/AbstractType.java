@@ -32,6 +32,7 @@ import org.apache.cassandra.cql3.AssignmentTestable;
 import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.ColumnSpecification;
 import org.apache.cassandra.cql3.Term;
+import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -126,6 +127,11 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return getSerializer().deserialize(value, accessor);
     }
 
+    public ByteBuffer decomposeUntyped(Object value)
+    {
+        return decompose((T) value);
+    }
+
     public ByteBuffer decompose(T value)
     {
         return getSerializer().serialize(value);
@@ -146,6 +152,11 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     public final String getString(ByteBuffer bytes)
     {
         return getString(bytes, ByteBufferAccessor.instance);
+    }
+
+    public String toCQLString(ByteBuffer bytes)
+    {
+        return asCQL3Type().toCQLLiteral(bytes, ProtocolVersion.CURRENT);
     }
 
     /** get a byte representation of the given string. */
@@ -234,6 +245,11 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
         return new CQL3Type.Custom(this);
     }
 
+    public AbstractType<?> udfType()
+    {
+        return this;
+    }
+
     /**
      * Same as compare except that this ignore ReversedType. This is to be use when
      * comparing 2 values to decide for a CQL condition (see Operator.isSatisfiedBy) as
@@ -313,9 +329,11 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
      *
      * Note that a type should be compatible with at least itself.
      */
-    public boolean isValueCompatibleWith(AbstractType<?> otherType)
+    public boolean isValueCompatibleWith(AbstractType<?> previous)
     {
-        return isValueCompatibleWithInternal((otherType instanceof ReversedType) ? ((ReversedType) otherType).baseType : otherType);
+        AbstractType<?> thisType =          isReversed() ? ((ReversedType<?>)     this).baseType : this;
+        AbstractType<?> thatType = previous.isReversed() ? ((ReversedType<?>) previous).baseType : previous;
+        return thisType.isValueCompatibleWithInternal(thatType);
     }
 
     /**
@@ -325,6 +343,18 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
     protected boolean isValueCompatibleWithInternal(AbstractType<?> otherType)
     {
         return isCompatibleWith(otherType);
+    }
+
+    /**
+     * Similar to {@link #isValueCompatibleWith(AbstractType)}, but takes into account {@link Cell} encoding.
+     * In particular, this method doesn't consider two types serialization compatible if one of them has fixed
+     * length (overrides {@link #valueLengthIfFixed()}, and the other one doesn't.
+     */
+    public boolean isSerializationCompatibleWith(AbstractType<?> previous)
+    {
+        return isValueCompatibleWith(previous)
+               && valueLengthIfFixed() == previous.valueLengthIfFixed()
+               && isMultiCell() == previous.isMultiCell();
     }
 
     /**
@@ -494,7 +524,7 @@ public abstract class AbstractType<T> implements Comparator<ByteBuffer>, Assignm
 
             if (l > maxValueSize)
                 throw new IOException(String.format("Corrupt value length %d encountered, as it exceeds the maximum of %d, " +
-                                                    "which is set via max_value_size_in_mb in cassandra.yaml",
+                                                    "which is set via max_value_size in cassandra.yaml",
                                                     l, maxValueSize));
 
             return accessor.read(in, l);

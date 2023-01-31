@@ -44,7 +44,7 @@ public class KeywordTestBase extends CQLTester
                                                       return new Object[] { keyword,ReservedKeywords.isReserved(keyword) };
                                                   })
                                                   .collect(Collectors.toList());
-    
+
     public static Collection<Object[]> getKeywordsForSplit(int split, int totalSplits)
     {
         return Sets.newHashSet(Lists.partition(KeywordTestBase.keywords, KeywordTestBase.keywords.size() / totalSplits)

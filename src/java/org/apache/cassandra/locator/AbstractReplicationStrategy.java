@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import com.google.common.base.Preconditions;
 
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.WriteType;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.RingPosition;
@@ -39,6 +41,7 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.ReplicaCollection.Builder.Conflict;
 import org.apache.cassandra.service.AbstractWriteResponseHandler;
+import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.DatacenterSyncWriteResponseHandler;
 import org.apache.cassandra.service.DatacenterWriteResponseHandler;
 import org.apache.cassandra.service.WriteResponseHandler;
@@ -128,17 +131,20 @@ public abstract class AbstractReplicationStrategy
      */
     public abstract EndpointsForRange calculateNaturalReplicas(Token searchToken, TokenMetadata tokenMetadata);
 
-    public <T> AbstractWriteResponseHandler<T> getWriteResponseHandler(ReplicaPlan.ForTokenWrite replicaPlan,
+    public <T> AbstractWriteResponseHandler<T> getWriteResponseHandler(ReplicaPlan.ForWrite replicaPlan,
                                                                        Runnable callback,
                                                                        WriteType writeType,
+                                                                       Supplier<Mutation> hintOnFailure,
                                                                        long queryStartNanoTime)
     {
-        return getWriteResponseHandler(replicaPlan, callback, writeType, queryStartNanoTime, DatabaseDescriptor.getIdealConsistencyLevel());
+        return getWriteResponseHandler(replicaPlan, callback, writeType, hintOnFailure,
+                                       queryStartNanoTime, DatabaseDescriptor.getIdealConsistencyLevel());
     }
 
-    public <T> AbstractWriteResponseHandler<T> getWriteResponseHandler(ReplicaPlan.ForTokenWrite replicaPlan,
+    public <T> AbstractWriteResponseHandler<T> getWriteResponseHandler(ReplicaPlan.ForWrite replicaPlan,
                                                                        Runnable callback,
                                                                        WriteType writeType,
+                                                                       Supplier<Mutation> hintOnFailure,
                                                                        long queryStartNanoTime,
                                                                        ConsistencyLevel idealConsistencyLevel)
     {
@@ -146,15 +152,15 @@ public abstract class AbstractReplicationStrategy
         if (replicaPlan.consistencyLevel().isDatacenterLocal())
         {
             // block for in this context will be localnodes block.
-            resultResponseHandler = new DatacenterWriteResponseHandler<T>(replicaPlan, callback, writeType, queryStartNanoTime);
+            resultResponseHandler = new DatacenterWriteResponseHandler<T>(replicaPlan, callback, writeType, hintOnFailure, queryStartNanoTime);
         }
         else if (replicaPlan.consistencyLevel() == ConsistencyLevel.EACH_QUORUM && (this instanceof NetworkTopologyStrategy))
         {
-            resultResponseHandler = new DatacenterSyncWriteResponseHandler<T>(replicaPlan, callback, writeType, queryStartNanoTime);
+            resultResponseHandler = new DatacenterSyncWriteResponseHandler<T>(replicaPlan, callback, writeType, hintOnFailure, queryStartNanoTime);
         }
         else
         {
-            resultResponseHandler = new WriteResponseHandler<T>(replicaPlan, callback, writeType, queryStartNanoTime);
+            resultResponseHandler = new WriteResponseHandler<T>(replicaPlan, callback, writeType, hintOnFailure, queryStartNanoTime);
         }
 
         //Check if tracking the ideal consistency level is configured
@@ -173,6 +179,7 @@ public abstract class AbstractReplicationStrategy
                 AbstractWriteResponseHandler<T> idealHandler = getWriteResponseHandler(replicaPlan.withConsistencyLevel(idealConsistencyLevel),
                                                                                        callback,
                                                                                        writeType,
+                                                                                       hintOnFailure,
                                                                                        queryStartNanoTime,
                                                                                        idealConsistencyLevel);
                 resultResponseHandler.setIdealCLResponseHandler(idealHandler);
@@ -280,7 +287,17 @@ public abstract class AbstractReplicationStrategy
 
     public abstract void validateOptions() throws ConfigurationException;
 
-    public abstract void maybeWarnOnOptions();
+    @Deprecated // use #maybeWarnOnOptions(ClientState) instead
+    public void maybeWarnOnOptions()
+    {
+        // nothing to do here
+    }
+
+    public void maybeWarnOnOptions(ClientState state)
+    {
+        maybeWarnOnOptions();
+    }
+
 
     /*
      * The options recognized by the strategy.
@@ -378,12 +395,13 @@ public abstract class AbstractReplicationStrategy
                                                    Class<? extends AbstractReplicationStrategy> strategyClass,
                                                    TokenMetadata tokenMetadata,
                                                    IEndpointSnitch snitch,
-                                                   Map<String, String> strategyOptions) throws ConfigurationException
+                                                   Map<String, String> strategyOptions,
+                                                   ClientState state) throws ConfigurationException
     {
         AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetadata, snitch, strategyOptions);
         strategy.validateExpectedOptions();
         strategy.validateOptions();
-        strategy.maybeWarnOnOptions();
+        strategy.maybeWarnOnOptions(state);
         if (strategy.hasTransientReplicas() && !DatabaseDescriptor.isTransientReplicationEnabled())
         {
             throw new ConfigurationException("Transient replication is disabled. Enable in cassandra.yaml to use.");
@@ -415,6 +433,7 @@ public abstract class AbstractReplicationStrategy
         try
         {
             ReplicationFactor rf = ReplicationFactor.fromString(s);
+            
             if (rf.hasTransientReplicas())
             {
                 if (DatabaseDescriptor.getNumTokens() > 1)

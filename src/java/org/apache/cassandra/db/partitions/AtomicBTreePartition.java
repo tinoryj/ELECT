@@ -39,8 +39,9 @@ import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.memory.Cloner;
 import org.apache.cassandra.utils.memory.HeapCloner;
 import org.apache.cassandra.utils.memory.MemtableAllocator;
-
 import com.google.common.annotations.VisibleForTesting;
+
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 /**
  * A thread-safe and atomic Partition implementation.
@@ -74,7 +75,7 @@ public final class AtomicBTreePartition extends AbstractBTreePartition
 
     /**
      * (clock + allocation) granularity are combined to give us an acceptable (waste) allocation rate that is defined by
-     * the passage of real time of ALLOCATION_GRANULARITY_BYTES/CLOCK_GRANULARITY, or in this case 7.63Kb/ms, or 7.45Mb/s
+     * the passage of real time of ALLOCATION_GRANULARITY_BYTES/CLOCK_GRANULARITY, or in this case 7.63KiB/ms, or 7.45Mb/s
      *
      * in wasteTracker we maintain within EXCESS_WASTE_OFFSET before the current time; whenever we waste bytes
      * we increment the current value if it is within this window, and set it to the min of the window plus our waste
@@ -310,7 +311,7 @@ public final class AtomicBTreePartition extends AbstractBTreePartition
             while (TRACKER_PESSIMISTIC_LOCKING != (oldTrackerValue = wasteTracker))
             {
                 // Note this time value has an arbitrary offset, but is a constant rate 32 bit counter (that may wrap)
-                int time = (int) (System.nanoTime() >>> CLOCK_SHIFT);
+                int time = (int) (nanoTime() >>> CLOCK_SHIFT);
                 int delta = oldTrackerValue - time;
                 if (oldTrackerValue == TRACKER_NEVER_WASTED || delta >= 0 || delta < -EXCESS_WASTE_OFFSET)
                     delta = -EXCESS_WASTE_OFFSET;

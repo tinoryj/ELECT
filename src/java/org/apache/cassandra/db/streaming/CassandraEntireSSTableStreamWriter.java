@@ -26,8 +26,8 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
-import org.apache.cassandra.net.AsyncStreamingOutputPlus;
 import org.apache.cassandra.streaming.ProgressInfo;
+import org.apache.cassandra.streaming.StreamingDataOutputPlus;
 import org.apache.cassandra.streaming.StreamManager;
 import org.apache.cassandra.streaming.StreamSession;
 
@@ -53,7 +53,7 @@ public class CassandraEntireSSTableStreamWriter
         this.sstable = sstable;
         this.context = context;
         this.manifest = context.manifest();
-        this.limiter = StreamManager.getRateLimiter(session.peer);
+        this.limiter = StreamManager.getEntireSSTableRateLimiter(session.peer);
     }
 
     /**
@@ -63,7 +63,7 @@ public class CassandraEntireSSTableStreamWriter
      * @param out where this writes data to
      * @throws IOException on any I/O error
      */
-    public void write(AsyncStreamingOutputPlus out) throws IOException
+    public void write(StreamingDataOutputPlus out) throws IOException
     {
         long totalSize = manifest.totalSize();
         logger.debug("[Stream #{}] Start streaming sstable {} to {}, repairedAt = {}, totalSize = {}",
@@ -84,7 +84,7 @@ public class CassandraEntireSSTableStreamWriter
             logger.debug("[Stream #{}] Streaming {}.{} gen {} component {} size {}", session.planId(),
                          sstable.getKeyspaceName(),
                          sstable.getColumnFamilyName(),
-                         sstable.descriptor.generation,
+                         sstable.descriptor.id,
                          component,
                          prettyPrintMemory(length));
 
@@ -99,7 +99,7 @@ public class CassandraEntireSSTableStreamWriter
                          session.planId(),
                          sstable.getKeyspaceName(),
                          sstable.getColumnFamilyName(),
-                         sstable.descriptor.generation,
+                         sstable.descriptor.id,
                          component,
                          session.peer,
                          prettyPrintMemory(bytesWritten),

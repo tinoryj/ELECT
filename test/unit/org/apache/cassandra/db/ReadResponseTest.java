@@ -262,7 +262,8 @@ public class ReadResponseTest
                   DataLimits.NONE,
                   metadata.partitioner.decorateKey(ByteBufferUtil.bytes(key)),
                   null,
-                  null);
+                  null,
+                  false);
            
         }
 

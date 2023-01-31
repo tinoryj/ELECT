@@ -40,6 +40,9 @@ import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
+
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.junit.Assert.assertEquals;
 
 public class LongCompactionsTest
@@ -122,8 +125,8 @@ public class LongCompactionsTest
         // give garbage collection a bit of time to catch up
         Thread.sleep(1000);
 
-        long start = System.nanoTime();
-        final int gcBefore = (int) (System.currentTimeMillis() / 1000) - Schema.instance.getTableMetadata(KEYSPACE1, "Standard1").params.gcGraceSeconds;
+        long start = nanoTime();
+        final int gcBefore = (int) (currentTimeMillis() / 1000) - Schema.instance.getTableMetadata(KEYSPACE1, "Standard1").params.gcGraceSeconds;
         try (LifecycleTransaction txn = store.getTracker().tryModify(sstables, OperationType.COMPACTION))
         {
             assert txn != null : "Cannot markCompacting all sstables";
@@ -134,7 +137,7 @@ public class LongCompactionsTest
                                          sstableCount,
                                          partitionsPerSSTable,
                                          rowsPerPartition,
-                                         TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)));
+                                         TimeUnit.NANOSECONDS.toMillis(nanoTime() - start)));
     }
 
     @Test
@@ -165,7 +168,7 @@ public class LongCompactionsTest
 
                 inserted.add(key);
             }
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
             CompactionsTest.assertMaxTimestamp(cfs, maxTimestampExpected);
 
             assertEquals(inserted.toString(), inserted.size(), Util.getAll(Util.cmd(cfs).build()).size());

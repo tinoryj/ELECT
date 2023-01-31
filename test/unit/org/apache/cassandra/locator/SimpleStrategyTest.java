@@ -159,7 +159,7 @@ public class SimpleStrategyTest
     {
         TokenMetadata tmd;
         AbstractReplicationStrategy strategy;
-        for (String keyspaceName : Schema.instance.getNonLocalStrategyKeyspaces())
+        for (String keyspaceName : Schema.instance.getNonLocalStrategyKeyspaces().names())
         {
             tmd = new TokenMetadata();
             strategy = getStrategy(keyspaceName, tmd, new SimpleSnitch());
@@ -214,7 +214,7 @@ public class SimpleStrategyTest
         tmd.addBootstrapToken(bsToken, bootstrapEndpoint);
 
         AbstractReplicationStrategy strategy = null;
-        for (String keyspaceName : Schema.instance.getNonLocalStrategyKeyspaces())
+        for (String keyspaceName : Schema.instance.getNonLocalStrategyKeyspaces().names())
         {
             strategy = getStrategy(keyspaceName, tmd, new SimpleSnitch());
 
@@ -348,7 +348,7 @@ public class SimpleStrategyTest
         StorageService.instance.getTokenMetadata().updateHostId(UUID.randomUUID(), FBUtilities.getBroadcastAddressAndPort());
         
         ClientWarn.instance.captureWarnings();
-        strategy.maybeWarnOnOptions();
+        strategy.maybeWarnOnOptions(null);
         assertTrue(ClientWarn.instance.getWarnings().stream().anyMatch(s -> s.contains("Your replication factor")));
     }
 

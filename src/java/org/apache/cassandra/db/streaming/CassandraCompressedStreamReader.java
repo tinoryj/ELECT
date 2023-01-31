@@ -19,12 +19,10 @@ package org.apache.cassandra.db.streaming;
 
 import java.io.IOException;
 
-import com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.io.compress.CompressionMetadata;
 import org.apache.cassandra.io.sstable.SSTableMultiWriter;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -34,8 +32,6 @@ import org.apache.cassandra.streaming.StreamSession;
 import org.apache.cassandra.streaming.messages.StreamMessageHeader;
 import org.apache.cassandra.utils.ChecksumType;
 import org.apache.cassandra.utils.FBUtilities;
-
-import static org.apache.cassandra.utils.Throwables.extractIOExceptionCause;
 
 /**
  * CassandraStreamReader that reads from streamed compressed SSTable
@@ -58,7 +54,7 @@ public class CassandraCompressedStreamReader extends CassandraStreamReader
      */
     @Override
     @SuppressWarnings("resource") // input needs to remain open, streams on top of it can't be closed
-    public SSTableMultiWriter read(DataInputPlus inputPlus) throws IOException
+    public SSTableMultiWriter read(DataInputPlus inputPlus) throws Throwable
     {
         long totalSize = totalSize();
 
@@ -101,7 +97,7 @@ public class CassandraCompressedStreamReader extends CassandraStreamReader
                 }
                 assert in.getBytesRead() == sectionLength;
             }
-            logger.trace("[Stream #{}] Finished receiving file #{} from {} readBytes = {}, totalSize = {}", session.planId(), fileSeqNum,
+            logger.info("[Stream #{}] Finished receiving file #{} from {} readBytes = {}, totalSize = {}", session.planId(), fileSeqNum,
                          session.peer, FBUtilities.prettyPrintMemory(cis.chunkBytesRead()), FBUtilities.prettyPrintMemory(totalSize));
             return writer;
         }
@@ -111,12 +107,8 @@ public class CassandraCompressedStreamReader extends CassandraStreamReader
             logger.warn("[Stream {}] Error while reading partition {} from stream on ks='{}' and table='{}'.",
                         session.planId(), partitionKey, cfs.keyspace.getName(), cfs.getTableName());
             if (writer != null)
-            {
-                writer.abort(e);
-            }
-            if (extractIOExceptionCause(e).isPresent())
-                throw e;
-            throw Throwables.propagate(e);
+                e = writer.abort(e);
+            throw e;
         }
     }
 

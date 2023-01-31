@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
@@ -34,6 +35,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
@@ -44,20 +46,22 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.OutboundConnectionSettings.Framing;
+import org.apache.cassandra.security.ISslContextFactory;
 import org.apache.cassandra.security.SSLFactory;
-import org.apache.cassandra.streaming.async.StreamingInboundHandler;
+import org.apache.cassandra.streaming.StreamDeserializingTask;
+import org.apache.cassandra.streaming.StreamingChannel;
+import org.apache.cassandra.streaming.async.NettyStreamingChannel;
 import org.apache.cassandra.utils.memory.BufferPools;
 
 import static java.lang.Math.*;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.apache.cassandra.concurrent.ExecutorFactory.Global.executorFactory;
 import static org.apache.cassandra.net.MessagingService.*;
-import static org.apache.cassandra.net.MessagingService.VERSION_40;
-import static org.apache.cassandra.net.MessagingService.current_version;
-import static org.apache.cassandra.net.MessagingService.minimum_version;
 import static org.apache.cassandra.net.SocketFactory.WIRETRACE;
 import static org.apache.cassandra.net.SocketFactory.newSslHandler;
 
@@ -67,6 +71,8 @@ public class InboundConnectionInitiator
 
     private static class Initializer extends ChannelInitializer<SocketChannel>
     {
+        private static final String PIPELINE_INTERNODE_ERROR_EXCLUSIONS = "Internode Error Exclusions";
+
         private final InboundConnectionSettings settings;
         private final ChannelGroup channelGroup;
         private final Consumer<ChannelPipeline> pipelineInjector;
@@ -82,6 +88,9 @@ public class InboundConnectionInitiator
         @Override
         public void initChannel(SocketChannel channel) throws Exception
         {
+            // if any of the handlers added fail they will send the error to the "head", so this needs to be first
+            channel.pipeline().addFirst(PIPELINE_INTERNODE_ERROR_EXCLUSIONS, new InternodeErrorExclusionsHandler());
+
             channelGroup.add(channel);
 
             channel.config().setOption(ChannelOption.ALLOCATOR, GlobalBufferPoolAllocator.instance);
@@ -99,14 +108,14 @@ public class InboundConnectionInitiator
             {
                 case UNENCRYPTED:
                     // Handler checks for SSL connection attempts and cleanly rejects them if encryption is disabled
-                    pipeline.addFirst("rejectssl", new RejectSslHandler());
+                    pipeline.addAfter(PIPELINE_INTERNODE_ERROR_EXCLUSIONS, "rejectssl", new RejectSslHandler());
                     break;
                 case OPTIONAL:
-                    pipeline.addFirst("ssl", new OptionalSslHandler(settings.encryption));
+                    pipeline.addAfter(PIPELINE_INTERNODE_ERROR_EXCLUSIONS, "ssl", new OptionalSslHandler(settings.encryption));
                     break;
                 case ENCRYPTED:
                     SslHandler sslHandler = getSslHandler("creating", channel, settings.encryption);
-                    pipeline.addFirst("ssl", sslHandler);
+                    pipeline.addAfter(PIPELINE_INTERNODE_ERROR_EXCLUSIONS, "ssl", sslHandler);
                     break;
             }
 
@@ -114,7 +123,20 @@ public class InboundConnectionInitiator
                 pipeline.addLast("logger", new LoggingHandler(LogLevel.INFO));
 
             channel.pipeline().addLast("handshake", new Handler(settings));
+        }
+    }
 
+    private static class InternodeErrorExclusionsHandler extends ChannelInboundHandlerAdapter
+    {
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception
+        {
+            if (DatabaseDescriptor.getInternodeErrorReportingExclusions().contains(ctx.channel().remoteAddress()))
+            {
+                logger.debug("Excluding internode exception for {}; address contained in internode_error_reporting_exclusions", ctx.channel().remoteAddress(), cause);
+                return;
+            }
+            super.exceptionCaught(ctx, cause);
         }
     }
 
@@ -138,7 +160,7 @@ public class InboundConnectionInitiator
             bootstrap.childOption(ChannelOption.SO_RCVBUF, socketReceiveBufferSizeInBytes);
 
         InetAddressAndPort bind = initializer.settings.bindAddress;
-        ChannelFuture channelFuture = bootstrap.bind(new InetSocketAddress(bind.address, bind.port));
+        ChannelFuture channelFuture = bootstrap.bind(new InetSocketAddress(bind.getAddress(), bind.getPort()));
 
         if (!channelFuture.awaitUninterruptibly().isSuccess())
         {
@@ -156,9 +178,7 @@ public class InboundConnectionInitiator
                 throw new ConfigurationException(bind + " is in use by another process.  Change listen_address:storage_port " +
                                                  "in cassandra.yaml to values that do not conflict with other services");
             }
-            // looking at the jdk source, solaris/windows bind failue messages both use the phrase "cannot assign requested address".
-            // windows message uses "Cannot" (with a capital 'C'), and solaris (a/k/a *nux) doe not. hence we search for "annot" <sigh>
-            else if (causeString.contains("annot assign requested address"))
+            else if (causeString.contains("cannot assign requested address"))
             {
                 throw new ConfigurationException("Unable to bind to address " + bind
                                                  + ". Set listen_address in cassandra.yaml to an interface you can bind to, e.g., your private IP address on EC2");
@@ -213,20 +233,30 @@ public class InboundConnectionInitiator
                 failHandshake(ctx);
             }, HandshakeProtocol.TIMEOUT_MILLIS, MILLISECONDS);
 
-            authenticate(ctx.channel().remoteAddress());
+            if (!authenticate(ctx.channel().remoteAddress()))
+            {
+                failHandshake(ctx);
+            }
         }
 
-        private void authenticate(SocketAddress socketAddress) throws IOException
+        private boolean authenticate(SocketAddress socketAddress) throws IOException
         {
             if (socketAddress.getClass().getSimpleName().equals("EmbeddedSocketAddress"))
-                return;
+                return true;
 
             if (!(socketAddress instanceof InetSocketAddress))
                 throw new IOException(String.format("Unexpected SocketAddress type: %s, %s", socketAddress.getClass(), socketAddress));
 
             InetSocketAddress addr = (InetSocketAddress)socketAddress;
             if (!settings.authenticate(addr.getAddress(), addr.getPort()))
-                throw new IOException("Authentication failure for inbound connection from peer " + addr);
+            {
+                // Log at info level as anything that can reach the inbound port could hit this
+                // and trigger a log of noise.  Failed outbound connections to known cluster endpoints
+                // still fail with an ERROR message and exception to alert operators that aren't watching logs closely.
+                logger.info("Authenticate rejected inbound internode connection from {}", addr);
+                return false;
+            }
+            return true;
         }
 
         @Override
@@ -250,6 +280,7 @@ public class InboundConnectionInitiator
                 logger.warn("peer {} attempted to establish an unencrypted connection (broadcast address {})",
                             ctx.channel().remoteAddress(), initiate.from);
                 failHandshake(ctx);
+                return;
             }
 
             if (initiate.acceptVersions != null)
@@ -275,11 +306,13 @@ public class InboundConnectionInitiator
                 {
                     logger.info("peer {} only supports messaging versions higher ({}) than this node supports ({})", ctx.channel().remoteAddress(), initiate.acceptVersions.min, current_version);
                     failHandshake(ctx);
+                    return;
                 }
                 else if (initiate.acceptVersions.max < accept.min)
                 {
                     logger.info("peer {} only supports messaging versions lower ({}) than this node supports ({})", ctx.channel().remoteAddress(), initiate.acceptVersions.max, minimum_version);
                     failHandshake(ctx);
+                    return;
                 }
                 else
                 {
@@ -302,6 +335,7 @@ public class InboundConnectionInitiator
                     {
                         logger.warn("Received stream using protocol version {} (my version {}). Terminating connection", version, settings.acceptStreaming.max);
                         failHandshake(ctx);
+                        return;
                     }
                     setupStreamingPipeline(initiate.from, ctx);
                 }
@@ -357,14 +391,22 @@ public class InboundConnectionInitiator
 
         private void exceptionCaught(Channel channel, Throwable cause)
         {
-            logger.error("Failed to properly handshake with peer {}. Closing the channel.", channel.remoteAddress(), cause);
+            final SocketAddress remoteAddress = channel.remoteAddress();
+            boolean reportingExclusion = DatabaseDescriptor.getInternodeErrorReportingExclusions().contains(remoteAddress);
+
+            if (reportingExclusion)
+                logger.debug("Excluding internode exception for {}; address contained in internode_error_reporting_exclusions", remoteAddress, cause);
+            else
+                logger.error("Failed to properly handshake with peer {}. Closing the channel.", remoteAddress, cause);
+
             try
             {
                 failHandshake(channel);
             }
             catch (Throwable t)
             {
-                logger.error("Unexpected exception in {}.exceptionCaught", this.getClass().getSimpleName(), t);
+                if (!reportingExclusion)
+                    logger.error("Unexpected exception in {}.exceptionCaught", this.getClass().getSimpleName(), t);
             }
         }
 
@@ -375,9 +417,24 @@ public class InboundConnectionInitiator
 
         private void failHandshake(Channel channel)
         {
-            channel.close();
+            // Cancel the handshake timeout as early as possible as it calls this method
             if (handshakeTimeout != null)
                 handshakeTimeout.cancel(true);
+
+            // prevent further decoding of buffered data by removing this handler before closing
+            // otherwise the pending bytes will be decoded again on close, throwing further exceptions.
+            try
+            {
+                channel.pipeline().remove(this);
+            }
+            catch (NoSuchElementException ex)
+            {
+                // possible race with the handshake timeout firing and removing this handler already
+            }
+            finally
+            {
+                channel.close();
+            }
         }
 
         private void setupStreamingPipeline(InetAddressAndPort from, ChannelHandlerContext ctx)
@@ -395,7 +452,15 @@ public class InboundConnectionInitiator
             }
 
             BufferPools.forNetworking().setRecycleWhenFreeForCurrentThread(false);
-            pipeline.replace(this, "streamInbound", new StreamingInboundHandler(from, current_version, null));
+
+            // we can't infer the type of streaming connection at this point,
+            // so we use CONTROL unconditionally; it's ugly but does what we want
+            // (establishes an AsyncStreamingInputPlus)
+            NettyStreamingChannel streamingChannel =
+                new NettyStreamingChannel(current_version, channel, StreamingChannel.Kind.CONTROL);
+            pipeline.replace(this, "streamInbound", streamingChannel);
+            executorFactory().startThread(String.format("Stream-Deserializer-%s-%s", from, channel.id()),
+                                          new StreamDeserializingTask(null, streamingChannel, current_version));
 
             logger.info("{} streaming connection established, version = {}, framing = {}, encryption = {}",
                         SocketFactory.channelId(from,
@@ -469,14 +534,22 @@ public class InboundConnectionInitiator
 
             pipeline.addLast("deserialize", handler);
 
-            pipeline.remove(this);
+            try
+            {
+                pipeline.remove(this);
+            }
+            catch (NoSuchElementException ex)
+            {
+                // possible race with the handshake timeout firing and removing this handler already
+            }
         }
     }
 
     private static SslHandler getSslHandler(String description, Channel channel, EncryptionOptions.ServerEncryptionOptions encryptionOptions) throws IOException
     {
-        final boolean buildTrustStore = true;
-        SslContext sslContext = SSLFactory.getOrCreateSslContext(encryptionOptions, buildTrustStore, SSLFactory.SocketType.SERVER);
+        final boolean verifyPeerCertificate = true;
+        SslContext sslContext = SSLFactory.getOrCreateSslContext(encryptionOptions, verifyPeerCertificate,
+                                                                 ISslContextFactory.SocketType.SERVER);
         InetSocketAddress peer = encryptionOptions.require_endpoint_verification ? (InetSocketAddress) channel.remoteAddress() : null;
         SslHandler sslHandler = newSslHandler(channel, sslContext, peer);
         logger.trace("{} inbound netty SslContext: context={}, engine={}", description, sslContext.getClass().getName(), sslHandler.engine().getClass().getName());

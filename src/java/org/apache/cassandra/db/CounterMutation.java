@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Supplier;
 
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
@@ -50,6 +51,7 @@ import static java.util.concurrent.TimeUnit.*;
 import static org.apache.cassandra.net.MessagingService.VERSION_30;
 import static org.apache.cassandra.net.MessagingService.VERSION_3014;
 import static org.apache.cassandra.net.MessagingService.VERSION_40;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 public class CounterMutation implements IMutation
 {
@@ -79,6 +81,12 @@ public class CounterMutation implements IMutation
     public Collection<PartitionUpdate> getPartitionUpdates()
     {
         return mutation.getPartitionUpdates();
+    }
+
+    @Override
+    public Supplier<Mutation> hintOnFailure()
+    {
+        return null;
     }
 
     public void validateSize(int version, int overhead)
@@ -150,12 +158,12 @@ public class CounterMutation implements IMutation
 
     private void grabCounterLocks(Keyspace keyspace, List<Lock> locks) throws WriteTimeoutException
     {
-        long startTime = System.nanoTime();
+        long startTime = nanoTime();
 
         AbstractReplicationStrategy replicationStrategy = keyspace.getReplicationStrategy();
         for (Lock lock : LOCKS.bulkGet(getCounterLockKeys()))
         {
-            long timeout = getTimeout(NANOSECONDS) - (System.nanoTime() - startTime);
+            long timeout = getTimeout(NANOSECONDS) - (nanoTime() - startTime);
             try
             {
                 if (!lock.tryLock(timeout, NANOSECONDS))

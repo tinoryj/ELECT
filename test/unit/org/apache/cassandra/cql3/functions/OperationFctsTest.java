@@ -33,6 +33,20 @@ import org.apache.cassandra.transport.ProtocolVersion;
 
 public class OperationFctsTest extends CQLTester
 {
+
+    @Test
+    public void testStringConcatenation() throws Throwable
+    {
+        createTable("CREATE TABLE %s (a text, b ascii, c text, PRIMARY KEY(a, b, c))");
+        execute("INSERT INTO %S (a, b, c) VALUES ('जॉन', 'Doe', 'जॉन Doe')");
+
+        assertColumnNames(execute("SELECT a + a, a + b, b + a, b + b FROM %s WHERE a = 'जॉन' AND b = 'Doe' AND c = 'जॉन Doe'"),
+                "a + a", "a + b", "b + a", "b + b");
+
+        assertRows(execute("SELECT a + ' ' + a, a + ' ' + b, b + ' ' + a, b + ' ' + b FROM %s WHERE a = 'जॉन' AND b = 'Doe' AND c = 'जॉन Doe'"),
+                row("जॉन जॉन", "जॉन Doe", "Doe जॉन", "Doe Doe"));
+    }
+
     @Test
     public void testSingleOperations() throws Throwable
     {
@@ -304,17 +318,17 @@ public class OperationFctsTest extends CQLTester
                    row(2, (byte) 2, (short) 2, "test"));
 
         // tinyint, smallint and int could be used there so we need to disambiguate
-        assertInvalidMessage("Ambiguous '+' operation with args ? and 1: use type casts to disambiguate",
+        assertInvalidMessage("Ambiguous '+' operation with args ? and 1: use type hint to disambiguate, example '(int) ?'",
                              "SELECT * FROM %s WHERE pk = ? + 1 AND c1 = 2", 1);
 
-        assertInvalidMessage("Ambiguous '+' operation with args ? and 1: use type casts to disambiguate",
+        assertInvalidMessage("Ambiguous '+' operation with args ? and 1: use type hint to disambiguate, example '(int) ?'",
                              "SELECT * FROM %s WHERE pk = 2 AND c1 = 2 AND c2 = 1 * (? + 1)", 1);
 
         assertRows(execute("SELECT 1 + 1, v FROM %s WHERE pk = 2 AND c1 = 2"),
                    row(2, "test"));
 
         // As the output type is unknown the ? type cannot be determined
-        assertInvalidMessage("Ambiguous '+' operation with args 1 and ?: use type casts to disambiguate",
+        assertInvalidMessage("Ambiguous '+' operation with args 1 and ?: use type hint to disambiguate, example '(int) ?'",
                              "SELECT 1 + ?, v FROM %s WHERE pk = 2 AND c1 = 2", 1);
 
         // As the prefered type for the constants is int, the returned type will be int
@@ -322,7 +336,7 @@ public class OperationFctsTest extends CQLTester
                    row(150, "test"));
 
         // As the output type is unknown the ? type cannot be determined
-        assertInvalidMessage("Ambiguous '+' operation with args ? and 50: use type casts to disambiguate",
+        assertInvalidMessage("Ambiguous '+' operation with args ? and 50: use type hint to disambiguate, example '(int) ?'",
                              "SELECT ? + 50, v FROM %s WHERE pk = 2 AND c1 = 2", 100);
 
         createTable("CREATE TABLE %s (a tinyint, b smallint, c int, d bigint, e float, f double, g varint, h decimal, PRIMARY KEY(a, b))"
@@ -696,7 +710,7 @@ public class OperationFctsTest extends CQLTester
     public void testWithNanAndInfinity() throws Throwable
     {
         createTable("CREATE TABLE %s (a int PRIMARY KEY, b double, c decimal)");
-        assertInvalidMessage("Ambiguous '+' operation with args ? and 1: use type casts to disambiguate",
+        assertInvalidMessage("Ambiguous '+' operation with args ? and 1: use type hint to disambiguate, example '(int) ?'",
                              "INSERT INTO %S (a, b, c) VALUES (? + 1, ?, ?)", 0, Double.NaN, BigDecimal.valueOf(1));
 
         execute("INSERT INTO %S (a, b, c) VALUES ((int) ? + 1, -?, ?)", 0, Double.NaN, BigDecimal.valueOf(1));

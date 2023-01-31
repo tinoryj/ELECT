@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.hints;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -29,6 +28,7 @@ import java.util.zip.CRC32;
 
 import com.google.common.collect.Iterables;
 
+import org.apache.cassandra.io.util.File;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
@@ -48,6 +48,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
+
 public class HintsWriteThenReadTest
 {
     private static final String KEYSPACE = "hints_write_then_read_test";
@@ -61,9 +63,9 @@ public class HintsWriteThenReadTest
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE, KeyspaceParams.simple(1), SchemaLoader.standardCFMD(KEYSPACE, TABLE));
 
-        HintsDescriptor descriptor = new HintsDescriptor(UUID.randomUUID(), System.currentTimeMillis());
+        HintsDescriptor descriptor = new HintsDescriptor(UUID.randomUUID(), currentTimeMillis());
 
-        File directory = Files.createTempDirectory(null).toFile();
+        File directory = new File(Files.createTempDirectory(null));
         try
         {
             testWriteReadCycle(directory, descriptor);
@@ -96,8 +98,8 @@ public class HintsWriteThenReadTest
 
     private static void verifyChecksum(File directory, HintsDescriptor descriptor) throws IOException
     {
-        File hintsFile = new File(directory, descriptor.fileName());
-        File checksumFile = new File(directory, descriptor.checksumFileName());
+        File hintsFile = descriptor.file(directory);
+        File checksumFile = descriptor.checksumFile(directory);
 
         assertTrue(checksumFile.exists());
 
@@ -112,7 +114,7 @@ public class HintsWriteThenReadTest
         long baseTimestamp = descriptor.timestamp;
         int index = 0;
 
-        try (HintsReader reader = HintsReader.open(new File(directory, descriptor.fileName())))
+        try (HintsReader reader = HintsReader.open(descriptor.file(directory)))
         {
             for (HintsReader.Page page : reader)
             {

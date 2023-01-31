@@ -21,7 +21,6 @@ package org.apache.cassandra.db.rows;
 import static org.apache.cassandra.SchemaLoader.standardCFMD;
 import static org.junit.Assert.*;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -50,7 +49,6 @@ import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.ReadExecutionController;
 import org.apache.cassandra.db.RegularAndStaticColumns;
 import org.apache.cassandra.db.RowUpdateBuilder;
-import org.apache.cassandra.db.marshal.ByteBufferAccessor;
 import org.apache.cassandra.db.marshal.Int32Type;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.db.partitions.AbstractUnfilteredPartitionIterator;
@@ -112,7 +110,7 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
 
         // flush and generate 1 sstable
         ColumnFamilyStore cfs = Keyspace.open(keyspace()).getColumnFamilyStore(currentTable());
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
         cfs.disableAutoCompaction();
         cfs.forceMajorCompaction();
 
@@ -147,7 +145,7 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
 
         // flush and generate 1 sstable
         ColumnFamilyStore cfs = Keyspace.open(keyspace()).getColumnFamilyStore(currentTable());
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
         cfs.disableAutoCompaction();
         cfs.forceMajorCompaction();
 
@@ -205,7 +203,7 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
 
         // flush and generate 1 sstable
         ColumnFamilyStore cfs = Keyspace.open(keyspace()).getColumnFamilyStore(currentTable());
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
         cfs.disableAutoCompaction();
         cfs.forceMajorCompaction();
 
@@ -623,7 +621,7 @@ public class ThrottledUnfilteredIteratorTest extends CQLTester
 
         new RowUpdateBuilder(cfs.metadata(), 1, key).addRangeTombstone(10, 22).build().applyUnsafe();
 
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
 
         builder = UpdateBuilder.create(cfs.metadata(), key).withTimestamp(2);
         for (int i = 1; i < 40; i += 2)

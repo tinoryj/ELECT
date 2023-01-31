@@ -22,6 +22,8 @@ import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.tracing.Tracing;
 
+import static org.apache.cassandra.db.commitlog.CommitLogSegment.ENTRY_OVERHEAD_SIZE;
+
 public class MutationVerbHandler implements IVerbHandler<Mutation>
 {
     public static final MutationVerbHandler instance = new MutationVerbHandler();
@@ -39,26 +41,17 @@ public class MutationVerbHandler implements IVerbHandler<Mutation>
 
     public void doVerb(Message<Mutation> message)
     {
-        // Check if there were any forwarding headers in this message
-        InetAddressAndPort from = message.respondTo();
-        InetAddressAndPort respondToAddress;
-        if (from == null)
-        {
-            respondToAddress = message.from();
-            ForwardingInfo forwardTo = message.forwardTo();
-            if (forwardTo != null) forwardToLocalNodes(message, forwardTo);
-        }
-        else
-        {
-            respondToAddress = from;
-        }
+        message.payload.validateSize(MessagingService.current_version, ENTRY_OVERHEAD_SIZE);
 
+        // Check if there were any forwarding headers in this message
+        ForwardingInfo forwardTo = message.forwardTo();
+        if (forwardTo != null)
+            forwardToLocalNodes(message, forwardTo);
+
+        InetAddressAndPort respondToAddress = message.respondTo();
         try
         {
-            message.payload.applyFuture().thenAccept(o -> respond(message, respondToAddress)).exceptionally(wto -> {
-                failed();
-                return null;
-            });
+            message.payload.applyFuture().addCallback(o -> respond(message, respondToAddress), wto -> failed());
         }
         catch (WriteTimeoutException wto)
         {

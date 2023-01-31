@@ -32,12 +32,12 @@ public class KeywordTestSplit2 extends KeywordTestBase
 {
     static int SPLIT = 2;
     static int TOTAL_SPLITS = 2;
-    
+
     @Parameterized.Parameters(name = "keyword {0} isReserved {1}")
     public static Collection<Object[]> keywords() {
         return KeywordTestBase.getKeywordsForSplit(SPLIT, TOTAL_SPLITS);
     }
-    
+
     public KeywordTestSplit2(String keyword, boolean isReserved)
     {
         super(keyword, isReserved);

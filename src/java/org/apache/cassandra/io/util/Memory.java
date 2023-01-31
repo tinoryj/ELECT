@@ -32,7 +32,7 @@ import sun.misc.Unsafe;
 /**
  * An off-heap region of memory that must be manually free'd when no longer needed.
  */
-public class Memory implements AutoCloseable
+public class Memory implements AutoCloseable, ReadableMemory
 {
     private static final Unsafe unsafe;
     static
@@ -68,7 +68,7 @@ public class Memory implements AutoCloseable
         // we permit a 0 peer iff size is zero, since such an allocation makes no sense, and an allocator would be
         // justified in returning a null pointer (and permitted to do so: http://www.cplusplus.com/reference/cstdlib/malloc)
         if (peer == 0)
-            throw new OutOfMemoryError();
+            throw new OutOfMemoryError(); // checkstyle: permit this instantiation
     }
 
     // create a memory object that references the exacy same memory location as the one provided.

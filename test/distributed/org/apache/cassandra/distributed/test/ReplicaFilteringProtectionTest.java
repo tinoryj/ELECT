@@ -57,8 +57,7 @@ public class ReplicaFilteringProtectionTest extends TestBaseImpl
         cluster = init(Cluster.build()
                               .withNodes(REPLICAS)
                               .withConfig(config -> config.set("hinted_handoff_enabled", false)
-                                                          .set("commitlog_sync", "batch")
-                                                          .set("num_tokens", 1)).start());
+                                                          .set("commitlog_sync", "batch")).start());
 
         // Make sure we start w/ the correct defaults:
         cluster.get(1).runOnInstance(() -> assertEquals(DEFAULT_WARN_THRESHOLD, StorageService.instance.getCachedReplicaRowsWarnThreshold()));
@@ -68,7 +67,8 @@ public class ReplicaFilteringProtectionTest extends TestBaseImpl
     @AfterClass
     public static void teardown()
     {
-        cluster.close();
+        if (cluster != null)
+            cluster.close();
     }
 
     @Test

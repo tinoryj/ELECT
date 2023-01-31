@@ -32,6 +32,7 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.utils.FBUtilities;
 
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.junit.Assert.assertEquals;
 
 public class CollectionsTest extends CQLTester
@@ -696,7 +697,7 @@ public class CollectionsTest extends CQLTester
     public void testMapWithLargePartition() throws Throwable
     {
         Random r = new Random();
-        long seed = System.nanoTime();
+        long seed = nanoTime();
         System.out.println("Seed " + seed);
         r.setSeed(seed);
 

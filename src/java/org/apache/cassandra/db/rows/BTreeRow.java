@@ -464,6 +464,18 @@ public class BTreeRow extends AbstractRow
         return transformAndFilter(newInfo, newDeletion, (cd) -> cd.purge(purger, nowInSec));
     }
 
+    public Row purgeDataOlderThan(long timestamp, boolean enforceStrictLiveness)
+    {
+        LivenessInfo newInfo = primaryKeyLivenessInfo.timestamp() < timestamp ? LivenessInfo.EMPTY : primaryKeyLivenessInfo;
+        Deletion newDeletion = deletion.time().markedForDeleteAt() < timestamp ? Deletion.LIVE : deletion;
+
+        // when enforceStrictLiveness is set, a row is considered dead when it's PK liveness info is not present
+        if (enforceStrictLiveness && newDeletion.isLive() && newInfo.isEmpty())
+            return null;
+
+        return transformAndFilter(newInfo, newDeletion, cd -> cd.purgeDataOlderThan(timestamp));
+    }
+
     @Override
     public Row transformAndFilter(LivenessInfo info, Deletion deletion, Function<ColumnData, ColumnData> function)
     {
@@ -509,6 +521,19 @@ public class BTreeRow extends AbstractRow
         return Ints.checkedCast(accumulate((cd, v) -> v + cd.dataSize(), dataSize));
     }
 
+    @Override
+    public long unsharedHeapSize()
+    {
+        long heapSize = EMPTY_SIZE
+                        + clustering.unsharedHeapSize()
+                        + primaryKeyLivenessInfo.unsharedHeapSize()
+                        + deletion.unsharedHeapSize()
+                        + BTree.sizeOfStructureOnHeap(btree);
+
+        return accumulate((cd, v) -> v + cd.unsharedHeapSize(), heapSize);
+    }
+
+    @Override
     public long unsharedHeapSizeExcludingData()
     {
         long heapSize = EMPTY_SIZE

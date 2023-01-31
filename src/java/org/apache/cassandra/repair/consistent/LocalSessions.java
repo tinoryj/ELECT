@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
@@ -50,10 +49,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
 
+import org.apache.cassandra.db.compaction.CompactionInterruptedException;
 import org.apache.cassandra.locator.RangesAtEndpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,9 +90,14 @@ import org.apache.cassandra.repair.messages.StatusRequest;
 import org.apache.cassandra.repair.messages.StatusResponse;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.repair.NoSuchRepairSessionException;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.Throwables;
+import org.apache.cassandra.utils.TimeUUID;
+import org.apache.cassandra.utils.concurrent.Future;
 
+import static org.apache.cassandra.concurrent.ExecutorFactory.Global.executorFactory;
 import static org.apache.cassandra.net.Verb.FAILED_SESSION_MSG;
 import static org.apache.cassandra.net.Verb.FINALIZE_PROMISE_MSG;
 import static org.apache.cassandra.net.Verb.PREPARE_CONSISTENT_RSP;
@@ -153,7 +155,7 @@ public class LocalSessions
     private final String keyspace = SchemaConstants.SYSTEM_KEYSPACE_NAME;
     private final String table = SystemKeyspace.REPAIRS;
     private boolean started = false;
-    private volatile ImmutableMap<UUID, LocalSession> sessions = ImmutableMap.of();
+    private volatile ImmutableMap<TimeUUID, LocalSession> sessions = ImmutableMap.of();
     private volatile ImmutableMap<TableId, RepairedState> repairedStates = ImmutableMap.of();
 
     @VisibleForTesting
@@ -273,10 +275,10 @@ public class LocalSessions
         PendingStat.Builder finalized = new PendingStat.Builder();
         PendingStat.Builder failed = new PendingStat.Builder();
 
-        Map<UUID, PendingStat> stats = cfs.getPendingRepairStats();
-        for (Map.Entry<UUID, PendingStat> entry : stats.entrySet())
+        Map<TimeUUID, PendingStat> stats = cfs.getPendingRepairStats();
+        for (Map.Entry<TimeUUID, PendingStat> entry : stats.entrySet())
         {
-            UUID sessionID = entry.getKey();
+            TimeUUID sessionID = entry.getKey();
             PendingStat stat = entry.getValue();
             Verify.verify(sessionID.equals(Iterables.getOnlyElement(stat.sessions)));
 
@@ -310,7 +312,7 @@ public class LocalSessions
                                                                    && Range.intersects(ls.ranges, ranges));
 
         ColumnFamilyStore cfs = Schema.instance.getColumnFamilyStoreInstance(tid);
-        Set<UUID> sessionIds = Sets.newHashSet(Iterables.transform(candidates, s -> s.sessionID));
+        Set<TimeUUID> sessionIds = Sets.newHashSet(Iterables.transform(candidates, s -> s.sessionID));
 
 
         return cfs.releaseRepairData(sessionIds, force);
@@ -320,7 +322,7 @@ public class LocalSessions
      * hook for operators to cancel sessions, cancelling from a non-coordinator is an error, unless
      * force is set to true. Messages are sent out to other participants, but we don't wait for a response
      */
-    public void cancelSession(UUID sessionID, boolean force)
+    public void cancelSession(TimeUUID sessionID, boolean force)
     {
         logger.info("Cancelling local repair session {}", sessionID);
         LocalSession session = getSession(sessionID);
@@ -346,7 +348,7 @@ public class LocalSessions
         Preconditions.checkArgument(!started, "LocalSessions.start can only be called once");
         Preconditions.checkArgument(sessions.isEmpty(), "No sessions should be added before start");
         UntypedResultSet rows = QueryProcessor.executeInternalWithPaging(String.format("SELECT * FROM %s.%s", keyspace, table), 1000);
-        Map<UUID, LocalSession> loadedSessions = new HashMap<>();
+        Map<TimeUUID, LocalSession> loadedSessions = new HashMap<>();
         Map<TableId, List<RepairedState.Level>> initialLevels = new HashMap<>();
         for (UntypedResultSet.Row row : rows)
         {
@@ -363,9 +365,9 @@ public class LocalSessions
             }
             catch (IllegalArgumentException | NullPointerException e)
             {
-                logger.warn("Unable to load malformed repair session {}, removing", row.has("parent_id") ? row.getUUID("parent_id") : null);
+                logger.warn("Unable to load malformed repair session {}, removing", row.has("parent_id") ? row.getTimeUUID("parent_id") : null);
                 if (row.has("parent_id"))
-                    deleteRow(row.getUUID("parent_id"));
+                    deleteRow(row.getTimeUUID("parent_id"));
             }
         }
         for (Map.Entry<TableId, List<RepairedState.Level>> entry : initialLevels.entrySet())
@@ -545,9 +547,9 @@ public class LocalSessions
                                        Date.from(Instant.ofEpochSecond(session.getLastUpdate())),
                                        Date.from(Instant.ofEpochMilli(session.repairedAt)),
                                        session.getState().ordinal(),
-                                       session.coordinator.address,
-                                       session.coordinator.port,
-                                       session.participants.stream().map(participant -> participant.address).collect(Collectors.toSet()),
+                                       session.coordinator.getAddress(),
+                                       session.coordinator.getPort(),
+                                       session.participants.stream().map(participant -> participant.getAddress()).collect(Collectors.toSet()),
                                        session.participants.stream().map(participant -> participant.getHostAddressAndPort()).collect(Collectors.toSet()),
                                        serializeRanges(session.ranges),
                                        tableIdToUuid(session.tableIds));
@@ -564,7 +566,7 @@ public class LocalSessions
     {
         LocalSession.Builder builder = LocalSession.builder();
         builder.withState(ConsistentSession.State.valueOf(row.getInt("state")));
-        builder.withSessionID(row.getUUID("parent_id"));
+        builder.withSessionID(row.getTimeUUID("parent_id"));
         InetAddressAndPort coordinator = InetAddressAndPort.getByAddressOverrideDefaults(
             row.getInetAddress("coordinator"),
             row.getInt("coordinator_port"));
@@ -592,7 +594,7 @@ public class LocalSessions
         return buildSession(builder);
     }
 
-    private void deleteRow(UUID sessionID)
+    private void deleteRow(TimeUUID sessionID)
     {
         String query = "DELETE FROM %s.%s WHERE parent_id=?";
         QueryProcessor.executeInternal(String.format(query, keyspace, table), sessionID);
@@ -602,14 +604,14 @@ public class LocalSessions
     {
         TableId tid = Schema.instance.getTableMetadata(keyspace, table).id;
         ColumnFamilyStore cfm = Schema.instance.getColumnFamilyStoreInstance(tid);
-        cfm.forceBlockingFlush();
+        cfm.forceBlockingFlush(ColumnFamilyStore.FlushReason.INTERNALLY_FORCED);
     }
 
     /**
      * Loads a session directly from the table. Should be used for testing only
      */
     @VisibleForTesting
-    LocalSession loadUnsafe(UUID sessionId)
+    LocalSession loadUnsafe(TimeUUID sessionId)
     {
         String query = "SELECT * FROM %s.%s WHERE parent_id=?";
         UntypedResultSet result = QueryProcessor.executeInternal(String.format(query, keyspace, table), sessionId);
@@ -626,7 +628,7 @@ public class LocalSessions
         return new LocalSession(builder);
     }
 
-    public LocalSession getSession(UUID sessionID)
+    public LocalSession getSession(TimeUUID sessionID)
     {
         return sessions.get(sessionID);
     }
@@ -643,22 +645,22 @@ public class LocalSessions
         Preconditions.checkArgument(!sessions.containsKey(session.sessionID),
                                     "LocalSession %s already exists", session.sessionID);
         Preconditions.checkArgument(started, "sessions cannot be added before LocalSessions is started");
-        sessions = ImmutableMap.<UUID, LocalSession>builder()
+        sessions = ImmutableMap.<TimeUUID, LocalSession>builder()
                                .putAll(sessions)
                                .put(session.sessionID, session)
                                .build();
     }
 
-    private synchronized void removeSession(UUID sessionID)
+    private synchronized void removeSession(TimeUUID sessionID)
     {
         Preconditions.checkArgument(sessionID != null);
-        Map<UUID, LocalSession> temp = new HashMap<>(sessions);
+        Map<TimeUUID, LocalSession> temp = new HashMap<>(sessions);
         temp.remove(sessionID);
         sessions = ImmutableMap.copyOf(temp);
     }
 
     @VisibleForTesting
-    LocalSession createSessionUnsafe(UUID sessionId, ActiveRepairService.ParentRepairSession prs, Set<InetAddressAndPort> peers)
+    LocalSession createSessionUnsafe(TimeUUID sessionId, ActiveRepairService.ParentRepairSession prs, Set<InetAddressAndPort> peers)
     {
         LocalSession.Builder builder = LocalSession.builder();
         builder.withState(ConsistentSession.State.PREPARING);
@@ -677,7 +679,7 @@ public class LocalSessions
         return buildSession(builder);
     }
 
-    protected ActiveRepairService.ParentRepairSession getParentRepairSession(UUID sessionID)
+    protected ActiveRepairService.ParentRepairSession getParentRepairSession(TimeUUID sessionID) throws NoSuchRepairSessionException
     {
         return ActiveRepairService.instance.getParentRepairSession(sessionID);
     }
@@ -711,12 +713,12 @@ public class LocalSessions
         }
     }
 
-    public void failSession(UUID sessionID)
+    public void failSession(TimeUUID sessionID)
     {
         failSession(sessionID, true);
     }
 
-    public void failSession(UUID sessionID, boolean sendMessage)
+    public void failSession(TimeUUID sessionID, boolean sendMessage)
     {
         failSession(getSession(sessionID), sendMessage);
     }
@@ -727,7 +729,12 @@ public class LocalSessions
         {
             synchronized (session)
             {
-                if (session.getState() != FAILED)
+                if (session.getState() == FINALIZED)
+                {
+                    logger.error("Can't change the state of session {} from FINALIZED to FAILED", session.sessionID, new RuntimeException());
+                    return;
+                }
+                else if (session.getState() != FAILED)
                 {
                     logger.info("Failing local repair session {}", session.sessionID);
                     setStateAndSave(session, FAILED);
@@ -740,7 +747,7 @@ public class LocalSessions
         }
     }
 
-    public synchronized void deleteSession(UUID sessionID)
+    public synchronized void deleteSession(TimeUUID sessionID)
     {
         logger.info("Deleting local repair session {}", sessionID);
         LocalSession session = getSession(sessionID);
@@ -751,12 +758,12 @@ public class LocalSessions
     }
 
     @VisibleForTesting
-    ListenableFuture prepareSession(KeyspaceRepairManager repairManager,
-                                    UUID sessionID,
-                                    Collection<ColumnFamilyStore> tables,
-                                    RangesAtEndpoint tokenRanges,
-                                    ExecutorService executor,
-                                    BooleanSupplier isCancelled)
+    Future<List<Void>> prepareSession(KeyspaceRepairManager repairManager,
+                                      TimeUUID sessionID,
+                                      Collection<ColumnFamilyStore> tables,
+                                      RangesAtEndpoint tokenRanges,
+                                      ExecutorService executor,
+                                      BooleanSupplier isCancelled)
     {
         return repairManager.prepareIncrementalRepair(sessionID, tables, tokenRanges, executor, isCancelled);
     }
@@ -794,7 +801,7 @@ public class LocalSessions
     public void handlePrepareMessage(InetAddressAndPort from, PrepareConsistentRequest request)
     {
         logger.trace("received {} from {}", request, from);
-        UUID sessionID = request.parentSession;
+        TimeUUID sessionID = request.parentSession;
         InetAddressAndPort coordinator = request.coordinator;
         Set<InetAddressAndPort> peers = request.participants;
 
@@ -814,23 +821,22 @@ public class LocalSessions
         putSessionUnsafe(session);
         logger.info("Beginning local incremental repair session {}", session);
 
-        ExecutorService executor = Executors.newFixedThreadPool(parentSession.getColumnFamilyStores().size());
+        ExecutorService executor = executorFactory().pooled("Repair-" + sessionID, parentSession.getColumnFamilyStores().size());
 
         KeyspaceRepairManager repairManager = parentSession.getKeyspace().getRepairManager();
         RangesAtEndpoint tokenRanges = filterLocalRanges(parentSession.getKeyspace().getName(), parentSession.getRanges());
-        ListenableFuture repairPreparation = prepareSession(repairManager, sessionID, parentSession.getColumnFamilyStores(),
-                                                            tokenRanges, executor, () -> session.getState() != PREPARING);
+        Future<List<Void>> repairPreparation = prepareSession(repairManager, sessionID, parentSession.getColumnFamilyStores(),
+                                                          tokenRanges, executor, () -> session.getState() != PREPARING);
 
-        Futures.addCallback(repairPreparation, new FutureCallback<Object>()
+        repairPreparation.addCallback(new FutureCallback<List<Void>>()
         {
-            public void onSuccess(@Nullable Object result)
+            public void onSuccess(@Nullable List<Void> result)
             {
                 try
                 {
                     logger.info("Prepare phase for incremental repair session {} completed", sessionID);
                     if (!prepareSessionExceptFailed(session))
                         logger.info("Session {} failed before anticompaction completed", sessionID);
-
                     Message<PrepareConsistentResponse> message =
                         Message.out(PREPARE_CONSISTENT_RSP,
                                     new PrepareConsistentResponse(sessionID, getBroadcastAddressAndPort(), session.getState() != FAILED));
@@ -846,7 +852,12 @@ public class LocalSessions
             {
                 try
                 {
-                    logger.error("Prepare phase for incremental repair session {} failed", sessionID, t);
+                    if (Throwables.anyCauseMatches(t, (throwable) -> throwable instanceof CompactionInterruptedException))
+                        logger.info("Anticompaction interrupted for session {}: {}", sessionID, t.getMessage());
+                    else if (Throwables.anyCauseMatches(t, (throwable) -> throwable instanceof NoSuchRepairSessionException))
+                        logger.warn("No such repair session: {}", sessionID);
+                    else
+                        logger.error("Prepare phase for incremental repair session {} failed", sessionID, t);
                     sendMessage(coordinator,
                                 Message.out(PREPARE_CONSISTENT_RSP,
                                             new PrepareConsistentResponse(sessionID, getBroadcastAddressAndPort(), false)));
@@ -857,7 +868,7 @@ public class LocalSessions
                     executor.shutdown();
                 }
             }
-        }, MoreExecutors.directExecutor());
+        });
     }
 
     /**
@@ -879,7 +890,7 @@ public class LocalSessions
         }
     }
 
-    public void maybeSetRepairing(UUID sessionID)
+    public void maybeSetRepairing(TimeUUID sessionID)
     {
         LocalSession session = getSession(sessionID);
         if (session != null && session.getState() != REPAIRING)
@@ -892,7 +903,7 @@ public class LocalSessions
     public void handleFinalizeProposeMessage(InetAddressAndPort from, FinalizePropose propose)
     {
         logger.trace("received {} from {}", propose, from);
-        UUID sessionID = propose.sessionID;
+        TimeUUID sessionID = propose.sessionID;
         LocalSession session = getSession(sessionID);
         if (session == null)
         {
@@ -947,7 +958,7 @@ public class LocalSessions
     public void handleFinalizeCommitMessage(InetAddressAndPort from, FinalizeCommit commit)
     {
         logger.trace("received {} from {}", commit, from);
-        UUID sessionID = commit.sessionID;
+        TimeUUID sessionID = commit.sessionID;
         LocalSession session = getSession(sessionID);
         if (session == null)
         {
@@ -982,7 +993,7 @@ public class LocalSessions
     public void handleStatusRequest(InetAddressAndPort from, StatusRequest request)
     {
         logger.trace("received {} from {}", request, from);
-        UUID sessionID = request.sessionID;
+        TimeUUID sessionID = request.sessionID;
         LocalSession session = getSession(sessionID);
         if (session == null)
         {
@@ -999,7 +1010,7 @@ public class LocalSessions
     public void handleStatusResponse(InetAddressAndPort from, StatusResponse response)
     {
         logger.trace("received {} from {}", response, from);
-        UUID sessionID = response.sessionID;
+        TimeUUID sessionID = response.sessionID;
         LocalSession session = getSession(sessionID);
         if (session == null)
         {
@@ -1023,7 +1034,7 @@ public class LocalSessions
     /**
      * determines if a local session exists, and if it's not finalized or failed
      */
-    public boolean isSessionInProgress(UUID sessionID)
+    public boolean isSessionInProgress(TimeUUID sessionID)
     {
         LocalSession session = getSession(sessionID);
         return session != null && session.getState() != FINALIZED && session.getState() != FAILED;
@@ -1032,7 +1043,7 @@ public class LocalSessions
     /**
      * determines if a local session exists, and if it's in the finalized state
      */
-    public boolean isSessionFinalized(UUID sessionID)
+    public boolean isSessionFinalized(TimeUUID sessionID)
     {
         LocalSession session = getSession(sessionID);
         return session != null && session.getState() == FINALIZED;
@@ -1041,7 +1052,7 @@ public class LocalSessions
     /**
      * determines if a local session exists
      */
-    public boolean sessionExists(UUID sessionID)
+    public boolean sessionExists(TimeUUID sessionID)
     {
         return getSession(sessionID) != null;
     }
@@ -1061,7 +1072,7 @@ public class LocalSessions
      * Returns the repairedAt time for a sessions which is unknown, failed, or finalized
      * calling this for a session which is in progress throws an exception
      */
-    public long getFinalSessionRepairedAt(UUID sessionID)
+    public long getFinalSessionRepairedAt(TimeUUID sessionID)
     {
         LocalSession session = getSession(sessionID);
         if (session == null || session.getState() == FAILED)

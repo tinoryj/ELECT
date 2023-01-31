@@ -22,6 +22,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.apache.cassandra.cache.IMeasurableMemory;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.schema.ColumnMetadata;
@@ -49,7 +50,7 @@ import org.apache.cassandra.utils.memory.Cloner;
  * it's own data. For instance, a {@code Row} cannot contains a cell that is deleted by its own
  * row deletion.
  */
-public interface Row extends Unfiltered, Iterable<ColumnData>
+public interface Row extends Unfiltered, Iterable<ColumnData>, IMeasurableMemory
 {
     /**
      * The clustering values for this row.
@@ -116,7 +117,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
      * 
      * @param nowInSec the current time to decide what is deleted and what isn't
      * @param enforceStrictLiveness whether the row should be purged if there is no PK liveness info,
-     *                              normally retrieved from {@link CFMetaData#enforceStrictLiveness()}
+     *                              normally retrieved from {@link TableMetadata#enforceStrictLiveness()}
      * @return true if there is some live information
      */
     public boolean hasLiveData(int nowInSec, boolean enforceStrictLiveness);
@@ -270,6 +271,11 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
      */
     public Row withOnlyQueriedData(ColumnFilter filter);
 
+    /*
+     * Returns a copy of this row without any data with a timestamp older than the one provided
+     */
+    public Row purgeDataOlderThan(long timestamp, boolean enforceStrictLiveness);
+
     /**
      * Returns a copy of this row where all counter cells have they "local" shard marked for clearing.
      */
@@ -302,6 +308,7 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
     public long unsharedHeapSizeExcludingData();
 
     public String toString(TableMetadata metadata, boolean fullDetails);
+    public long unsharedHeapSize();
 
     /**
      * Apply a function to every column in a row
@@ -640,6 +647,14 @@ public interface Row extends Unfiltered, Iterable<ColumnData>
          * @return this builder.
          */
         public SimpleBuilder delete();
+
+        /**
+         * Deletes the whole row with a timestamp that is just before the new data's timestamp, to make sure no expired
+         * data remains on the row.
+         *
+         * @return this builder.
+         */
+        public SimpleBuilder deletePrevious();
 
         /**
          * Removes the value for a given column (creating a tombstone).

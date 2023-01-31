@@ -18,7 +18,12 @@
 package org.apache.cassandra;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.cassandra.auth.AuthKeyspace;
 import org.apache.cassandra.auth.AuthSchemaChangeListener;
@@ -39,12 +44,13 @@ import org.apache.cassandra.index.StubIndex;
 import org.apache.cassandra.index.sasi.SASIIndex;
 import org.apache.cassandra.index.sasi.disk.OnDiskIndexBuilder;
 import org.apache.cassandra.schema.*;
-import org.apache.cassandra.schema.MigrationManager;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
 import org.junit.After;
 import org.junit.BeforeClass;
+
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 
 public class SchemaLoader
 {
@@ -78,7 +84,7 @@ public class SchemaLoader
         // skip shadow round and endpoint collision check in tests
         System.setProperty("cassandra.allow_unsafe_join", "true");
         if (!Gossiper.instance.isEnabled())
-            Gossiper.instance.start((int) (System.currentTimeMillis() / 1000));
+            Gossiper.instance.start((int) (currentTimeMillis() / 1000));
     }
 
     public static void schemaDefinition(String testName) throws ConfigurationException
@@ -241,7 +247,7 @@ public class SchemaLoader
         // if you're messing with low-level sstable stuff, it can be useful to inject the schema directly
         // Schema.instance.load(schemaDefinition());
         for (KeyspaceMetadata ksm : schema)
-            MigrationManager.announceNewKeyspace(ksm, false);
+            SchemaTestUtil.announceNewKeyspace(ksm);
 
         if (Boolean.parseBoolean(System.getProperty("cassandra.test.compression", "false")))
             useCompression(schema, compressionParams(CompressionParams.DEFAULT_CHUNK_LENGTH));
@@ -249,7 +255,7 @@ public class SchemaLoader
 
     public static void createKeyspace(String name, KeyspaceParams params)
     {
-        MigrationManager.announceNewKeyspace(KeyspaceMetadata.create(name, params, Tables.of()), true);
+        SchemaTestUtil.announceNewKeyspace(KeyspaceMetadata.create(name, params, Tables.of()));
     }
 
     public static void createKeyspace(String name, KeyspaceParams params, TableMetadata.Builder... builders)
@@ -258,17 +264,17 @@ public class SchemaLoader
         for (TableMetadata.Builder builder : builders)
             tables.add(builder.build());
 
-        MigrationManager.announceNewKeyspace(KeyspaceMetadata.create(name, params, tables.build()), true);
+        SchemaTestUtil.announceNewKeyspace(KeyspaceMetadata.create(name, params, tables.build()));
     }
 
     public static void createKeyspace(String name, KeyspaceParams params, TableMetadata... tables)
     {
-        MigrationManager.announceNewKeyspace(KeyspaceMetadata.create(name, params, Tables.of(tables)), true);
+        SchemaTestUtil.announceNewKeyspace(KeyspaceMetadata.create(name, params, Tables.of(tables)));
     }
 
     public static void createKeyspace(String name, KeyspaceParams params, Tables tables, Types types)
     {
-        MigrationManager.announceNewKeyspace(KeyspaceMetadata.create(name, params, tables, Views.none(), types, Functions.none()), true);
+        SchemaTestUtil.announceNewKeyspace(KeyspaceMetadata.create(name, params, tables, Views.none(), types, Functions.none()));
     }
 
     public static void setupAuth(IRoleManager roleManager, IAuthenticator authenticator, IAuthorizer authorizer, INetworkAuthorizer networkAuthorizer)
@@ -277,7 +283,7 @@ public class SchemaLoader
         DatabaseDescriptor.setAuthenticator(authenticator);
         DatabaseDescriptor.setAuthorizer(authorizer);
         DatabaseDescriptor.setNetworkAuthorizer(networkAuthorizer);
-        MigrationManager.announceNewKeyspace(AuthKeyspace.metadata(), true);
+        SchemaTestUtil.announceNewKeyspace(AuthKeyspace.metadata());
         DatabaseDescriptor.getRoleManager().setup();
         DatabaseDescriptor.getAuthenticator().setup();
         DatabaseDescriptor.getAuthorizer().setup();
@@ -329,7 +335,7 @@ public class SchemaLoader
     {
         for (KeyspaceMetadata ksm : schema)
             for (TableMetadata cfm : ksm.tablesAndViews())
-                MigrationManager.announceTableUpdate(cfm.unbuild().compression(compressionParams.copy()).build(), true);
+                SchemaTestUtil.announceTableUpdate(cfm.unbuild().compression(compressionParams.copy()).build());
     }
 
     public static TableMetadata.Builder counterCFMD(String ksName, String cfName)

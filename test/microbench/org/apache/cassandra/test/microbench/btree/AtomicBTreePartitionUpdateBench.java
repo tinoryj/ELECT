@@ -24,7 +24,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -71,6 +70,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.utils.btree.BTree;
 import org.apache.cassandra.utils.btree.UpdateFunction;
+import org.apache.cassandra.utils.concurrent.ImmediateFuture;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.BulkIterator;
 import org.apache.cassandra.utils.memory.ByteBufferCloner;
@@ -105,7 +105,7 @@ public class AtomicBTreePartitionUpdateBench
 {
     private static final OpOrder NO_ORDER = new OpOrder();
     private static final MutableDeletionInfo NO_DELETION_INFO = new MutableDeletionInfo(DeletionTime.LIVE);
-    private static final HeapPool POOL = new HeapPool(Long.MAX_VALUE, 1.0f, () -> CompletableFuture.completedFuture(Boolean.TRUE));
+    private static final HeapPool POOL = new HeapPool(Long.MAX_VALUE, 1.0f, () -> ImmediateFuture.success(Boolean.TRUE));
     private static final ByteBuffer zero = Int32Type.instance.decompose(0);
     private static final DecoratedKey decoratedKey = new BufferDecoratedKey(new ByteOrderedPartitioner().getToken(zero), zero);
 

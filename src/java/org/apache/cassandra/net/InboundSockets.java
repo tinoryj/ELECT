@@ -31,13 +31,15 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.DefaultEventExecutor;
-import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.Future; //checkstyle: permit this import
 import io.netty.util.concurrent.GlobalEventExecutor;
 import io.netty.util.concurrent.PromiseNotifier;
 import io.netty.util.concurrent.SucceededFuture;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.concurrent.AsyncPromise;
+import org.apache.cassandra.utils.concurrent.FutureCombiner;
 
 class InboundSockets
 {
@@ -97,15 +99,28 @@ class InboundSockets
                     throw new IllegalStateException();
                 binding = InboundConnectionInitiator.bind(settings, connections, pipelineInjector);
             }
-
-            return binding.addListener(ignore -> {
+            // isOpen is defined as "listen.isOpen", but this is set AFTER the binding future is set
+            // to make sure the future returned does not complete until listen is set, need a new
+            // future to replicate "Future.map" behavior.
+            AsyncChannelPromise promise = new AsyncChannelPromise(binding.channel());
+            binding.addListener(f -> {
+                if (!f.isSuccess())
+                {
+                    synchronized (this)
+                    {
+                        binding = null;
+                    }
+                    promise.setFailure(f.cause());
+                    return;
+                }
                 synchronized (this)
                 {
-                    if (binding.isSuccess())
-                        listen = binding.channel();
+                    listen = binding.channel();
                     binding = null;
                 }
+                promise.setSuccess(null);
             });
+            return promise;
         }
 
         /**
@@ -125,7 +140,7 @@ class InboundSockets
                 if (listen != null)
                     closing.add(listen.close());
                 closing.add(connections.close());
-                new FutureCombiner(closing)
+                FutureCombiner.nettySuccessListener(closing)
                        .addListener(future -> {
                            executor.shutdownGracefully();
                            shutdownExecutors.accept(executor);
@@ -202,7 +217,7 @@ class InboundSockets
         InboundConnectionSettings       settings = template.withDefaults();
         InboundConnectionSettings legacySettings = template.withLegacySslStoragePortDefaults();
 
-        if (settings.encryption.enable_legacy_ssl_storage_port)
+        if (settings.encryption.legacy_ssl_storage_port_enabled)
         {
             out.add(new InboundSocket(legacySettings));
 
@@ -224,7 +239,7 @@ class InboundSockets
         for (InboundSocket socket : sockets)
             opening.add(socket.open(pipelineInjector));
 
-        return new FutureCombiner(opening);
+        return FutureCombiner.nettySuccessListener(opening);
     }
 
     public Future<Void> open()
@@ -232,7 +247,7 @@ class InboundSockets
         List<Future<Void>> opening = new ArrayList<>();
         for (InboundSocket socket : sockets)
             opening.add(socket.open());
-        return new FutureCombiner(opening);
+        return FutureCombiner.nettySuccessListener(opening);
     }
 
     public boolean isListening()
@@ -248,7 +263,7 @@ class InboundSockets
         List<Future<Void>> closing = new ArrayList<>();
         for (InboundSocket address : sockets)
             closing.add(address.close(shutdownExecutors));
-        return new FutureCombiner(closing);
+        return FutureCombiner.nettySuccessListener(closing);
     }
     public Future<Void> close()
     {

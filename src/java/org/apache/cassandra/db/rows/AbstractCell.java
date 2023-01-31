@@ -98,6 +98,12 @@ public abstract class AbstractCell<V> extends Cell<V>
         return this;
     }
 
+
+    public Cell<?> purgeDataOlderThan(long timestamp)
+    {
+        return this.timestamp() < timestamp ? null : this;
+    }
+
     @Override
     public Cell<?> clone(ByteBufferCloner cloner)
     {
@@ -201,11 +207,11 @@ public abstract class AbstractCell<V> extends Cell<V>
         AbstractType<?> type = column().type;
         if (type instanceof CollectionType && type.isMultiCell())
         {
-            CollectionType ct = (CollectionType)type;
+            CollectionType<?> ct = (CollectionType<?>) type;
             return String.format("[%s[%s]=%s %s]",
                                  column().name,
                                  ct.nameComparator().getString(path().get(0)),
-                                 ct.valueComparator().getString(value(), accessor()),
+                                 isTombstone() ? "<tombstone>" : ct.valueComparator().getString(value(), accessor()),
                                  livenessInfoString());
         }
         if (isTombstone())

@@ -214,8 +214,8 @@ public class RowsMergingTest extends CQLTester
                 catch (Throwable e)
                 {
                     throw new AssertionError("Executing the following queries did not lead to the expected result: \n"
-                                + Joiner.on("; \n").join(queries) 
-                                + "\n when executing: \n" + query, e); 
+                                + Joiner.on("; \n").join(queries)
+                                + "\n when executing: \n" + query, e);
                 }
             }
 
@@ -224,7 +224,7 @@ public class RowsMergingTest extends CQLTester
                 if (expectedRow != null)
                 {
                     expectedRow[0] = pk;
-                    assertRows(execute("SELECT * FROM %s WHERE pk = ?" , pk), 
+                    assertRows(execute("SELECT * FROM %s WHERE pk = ?" , pk),
                                expectedRow);
                 }
                 else
@@ -234,7 +234,7 @@ public class RowsMergingTest extends CQLTester
             }
             catch (Throwable e)
             {
-                throw new AssertionError("Executing the following queries did not lead to the expected result: \n" + Joiner.on("; \n").join(queries), e); 
+                throw new AssertionError("Executing the following queries did not lead to the expected result: \n" + Joiner.on("; \n").join(queries), e);
             }
             pk++;
         }

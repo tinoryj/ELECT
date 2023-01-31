@@ -67,7 +67,7 @@ public enum ProtocolVersion implements Comparable<ProtocolVersion>
     final static ProtocolVersion MIN_SUPPORTED_VERSION = SUPPORTED_VERSIONS[0];
     final static ProtocolVersion MAX_SUPPORTED_VERSION = SUPPORTED_VERSIONS[SUPPORTED_VERSIONS.length - 1];
     /** These versions are sent by some clients, but are not valid Apache Cassandra versions (66, and 65 are DSE versions) */
-    private static int[] KNOWN_INVALID_VERSIONS = {66, 65};
+    private static int[] KNOWN_INVALID_VERSIONS = { 66, 65 };
 
     /** All supported versions, published as an enumset */
     public final static EnumSet<ProtocolVersion> SUPPORTED = EnumSet.copyOf(Arrays.asList(ArrayUtils.addAll(SUPPORTED_VERSIONS)));

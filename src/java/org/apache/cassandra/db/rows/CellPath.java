@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import org.apache.cassandra.cache.IMeasurableMemory;
 import org.apache.cassandra.db.Digest;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -31,7 +32,7 @@ import org.apache.cassandra.utils.memory.ByteBufferCloner;
 /**
  * A path for a cell belonging to a complex column type (non-frozen collection or UDT).
  */
-public abstract class CellPath
+public abstract class CellPath implements IMeasurableMemory
 {
     public static final CellPath BOTTOM = new EmptyCellPath();
     public static final CellPath TOP = new EmptyCellPath();
@@ -63,6 +64,8 @@ public abstract class CellPath
     public abstract CellPath clone(ByteBufferCloner cloner);
 
     public abstract long unsharedHeapSizeExcludingData();
+
+    public abstract long unsharedHeapSize();
 
     @Override
     public final int hashCode()
@@ -126,6 +129,13 @@ public abstract class CellPath
             return new SingleItemCellPath(cloner.clone(value));
         }
 
+        @Override
+        public long unsharedHeapSize()
+        {
+            return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(value);
+        }
+
+        @Override
         public long unsharedHeapSizeExcludingData()
         {
             return EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(value);
@@ -150,6 +160,14 @@ public abstract class CellPath
             return this;
         }
 
+        @Override
+        public long unsharedHeapSize()
+        {
+            // empty only happens with a cached reference, so 0 unshared space
+            return 0;
+        }
+
+        @Override
         public long unsharedHeapSizeExcludingData()
         {
             return 0;

@@ -17,15 +17,15 @@
  */
 package org.apache.cassandra.repair;
 
-import com.google.common.util.concurrent.AbstractFuture;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.cassandra.exceptions.RepairException;
 import org.apache.cassandra.locator.InetAddressAndPort;
-import org.apache.cassandra.net.Message;
-import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.repair.messages.RepairMessage;
 import org.apache.cassandra.repair.messages.ValidationRequest;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.utils.MerkleTrees;
+import org.apache.cassandra.utils.concurrent.AsyncFuture;
 
 import static org.apache.cassandra.net.Verb.VALIDATION_REQ;
 
@@ -33,12 +33,14 @@ import static org.apache.cassandra.net.Verb.VALIDATION_REQ;
  * ValidationTask sends {@link ValidationRequest} to a replica.
  * When a replica sends back message, task completes.
  */
-public class ValidationTask extends AbstractFuture<TreeResponse> implements Runnable
+public class ValidationTask extends AsyncFuture<TreeResponse> implements Runnable
 {
     private final RepairJobDesc desc;
     private final InetAddressAndPort endpoint;
     private final int nowInSec;
     private final PreviewKind previewKind;
+    
+    private boolean active = true;
 
     public ValidationTask(RepairJobDesc desc, InetAddressAndPort endpoint, int nowInSec, PreviewKind previewKind)
     {
@@ -53,8 +55,10 @@ public class ValidationTask extends AbstractFuture<TreeResponse> implements Runn
      */
     public void run()
     {
-        ValidationRequest request = new ValidationRequest(desc, nowInSec);
-        MessagingService.instance().send(Message.out(VALIDATION_REQ, request), endpoint);
+        RepairMessage.sendMessageWithFailureCB(new ValidationRequest(desc, nowInSec),
+                                               VALIDATION_REQ,
+                                               endpoint,
+                                               this::tryFailure);
     }
 
     /**
@@ -62,15 +66,60 @@ public class ValidationTask extends AbstractFuture<TreeResponse> implements Runn
      *
      * @param trees MerkleTrees that is sent from replica. Null if validation failed on replica node.
      */
-    public void treesReceived(MerkleTrees trees)
+    public synchronized void treesReceived(MerkleTrees trees)
     {
         if (trees == null)
         {
-            setException(new RepairException(desc, previewKind, "Validation failed in " + endpoint));
+            active = false;
+            tryFailure(RepairException.warn(desc, previewKind, "Validation failed in " + endpoint));
+        }
+        else if (active)
+        {
+            trySuccess(new TreeResponse(endpoint, trees));
         }
         else
         {
-            set(new TreeResponse(endpoint, trees));
+            // If the task has already been aborted, just release the possibly off-heap trees and move along.
+            trees.release();
+            trySuccess(null);
         }
+    }
+
+    /**
+     * Release any trees already received by this task, and place it a state where any trees 
+     * received subsequently will be properly discarded.
+     */
+    public synchronized void abort()
+    {
+        if (active) 
+        {
+            if (isDone())
+            {
+                try 
+                {
+                    // If we're done, this should return immediately.
+                    TreeResponse response = get();
+                    
+                    if (response.trees != null)
+                        response.trees.release();
+                } 
+                catch (InterruptedException e) 
+                {
+                    // Restore the interrupt.
+                    Thread.currentThread().interrupt();
+                } 
+                catch (ExecutionException e) 
+                {
+                    // Do nothing here. If an exception was set, there were no trees to release.
+                }
+            }
+            
+            active = false;
+        }
+    }
+    
+    public synchronized boolean isActive()
+    {
+        return active;
     }
 }

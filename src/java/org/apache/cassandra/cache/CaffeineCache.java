@@ -21,12 +21,11 @@ import static com.google.common.base.Preconditions.checkState;
 
 import java.util.Iterator;
 
-import com.google.common.util.concurrent.MoreExecutors;
-
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Policy.Eviction;
 import com.github.benmanes.caffeine.cache.Weigher;
+import org.apache.cassandra.concurrent.ImmediateExecutor;
 
 /**
  * An adapter from a Caffeine cache to the ICache interface. This provides an on-heap cache using
@@ -54,7 +53,7 @@ public class CaffeineCache<K extends IMeasurableMemory, V extends IMeasurableMem
         Cache<K, V> cache = Caffeine.newBuilder()
                 .maximumWeight(weightedCapacity)
                 .weigher(weigher)
-                .executor(MoreExecutors.directExecutor())
+                .executor(ImmediateExecutor.INSTANCE)
                 .build();
         return new CaffeineCache<>(cache);
     }
@@ -64,7 +63,7 @@ public class CaffeineCache<K extends IMeasurableMemory, V extends IMeasurableMem
         return create(weightedCapacity, (key, value) -> {
             long size = key.unsharedHeapSize() + value.unsharedHeapSize();
             if (size > Integer.MAX_VALUE) {
-                throw new IllegalArgumentException("Serialized size cannot be more than 2GB/Integer.MAX_VALUE");
+                throw new IllegalArgumentException("Serialized size cannot be more than 2GiB/Integer.MAX_VALUE");
             }
             return (int) size;
         });

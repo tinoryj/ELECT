@@ -18,7 +18,6 @@
 
 package org.apache.cassandra.repair;
 
-import java.io.IOException;
 import java.util.Map;
 
 import org.apache.cassandra.db.partitions.AbstractUnfilteredPartitionIterator;
@@ -29,5 +28,6 @@ public abstract class ValidationPartitionIterator extends AbstractUnfilteredPart
 {
     public abstract long getEstimatedBytes();
     public abstract long estimatedPartitions();
+    public abstract long getBytesRead();
     public abstract Map<Range<Token>, Long> getRangePartitionCounts();
 }

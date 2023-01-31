@@ -48,15 +48,34 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand>
 
         ReadCommand command = message.payload;
         validateTransientStatus(message);
+        MessageParams.reset();
 
         long timeout = message.expiresAtNanos() - message.createdAtNanos();
         command.setMonitoringTime(message.createdAtNanos(), message.isCrossNode(), timeout, DatabaseDescriptor.getSlowQueryTimeout(NANOSECONDS));
+
+        if (message.trackWarnings())
+            command.trackWarnings();
 
         ReadResponse response;
         try (ReadExecutionController controller = command.executionController(message.trackRepairedData());
              UnfilteredPartitionIterator iterator = command.executeLocally(controller))
         {
             response = command.createResponse(iterator, controller.getRepairedDataInfo());
+        }
+        catch (RejectException e)
+        {
+            if (!command.isTrackingWarnings())
+                throw e;
+
+            // make sure to log as the exception is swallowed
+            logger.error(e.getMessage());
+
+            response = command.createEmptyResponse();
+            Message<ReadResponse> reply = message.responseWith(response);
+            reply = MessageParams.addToMessage(reply);
+
+            MessagingService.instance().send(reply, message.from());
+            return;
         }
 
         if (!command.complete())
@@ -68,12 +87,15 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand>
 
         Tracing.trace("Enqueuing response to {}", message.from());
         Message<ReadResponse> reply = message.responseWith(response);
+        reply = MessageParams.addToMessage(reply);
         MessagingService.instance().send(reply, message.from());
     }
 
     private void validateTransientStatus(Message<ReadCommand> message)
     {
         ReadCommand command = message.payload;
+        if (command.metadata().isVirtual())
+            return;
         Token token;
 
         if (command instanceof SinglePartitionReadCommand)

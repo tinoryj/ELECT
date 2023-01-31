@@ -74,6 +74,7 @@ public class KeyCacheTest
     private static final String COLUMN_FAMILY7 = "Standard7";
     private static final String COLUMN_FAMILY8 = "Standard8";
     private static final String COLUMN_FAMILY9 = "Standard9";
+    private static final String COLUMN_FAMILY10 = "Standard10";
 
     private static final String COLUMN_FAMILY_K2_1 = "Standard1";
 
@@ -92,7 +93,8 @@ public class KeyCacheTest
                                     SchemaLoader.standardCFMD(KEYSPACE1, COLUMN_FAMILY6),
                                     SchemaLoader.standardCFMD(KEYSPACE1, COLUMN_FAMILY7),
                                     SchemaLoader.standardCFMD(KEYSPACE1, COLUMN_FAMILY8),
-                                    SchemaLoader.standardCFMD(KEYSPACE1, COLUMN_FAMILY9));
+                                    SchemaLoader.standardCFMD(KEYSPACE1, COLUMN_FAMILY9),
+                                    SchemaLoader.standardCFMD(KEYSPACE1, COLUMN_FAMILY10));
 
         SchemaLoader.createKeyspace(KEYSPACE2,
                                     KeyspaceParams.simple(1),
@@ -132,7 +134,7 @@ public class KeyCacheTest
 
         // insert data and force to disk
         SchemaLoader.insertData(KEYSPACE1, cf, 0, 100);
-        store.forceBlockingFlush();
+        Util.flush(store);
 
         // populate the cache
         readData(KEYSPACE1, cf, 0, 100);
@@ -202,7 +204,7 @@ public class KeyCacheTest
     {
         return ColumnFamilyStore.getIfExists(k.desc.ksname, k.desc.cfname).getLiveSSTables()
                                 .stream()
-                                .filter(sstreader -> sstreader.descriptor.generation == k.desc.generation)
+                                .filter(sstreader -> sstreader.descriptor.id == k.desc.id)
                                 .findFirst().get();
     }
 
@@ -232,7 +234,7 @@ public class KeyCacheTest
 
         // insert data and force to disk
         SchemaLoader.insertData(KEYSPACE1, cf, 0, 100);
-        store.forceBlockingFlush();
+        Util.flush(store);
 
         Collection<SSTableReader> firstFlushTables = ImmutableList.copyOf(store.getLiveSSTables());
 
@@ -242,7 +244,7 @@ public class KeyCacheTest
 
         // insert some new data and force to disk
         SchemaLoader.insertData(KEYSPACE1, cf, 100, 50);
-        store.forceBlockingFlush();
+        Util.flush(store);
 
         // check that it's fine
         readData(KEYSPACE1, cf, 100, 50);
@@ -303,7 +305,7 @@ public class KeyCacheTest
         new RowUpdateBuilder(cfs.metadata(), 0, "key2").clustering("2").build().applyUnsafe();
 
         // to make sure we have SSTable
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
 
         // reads to cache key position
         Util.getAll(Util.cmd(cfs, "key1").build());
@@ -317,7 +319,7 @@ public class KeyCacheTest
             throw new IllegalStateException();
 
         Util.compactAll(cfs, Integer.MAX_VALUE).get();
-        boolean noEarlyOpen = DatabaseDescriptor.getSSTablePreemptiveOpenIntervalInMB() < 0;
+        boolean noEarlyOpen = DatabaseDescriptor.getSSTablePreemptiveOpenIntervalInMiB() < 0;
 
         // after compaction cache should have entries for new SSTables,
         // but since we have kept a reference to the old sstables,
@@ -339,16 +341,16 @@ public class KeyCacheTest
     }
 
     @Test
-    public void testKeyCacheLoadNegativeCacheLoadTime() throws Exception
+    public void testKeyCacheLoadZeroCacheLoadTime() throws Exception
     {
-        DatabaseDescriptor.setCacheLoadTimeout(-1);
+        DatabaseDescriptor.setCacheLoadTimeout(0);
         String cf = COLUMN_FAMILY7;
 
         createAndInvalidateCache(Collections.singletonList(Pair.create(KEYSPACE1, cf)), 100);
 
         CacheService.instance.keyCache.loadSaved();
 
-        // Here max time to load cache is negative which means no time left to load cache. So the keyCache size should
+        // Here max time to load cache is zero which means no time left to load cache. So the keyCache size should
         // be zero after loadSaved().
         assertKeyCacheSize(0, KEYSPACE1, cf);
         assertEquals(0, CacheService.instance.keyCache.size());
@@ -426,7 +428,7 @@ public class KeyCacheTest
 
             // insert data and force to disk
             SchemaLoader.insertData(keyspace, cf, 0, numberOfRows);
-            store.forceBlockingFlush();
+            Util.flush(store);
         }
         for(Pair<String, String> entry : tables)
         {

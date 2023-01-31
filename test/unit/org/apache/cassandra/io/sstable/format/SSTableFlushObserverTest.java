@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.io.sstable.format;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -26,6 +25,8 @@ import java.util.Collections;
 import java.util.Iterator;
 
 import org.apache.cassandra.db.commitlog.CommitLog;
+import org.apache.cassandra.io.sstable.SequenceBasedSSTableId;
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -85,19 +86,21 @@ public class SSTableFlushObserverTest
         FlushObserver observer = new FlushObserver();
 
         String sstableDirectory = DatabaseDescriptor.getAllDataFileLocations()[0];
-        File directory = new File(sstableDirectory + File.pathSeparator + KS_NAME + File.pathSeparator + CF_NAME);
+        File directory = new File(sstableDirectory + File.pathSeparator() + KS_NAME + File.pathSeparator() + CF_NAME);
         directory.deleteOnExit();
 
-        if (!directory.exists() && !directory.mkdirs())
-            throw new FSWriteError(new IOException("failed to create tmp directory"), directory.getAbsolutePath());
+        if (!directory.exists() && !directory.tryCreateDirectories())
+            throw new FSWriteError(new IOException("failed to create tmp directory"), directory.absolutePath());
 
         SSTableFormat.Type sstableFormat = SSTableFormat.Type.current();
+        Descriptor descriptor = new Descriptor(sstableFormat.info.getLatestVersion(),
+                                               directory,
+                                               cfm.keyspace,
+                                               cfm.name,
+                                               new SequenceBasedSSTableId(0),
+                                               sstableFormat);
 
-        BigTableWriter writer = new BigTableWriter(new Descriptor(sstableFormat.info.getLatestVersion(),
-                                                                  directory,
-                                                                  KS_NAME, CF_NAME,
-                                                                  0,
-                                                                  sstableFormat),
+        BigTableWriter writer = new BigTableWriter(descriptor,
                                                    10L, 0L, null, false, TableMetadataRef.forOfflineTools(cfm),
                                                    new MetadataCollector(cfm.comparator).sstableLevel(0),
                                                    new SerializationHeader(true, cfm, cfm.regularAndStaticColumns(), EncodingStats.NO_STATS),

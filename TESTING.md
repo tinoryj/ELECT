@@ -18,18 +18,20 @@
 #
 -->
 
-The goal of this document is to establish guidelines on writing tests that drive incremental improvement of the test coverage and testability of  Cassandra, without overly burdening day to day work. While not every point here will be immediately practical to implement or relevant for every contribution, it errs on the side of not making rules out of potential exceptions. It provides guidelines on test scope, style, and goals, as well as guidelines for dealing with global state and refactoring untested code.
+The goal of this document is to establish guidelines on writing tests that drive incremental improvement of the test coverage and testability of 
+Cassandra, without overly burdening day to day work. While not every point here will be immediately practical to implement or relevant for every 
+contribution, it errs on the side of not making rules out of potential exceptions. It provides guidelines on test scope, style, and goals, as
+well as guidelines for dealing with global state and refactoring untested code.
 
 ## What to Test
 
-There are 3 main types of tests in Cassandra, unit tests, integration tests, and dtests. Below, each type of test is described, and a high level description of what should and shouldn't be tested in each is given.
+There are 3 main types of tests in Cassandra, unit tests, integration tests, and dtests. Below, each type of test is described, and a high level description of 
+what should and shouldn't be tested in each is given.
 
 ### Unit Tests
-
 JUnit tests of smaller components that are fairly narrow in scope (ie: data structures, verb handlers, helper classes)
 
 #### What should be tested
-
  * All state transitions should be tested
  * Illegal state transitions should be tested (that they throw exceptions)
  * all conditional branches should be tested. 

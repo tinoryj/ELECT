@@ -19,7 +19,11 @@
 package org.apache.cassandra.distributed.test;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
@@ -63,6 +67,7 @@ import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 import static org.apache.cassandra.distributed.api.Feature.GOSSIP;
 import static org.apache.cassandra.distributed.api.Feature.NETWORK;
 import static org.apache.cassandra.distributed.shared.AssertUtils.assertRows;
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -540,7 +545,7 @@ public class RepairDigestTrackingTest extends TestBaseImpl
                     SSTableReader sstable = sstables.next();
                     Descriptor descriptor = sstable.descriptor;
                     descriptor.getMetadataSerializer()
-                              .mutateRepairMetadata(descriptor, System.currentTimeMillis(), null, false);
+                              .mutateRepairMetadata(descriptor, currentTimeMillis(), null, false);
                     sstable.reloadSSTableMetadata();
                 }
             } catch (IOException e) {
@@ -586,7 +591,7 @@ public class RepairDigestTrackingTest extends TestBaseImpl
             int attempts = 100;
             ColumnFamilyStore cfs = Keyspace.open(KEYSPACE).getColumnFamilyStore(TABLE);
 
-            while (cfs.getSnapshotDetails().isEmpty())
+            while (cfs.listSnapshots().isEmpty())
             {
                 Uninterruptibles.sleepUninterruptibly(100, TimeUnit.MILLISECONDS);
                 if (attempts-- < 0)

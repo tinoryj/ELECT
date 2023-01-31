@@ -17,16 +17,17 @@
  */
 package org.apache.cassandra.db.commitlog;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.cassandra.io.util.File;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.config.Config;
@@ -191,7 +192,7 @@ public class CommitLogReaderTest extends CQLTester
     static ArrayList<File> getCommitLogs()
     {
         File dir = new File(DatabaseDescriptor.getCommitLogLocation());
-        File[] files = dir.listFiles();
+        File[] files = dir.tryList();
         ArrayList<File> results = new ArrayList<>();
         for (File f : files)
         {
@@ -261,7 +262,9 @@ public class CommitLogReaderTest extends CQLTester
         for (int i = midpoint; i < entryCount; i++)
             execute("INSERT INTO %s (idx, data) VALUES (?, ?)", i, Integer.toString(i));
 
-        Keyspace.open(keyspace()).getColumnFamilyStore(currentTable()).forceBlockingFlush();
+        Keyspace.open(keyspace())
+                .getColumnFamilyStore(currentTable())
+                .forceBlockingFlush(ColumnFamilyStore.FlushReason.UNIT_TESTS);
         return result;
     }
 }

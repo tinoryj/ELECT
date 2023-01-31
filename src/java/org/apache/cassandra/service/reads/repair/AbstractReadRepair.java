@@ -23,6 +23,9 @@ import java.util.function.Consumer;
 import com.codahale.metrics.Meter;
 import com.google.common.base.Preconditions;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -44,10 +47,13 @@ import org.apache.cassandra.service.reads.DigestResolver;
 import org.apache.cassandra.service.reads.ReadCallback;
 import org.apache.cassandra.tracing.Tracing;
 
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
-public abstract class AbstractReadRepair<E extends Endpoints<E>, P extends ReplicaPlan.ForRead<E>> implements ReadRepair<E, P>
+public abstract class AbstractReadRepair<E extends Endpoints<E>, P extends ReplicaPlan.ForRead<E, P>>
+        implements ReadRepair<E, P>
 {
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractReadRepair.class);
+
     protected final ReadCommand command;
     protected final long queryStartNanoTime;
     protected final ReplicaPlan.Shared<E, P> replicaPlan;
@@ -55,7 +61,7 @@ public abstract class AbstractReadRepair<E extends Endpoints<E>, P extends Repli
 
     private volatile DigestRepair<E, P> digestRepair = null;
 
-    private static class DigestRepair<E extends Endpoints<E>, P extends ReplicaPlan.ForRead<E>>
+    private static class DigestRepair<E extends Endpoints<E>, P extends ReplicaPlan.ForRead<E, P>>
     {
         private final DataResolver<E, P> dataResolver;
         private final ReadCallback<E, P> readCallback;
@@ -153,7 +159,17 @@ public abstract class AbstractReadRepair<E extends Endpoints<E>, P extends Repli
         if (repair == null)
             return;
 
-        repair.readCallback.awaitResults();
+        try
+        {
+            repair.readCallback.awaitResults();
+        }
+        catch (ReadTimeoutException e)
+        {
+            ReadRepairMetrics.timedOut.mark();
+            if (logger.isDebugEnabled() )
+                logger.debug("Timed out merging read repair responses", e);
+            throw e;
+        }
         repair.resultConsumer.accept(digestRepair.dataResolver.resolve());
     }
 
@@ -163,7 +179,7 @@ public abstract class AbstractReadRepair<E extends Endpoints<E>, P extends Repli
         ConsistencyLevel speculativeCL = consistency.isDatacenterLocal() ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM;
         return  consistency != ConsistencyLevel.EACH_QUORUM
                 && consistency.satisfies(speculativeCL, replicaPlan.get().replicationStrategy())
-                && cfs.sampleReadLatencyNanos <= command.getTimeout(NANOSECONDS);
+                && cfs.sampleReadLatencyMicros <= command.getTimeout(MICROSECONDS);
     }
 
     public void maybeSendAdditionalReads()
@@ -174,7 +190,7 @@ public abstract class AbstractReadRepair<E extends Endpoints<E>, P extends Repli
         if (repair == null)
             return;
 
-        if (shouldSpeculate() && !repair.readCallback.await(cfs.sampleReadLatencyNanos, NANOSECONDS))
+        if (shouldSpeculate() && !repair.readCallback.await(cfs.sampleReadLatencyMicros, MICROSECONDS))
         {
             Replica uncontacted = replicaPlan().firstUncontactedCandidate(replica -> true);
             if (uncontacted == null)

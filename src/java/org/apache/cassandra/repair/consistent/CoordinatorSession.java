@@ -19,31 +19,29 @@
 package org.apache.cassandra.repair.consistent;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Set;
 import java.util.function.Supplier;
-
-import javax.annotation.Nullable;
+import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
-import com.google.common.util.concurrent.AsyncFunction;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
-import com.google.common.util.concurrent.SettableFuture;
+
+import org.apache.cassandra.concurrent.ImmediateExecutor;
+import org.apache.cassandra.repair.CoordinatedRepairResult;
+import org.apache.cassandra.utils.concurrent.AsyncPromise;
+import org.apache.cassandra.utils.concurrent.Future;
+
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.exceptions.RepairException;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
-import org.apache.cassandra.repair.RepairSessionResult;
 import org.apache.cassandra.repair.SomeRepairFailedException;
 import org.apache.cassandra.repair.messages.FailSession;
 import org.apache.cassandra.repair.messages.FinalizeCommit;
@@ -51,6 +49,9 @@ import org.apache.cassandra.repair.messages.FinalizePropose;
 import org.apache.cassandra.repair.messages.PrepareConsistentRequest;
 import org.apache.cassandra.repair.messages.RepairMessage;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.utils.concurrent.ImmediateFuture;
+
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 
 /**
  * Coordinator side logic and state of a consistent repair session. Like {@link ActiveRepairService.ParentRepairSession},
@@ -62,8 +63,8 @@ public class CoordinatorSession extends ConsistentSession
     private static final Logger logger = LoggerFactory.getLogger(CoordinatorSession.class);
 
     private final Map<InetAddressAndPort, State> participantStates = new HashMap<>();
-    private final SettableFuture<Boolean> prepareFuture = SettableFuture.create();
-    private final SettableFuture<Boolean> finalizeProposeFuture = SettableFuture.create();
+    private final AsyncPromise<Void> prepareFuture = AsyncPromise.uncancellable();
+    private final AsyncPromise<Void> finalizeProposeFuture = AsyncPromise.uncancellable();
 
     private volatile long sessionStart = Long.MIN_VALUE;
     private volatile long repairStart = Long.MIN_VALUE;
@@ -146,7 +147,7 @@ public class CoordinatorSession extends ConsistentSession
         MessagingService.instance().send(message, destination);
     }
 
-    public ListenableFuture<Boolean> prepare()
+    public Future<Void> prepare()
     {
         Preconditions.checkArgument(allStates(State.PREPARING));
 
@@ -186,12 +187,11 @@ public class CoordinatorSession extends ConsistentSession
         if (getState() == State.PREPARED)
         {
             logger.info("Incremental repair session {} successfully prepared.", sessionID);
-            prepareFuture.set(true);
+            prepareFuture.trySuccess(null);
         }
         else
         {
             fail();
-            prepareFuture.set(false);
         }
     }
 
@@ -200,7 +200,7 @@ public class CoordinatorSession extends ConsistentSession
         setAll(State.REPAIRING);
     }
 
-    public synchronized ListenableFuture<Boolean> finalizePropose()
+    public synchronized Future<Void> finalizePropose()
     {
         Preconditions.checkArgument(allStates(State.REPAIRING));
         logger.info("Proposing finalization of repair session {}", sessionID);
@@ -222,7 +222,6 @@ public class CoordinatorSession extends ConsistentSession
         {
             logger.warn("Finalization proposal of session {} rejected by {}. Aborting session", sessionID, participant);
             fail();
-            finalizeProposeFuture.set(false);
         }
         else
         {
@@ -231,7 +230,7 @@ public class CoordinatorSession extends ConsistentSession
             if (getState() == State.FINALIZE_PROMISED)
             {
                 logger.info("Finalization proposal for repair session {} accepted by all participants.", sessionID);
-                finalizeProposeFuture.set(true);
+                finalizeProposeFuture.trySuccess(null);
             }
         }
     }
@@ -263,13 +262,22 @@ public class CoordinatorSession extends ConsistentSession
 
     public synchronized void fail()
     {
+        Set<Map.Entry<InetAddressAndPort, State>> cantFail = participantStates.entrySet()
+                                                                              .stream()
+                                                                              .filter(entry -> !entry.getValue().canTransitionTo(State.FAILED))
+                                                                              .collect(Collectors.toSet());
+        if (!cantFail.isEmpty())
+        {
+            logger.error("Can't transition endpoints {} to FAILED", cantFail, new RuntimeException());
+            return;
+        }
         logger.info("Incremental repair session {} failed", sessionID);
         sendFailureMessageToParticipants();
         setAll(State.FAILED);
 
         String exceptionMsg = String.format("Incremental repair session %s has failed", sessionID);
-        finalizeProposeFuture.setException(new RuntimeException(exceptionMsg));
-        prepareFuture.setException(new RuntimeException(exceptionMsg));
+        finalizeProposeFuture.tryFailure(RepairException.warn(exceptionMsg));
+        prepareFuture.tryFailure(RepairException.warn(exceptionMsg));
     }
 
     private static String formatDuration(long then, long now)
@@ -285,111 +293,51 @@ public class CoordinatorSession extends ConsistentSession
     /**
      * Runs the asynchronous consistent repair session. Actual repair sessions are scheduled via a submitter to make unit testing easier
      */
-    public ListenableFuture execute(Supplier<ListenableFuture<List<RepairSessionResult>>> sessionSubmitter, AtomicBoolean hasFailure)
+    public Future<CoordinatedRepairResult> execute(Supplier<Future<CoordinatedRepairResult>> sessionSubmitter)
     {
         logger.info("Beginning coordination of incremental repair session {}", sessionID);
 
-        sessionStart = System.currentTimeMillis();
-        ListenableFuture<Boolean> prepareResult = prepare();
+        sessionStart = currentTimeMillis();
+        Future<Void> prepareResult = prepare();
 
         // run repair sessions normally
-        ListenableFuture<List<RepairSessionResult>> repairSessionResults = Futures.transformAsync(prepareResult, new AsyncFunction<Boolean, List<RepairSessionResult>>()
-        {
-            public ListenableFuture<List<RepairSessionResult>> apply(Boolean success) throws Exception
+        Future<CoordinatedRepairResult> repairSessionResults = prepareResult.flatMap(ignore -> {
+            repairStart = currentTimeMillis();
+            if (logger.isDebugEnabled())
+                logger.debug("Incremental repair {} prepare phase completed in {}", sessionID, formatDuration(sessionStart, repairStart));
+            setRepairing();
+            return sessionSubmitter.get();
+        });
+
+        // if any session failed, then fail the future
+        Future<CoordinatedRepairResult> onlySuccessSessionResults = repairSessionResults.flatMap(result -> {
+            finalizeStart = currentTimeMillis();
+            if (result.hasFailed())
             {
-                if (success)
-                {
-                    repairStart = System.currentTimeMillis();
-                    if (logger.isDebugEnabled())
-                    {
-                        logger.debug("Incremental repair {} prepare phase completed in {}", sessionID, formatDuration(sessionStart, repairStart));
-                    }
-                    setRepairing();
-                    return sessionSubmitter.get();
-                }
-                else
-                {
-                    return Futures.immediateFuture(null);
-                }
-
+                if (logger.isDebugEnabled())
+                    logger.debug("Incremental repair {} validation/stream phase completed in {}", sessionID, formatDuration(repairStart, finalizeStart));
+                return ImmediateFuture.failure(SomeRepairFailedException.INSTANCE);
             }
-        }, MoreExecutors.directExecutor());
+            return ImmediateFuture.success(result);
+        });
 
-        // mark propose finalization
-        ListenableFuture<Boolean> proposeFuture = Futures.transformAsync(repairSessionResults, new AsyncFunction<List<RepairSessionResult>, Boolean>()
-        {
-            public ListenableFuture<Boolean> apply(List<RepairSessionResult> results) throws Exception
+        // mark propose finalization and commit
+        Future<CoordinatedRepairResult> proposeFuture = onlySuccessSessionResults.flatMap(results -> finalizePropose().map(ignore -> {
+            if (logger.isDebugEnabled())
+                logger.debug("Incremental repair {} finalization phase completed in {}", sessionID, formatDuration(finalizeStart, currentTimeMillis()));
+            finalizeCommit();
+            if (logger.isDebugEnabled())
+                logger.debug("Incremental repair {} phase completed in {}", sessionID, formatDuration(sessionStart, currentTimeMillis()));
+            return results;
+        }));
+
+        return proposeFuture.addCallback((ignore, failure) -> {
+            if (failure != null)
             {
-                if (results == null || results.isEmpty() || Iterables.any(results, r -> r == null))
-                {
-                    finalizeStart = System.currentTimeMillis();
-                    if (logger.isDebugEnabled())
-                    {
-                        logger.debug("Incremental repair {} validation/stream phase completed in {}", sessionID, formatDuration(repairStart, finalizeStart));
-
-                    }
-                    return Futures.immediateFailedFuture(SomeRepairFailedException.INSTANCE);
-                }
-                else
-                {
-                    return finalizePropose();
-                }
+                if (logger.isDebugEnabled())
+                    logger.debug("Incremental repair {} phase failed in {}", sessionID, formatDuration(sessionStart, currentTimeMillis()));
+                fail();
             }
-        }, MoreExecutors.directExecutor());
-
-        // return execution result as set by following callback
-        SettableFuture<Boolean> resultFuture = SettableFuture.create();
-
-        // commit repaired data
-        Futures.addCallback(proposeFuture, new FutureCallback<Boolean>()
-        {
-            public void onSuccess(@Nullable Boolean result)
-            {
-                try
-                {
-                    if (result != null && result)
-                    {
-                        if (logger.isDebugEnabled())
-                        {
-                            logger.debug("Incremental repair {} finalization phase completed in {}", sessionID, formatDuration(finalizeStart, System.currentTimeMillis()));
-                        }
-                        finalizeCommit();
-                        if (logger.isDebugEnabled())
-                        {
-                            logger.debug("Incremental repair {} phase completed in {}", sessionID, formatDuration(sessionStart, System.currentTimeMillis()));
-                        }
-                    }
-                    else
-                    {
-                        hasFailure.set(true);
-                        fail();
-                    }
-                    resultFuture.set(result);
-                }
-                catch (Exception e)
-                {
-                    resultFuture.setException(e);
-                }
-            }
-
-            public void onFailure(Throwable t)
-            {
-                try
-                {
-                    if (logger.isDebugEnabled())
-                    {
-                        logger.debug("Incremental repair {} phase failed in {}", sessionID, formatDuration(sessionStart, System.currentTimeMillis()));
-                    }
-                    hasFailure.set(true);
-                    fail();
-                }
-                finally
-                {
-                    resultFuture.setException(t);
-                }
-            }
-        }, MoreExecutors.directExecutor());
-
-        return resultFuture;
+        }, ImmediateExecutor.INSTANCE);
     }
 }

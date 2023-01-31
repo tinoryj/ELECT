@@ -17,21 +17,20 @@
  */
 package org.apache.cassandra.io.sstable;
 
-import java.io.File;
-import java.io.FilenameFilter;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.io.Files;
 
+import org.apache.cassandra.io.util.File;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -47,13 +46,11 @@ import org.apache.cassandra.cql3.functions.UDHelper;
 import org.apache.cassandra.cql3.functions.types.*;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.commitlog.CommitLog;
-import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.dht.*;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadataRef;
-import org.apache.cassandra.serializers.SimpleDateSerializer;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.*;
@@ -94,8 +91,8 @@ public class CQLSSTableWriterTest
         keyspace = "cql_keyspace" + idGen.incrementAndGet();
         table = "table" + idGen.incrementAndGet();
         qualifiedTable = keyspace + '.' + table;
-        dataDir = new File(tempFolder.newFolder().getAbsolutePath() + File.separator + keyspace + File.separator + table);
-        assert dataDir.mkdirs();
+        dataDir = new File(tempFolder.newFolder().getAbsolutePath() + File.pathSeparator() + keyspace + File.pathSeparator() + table);
+        assert dataDir.tryCreateDirectories();
     }
 
     @Test
@@ -171,7 +168,7 @@ public class CQLSSTableWriterTest
         }
         catch (IllegalArgumentException e)
         {
-            assertEquals(e.getMessage(), "Counter update statements are not supported");
+            assertEquals(e.getMessage(), "Counter modification statements are not supported");
         }
     }
 
@@ -179,8 +176,8 @@ public class CQLSSTableWriterTest
     public void testSyncWithinPartition() throws Exception
     {
         // Check that the write respect the buffer size even if we only insert rows withing the same partition (#7360)
-        // To do that simply, we use a writer with a buffer of 1MB, and write 2 rows in the same partition with a value
-        // > 1MB and validate that this created more than 1 sstable.
+        // To do that simply, we use a writer with a buffer of 1MiB, and write 2 rows in the same partition with a value
+        // > 1MiB and validate that this created more than 1 sstable.
         String schema = "CREATE TABLE " + qualifiedTable + " ("
                       + "  k int PRIMARY KEY,"
                       + "  v blob"
@@ -199,14 +196,8 @@ public class CQLSSTableWriterTest
         writer.addRow(1, val);
         writer.close();
 
-        FilenameFilter filterDataFiles = new FilenameFilter()
-        {
-            public boolean accept(File dir, String name)
-            {
-                return name.endsWith("-Data.db");
-            }
-        };
-        assert dataDir.list(filterDataFiles).length > 1 : Arrays.toString(dataDir.list(filterDataFiles));
+        BiPredicate<File, String> filterDataFiles = (dir, name) -> name.endsWith("-Data.db");
+        assert dataDir.tryListNames(filterDataFiles).length > 1 : Arrays.toString(dataDir.tryListNames(filterDataFiles));
     }
 
 
@@ -234,7 +225,286 @@ public class CQLSSTableWriterTest
 
     }
 
+    @Test
+    public void testDeleteStatement() throws Exception
+    {
 
+        final String schema = "CREATE TABLE " + qualifiedTable + " ("
+                              + "  k int,"
+                              + "  c1 int,"
+                              + "  c2 int,"
+                              + "  v text,"
+                              + "  PRIMARY KEY (k, c1, c2)"
+                              + ")";
+
+        testUpdateStatement(); // start by adding some data
+        UntypedResultSet resultSet = QueryProcessor.executeInternal("SELECT * FROM " + qualifiedTable);
+        assertEquals(2, resultSet.size());
+
+        CQLSSTableWriter writer = CQLSSTableWriter.builder()
+                                                  .inDirectory(dataDir)
+                                                  .forTable(schema)
+                                                  .using("DELETE FROM " + qualifiedTable +
+                                                         " WHERE k = ? AND c1 = ? AND c2 = ?")
+                                                  .build();
+
+        writer.addRow(1, 2, 3);
+        writer.addRow(4, 5, 6);
+        writer.close();
+        loadSSTables(dataDir, keyspace);
+
+        resultSet = QueryProcessor.executeInternal("SELECT * FROM " + qualifiedTable);
+        assertEquals(0, resultSet.size());
+        Iterator<UntypedResultSet.Row> iter = resultSet.iterator();
+        assertFalse(iter.hasNext());
+    }
+
+    @Test
+    public void testDeletePartition() throws Exception
+    {
+
+        final String schema = "CREATE TABLE " + qualifiedTable + " ("
+                              + "  k int,"
+                              + "  c1 int,"
+                              + "  c2 int,"
+                              + "  v text,"
+                              + "  PRIMARY KEY (k, c1, c2)"
+                              + ")";
+
+        // First, write some rows
+        CQLSSTableWriter writer = CQLSSTableWriter.builder()
+                                                  .inDirectory(dataDir)
+                                                  .forTable(schema)
+                                                  .using("INSERT INTO " + qualifiedTable + " (k, c1, c2, v) " +
+                                                         "VALUES (?, ?, ?, ?)")
+                                                  .build();
+
+        writer.addRow(1, 2, 3, "a");
+        writer.addRow(1, 4, 5, "b");
+        writer.addRow(1, 6, 7, "c");
+        writer.addRow(2, 8, 9, "d");
+
+        writer.close();
+        loadSSTables(dataDir, keyspace);
+
+        UntypedResultSet resultSet = QueryProcessor.executeInternal("SELECT * FROM " + qualifiedTable);
+        assertEquals(4, resultSet.size());
+        Iterator<UntypedResultSet.Row> iter = resultSet.iterator();
+        UntypedResultSet.Row r1 = iter.next();
+        assertEquals(1, r1.getInt("k"));
+        assertEquals(2, r1.getInt("c1"));
+        assertEquals(3, r1.getInt("c2"));
+        assertEquals("a", r1.getString("v"));
+        UntypedResultSet.Row r2 = iter.next();
+        assertEquals(1, r2.getInt("k"));
+        assertEquals(4, r2.getInt("c1"));
+        assertEquals(5, r2.getInt("c2"));
+        assertEquals("b", r2.getString("v"));
+        UntypedResultSet.Row r3 = iter.next();
+        assertEquals(1, r3.getInt("k"));
+        assertEquals(6, r3.getInt("c1"));
+        assertEquals(7, r3.getInt("c2"));
+        assertEquals("c", r3.getString("v"));
+        UntypedResultSet.Row r4 = iter.next();
+        assertEquals(2, r4.getInt("k"));
+        assertEquals(8, r4.getInt("c1"));
+        assertEquals(9, r4.getInt("c2"));
+        assertEquals("d", r4.getString("v"));
+        assertFalse(iter.hasNext());
+
+        writer = CQLSSTableWriter.builder()
+                                 .inDirectory(dataDir)
+                                 .forTable(schema)
+                                 .using("DELETE FROM " + qualifiedTable +
+                                        " WHERE k = ?")
+                                 .build();
+
+        writer.addRow(1);
+        writer.close();
+        loadSSTables(dataDir, keyspace);
+
+        resultSet = QueryProcessor.executeInternal("SELECT * FROM " + qualifiedTable);
+        assertEquals(1, resultSet.size());
+        iter = resultSet.iterator();
+        UntypedResultSet.Row r5 = iter.next();
+        assertEquals(2, r5.getInt("k"));
+        assertEquals(8, r5.getInt("c1"));
+        assertEquals(9, r5.getInt("c2"));
+        assertEquals("d", r5.getString("v"));
+        assertFalse(iter.hasNext());
+    }
+
+    @Test
+    public void testDeleteRange() throws Exception
+    {
+
+        final String schema = "CREATE TABLE " + qualifiedTable + " ("
+                              + "  k text,"
+                              + "  c1 int,"
+                              + "  c2 int,"
+                              + "  v text,"
+                              + "  PRIMARY KEY (k, c1, c2)"
+                              + ")";
+
+        CQLSSTableWriter updateWriter = CQLSSTableWriter.builder()
+                                                        .inDirectory(dataDir)
+                                                        .forTable(schema)
+                                                        .using(String.format("UPDATE %s SET v=? WHERE k=? AND c1=? AND c2=?", qualifiedTable))
+                                                        .build();
+        CQLSSTableWriter deleteWriter = CQLSSTableWriter.builder()
+                                                        .inDirectory(dataDir)
+                                                        .forTable(schema)
+                                                        .using(String.format("DELETE FROM %s WHERE k=? AND c1=? and c2>=?", qualifiedTable))
+                                                        .build();
+
+        updateWriter.addRow("v0.0", "a", 0, 0);
+        updateWriter.addRow("v0.1", "a", 0, 1);
+        updateWriter.addRow("v0.2", "a", 0, 2);
+        updateWriter.addRow("v0.0", "b", 0, 0);
+        updateWriter.addRow("v0.1", "b", 0, 1);
+        updateWriter.addRow("v0.2", "b", 0, 2);
+        updateWriter.close();
+        deleteWriter.addRow("a", 0, 1);
+        deleteWriter.addRow("b", 0, 2);
+        deleteWriter.close();
+        loadSSTables(dataDir, keyspace);
+
+        UntypedResultSet resultSet = QueryProcessor.executeInternal("SELECT * FROM " + qualifiedTable);
+        assertEquals(3, resultSet.size());
+
+        Iterator<UntypedResultSet.Row> iter = resultSet.iterator();
+        UntypedResultSet.Row r1 = iter.next();
+        assertEquals("a", r1.getString("k"));
+        assertEquals(0, r1.getInt("c1"));
+        assertEquals(0, r1.getInt("c2"));
+        UntypedResultSet.Row r2 = iter.next();
+        assertEquals("b", r2.getString("k"));
+        assertEquals(0, r2.getInt("c1"));
+        assertEquals(0, r2.getInt("c2"));
+        UntypedResultSet.Row r3 = iter.next();
+        assertEquals("b", r3.getString("k"));
+        assertEquals(0, r3.getInt("c1"));
+        assertEquals(1, r3.getInt("c2"));
+    }
+
+    @Test
+    public void testDeleteRangeEmptyKeyComponent() throws Exception
+    {
+
+
+        final String schema = "CREATE TABLE " + qualifiedTable + " ("
+                              + "  k text,"
+                              + "  c1 int,"
+                              + "  c2 int,"
+                              + "  v text,"
+                              + "  PRIMARY KEY (k, c1, c2)"
+                              + ")";
+
+        CQLSSTableWriter updateWriter = CQLSSTableWriter.builder()
+                                                        .inDirectory(dataDir)
+                                                        .forTable(schema)
+                                                        .using(String.format("UPDATE %s SET v=? WHERE k=? AND c1=? AND c2=?", qualifiedTable))
+                                                        .build();
+        CQLSSTableWriter deleteWriter = CQLSSTableWriter.builder()
+                                                        .inDirectory(dataDir)
+                                                        .forTable(schema)
+                                                        .using(String.format("DELETE FROM %s WHERE k=? AND c1=?", qualifiedTable))
+                                                        .build();
+
+        updateWriter.addRow("v0.0", "a", 0, 0);
+        updateWriter.addRow("v0.1", "a", 0, 1);
+        updateWriter.addRow("v0.2", "a", 1, 2);
+        updateWriter.addRow("v0.0", "b", 0, 0);
+        updateWriter.addRow("v0.1", "b", 0, 1);
+        updateWriter.addRow("v0.2", "b", 1, 2);
+        updateWriter.close();
+        deleteWriter.addRow("a", 0);
+        deleteWriter.addRow("b", 0);
+        deleteWriter.close();
+        loadSSTables(dataDir, keyspace);
+
+        UntypedResultSet resultSet = QueryProcessor.executeInternal("SELECT * FROM " + qualifiedTable);
+        assertEquals(2, resultSet.size());
+
+        Iterator<UntypedResultSet.Row> iter = resultSet.iterator();
+        UntypedResultSet.Row r1 = iter.next();
+        assertEquals("a", r1.getString("k"));
+        assertEquals(1, r1.getInt("c1"));
+        assertEquals(2, r1.getInt("c2"));
+        UntypedResultSet.Row r2 = iter.next();
+        assertEquals("b", r2.getString("k"));
+        assertEquals(1, r2.getInt("c1"));
+        assertEquals(2, r2.getInt("c2"));
+    }
+
+    @Test
+    public void testDeleteValue() throws Exception
+    {
+        final String schema = "CREATE TABLE " + qualifiedTable + " ("
+                              + "  k text,"
+                              + "  c1 int,"
+                              + "  c2 int,"
+                              + "  v text,"
+                              + "  PRIMARY KEY (k, c1, c2)"
+                              + ")";
+
+        CQLSSTableWriter insertWriter = CQLSSTableWriter.builder()
+                                                        .inDirectory(dataDir)
+                                                        .forTable(schema)
+                                                        .using(String.format("INSERT INTO %s (v, k, c1, c2) values (?, ?, ?, ?)", qualifiedTable))
+                                                        .build();
+
+        // UPDATE does not set the row's liveness information, just the cells'. So when we delete the value from rows
+        // added with the updateWriter, the entire row will no longer exist, not just the value.
+        CQLSSTableWriter updateWriter = CQLSSTableWriter.builder()
+                                                        .inDirectory(dataDir)
+                                                        .forTable(schema)
+                                                        .using(String.format("UPDATE %s SET v=? WHERE k=? AND c1=? AND c2=?", qualifiedTable))
+                                                        .build();
+
+        CQLSSTableWriter deleteWriter = CQLSSTableWriter.builder()
+                                                  .inDirectory(dataDir)
+                                                  .forTable(schema)
+                                                  .using("DELETE v FROM " + qualifiedTable +
+                                                         " WHERE k = ? AND c1 = ? AND c2 = ?")
+                                                  .build();
+
+        insertWriter.addRow("v0.2", "a", 1, 2);
+        insertWriter.close();
+
+        updateWriter.addRow("v0.3", "b", 3, 4);
+        updateWriter.close();
+
+        loadSSTables(dataDir, keyspace);
+
+        UntypedResultSet resultSet = QueryProcessor.executeInternal("SELECT * FROM " + qualifiedTable);
+        assertEquals(2, resultSet.size());
+        Iterator<UntypedResultSet.Row> iter = resultSet.iterator();
+        UntypedResultSet.Row insertedRow = iter.next();
+        assertEquals("v0.2", insertedRow.getString("v"));
+        assertEquals("a", insertedRow.getString("k"));
+        assertEquals(1, insertedRow.getInt("c1"));
+        assertEquals(2, insertedRow.getInt("c2"));
+        UntypedResultSet.Row updatedRow = iter.next();
+        assertEquals("v0.3", updatedRow.getString("v"));
+        assertEquals("b", updatedRow.getString("k"));
+        assertEquals(3, updatedRow.getInt("c1"));
+        assertEquals(4, updatedRow.getInt("c2"));
+
+        deleteWriter.addRow("a", 1, 2);
+        deleteWriter.addRow("b", 3, 4);
+        deleteWriter.close();
+        loadSSTables(dataDir, keyspace);
+
+        resultSet = QueryProcessor.executeInternal("SELECT * FROM " + qualifiedTable);
+        assertEquals(1, resultSet.size());
+        iter = resultSet.iterator();
+        UntypedResultSet.Row modifiedRow = iter.next();
+        assertFalse(modifiedRow.has("v"));
+        assertEquals("a", modifiedRow.getString("k"));
+        assertEquals(1, modifiedRow.getInt("c1"));
+        assertEquals(2, modifiedRow.getInt("c2"));
+    }
 
     private static final int NUMBER_WRITES_IN_RUNNABLE = 10;
     private class WriterThread extends Thread

@@ -24,6 +24,8 @@ import com.google.common.collect.ImmutableList;
 
 import io.netty.buffer.ByteBuf;
 
+import org.apache.cassandra.config.DataStorageSpec;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.marshal.UTF8Type;
@@ -57,6 +59,11 @@ public abstract class QueryOptions
     public static QueryOptions forInternalCalls(ConsistencyLevel consistency, List<ByteBuffer> values)
     {
         return new DefaultQueryOptions(consistency, values, false, SpecificOptions.DEFAULT, ProtocolVersion.V3);
+    }
+
+    public static QueryOptions forInternalCallsWithNowInSec(int nowInSec, ConsistencyLevel consistency, List<ByteBuffer> values)
+    {
+        return new DefaultQueryOptions(consistency, values, false, SpecificOptions.DEFAULT.withNowInSec(nowInSec), ProtocolVersion.CURRENT);
     }
 
     public static QueryOptions forInternalCalls(List<ByteBuffer> values)
@@ -208,6 +215,12 @@ public abstract class QueryOptions
     /** The keyspace that this query is bound to, or null if not relevant. */
     public String getKeyspace() { return getSpecificOptions().keyspace; }
 
+    public int getNowInSec(int ifNotSet)
+    {
+        int nowInSec = getSpecificOptions().nowInSeconds;
+        return nowInSec != Integer.MIN_VALUE ? nowInSec : ifNotSet;
+    }
+
     /**
      * The protocol version for the query.
      */
@@ -216,9 +229,96 @@ public abstract class QueryOptions
     // Mainly for the sake of BatchQueryOptions
     abstract SpecificOptions getSpecificOptions();
 
+    abstract ReadThresholds getReadThresholds();
+
+    public boolean isReadThresholdsEnabled()
+    {
+        return getReadThresholds().isEnabled();
+    }
+
+    public long getCoordinatorReadSizeWarnThresholdBytes()
+    {
+        return getReadThresholds().getCoordinatorReadSizeWarnThresholdBytes();
+    }
+
+    public long getCoordinatorReadSizeAbortThresholdBytes()
+    {
+        return getReadThresholds().getCoordinatorReadSizeFailThresholdBytes();
+    }
+
     public QueryOptions prepare(List<ColumnSpecification> specs)
     {
         return this;
+    }
+
+    interface ReadThresholds
+    {
+        boolean isEnabled();
+
+        long getCoordinatorReadSizeWarnThresholdBytes();
+
+        long getCoordinatorReadSizeFailThresholdBytes();
+
+        static ReadThresholds create()
+        {
+            // if daemon initialization hasn't happened yet (very common in tests) then ignore
+            if (!DatabaseDescriptor.isDaemonInitialized() || !DatabaseDescriptor.getReadThresholdsEnabled())
+                return DisabledReadThresholds.INSTANCE;
+            return new DefaultReadThresholds(DatabaseDescriptor.getCoordinatorReadSizeWarnThreshold(), DatabaseDescriptor.getCoordinatorReadSizeFailThreshold());
+        }
+    }
+
+    private enum DisabledReadThresholds implements ReadThresholds
+    {
+        INSTANCE;
+
+        @Override
+        public boolean isEnabled()
+        {
+            return false;
+        }
+
+        @Override
+        public long getCoordinatorReadSizeWarnThresholdBytes()
+        {
+            return -1;
+        }
+
+        @Override
+        public long getCoordinatorReadSizeFailThresholdBytes()
+        {
+            return -1;
+        }
+    }
+
+    private static class DefaultReadThresholds implements ReadThresholds
+    {
+        private final long warnThresholdBytes;
+        private final long abortThresholdBytes;
+
+        public DefaultReadThresholds(DataStorageSpec.LongBytesBound warnThreshold, DataStorageSpec.LongBytesBound abortThreshold)
+        {
+            this.warnThresholdBytes = warnThreshold == null ? -1 : warnThreshold.toBytes();
+            this.abortThresholdBytes = abortThreshold == null ? -1 : abortThreshold.toBytes();
+        }
+
+        @Override
+        public boolean isEnabled()
+        {
+            return true;
+        }
+
+        @Override
+        public long getCoordinatorReadSizeWarnThresholdBytes()
+        {
+            return warnThresholdBytes;
+        }
+
+        @Override
+        public long getCoordinatorReadSizeFailThresholdBytes()
+        {
+            return abortThresholdBytes;
+        }
     }
 
     static class DefaultQueryOptions extends QueryOptions
@@ -230,6 +330,7 @@ public abstract class QueryOptions
         private final SpecificOptions options;
 
         private final transient ProtocolVersion protocolVersion;
+        private final transient ReadThresholds readThresholds = ReadThresholds.create();
 
         DefaultQueryOptions(ConsistencyLevel consistency, List<ByteBuffer> values, boolean skipMetadata, SpecificOptions options, ProtocolVersion protocolVersion)
         {
@@ -263,6 +364,12 @@ public abstract class QueryOptions
         SpecificOptions getSpecificOptions()
         {
             return options;
+        }
+
+        @Override
+        ReadThresholds getReadThresholds()
+        {
+            return readThresholds;
         }
     }
 
@@ -298,6 +405,12 @@ public abstract class QueryOptions
         SpecificOptions getSpecificOptions()
         {
             return wrapped.getSpecificOptions();
+        }
+
+        @Override
+        ReadThresholds getReadThresholds()
+        {
+            return wrapped.getReadThresholds();
         }
 
         @Override
@@ -399,6 +512,11 @@ public abstract class QueryOptions
             this.timestamp = timestamp;
             this.keyspace = keyspace;
             this.nowInSeconds = nowInSeconds;
+        }
+
+        public SpecificOptions withNowInSec(int nowInSec)
+        {
+            return new SpecificOptions(pageSize, state, serialConsistency, timestamp, keyspace, nowInSec);
         }
     }
 

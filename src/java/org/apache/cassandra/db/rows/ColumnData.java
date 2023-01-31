@@ -19,6 +19,7 @@ package org.apache.cassandra.db.rows;
 
 import java.util.Comparator;
 
+import org.apache.cassandra.cache.IMeasurableMemory;
 import org.apache.cassandra.db.Digest;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.DeletionPurger;
@@ -36,7 +37,7 @@ import org.apache.cassandra.utils.memory.Cloner;
  * In practice, there is only 2 implementations of this: either {@link Cell} for simple columns
  * or {@code ComplexColumnData} for complex columns.
  */
-public abstract class ColumnData
+public abstract class ColumnData implements IMeasurableMemory
 {
     public static final Comparator<ColumnData> comparator = (cd1, cd2) -> cd1.column().compareTo(cd2.column());
 
@@ -227,6 +228,8 @@ public abstract class ColumnData
 
     public abstract long unsharedHeapSizeExcludingData();
 
+    public abstract long unsharedHeapSize();
+
     /**
      * Validate the column data.
      *
@@ -266,6 +269,7 @@ public abstract class ColumnData
     public abstract ColumnData markCounterLocalToBeCleared();
 
     public abstract ColumnData purge(DeletionPurger purger, int nowInSec);
+    public abstract ColumnData purgeDataOlderThan(long timestamp);
 
     public abstract long maxTimestamp();
 }

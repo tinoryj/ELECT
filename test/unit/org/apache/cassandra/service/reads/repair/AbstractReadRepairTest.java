@@ -71,7 +71,7 @@ import org.apache.cassandra.locator.ReplicaUtils;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.schema.KeyspaceMetadata;
 import org.apache.cassandra.schema.KeyspaceParams;
-import org.apache.cassandra.schema.MigrationManager;
+import org.apache.cassandra.schema.SchemaTestUtil;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.Tables;
 import org.apache.cassandra.service.StorageService;
@@ -80,6 +80,7 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import static org.apache.cassandra.locator.Replica.fullReplica;
 import static org.apache.cassandra.locator.ReplicaUtils.FULL_RANGE;
 import static org.apache.cassandra.net.Verb.INTERNAL_RSP;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 @Ignore
 public abstract  class AbstractReadRepairTest
@@ -96,9 +97,9 @@ public abstract  class AbstractReadRepairTest
     static Replica replica2;
     static Replica replica3;
     static EndpointsForRange replicas;
-    static ReplicaPlan.ForRead<?> replicaPlan;
+    static ReplicaPlan.ForRead<?, ?> replicaPlan;
 
-    static long now = TimeUnit.NANOSECONDS.toMicros(System.nanoTime());
+    static long now = TimeUnit.NANOSECONDS.toMicros(nanoTime());
     static DecoratedKey key;
     static Cell<?> cell1;
     static Cell<?> cell2;
@@ -222,13 +223,13 @@ public abstract  class AbstractReadRepairTest
         cfm = CreateTableStatement.parse(ddl, ksName).build();
         assert cfm.params.readRepair == repairStrategy;
         KeyspaceMetadata ksm = KeyspaceMetadata.create(ksName, KeyspaceParams.simple(3), Tables.of(cfm));
-        MigrationManager.announceNewKeyspace(ksm, false);
+        SchemaTestUtil.announceNewKeyspace(ksm);
 
         ks = Keyspace.open(ksName);
         cfs = ks.getColumnFamilyStore("tbl");
 
-        cfs.sampleReadLatencyNanos = 0;
-        cfs.additionalWriteLatencyNanos = 0;
+        cfs.sampleReadLatencyMicros = 0;
+        cfs.additionalWriteLatencyMicros = 0;
 
         target1 = InetAddressAndPort.getByName("127.0.0.255");
         target2 = InetAddressAndPort.getByName("127.0.0.254");
@@ -273,8 +274,8 @@ public abstract  class AbstractReadRepairTest
     {
         assert configured : "configureClass must be called in a @BeforeClass method";
 
-        cfs.sampleReadLatencyNanos = 0;
-        cfs.additionalWriteLatencyNanos = 0;
+        cfs.sampleReadLatencyMicros = 0;
+        cfs.additionalWriteLatencyMicros = 0;
     }
 
     static ReplicaPlan.ForRangeRead replicaPlan(ConsistencyLevel consistencyLevel, EndpointsForRange replicas)
@@ -282,17 +283,17 @@ public abstract  class AbstractReadRepairTest
         return replicaPlan(ks, consistencyLevel, replicas, replicas);
     }
 
-    static ReplicaPlan.ForTokenWrite repairPlan(ReplicaPlan.ForRangeRead readPlan)
+    static ReplicaPlan.ForWrite repairPlan(ReplicaPlan.ForRangeRead readPlan)
     {
-        return repairPlan(readPlan, readPlan.candidates());
+        return repairPlan(readPlan, readPlan.readCandidates());
     }
 
-    static ReplicaPlan.ForTokenWrite repairPlan(EndpointsForRange liveAndDown, EndpointsForRange targets)
+    static ReplicaPlan.ForWrite repairPlan(EndpointsForRange liveAndDown, EndpointsForRange targets)
     {
         return repairPlan(replicaPlan(liveAndDown, targets), liveAndDown);
     }
 
-    static ReplicaPlan.ForTokenWrite repairPlan(ReplicaPlan.ForRangeRead readPlan, EndpointsForRange liveAndDown)
+    static ReplicaPlan.ForWrite repairPlan(ReplicaPlan.ForRangeRead readPlan, EndpointsForRange liveAndDown)
     {
         Token token = readPlan.range().left.getToken();
         EndpointsForToken pending = EndpointsForToken.empty(token);
@@ -320,7 +321,7 @@ public abstract  class AbstractReadRepairTest
 
     public InstrumentedReadRepair createInstrumentedReadRepair(ReplicaPlan.Shared<?, ?> replicaPlan)
     {
-        return createInstrumentedReadRepair(command, replicaPlan, System.nanoTime());
+        return createInstrumentedReadRepair(command, replicaPlan, nanoTime());
 
     }
 

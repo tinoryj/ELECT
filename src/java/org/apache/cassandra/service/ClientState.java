@@ -22,9 +22,16 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +57,8 @@ import org.apache.cassandra.exceptions.UnauthorizedException;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.apache.cassandra.utils.MD5Digest;
+
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 
 /**
  * State related to a client connection.
@@ -119,12 +128,23 @@ public class ClientState
     // Driver String for the client
     private volatile String driverName;
     private volatile String driverVersion;
+    
+    // Options provided by the client
+    private volatile Map<String,String> clientOptions;
 
     // The biggest timestamp that was returned by getTimestamp/assigned to a query. This is global to ensure that the
     // timestamp assigned are strictly monotonic on a node, which is likely what user expect intuitively (more likely,
     // most new user will intuitively expect timestamp to be strictly monotonic cluster-wise, but while that last part
     // is unrealistic expectation, doing it node-wise is easy).
     private static final AtomicLong lastTimestampMicros = new AtomicLong(0);
+
+    @VisibleForTesting
+    public static void resetLastTimestamp(long nowMillis)
+    {
+        long nowMicros = TimeUnit.MILLISECONDS.toMicros(nowMillis);
+        if (lastTimestampMicros.get() > nowMicros)
+            lastTimestampMicros.set(nowMicros);
+    }
 
     /**
      * Construct a new, empty ClientState for internal calls.
@@ -151,6 +171,7 @@ public class ClientState
         this.keyspace = source.keyspace;
         this.driverName = source.driverName;
         this.driverVersion = source.driverVersion;
+        this.clientOptions = source.clientOptions;
     }
 
     /**
@@ -200,7 +221,7 @@ public class ClientState
     {
         while (true)
         {
-            long current = System.currentTimeMillis() * 1000;
+            long current = currentTimeMillis() * 1000;
             long last = lastTimestampMicros.get();
             long tstamp = last >= current ? last + 1 : current;
             if (lastTimestampMicros.compareAndSet(last, tstamp))
@@ -241,7 +262,7 @@ public class ClientState
      * with a clock in the future compared to the local one), we use the last proposal timestamp plus 1, ensuring
      * progress.
      *
-     * @param minTimestampToUse the max timestamp of the last proposal accepted by replica having responded
+     * @param minUnixMicros the max timestamp of the last proposal accepted by replica having responded
      * to the prepare phase of the paxos round this is for. In practice, that's the minimum timestamp this method
      * may return.
      * @return a timestamp suitable for a Paxos proposal (using the reasoning described above). Note that
@@ -250,20 +271,25 @@ public class ClientState
      * it may be returned multiple times). Note that we still ensure Paxos "ballot" are unique (for different
      * proposal) by (securely) randomizing the non-timestamp part of the UUID.
      */
-    public long getTimestampForPaxos(long minTimestampToUse)
+    public static long getTimestampForPaxos(long minUnixMicros)
     {
         while (true)
         {
-            long current = Math.max(System.currentTimeMillis() * 1000, minTimestampToUse);
+            long current = Math.max(currentTimeMillis() * 1000, minUnixMicros);
             long last = lastTimestampMicros.get();
             long tstamp = last >= current ? last + 1 : current;
             // Note that if we ended up picking minTimestampMicrosToUse (it was "in the future"), we don't
             // want to change the local clock, otherwise a single node in the future could corrupt the clock
             // of all nodes and for all inserts (since non-paxos inserts also use lastTimestampMicros).
             // See CASSANDRA-11991
-            if (tstamp == minTimestampToUse || lastTimestampMicros.compareAndSet(last, tstamp))
+            if (tstamp == minUnixMicros || lastTimestampMicros.compareAndSet(last, tstamp))
                 return tstamp;
         }
+    }
+
+    public static long getLastTimestampMicros()
+    {
+        return lastTimestampMicros.get();
     }
 
     public Optional<String> getDriverName()
@@ -276,6 +302,11 @@ public class ClientState
         return Optional.ofNullable(driverVersion);
     }
 
+    public Optional<Map<String,String>> getClientOptions()
+    {
+        return Optional.ofNullable(clientOptions);
+    }
+
     public void setDriverName(String driverName)
     {
         this.driverName = driverName;
@@ -284,6 +315,11 @@ public class ClientState
     public void setDriverVersion(String driverVersion)
     {
         this.driverVersion = driverVersion;
+    }
+    
+    public void setClientOptions(Map<String,String> clientOptions)
+    {
+        this.clientOptions = ImmutableMap.copyOf(clientOptions);
     }
 
     public static QueryHandler getCQLQueryHandler()
@@ -358,6 +394,11 @@ public class ClientState
         ensurePermission(keyspace, perm, DataResource.keyspace(keyspace));
     }
 
+    public void ensureAllTablesPermission(String keyspace, Permission perm)
+    {
+        ensurePermission(keyspace, perm, DataResource.allTables(keyspace));
+    }
+
     public void ensureTablePermission(String keyspace, String table, Permission perm)
     {
         ensurePermission(keyspace, perm, DataResource.table(keyspace, table));
@@ -425,7 +466,11 @@ public class ClientState
 
     private void ensurePermissionOnResourceChain(Permission perm, IResource resource)
     {
-        for (IResource r : Resources.chain(resource))
+        List<? extends IResource> resources = Resources.chain(resource);
+        if (DatabaseDescriptor.getAuthFromRoot())
+            resources = Lists.reverse(resources);
+
+        for (IResource r : resources)
             if (authorize(r).contains(perm))
                 return;
 
@@ -475,9 +520,37 @@ public class ClientState
             throw new UnauthorizedException("You have to be logged in and not anonymous to perform this request");
     }
 
+    /**
+     * Checks if this user is an ordinary user (not a super or system user).
+     *
+     * @return {@code true} if this user is an ordinary user, {@code false} otherwise.
+     */
+    public boolean isOrdinaryUser()
+    {
+        return !isSuper() && !isSystem();
+    }
+
+    /**
+     * Checks if this user is a super user.
+     */
+    public boolean isSuper()
+    {
+        return !DatabaseDescriptor.getAuthenticator().requireAuthentication() || (user != null && user.isSuper());
+    }
+
+    /**
+     * Checks if the user is the system user.
+     *
+     * @return {@code true} if this user is the system user, {@code false} otherwise.
+     */
+    public boolean isSystem()
+    {
+        return isInternal;
+    }
+
     public void ensureIsSuperuser(String message)
     {
-        if (DatabaseDescriptor.getAuthenticator().requireAuthentication() && (user == null || !user.isSuper()))
+        if (!isSuper())
             throw new UnauthorizedException(message);
     }
 

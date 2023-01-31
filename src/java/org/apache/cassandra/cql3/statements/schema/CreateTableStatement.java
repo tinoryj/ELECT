@@ -33,6 +33,8 @@ import org.apache.cassandra.auth.IResource;
 import org.apache.cassandra.auth.Permission;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.*;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.guardrails.Guardrails;
 import org.apache.cassandra.db.marshal.*;
 import org.apache.cassandra.exceptions.AlreadyExistsException;
 import org.apache.cassandra.schema.*;
@@ -115,7 +117,38 @@ public final class CreateTableStatement extends AlterSchemaStatement
             throw ire("read_repair must be set to 'NONE' for transiently replicated keyspaces");
         }
 
+        if (!table.params.compression.isEnabled())
+            Guardrails.uncompressedTablesEnabled.ensureEnabled(state);
+
         return schema.withAddedOrUpdated(keyspace.withSwapped(keyspace.tables.with(table)));
+    }
+
+    @Override
+    public void validate(ClientState state)
+    {
+        super.validate(state);
+
+        // Guardrail on table properties
+        Guardrails.tableProperties.guard(attrs.updatedProperties(), attrs::removeProperty, state);
+
+        // Guardrail on columns per table
+        Guardrails.columnsPerTable.guard(rawColumns.size(), tableName, false, state);
+
+        // Guardrail on number of tables
+        if (Guardrails.tables.enabled(state))
+        {
+            int totalUserTables = Schema.instance.getUserKeyspaces()
+                                                 .stream()
+                                                 .map(ksm -> ksm.name)
+                                                 .map(Keyspace::open)
+                                                 .mapToInt(keyspace -> keyspace.getColumnFamilyStores().size())
+                                                 .sum();
+            Guardrails.tables.guard(totalUserTables + 1, tableName, false, state);
+        }
+
+        // Guardrail to check whether creation of new COMPACT STORAGE tables is allowed
+        if (useCompactStorage)
+            Guardrails.compactTablesEnabled.ensureEnabled(state);
     }
 
     SchemaChange schemaChangeEvent(KeyspacesDiff diff)
@@ -125,7 +158,7 @@ public final class CreateTableStatement extends AlterSchemaStatement
 
     public void authorize(ClientState client)
     {
-        client.ensureKeyspacePermission(keyspaceName, Permission.CREATE);
+        client.ensureAllTablesPermission(keyspaceName, Permission.CREATE);
     }
 
     @Override
@@ -372,6 +405,7 @@ public final class CreateTableStatement extends AlterSchemaStatement
     @Override
     public Set<String> clientWarnings(KeyspacesDiff diff)
     {
+        // this threshold is deprecated, it will be replaced by the guardrail used in #validate(ClientState)
         int tableCount = Schema.instance.getNumberOfTables();
         if (tableCount > DatabaseDescriptor.tableCountWarnThreshold())
         {

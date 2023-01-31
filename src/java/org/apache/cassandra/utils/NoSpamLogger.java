@@ -19,11 +19,14 @@ package org.apache.cassandra.utils;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.slf4j.Logger;
 
 import com.google.common.annotations.VisibleForTesting;
+
+import static org.apache.cassandra.utils.Clock.Global;
 
 /**
  * Logging that limits each log statement to firing based on time since the statement last fired.
@@ -44,7 +47,7 @@ public class NoSpamLogger
      */
     public enum Level
     {
-        INFO, WARN, ERROR;
+        INFO, WARN, ERROR
     }
 
     @VisibleForTesting
@@ -58,7 +61,7 @@ public class NoSpamLogger
     {
         public long nanoTime()
         {
-            return System.nanoTime();
+            return Global.nanoTime();
         }
     };
 
@@ -82,21 +85,31 @@ public class NoSpamLogger
             return nowNanos >= expected && compareAndSet(expected, nowNanos + minIntervalNanos);
         }
 
+        public boolean log(Level l, long nowNanos, Supplier<Object[]> objects)
+        {
+            if (!shouldLog(nowNanos)) return false;
+            return logNoCheck(l, objects.get());
+        }
+
         public boolean log(Level l, long nowNanos, Object... objects)
         {
             if (!shouldLog(nowNanos)) return false;
+            return logNoCheck(l, objects);
+        }
 
+        private boolean logNoCheck(Level l, Object... objects)
+        {
             switch (l)
             {
-            case INFO:
-                wrapped.info(statement, objects);
-                break;
-            case WARN:
-                wrapped.warn(statement, objects);
-                break;
-            case ERROR:
-                wrapped.error(statement, objects);
-                break;
+                case INFO:
+                    wrapped.info(statement, objects);
+                    break;
+                case WARN:
+                    wrapped.warn(statement, objects);
+                    break;
+                case ERROR:
+                    wrapped.error(statement, objects);
+                    break;
                 default:
                     throw new AssertionError();
             }
@@ -166,6 +179,23 @@ public class NoSpamLogger
     }
 
     public static boolean log(Logger logger, Level level, String key, long minInterval, TimeUnit unit, long nowNanos, String message, Object... objects)
+    {
+        NoSpamLogger wrapped = getLogger(logger, minInterval, unit);
+        NoSpamLogStatement statement = wrapped.getStatement(key, message);
+        return statement.log(level, nowNanos, objects);
+    }
+
+    public static boolean log(Logger logger, Level level, long minInterval, TimeUnit unit, String message, Supplier<Object[]> objects)
+    {
+        return log(logger, level, message, minInterval, unit, CLOCK.nanoTime(), message, objects);
+    }
+
+    public static boolean log(Logger logger, Level level, String key, long minInterval, TimeUnit unit, String message, Supplier<Object[]> objects)
+    {
+        return log(logger, level, key, minInterval, unit, CLOCK.nanoTime(), message, objects);
+    }
+
+    public static boolean log(Logger logger, Level level, String key, long minInterval, TimeUnit unit, long nowNanos, String message, Supplier<Object[]> objects)
     {
         NoSpamLogger wrapped = getLogger(logger, minInterval, unit);
         NoSpamLogStatement statement = wrapped.getStatement(key, message);

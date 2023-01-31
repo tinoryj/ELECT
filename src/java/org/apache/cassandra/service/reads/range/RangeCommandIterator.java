@@ -19,6 +19,7 @@
 package org.apache.cassandra.service.reads.range;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -34,6 +35,7 @@ import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.filter.DataLimits;
 import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.rows.RowIterator;
+import org.apache.cassandra.exceptions.ReadAbortException;
 import org.apache.cassandra.exceptions.ReadFailureException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.UnavailableException;
@@ -51,7 +53,10 @@ import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.AbstractIterator;
 import org.apache.cassandra.utils.CloseableIterator;
 
-class RangeCommandIterator extends AbstractIterator<RowIterator> implements PartitionIterator
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
+
+@VisibleForTesting
+public class RangeCommandIterator extends AbstractIterator<RowIterator> implements PartitionIterator
 {
     private static final Logger logger = LoggerFactory.getLogger(RangeCommandIterator.class);
 
@@ -89,7 +94,7 @@ class RangeCommandIterator extends AbstractIterator<RowIterator> implements Part
         this.totalRangeCount = totalRangeCount;
         this.queryStartNanoTime = queryStartNanoTime;
 
-        startTime = System.nanoTime();
+        startTime = nanoTime();
         enforceStrictLiveness = command.metadata().enforceStrictLiveness();
     }
 
@@ -122,11 +127,18 @@ class RangeCommandIterator extends AbstractIterator<RowIterator> implements Part
         catch (UnavailableException e)
         {
             rangeMetrics.unavailables.mark();
+            StorageProxy.logRequestException(e, Collections.singleton(command));
             throw e;
         }
         catch (ReadTimeoutException e)
         {
             rangeMetrics.timeouts.mark();
+            StorageProxy.logRequestException(e, Collections.singleton(command));
+            throw e;
+        }
+        catch (ReadAbortException e)
+        {
+            rangeMetrics.markAbort(e);
             throw e;
         }
         catch (ReadFailureException e)
@@ -256,7 +268,7 @@ class RangeCommandIterator extends AbstractIterator<RowIterator> implements Part
         }
         finally
         {
-            long latency = System.nanoTime() - startTime;
+            long latency = nanoTime() - startTime;
             rangeMetrics.addNano(latency);
             Keyspace.openAndGetStore(command.metadata()).metric.coordinatorScanLatency.update(latency, TimeUnit.NANOSECONDS);
         }

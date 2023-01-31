@@ -17,13 +17,16 @@
  */
 package org.apache.cassandra.io.sstable.format.big;
 
-import java.io.*;
+
+import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.stream.Stream;
 
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.lifecycle.LifecycleNewTracker;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +51,10 @@ import org.apache.cassandra.io.util.*;
 import org.apache.cassandra.schema.CompressionParams;
 import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.utils.*;
+import org.apache.cassandra.utils.concurrent.SharedCloseableImpl;
 import org.apache.cassandra.utils.concurrent.Transactional;
+
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 
 public class BigTableWriter extends SSTableWriter
 {
@@ -65,13 +71,13 @@ public class BigTableWriter extends SSTableWriter
 
     private final SequentialWriterOption writerOption = SequentialWriterOption.newBuilder()
                                                         .trickleFsync(DatabaseDescriptor.getTrickleFsync())
-                                                        .trickleFsyncByteInterval(DatabaseDescriptor.getTrickleFsyncIntervalInKb() * 1024)
+                                                        .trickleFsyncByteInterval(DatabaseDescriptor.getTrickleFsyncIntervalInKiB() * 1024)
                                                         .build();
 
     public BigTableWriter(Descriptor descriptor,
                           long keyCount,
                           long repairedAt,
-                          UUID pendingRepair,
+                          TimeUUID pendingRepair,
                           boolean isTransient,
                           TableMetadataRef metadata,
                           MetadataCollector metadataCollector, 
@@ -231,6 +237,7 @@ public class BigTableWriter extends SSTableWriter
             long endPosition = dataFile.position();
             long rowSize = endPosition - startPosition;
             maybeLogLargePartitionWarning(key, rowSize);
+            maybeLogManyTombstonesWarning(key, metadataCollector.totalTombstones);
             metadataCollector.addPartitionSizeInBytes(rowSize);
             afterAppend(key, endPosition, entry, columnIndexWriter.buffer());
             return entry;
@@ -256,6 +263,15 @@ public class BigTableWriter extends SSTableWriter
         {
             String keyString = metadata().partitionKeyType.getString(key.getKey());
             logger.warn("Writing large partition {}/{}:{} ({}) to sstable {}", metadata.keyspace, metadata.name, keyString, FBUtilities.prettyPrintMemory(rowSize), getFilename());
+        }
+    }
+
+    private void maybeLogManyTombstonesWarning(DecoratedKey key, int tombstoneCount)
+    {
+        if (tombstoneCount > DatabaseDescriptor.getCompactionTombstoneWarningThreshold())
+        {
+            String keyString = metadata().partitionKeyType.getString(key.getKey());
+            logger.warn("Writing {} tombstones to {}/{}:{} in sstable {}", tombstoneCount, metadata.keyspace, metadata.name, keyString, getFilename());
         }
     }
 
@@ -324,32 +340,50 @@ public class BigTableWriter extends SSTableWriter
         if (boundary == null)
             return null;
 
-        StatsMetadata stats = statsMetadata();
-        assert boundary.indexLength > 0 && boundary.dataLength > 0;
-        // open the reader early
-        IndexSummary indexSummary = iwriter.summary.build(metadata().partitioner, boundary);
-        long indexFileLength = new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
-        int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / indexSummary.size());
-        FileHandle ifile = iwriter.builder.bufferSize(indexBufferSize).complete(boundary.indexLength);
-        if (compression)
-            dbuilder.withCompressionMetadata(((CompressedSequentialWriter) dataFile).open(boundary.dataLength));
-        int dataBufferSize = optimizationStrategy.bufferSize(stats.estimatedPartitionSize.percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
-        FileHandle dfile = dbuilder.bufferSize(dataBufferSize).complete(boundary.dataLength);
-        invalidateCacheAtBoundary(dfile);
-        SSTableReader sstable = SSTableReader.internalOpen(descriptor,
-                                                           components, metadata,
-                                                           ifile, dfile,
-                                                           indexSummary,
-                                                           iwriter.bf.sharedCopy(), 
-                                                           maxDataAge, 
-                                                           stats, 
-                                                           SSTableReader.OpenReason.EARLY, 
-                                                           header);
+        IndexSummary indexSummary = null;
+        FileHandle ifile = null;
+        FileHandle dfile = null;
+        SSTableReader sstable = null;
 
-        // now it's open, find the ACTUAL last readable key (i.e. for which the data file has also been flushed)
-        sstable.first = getMinimalKey(first);
-        sstable.last = getMinimalKey(boundary.lastKey);
-        return sstable;
+        try
+        {
+            StatsMetadata stats = statsMetadata();
+            assert boundary.indexLength > 0 && boundary.dataLength > 0;
+            // open the reader early
+            indexSummary = iwriter.summary.build(metadata().partitioner, boundary);
+            long indexFileLength = new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
+            int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / indexSummary.size());
+            ifile = iwriter.builder.bufferSize(indexBufferSize).complete(boundary.indexLength);
+            if (compression)
+                dbuilder.withCompressionMetadata(((CompressedSequentialWriter) dataFile).open(boundary.dataLength));
+            int dataBufferSize = optimizationStrategy.bufferSize(stats.estimatedPartitionSize.percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
+            dfile = dbuilder.bufferSize(dataBufferSize).complete(boundary.dataLength);
+            invalidateCacheAtBoundary(dfile);
+            sstable = SSTableReader.internalOpen(descriptor,
+                                                 components, metadata,
+                                                 ifile, dfile,
+                                                 indexSummary,
+                                                 iwriter.bf.sharedCopy(),
+                                                 maxDataAge,
+                                                 stats,
+                                                 SSTableReader.OpenReason.EARLY,
+                                                 header);
+
+            // now it's open, find the ACTUAL last readable key (i.e. for which the data file has also been flushed)
+            sstable.first = getMinimalKey(first);
+            sstable.last = getMinimalKey(boundary.lastKey);
+            return sstable;
+        }
+        catch (Throwable t)
+        {
+            JVMStabilityInspector.inspectThrowable(t);
+            // If we successfully created our sstable, we can rely on its InstanceTidier to clean things up for us
+            if (sstable != null)
+                sstable.selfRef().release();
+            else
+                Stream.of(indexSummary, ifile, dfile).filter(Objects::nonNull).forEach(SharedCloseableImpl::close);
+            throw t;
+        }
     }
 
     void invalidateCacheAtBoundary(FileHandle dfile)
@@ -374,33 +408,51 @@ public class BigTableWriter extends SSTableWriter
     private SSTableReader openFinal(SSTableReader.OpenReason openReason)
     {
         if (maxDataAge < 0)
-            maxDataAge = System.currentTimeMillis();
+            maxDataAge = currentTimeMillis();
 
-        StatsMetadata stats = statsMetadata();
-        // finalize in-memory state for the reader
-        IndexSummary indexSummary = iwriter.summary.build(metadata().partitioner);
-        long indexFileLength = new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
-        int dataBufferSize = optimizationStrategy.bufferSize(stats.estimatedPartitionSize.percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
-        int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / indexSummary.size());
-        FileHandle ifile = iwriter.builder.bufferSize(indexBufferSize).complete();
-        if (compression)
-            dbuilder.withCompressionMetadata(((CompressedSequentialWriter) dataFile).open(0));
-        FileHandle dfile = dbuilder.bufferSize(dataBufferSize).complete();
-        invalidateCacheAtBoundary(dfile);
-        SSTableReader sstable = SSTableReader.internalOpen(descriptor,
-                                                           components,
-                                                           metadata,
-                                                           ifile,
-                                                           dfile,
-                                                           indexSummary,
-                                                           iwriter.bf.sharedCopy(),
-                                                           maxDataAge,
-                                                           stats,
-                                                           openReason,
-                                                           header);
-        sstable.first = getMinimalKey(first);
-        sstable.last = getMinimalKey(last);
-        return sstable;
+        IndexSummary indexSummary = null;
+        FileHandle ifile = null;
+        FileHandle dfile = null;
+        SSTableReader sstable = null;
+
+        try
+        {
+            StatsMetadata stats = statsMetadata();
+            // finalize in-memory state for the reader
+            indexSummary = iwriter.summary.build(metadata().partitioner);
+            long indexFileLength = new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
+            int dataBufferSize = optimizationStrategy.bufferSize(stats.estimatedPartitionSize.percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
+            int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / indexSummary.size());
+            ifile = iwriter.builder.bufferSize(indexBufferSize).complete();
+            if (compression)
+                dbuilder.withCompressionMetadata(((CompressedSequentialWriter) dataFile).open(0));
+            dfile = dbuilder.bufferSize(dataBufferSize).complete();
+            invalidateCacheAtBoundary(dfile);
+            sstable = SSTableReader.internalOpen(descriptor,
+                                                 components,
+                                                 metadata,
+                                                 ifile,
+                                                 dfile,
+                                                 indexSummary,
+                                                 iwriter.bf.sharedCopy(),
+                                                 maxDataAge,
+                                                 stats,
+                                                 openReason,
+                                                 header);
+            sstable.first = getMinimalKey(first);
+            sstable.last = getMinimalKey(last);
+            return sstable;
+        }
+        catch (Throwable t)
+        {
+            JVMStabilityInspector.inspectThrowable(t);
+            // If we successfully created our sstable, we can rely on its InstanceTidier to clean things up for us
+            if (sstable != null)
+                sstable.selfRef().release();
+            else
+                Stream.of(indexSummary, ifile, dfile).filter(Objects::nonNull).forEach(SharedCloseableImpl::close);
+            throw t;
+        }
     }
 
     protected SSTableWriter.TransactionalProxy txnProxy()
@@ -458,7 +510,7 @@ public class BigTableWriter extends SSTableWriter
         }
         catch (IOException e)
         {
-            throw new FSWriteError(e, file.getPath());
+            throw new FSWriteError(e, file.path());
         }
     }
 
@@ -535,13 +587,12 @@ public class BigTableWriter extends SSTableWriter
             if (components.contains(Component.FILTER))
             {
                 String path = descriptor.filenameFor(Component.FILTER);
-                try (FileOutputStream fos = new FileOutputStream(path);
-                     DataOutputStreamPlus stream = new BufferedDataOutputStreamPlus(fos))
+                try (FileOutputStreamPlus stream = new FileOutputStreamPlus(path))
                 {
                     // bloom filter
                     BloomFilterSerializer.serialize((BloomFilter) bf, stream);
                     stream.flush();
-                    SyncUtil.sync(fos);
+                    stream.sync();
                 }
                 catch (IOException e)
                 {
@@ -587,7 +638,7 @@ public class BigTableWriter extends SSTableWriter
 
         protected Throwable doAbort(Throwable accumulate)
         {
-            return indexFile.abort(accumulate);
+            return summary.close(indexFile.abort(accumulate));
         }
 
         @Override

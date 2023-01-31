@@ -30,38 +30,47 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheLoader;
 import com.google.common.collect.Iterables;
-import com.google.common.primitives.Ints;
 import com.google.common.util.concurrent.Uninterruptibles;
-import org.apache.commons.lang3.StringUtils;
+
+import org.apache.cassandra.config.Config;
+import org.apache.cassandra.service.paxos.*;
+import org.apache.cassandra.service.paxos.Paxos;
+import org.apache.cassandra.utils.TimeUUID;
+import org.apache.cassandra.utils.concurrent.CountDownLatch;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.batchlog.Batch;
 import org.apache.cassandra.batchlog.BatchlogManager;
 import org.apache.cassandra.concurrent.Stage;
+import org.apache.cassandra.config.CassandraRelevantProperties;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.CounterMutation;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.IMutation;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.MessageParams;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.PartitionRangeReadCommand;
 import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.ReadExecutionController;
 import org.apache.cassandra.db.ReadResponse;
+import org.apache.cassandra.db.RejectException;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.TruncateRequest;
 import org.apache.cassandra.db.WriteType;
@@ -79,6 +88,7 @@ import org.apache.cassandra.exceptions.CasWriteUnknownResultException;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.exceptions.IsBootstrappingException;
 import org.apache.cassandra.exceptions.OverloadedException;
+import org.apache.cassandra.exceptions.ReadAbortException;
 import org.apache.cassandra.exceptions.ReadFailureException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.RequestFailureException;
@@ -101,6 +111,7 @@ import org.apache.cassandra.locator.ReplicaPlan;
 import org.apache.cassandra.locator.ReplicaPlans;
 import org.apache.cassandra.locator.Replicas;
 import org.apache.cassandra.metrics.CASClientRequestMetrics;
+import org.apache.cassandra.metrics.DenylistMetrics;
 import org.apache.cassandra.metrics.ReadRepairMetrics;
 import org.apache.cassandra.metrics.StorageMetrics;
 import org.apache.cassandra.net.ForwardingInfo;
@@ -109,27 +120,32 @@ import org.apache.cassandra.net.MessageFlag;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.RequestCallback;
 import org.apache.cassandra.net.Verb;
+import org.apache.cassandra.schema.PartitionDenylist;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.SchemaConstants;
+import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadata;
-import org.apache.cassandra.service.paxos.Commit;
-import org.apache.cassandra.service.paxos.PaxosState;
-import org.apache.cassandra.service.paxos.PrepareCallback;
-import org.apache.cassandra.service.paxos.ProposeCallback;
+import org.apache.cassandra.service.paxos.v1.PrepareCallback;
+import org.apache.cassandra.service.paxos.v1.ProposeCallback;
 import org.apache.cassandra.service.reads.AbstractReadExecutor;
 import org.apache.cassandra.service.reads.ReadCallback;
 import org.apache.cassandra.service.reads.range.RangeCommands;
 import org.apache.cassandra.service.reads.repair.ReadRepair;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.triggers.TriggerExecutor;
+import org.apache.cassandra.utils.Clock;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MBeanWrapper;
 import org.apache.cassandra.utils.MonotonicClock;
+import org.apache.cassandra.utils.NoSpamLogger;
 import org.apache.cassandra.utils.Pair;
-import org.apache.cassandra.utils.UUIDGen;
+import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
+import static com.google.common.collect.Iterables.concat;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static org.apache.cassandra.db.ConsistencyLevel.SERIAL;
+import static org.apache.cassandra.net.Message.out;
 import static org.apache.cassandra.metrics.ClientRequestsMetricsHolder.casReadMetrics;
 import static org.apache.cassandra.metrics.ClientRequestsMetricsHolder.casWriteMetrics;
 import static org.apache.cassandra.metrics.ClientRequestsMetricsHolder.readMetrics;
@@ -138,15 +154,18 @@ import static org.apache.cassandra.metrics.ClientRequestsMetricsHolder.viewWrite
 import static org.apache.cassandra.metrics.ClientRequestsMetricsHolder.writeMetrics;
 import static org.apache.cassandra.metrics.ClientRequestsMetricsHolder.writeMetricsForLevel;
 import static org.apache.cassandra.net.NoPayload.noPayload;
-import static org.apache.cassandra.net.Verb.BATCH_STORE_REQ;
-import static org.apache.cassandra.net.Verb.MUTATION_REQ;
-import static org.apache.cassandra.net.Verb.PAXOS_COMMIT_REQ;
-import static org.apache.cassandra.net.Verb.PAXOS_PREPARE_REQ;
-import static org.apache.cassandra.net.Verb.PAXOS_PROPOSE_REQ;
-import static org.apache.cassandra.net.Verb.TRUNCATE_REQ;
+import static org.apache.cassandra.net.Verb.*;
 import static org.apache.cassandra.service.BatchlogResponseHandler.BatchlogCleanup;
-import static org.apache.cassandra.service.paxos.PrepareVerbHandler.doPrepare;
-import static org.apache.cassandra.service.paxos.ProposeVerbHandler.doPropose;
+import static org.apache.cassandra.service.paxos.Ballot.Flag.GLOBAL;
+import static org.apache.cassandra.service.paxos.Ballot.Flag.LOCAL;
+import static org.apache.cassandra.service.paxos.BallotGenerator.Global.nextBallot;
+import static org.apache.cassandra.service.paxos.v1.PrepareVerbHandler.doPrepare;
+import static org.apache.cassandra.service.paxos.v1.ProposeVerbHandler.doPropose;
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
+import static org.apache.cassandra.utils.concurrent.CountDownLatch.newCountDownLatch;
+import static org.apache.commons.lang3.StringUtils.join;
 
 public class StorageProxy implements StorageProxyMBean
 {
@@ -154,6 +173,8 @@ public class StorageProxy implements StorageProxyMBean
     private static final Logger logger = LoggerFactory.getLogger(StorageProxy.class);
 
     public static final String UNREACHABLE = "UNREACHABLE";
+
+    private static final int FAILURE_LOGGING_INTERVAL_SECONDS = CassandraRelevantProperties.FAILURE_LOGGING_INTERVAL_SECONDS.getInt();
 
     private static final WritePerformer standardWritePerformer;
     private static final WritePerformer counterWritePerformer;
@@ -170,9 +191,11 @@ public class StorageProxy implements StorageProxyMBean
         }
     };
 
-    private static final String DISABLE_SERIAL_READ_LINEARIZABILITY_KEY = "cassandra.unsafe.disable-serial-reads-linearizability";
-    private static final boolean disableSerialReadLinearizability =
-        Boolean.parseBoolean(System.getProperty(DISABLE_SERIAL_READ_LINEARIZABILITY_KEY, "false"));
+    private static final DenylistMetrics denylistMetrics = new DenylistMetrics();
+
+    private static final PartitionDenylist partitionDenylist = new PartitionDenylist();
+
+    private volatile long logBlockingReadRepairAttemptsUntilNanos = Long.MIN_VALUE;
 
     private StorageProxy()
     {
@@ -199,7 +222,7 @@ public class StorageProxy implements StorageProxyMBean
         {
             EndpointsForToken selected = targets.contacts().withoutSelf();
             Replicas.temporaryAssertFull(selected); // TODO CASSANDRA-14548
-            counterWriteTask(mutation, targets.withContact(selected), responseHandler, localDataCenter).run();
+            counterWriteTask(mutation, targets.withContacts(selected), responseHandler, localDataCenter).run();
         };
 
         counterWriteOnCoordinatorPerformer = (mutation, targets, responseHandler, localDataCenter) ->
@@ -207,20 +230,20 @@ public class StorageProxy implements StorageProxyMBean
             EndpointsForToken selected = targets.contacts().withoutSelf();
             Replicas.temporaryAssertFull(selected); // TODO CASSANDRA-14548
             Stage.COUNTER_MUTATION.executor()
-                                  .execute(counterWriteTask(mutation, targets.withContact(selected), responseHandler, localDataCenter));
+                                  .execute(counterWriteTask(mutation, targets.withContacts(selected), responseHandler, localDataCenter));
         };
 
 
         ReadRepairMetrics.init();
 
-        if (disableSerialReadLinearizability)
+        if (!Paxos.isLinearizable())
         {
-            logger.warn("This node was started with -D{}. SERIAL (and LOCAL_SERIAL) reads coordinated by this node " +
-                        "will not offer linearizability (see CASSANDRA-12126 for details on what this mean) with " +
-                        "respect to other SERIAL operations. Please note that, with this flag, SERIAL reads will be " +
-                        "slower than QUORUM reads, yet offer no more guarantee. This flag should only be used in " +
+            logger.warn("This node was started with paxos variant {}. SERIAL (and LOCAL_SERIAL) reads coordinated by this node " +
+                        "will not offer linearizability (see CASSANDRA-12126 for details on what this means) with " +
+                        "respect to other SERIAL operations. Please note that with this variant, SERIAL reads will be " +
+                        "slower than QUORUM reads, yet offer no additional guarantees. This flag should only be used in " +
                         "the restricted case of upgrading from a pre-CASSANDRA-12126 version, and only if you " +
-                        "understand the tradeoff.", DISABLE_SERIAL_READ_LINEARIZABILITY_KEY);
+                        "understand the tradeoff.", Paxos.getPaxosVariant());
         }
     }
 
@@ -271,17 +294,40 @@ public class StorageProxy implements StorageProxyMBean
                                   CASRequest request,
                                   ConsistencyLevel consistencyForPaxos,
                                   ConsistencyLevel consistencyForCommit,
-                                  ClientState state,
+                                  ClientState clientState,
                                   int nowInSeconds,
                                   long queryStartNanoTime)
     throws UnavailableException, IsBootstrappingException, RequestFailureException, RequestTimeoutException, InvalidRequestException, CasWriteUnknownResultException
     {
-        final long startTimeForMetrics = System.nanoTime();
+        if (DatabaseDescriptor.getPartitionDenylistEnabled() && DatabaseDescriptor.getDenylistWritesEnabled() && !partitionDenylist.isKeyPermitted(keyspaceName, cfName, key.getKey()))
+        {
+            denylistMetrics.incrementWritesRejected();
+            throw new InvalidRequestException(String.format("Unable to CAS write to denylisted partition [0x%s] in %s/%s",
+                                                            key.toString(), keyspaceName, cfName));
+        }
+
+        return Paxos.useV2()
+                ? Paxos.cas(key, request, consistencyForPaxos, consistencyForCommit, clientState)
+                : legacyCas(keyspaceName, cfName, key, request, consistencyForPaxos, consistencyForCommit, clientState, nowInSeconds, queryStartNanoTime);
+    }
+
+    public static RowIterator legacyCas(String keyspaceName,
+                                        String cfName,
+                                        DecoratedKey key,
+                                        CASRequest request,
+                                        ConsistencyLevel consistencyForPaxos,
+                                        ConsistencyLevel consistencyForCommit,
+                                        ClientState clientState,
+                                        int nowInSeconds,
+                                        long queryStartNanoTime)
+    throws UnavailableException, IsBootstrappingException, RequestFailureException, RequestTimeoutException, InvalidRequestException
+    {
+        final long startTimeForMetrics = nanoTime();
         try
         {
             TableMetadata metadata = Schema.instance.validateTable(keyspaceName, cfName);
 
-            Supplier<Pair<PartitionUpdate, RowIterator>> updateProposer = () ->
+            Function<Ballot, Pair<PartitionUpdate, RowIterator>> updateProposer = ballot ->
             {
                 // read the current values and check they validate the conditions
                 Tracing.trace("Reading existing values for CAS precondition");
@@ -302,7 +348,7 @@ public class StorageProxy implements StorageProxyMBean
                 }
 
                 // Create the desired updates
-                PartitionUpdate updates = request.makeUpdates(current);
+                PartitionUpdate updates = request.makeUpdates(current, clientState, ballot);
 
                 long size = updates.dataSize();
                 casWriteMetrics.mutationSize.update(size);
@@ -325,7 +371,6 @@ public class StorageProxy implements StorageProxyMBean
                            consistencyForPaxos,
                            consistencyForCommit,
                            consistencyForCommit,
-                           state,
                            queryStartNanoTime,
                            casWriteMetrics,
                            updateProposer);
@@ -348,6 +393,12 @@ public class StorageProxy implements StorageProxyMBean
             writeMetricsForLevel(consistencyForPaxos).timeouts.mark();
             throw e;
         }
+        catch (ReadAbortException e)
+        {
+            casWriteMetrics.markAbort(e);
+            writeMetricsForLevel(consistencyForPaxos).markAbort(e);
+            throw e;
+        }
         catch (WriteFailureException | ReadFailureException e)
         {
             casWriteMetrics.failures.mark();
@@ -362,7 +413,7 @@ public class StorageProxy implements StorageProxyMBean
         }
         finally
         {
-            final long latency = System.nanoTime() - startTimeForMetrics;
+            final long latency = nanoTime() - startTimeForMetrics;
             casWriteMetrics.addNano(latency);
             writeMetricsForLevel(consistencyForPaxos).addNano(latency);
         }
@@ -398,7 +449,6 @@ public class StorageProxy implements StorageProxyMBean
      *     {@link ConsistencyLevel#LOCAL_SERIAL}).
      * @param consistencyForReplayCommits the consistency for the commit phase of "replayed" in-progress operations.
      * @param consistencyForCommit the consistency for the commit phase of _this_ operation update.
-     * @param state the client state.
      * @param queryStartNanoTime the nano time for the start of the query this is part of. This is the base time for
      *     timeouts.
      * @param casMetrics the metrics to update for this operation.
@@ -414,10 +464,9 @@ public class StorageProxy implements StorageProxyMBean
                                        ConsistencyLevel consistencyForPaxos,
                                        ConsistencyLevel consistencyForReplayCommits,
                                        ConsistencyLevel consistencyForCommit,
-                                       ClientState state,
                                        long queryStartNanoTime,
                                        CASClientRequestMetrics casMetrics,
-                                       Supplier<Pair<PartitionUpdate, RowIterator>> createUpdateProposal)
+                                       Function<Ballot, Pair<PartitionUpdate, RowIterator>> createUpdateProposal)
     throws UnavailableException, IsBootstrappingException, RequestFailureException, RequestTimeoutException, InvalidRequestException
     {
         int contentions = 0;
@@ -430,7 +479,7 @@ public class StorageProxy implements StorageProxyMBean
             consistencyForCommit.validateForCasCommit(latestRs);
 
             long timeoutNanos = DatabaseDescriptor.getCasContentionTimeout(NANOSECONDS);
-            while (System.nanoTime() - queryStartNanoTime < timeoutNanos)
+            while (nanoTime() - queryStartNanoTime < timeoutNanos)
             {
                 // for simplicity, we'll do a single liveness check at the start of each attempt
                 ReplicaPlan.ForPaxosWrite replicaPlan = ReplicaPlans.forPaxos(keyspace, key, consistencyForPaxos);
@@ -441,13 +490,12 @@ public class StorageProxy implements StorageProxyMBean
                                                                     replicaPlan,
                                                                     consistencyForPaxos,
                                                                     consistencyForReplayCommits,
-                                                                    casMetrics,
-                                                                    state);
+                                                                    casMetrics);
 
-                final UUID ballot = pair.ballot;
+                final Ballot ballot = pair.ballot;
                 contentions += pair.contentions;
 
-                Pair<PartitionUpdate, RowIterator> proposalPair = createUpdateProposal.get();
+                Pair<PartitionUpdate, RowIterator> proposalPair = createUpdateProposal.apply(ballot);
                 // See method javadoc: null here is code for "stop here and return null".
                 if (proposalPair == null)
                     return null;
@@ -472,6 +520,7 @@ public class StorageProxy implements StorageProxyMBean
 
                 Tracing.trace("Paxos proposal not accepted (pre-empted by a higher ballot)");
                 contentions++;
+
                 Uninterruptibles.sleepUninterruptibly(ThreadLocalRandom.current().nextInt(100), TimeUnit.MILLISECONDS);
                 // continue to retry
             }
@@ -509,25 +558,23 @@ public class StorageProxy implements StorageProxyMBean
                                                                 ReplicaPlan.ForPaxosWrite paxosPlan,
                                                                 ConsistencyLevel consistencyForPaxos,
                                                                 ConsistencyLevel consistencyForCommit,
-                                                                CASClientRequestMetrics casMetrics,
-                                                                ClientState state)
+                                                                CASClientRequestMetrics casMetrics)
     throws WriteTimeoutException, WriteFailureException
     {
         long timeoutNanos = DatabaseDescriptor.getCasContentionTimeout(NANOSECONDS);
 
         PrepareCallback summary = null;
         int contentions = 0;
-        while (System.nanoTime() - queryStartNanoTime < timeoutNanos)
+        while (nanoTime() - queryStartNanoTime < timeoutNanos)
         {
             // We want a timestamp that is guaranteed to be unique for that node (so that the ballot is globally unique), but if we've got a prepare rejected
             // already we also want to make sure we pick a timestamp that has a chance to be promised, i.e. one that is greater that the most recently known
             // in progress (#5667). Lastly, we don't want to use a timestamp that is older than the last one assigned by ClientState or operations may appear
             // out-of-order (#7801).
-            long minTimestampMicrosToUse = summary == null ? Long.MIN_VALUE : 1 + UUIDGen.microsTimestamp(summary.mostRecentInProgressCommit.ballot);
-            long ballotMicros = state.getTimestampForPaxos(minTimestampMicrosToUse);
+            long minTimestampMicrosToUse = summary == null ? Long.MIN_VALUE : 1 + summary.mostRecentInProgressCommit.ballot.unixMicros();
             // Note that ballotMicros is not guaranteed to be unique if two proposal are being handled concurrently by the same coordinator. But we still
             // need ballots to be unique for each proposal so we have to use getRandomTimeUUIDFromMicros.
-            UUID ballot = UUIDGen.getRandomTimeUUIDFromMicros(ballotMicros);
+            Ballot ballot = nextBallot(minTimestampMicrosToUse, consistencyForPaxos == SERIAL ? GLOBAL : LOCAL);
 
             // prepare
             try
@@ -588,8 +635,7 @@ public class StorageProxy implements StorageProxyMBean
                 // https://issues.apache.org/jira/browse/CASSANDRA-5062?focusedCommentId=13619810&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-13619810)
                 // Since we waited for quorum nodes, if some of them haven't seen the last commit (which may just be a timing issue, but may also
                 // mean we lost messages), we pro-actively "repair" those nodes, and retry.
-                int nowInSec = Ints.checkedCast(TimeUnit.MICROSECONDS.toSeconds(ballotMicros));
-                Iterable<InetAddressAndPort> missingMRC = summary.replicasMissingMostRecentCommit(metadata, nowInSec);
+                Iterable<InetAddressAndPort> missingMRC = summary.replicasMissingMostRecentCommit();
                 if (Iterables.size(missingMRC) > 0)
                 {
                     Tracing.trace("Repairing replicas that missed the most recent commit");
@@ -628,10 +674,14 @@ public class StorageProxy implements StorageProxyMBean
     {
         PrepareCallback callback = new PrepareCallback(toPrepare.update.partitionKey(), toPrepare.update.metadata(), replicaPlan.requiredParticipants(), replicaPlan.consistencyLevel(), queryStartNanoTime);
         Message<Commit> message = Message.out(PAXOS_PREPARE_REQ, toPrepare);
+
+        boolean hasLocalRequest = false;
+
         for (Replica replica: replicaPlan.contacts())
         {
             if (replica.isSelf())
             {
+                hasLocalRequest = true;
                 PAXOS_PREPARE_REQ.stage.execute(() -> {
                     try
                     {
@@ -648,6 +698,12 @@ public class StorageProxy implements StorageProxyMBean
                 MessagingService.instance().sendWithCallback(message, replica.endpoint(), callback);
             }
         }
+
+        if (hasLocalRequest)
+            writeMetrics.localRequests.mark();
+        else
+            writeMetrics.remoteRequests.mark();
+
         callback.await();
         return callback;
     }
@@ -703,11 +759,11 @@ public class StorageProxy implements StorageProxyMBean
 
         AbstractWriteResponseHandler<Commit> responseHandler = null;
         // NOTE: this ReplicaPlan is a lie, this usage of ReplicaPlan could do with being clarified - the selected() collection is essentially (I think) never used
-        ReplicaPlan.ForTokenWrite replicaPlan = ReplicaPlans.forWrite(keyspace, consistencyLevel, tk, ReplicaPlans.writeAll);
+        ReplicaPlan.ForWrite replicaPlan = ReplicaPlans.forWrite(keyspace, consistencyLevel, tk, ReplicaPlans.writeAll);
         if (shouldBlock)
         {
             AbstractReplicationStrategy rs = replicaPlan.replicationStrategy();
-            responseHandler = rs.getWriteResponseHandler(replicaPlan, null, WriteType.SIMPLE, queryStartNanoTime);
+            responseHandler = rs.getWriteResponseHandler(replicaPlan, null, WriteType.SIMPLE, proposal::makeMutation, queryStartNanoTime);
         }
 
         Message<Commit> message = Message.outWithFlag(PAXOS_COMMIT_REQ, proposal, MessageFlag.CALL_BACK_ON_FAILURE);
@@ -760,7 +816,7 @@ public class StorageProxy implements StorageProxyMBean
             {
                 try
                 {
-                    PaxosState.commit(message.payload);
+                    PaxosState.commitDirect(message.payload);
                     if (responseHandler != null)
                         responseHandler.onResponse(null);
                 }
@@ -788,7 +844,7 @@ public class StorageProxy implements StorageProxyMBean
      *
      * @param mutations the mutations to be applied across the replicas
      * @param consistencyLevel the consistency level for the operation
-     * @param queryStartNanoTime the value of System.nanoTime() when the query started to be processed
+     * @param queryStartNanoTime the value of nanoTime() when the query started to be processed
      */
     public static void mutate(List<? extends IMutation> mutations, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
     throws UnavailableException, OverloadedException, WriteTimeoutException, WriteFailureException
@@ -796,7 +852,7 @@ public class StorageProxy implements StorageProxyMBean
         Tracing.trace("Determining replicas for mutation");
         final String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getLocalDatacenter();
 
-        long startTime = System.nanoTime();
+        long startTime = nanoTime();
 
         List<AbstractWriteResponseHandler<IMutation>> responseHandlers = new ArrayList<>(mutations.size());
         WriteType plainWriteType = mutations.size() <= 1 ? WriteType.SIMPLE : WriteType.UNLOGGED_BATCH;
@@ -864,7 +920,7 @@ public class StorageProxy implements StorageProxyMBean
         }
         finally
         {
-            long latency = System.nanoTime() - startTime;
+            long latency = nanoTime() - startTime;
             writeMetrics.addNano(latency);
             writeMetricsForLevel(consistencyLevel).addNano(latency);
             updateCoordinatorWriteLatencyTableMetric(mutations, latency);
@@ -920,7 +976,7 @@ public class StorageProxy implements StorageProxyMBean
      * @param mutations the mutations to be applied across the replicas
      * @param writeCommitLog if commitlog should be written
      * @param baseComplete time from epoch in ms that the local base mutation was(or will be) completed
-     * @param queryStartNanoTime the value of System.nanoTime() when the query started to be processed
+     * @param queryStartNanoTime the value of nanoTime() when the query started to be processed
      */
     public static void mutateMV(ByteBuffer dataKey, Collection<Mutation> mutations, boolean writeCommitLog, AtomicLong baseComplete, long queryStartNanoTime)
     throws UnavailableException, OverloadedException, WriteTimeoutException
@@ -928,13 +984,13 @@ public class StorageProxy implements StorageProxyMBean
         Tracing.trace("Determining replicas for mutation");
         final String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getLocalDatacenter();
 
-        long startTime = System.nanoTime();
+        long startTime = nanoTime();
 
 
         try
         {
             // if we haven't joined the ring, write everything to batchlog because paired replicas may be stale
-            final UUID batchUUID = UUIDGen.getTimeUUID();
+            final TimeUUID batchUUID = nextTimeUUID();
 
             if (StorageService.instance.isStarting() || StorageService.instance.isJoining() || StorageService.instance.isMoving())
             {
@@ -951,7 +1007,7 @@ public class StorageProxy implements StorageProxyMBean
                 ConsistencyLevel consistencyLevel = ConsistencyLevel.ONE;
 
                 //Since the base -> view replication is 1:1 we only need to store the BL locally
-                ReplicaPlan.ForTokenWrite replicaPlan = ReplicaPlans.forLocalBatchlogWrite();
+                ReplicaPlan.ForWrite replicaPlan = ReplicaPlans.forLocalBatchlogWrite();
                 BatchlogCleanup cleanup = new BatchlogCleanup(mutations.size(),
                                                               () -> asyncRemoveFromBatchlog(replicaPlan, batchUUID));
 
@@ -1023,7 +1079,7 @@ public class StorageProxy implements StorageProxyMBean
         }
         finally
         {
-            viewWriteMetrics.addNano(System.nanoTime() - startTime);
+            viewWriteMetrics.addNano(nanoTime() - startTime);
         }
     }
 
@@ -1034,6 +1090,25 @@ public class StorageProxy implements StorageProxyMBean
                                           long queryStartNanoTime)
     throws WriteTimeoutException, WriteFailureException, UnavailableException, OverloadedException, InvalidRequestException
     {
+        if (DatabaseDescriptor.getPartitionDenylistEnabled() && DatabaseDescriptor.getDenylistWritesEnabled())
+        {
+            for (final IMutation mutation : mutations)
+            {
+                for (final TableId tid : mutation.getTableIds())
+                {
+                    if (!partitionDenylist.isKeyPermitted(tid, mutation.key().getKey()))
+                    {
+                        denylistMetrics.incrementWritesRejected();
+                        // While Schema.instance.getTableMetadata() can return a null value, in this case the isKeyPermitted
+                        // call above ensures that we cannot have a null associated tid at this point.
+                        final TableMetadata tmd = Schema.instance.getTableMetadata(tid);
+                        throw new InvalidRequestException(String.format("Unable to write to denylisted partition [0x%s] in %s/%s",
+                                                                        mutation.key().toString(), tmd.keyspace, tmd.name));
+                    }
+                }
+            }
+        }
+
         Collection<Mutation> augmented = TriggerExecutor.instance.execute(mutations);
 
         boolean updatesView = Keyspace.open(mutations.iterator().next().getKeyspaceName())
@@ -1064,7 +1139,7 @@ public class StorageProxy implements StorageProxyMBean
      * @param mutations the Mutations to be applied across the replicas
      * @param consistency_level the consistency level for the operation
      * @param requireQuorumForRemove at least a quorum of nodes will see update before deleting batchlog
-     * @param queryStartNanoTime the value of System.nanoTime() when the query started to be processed
+     * @param queryStartNanoTime the value of nanoTime() when the query started to be processed
      */
     public static void mutateAtomically(Collection<Mutation> mutations,
                                         ConsistencyLevel consistency_level,
@@ -1073,7 +1148,7 @@ public class StorageProxy implements StorageProxyMBean
     throws UnavailableException, OverloadedException, WriteTimeoutException
     {
         Tracing.trace("Determining replicas for atomic batch");
-        long startTime = System.nanoTime();
+        long startTime = nanoTime();
 
         List<WriteResponseHandlerWrapper> wrappers = new ArrayList<>(mutations.size());
 
@@ -1096,9 +1171,9 @@ public class StorageProxy implements StorageProxyMBean
                     batchConsistencyLevel = consistency_level;
             }
 
-            ReplicaPlan.ForTokenWrite replicaPlan = ReplicaPlans.forBatchlogWrite(batchConsistencyLevel == ConsistencyLevel.ANY);
+            ReplicaPlan.ForWrite replicaPlan = ReplicaPlans.forBatchlogWrite(batchConsistencyLevel == ConsistencyLevel.ANY);
 
-            final UUID batchUUID = UUIDGen.getTimeUUID();
+            final TimeUUID batchUUID = nextTimeUUID();
             BatchlogCleanup cleanup = new BatchlogCleanup(mutations.size(),
                                                           () -> asyncRemoveFromBatchlog(replicaPlan, batchUUID));
 
@@ -1144,7 +1219,7 @@ public class StorageProxy implements StorageProxyMBean
         }
         finally
         {
-            long latency = System.nanoTime() - startTime;
+            long latency = nanoTime() - startTime;
             writeMetrics.addNano(latency);
             writeMetricsForLevel(consistency_level).addNano(latency);
             updateCoordinatorWriteLatencyTableMetric(mutations, latency);
@@ -1173,11 +1248,12 @@ public class StorageProxy implements StorageProxyMBean
         }
     }
 
-    private static void syncWriteToBatchlog(Collection<Mutation> mutations, ReplicaPlan.ForTokenWrite replicaPlan, UUID uuid, long queryStartNanoTime)
+    private static void syncWriteToBatchlog(Collection<Mutation> mutations, ReplicaPlan.ForWrite replicaPlan, TimeUUID uuid, long queryStartNanoTime)
     throws WriteTimeoutException, WriteFailureException
     {
         WriteResponseHandler<?> handler = new WriteResponseHandler(replicaPlan,
                                                                    WriteType.BATCH_LOG,
+                                                                   null,
                                                                    queryStartNanoTime);
 
         Batch batch = Batch.createLocal(uuid, FBUtilities.timestampMicros(), mutations);
@@ -1194,9 +1270,9 @@ public class StorageProxy implements StorageProxyMBean
         handler.get();
     }
 
-    private static void asyncRemoveFromBatchlog(ReplicaPlan.ForTokenWrite replicaPlan, UUID uuid)
+    private static void asyncRemoveFromBatchlog(ReplicaPlan.ForWrite replicaPlan, TimeUUID uuid)
     {
-        Message<UUID> message = Message.out(Verb.BATCH_REMOVE_REQ, uuid);
+        Message<TimeUUID> message = Message.out(Verb.BATCH_REMOVE_REQ, uuid);
         for (Replica target : replicaPlan.contacts())
         {
             if (logger.isTraceEnabled())
@@ -1214,7 +1290,7 @@ public class StorageProxy implements StorageProxyMBean
         for (WriteResponseHandlerWrapper wrapper : wrappers)
         {
             Replicas.temporaryAssertFull(wrapper.handler.replicaPlan.liveAndDown());  // TODO: CASSANDRA-14549
-            ReplicaPlan.ForTokenWrite replicas = wrapper.handler.replicaPlan.withContact(wrapper.handler.replicaPlan.liveAndDown());
+            ReplicaPlan.ForWrite replicas = wrapper.handler.replicaPlan.withContacts(wrapper.handler.replicaPlan.liveAndDown());
 
             try
             {
@@ -1236,7 +1312,7 @@ public class StorageProxy implements StorageProxyMBean
         {
             EndpointsForToken sendTo = wrapper.handler.replicaPlan.liveAndDown();
             Replicas.temporaryAssertFull(sendTo); // TODO: CASSANDRA-14549
-            sendToHintedReplicas(wrapper.mutation, wrapper.handler.replicaPlan.withContact(sendTo), wrapper.handler, localDataCenter, stage);
+            sendToHintedReplicas(wrapper.mutation, wrapper.handler.replicaPlan.withContacts(sendTo), wrapper.handler, localDataCenter, stage);
         }
 
         for (WriteResponseHandlerWrapper wrapper : wrappers)
@@ -1255,7 +1331,7 @@ public class StorageProxy implements StorageProxyMBean
      * given the list of write endpoints (either standardWritePerformer for
      * standard writes or counterWritePerformer for counter writes).
      * @param callback an optional callback to be run if and when the write is
-     * @param queryStartNanoTime the value of System.nanoTime() when the query started to be processed
+     * @param queryStartNanoTime the value of nanoTime() when the query started to be processed
      */
     public static AbstractWriteResponseHandler<IMutation> performWrite(IMutation mutation,
                                                                        ConsistencyLevel consistencyLevel,
@@ -1269,9 +1345,15 @@ public class StorageProxy implements StorageProxyMBean
         Keyspace keyspace = Keyspace.open(keyspaceName);
         Token tk = mutation.key().getToken();
 
-        ReplicaPlan.ForTokenWrite replicaPlan = ReplicaPlans.forWrite(keyspace, consistencyLevel, tk, ReplicaPlans.writeNormal);
+        ReplicaPlan.ForWrite replicaPlan = ReplicaPlans.forWrite(keyspace, consistencyLevel, tk, ReplicaPlans.writeNormal);
+
+        if (replicaPlan.lookup(FBUtilities.getBroadcastAddressAndPort()) != null)
+            writeMetrics.localRequests.mark();
+        else
+            writeMetrics.remoteRequests.mark();
+
         AbstractReplicationStrategy rs = replicaPlan.replicationStrategy();
-        AbstractWriteResponseHandler<IMutation> responseHandler = rs.getWriteResponseHandler(replicaPlan, callback, writeType, queryStartNanoTime);
+        AbstractWriteResponseHandler<IMutation> responseHandler = rs.getWriteResponseHandler(replicaPlan, callback, writeType, mutation.hintOnFailure(), queryStartNanoTime);
 
         performer.apply(mutation, replicaPlan, responseHandler, localDataCenter);
         return responseHandler;
@@ -1288,9 +1370,15 @@ public class StorageProxy implements StorageProxyMBean
         Keyspace keyspace = Keyspace.open(mutation.getKeyspaceName());
         Token tk = mutation.key().getToken();
 
-        ReplicaPlan.ForTokenWrite replicaPlan = ReplicaPlans.forWrite(keyspace, consistencyLevel, tk, ReplicaPlans.writeNormal);
+        ReplicaPlan.ForWrite replicaPlan = ReplicaPlans.forWrite(keyspace, consistencyLevel, tk, ReplicaPlans.writeNormal);
+
+        if (replicaPlan.lookup(FBUtilities.getBroadcastAddressAndPort()) != null)
+            writeMetrics.localRequests.mark();
+        else
+            writeMetrics.remoteRequests.mark();
+
         AbstractReplicationStrategy rs = replicaPlan.replicationStrategy();
-        AbstractWriteResponseHandler<IMutation> writeHandler = rs.getWriteResponseHandler(replicaPlan,null, writeType, queryStartNanoTime);
+        AbstractWriteResponseHandler<IMutation> writeHandler = rs.getWriteResponseHandler(replicaPlan, null, writeType, mutation, queryStartNanoTime);
         BatchlogResponseHandler<IMutation> batchHandler = new BatchlogResponseHandler<>(writeHandler, batchConsistencyLevel.blockFor(rs), cleanup, queryStartNanoTime);
         return new WriteResponseHandlerWrapper(batchHandler, mutation);
     }
@@ -1309,12 +1397,12 @@ public class StorageProxy implements StorageProxyMBean
                                                                             long queryStartNanoTime)
     {
         Keyspace keyspace = Keyspace.open(mutation.getKeyspaceName());
-        ReplicaPlan.ForTokenWrite replicaPlan = ReplicaPlans.forWrite(keyspace, consistencyLevel, liveAndDown, ReplicaPlans.writeAll);
+        ReplicaPlan.ForWrite replicaPlan = ReplicaPlans.forWrite(keyspace, consistencyLevel, liveAndDown, ReplicaPlans.writeAll);
         AbstractReplicationStrategy replicationStrategy = replicaPlan.replicationStrategy();
         AbstractWriteResponseHandler<IMutation> writeHandler = replicationStrategy.getWriteResponseHandler(replicaPlan, () -> {
-            long delay = Math.max(0, System.currentTimeMillis() - baseComplete.get());
+            long delay = Math.max(0, currentTimeMillis() - baseComplete.get());
             viewWriteMetrics.viewWriteLatency.update(delay, MILLISECONDS);
-        }, writeType, queryStartNanoTime);
+        }, writeType, mutation, queryStartNanoTime);
         BatchlogResponseHandler<IMutation> batchHandler = new ViewWriteMetricsWrapped(writeHandler, batchConsistencyLevel.blockFor(replicationStrategy), cleanup, queryStartNanoTime);
         return new WriteResponseHandlerWrapper(batchHandler, mutation);
     }
@@ -1350,7 +1438,7 @@ public class StorageProxy implements StorageProxyMBean
      * @throws OverloadedException if the hints cannot be written/enqueued
      */
     public static void sendToHintedReplicas(final Mutation mutation,
-                                            ReplicaPlan.ForTokenWrite plan,
+                                            ReplicaPlan.ForWrite plan,
                                             AbstractWriteResponseHandler<IMutation> responseHandler,
                                             String localDataCenter,
                                             Stage stage)
@@ -1585,9 +1673,14 @@ public class StorageProxy implements StorageProxyMBean
             // we build this ONLY to perform the sufficiency check that happens on construction
             ReplicaPlans.forWrite(keyspace, cm.consistency(), tk, ReplicaPlans.writeAll);
 
+            // This host isn't a replica, so mark the request as being remote. If this host is a 
+            // replica, applyCounterMutationOnCoordinator() in the branch above will call performWrite(), and 
+            // there we'll mark a local request against the metrics.
+            writeMetrics.remoteRequests.mark();
+
             // Forward the actual update to the chosen leader replica
             AbstractWriteResponseHandler<IMutation> responseHandler = new WriteResponseHandler<>(ReplicaPlans.forForwardingCounterWrite(keyspace, tk, replica),
-                                                                                                 WriteType.COUNTER, queryStartNanoTime);
+                                                                                                 WriteType.COUNTER, null, queryStartNanoTime);
 
             Tracing.trace("Enqueuing counter update to {}", replica);
             Message message = Message.outWithFlag(Verb.COUNTER_MUTATION_REQ, cm, MessageFlag.CALL_BACK_ON_FAILURE);
@@ -1660,7 +1753,7 @@ public class StorageProxy implements StorageProxyMBean
     }
 
     private static Runnable counterWriteTask(final IMutation mutation,
-                                             final ReplicaPlan.ForTokenWrite replicaPlan,
+                                             final ReplicaPlan.ForWrite replicaPlan,
                                              final AbstractWriteResponseHandler<IMutation> responseHandler,
                                              final String localDataCenter)
     {
@@ -1689,50 +1782,58 @@ public class StorageProxy implements StorageProxyMBean
     public static RowIterator readOne(SinglePartitionReadCommand command, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
     throws UnavailableException, IsBootstrappingException, ReadFailureException, ReadTimeoutException, InvalidRequestException
     {
-        return readOne(command, consistencyLevel, null, queryStartNanoTime);
-    }
-
-    public static RowIterator readOne(SinglePartitionReadCommand command, ConsistencyLevel consistencyLevel, ClientState state, long queryStartNanoTime)
-    throws UnavailableException, IsBootstrappingException, ReadFailureException, ReadTimeoutException, InvalidRequestException
-    {
-        return PartitionIterators.getOnlyElement(read(SinglePartitionReadCommand.Group.one(command), consistencyLevel, state, queryStartNanoTime), command);
-    }
-
-    public static PartitionIterator read(SinglePartitionReadCommand.Group group, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
-    throws UnavailableException, IsBootstrappingException, ReadFailureException, ReadTimeoutException, InvalidRequestException
-    {
-        // When using serial CL, the ClientState should be provided
-        assert !consistencyLevel.isSerialConsistency();
-        return read(group, consistencyLevel, null, queryStartNanoTime);
+        return PartitionIterators.getOnlyElement(read(SinglePartitionReadCommand.Group.one(command), consistencyLevel, queryStartNanoTime), command);
     }
 
     /**
      * Performs the actual reading of a row out of the StorageService, fetching
      * a specific set of column names from a given column family.
      */
-    public static PartitionIterator read(SinglePartitionReadCommand.Group group, ConsistencyLevel consistencyLevel, ClientState state, long queryStartNanoTime)
+    public static PartitionIterator read(SinglePartitionReadCommand.Group group, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
     throws UnavailableException, IsBootstrappingException, ReadFailureException, ReadTimeoutException, InvalidRequestException
     {
         if (StorageService.instance.isBootstrapMode() && !systemKeyspaceQuery(group.queries))
         {
             readMetrics.unavailables.mark();
             readMetricsForLevel(consistencyLevel).unavailables.mark();
-            throw new IsBootstrappingException();
+            IsBootstrappingException exception = new IsBootstrappingException();
+            logRequestException(exception, group.queries);
+            throw exception;
+        }
+
+        if (DatabaseDescriptor.getPartitionDenylistEnabled() && DatabaseDescriptor.getDenylistReadsEnabled())
+        {
+            for (SinglePartitionReadCommand command : group.queries)
+            {
+                if (!partitionDenylist.isKeyPermitted(command.metadata().id, command.partitionKey().getKey()))
+                {
+                    denylistMetrics.incrementReadsRejected();
+                    throw new InvalidRequestException(String.format("Unable to read denylisted partition [0x%s] in %s/%s",
+                                                                    command.partitionKey().toString(), command.metadata().keyspace, command.metadata().name));
+                }
+            }
         }
 
         return consistencyLevel.isSerialConsistency()
-             ? readWithPaxos(group, consistencyLevel, state, queryStartNanoTime)
+             ? readWithPaxos(group, consistencyLevel, queryStartNanoTime)
              : readRegular(group, consistencyLevel, queryStartNanoTime);
     }
 
-    private static PartitionIterator readWithPaxos(SinglePartitionReadCommand.Group group, ConsistencyLevel consistencyLevel, ClientState state, long queryStartNanoTime)
+    private static PartitionIterator readWithPaxos(SinglePartitionReadCommand.Group group, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
     throws InvalidRequestException, UnavailableException, ReadFailureException, ReadTimeoutException
     {
-        assert state != null;
+        return Paxos.useV2()
+                ? Paxos.read(group, consistencyLevel)
+                : legacyReadWithPaxos(group, consistencyLevel, queryStartNanoTime);
+    }
+
+    private static PartitionIterator legacyReadWithPaxos(SinglePartitionReadCommand.Group group, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
+    throws InvalidRequestException, UnavailableException, ReadFailureException, ReadTimeoutException
+    {
         if (group.queries.size() > 1)
             throw new InvalidRequestException("SERIAL/LOCAL_SERIAL consistency may only be requested for one partition at a time");
 
-        long start = System.nanoTime();
+        long start = nanoTime();
         SinglePartitionReadCommand command = group.queries.get(0);
         TableMetadata metadata = command.metadata();
         DecoratedKey key = command.partitionKey();
@@ -1750,10 +1851,10 @@ public class StorageProxy implements StorageProxyMBean
             {
                 // Commit an empty update to make sure all in-progress updates that should be finished first is, _and_
                 // that no other in-progress can get resurrected.
-                Supplier<Pair<PartitionUpdate, RowIterator>> updateProposer =
-                    disableSerialReadLinearizability
-                    ? () -> null
-                    : () -> Pair.create(PartitionUpdate.emptyUpdate(metadata, key), null);
+                Function<Ballot, Pair<PartitionUpdate, RowIterator>> updateProposer =
+                    !Paxos.isLinearizable()
+                    ? ballot -> null
+                    : ballot -> Pair.create(PartitionUpdate.emptyUpdate(metadata, key), null);
                 // When replaying, we commit at quorum/local quorum, as we want to be sure the following read (done at
                 // quorum/local_quorum) sees any replayed updates. Our own update is however empty, and those don't even
                 // get committed due to an optimiation described in doPaxos/beingRepairAndPaxos, so the commit
@@ -1763,7 +1864,6 @@ public class StorageProxy implements StorageProxyMBean
                         consistencyLevel,
                         consistencyForReplayCommitsOrFetch,
                         ConsistencyLevel.ANY,
-                        state,
                         start,
                         casReadMetrics,
                         updateProposer);
@@ -1784,6 +1884,7 @@ public class StorageProxy implements StorageProxyMBean
             readMetrics.unavailables.mark();
             casReadMetrics.unavailables.mark();
             readMetricsForLevel(consistencyLevel).unavailables.mark();
+            logRequestException(e, group.queries);
             throw e;
         }
         catch (ReadTimeoutException e)
@@ -1791,6 +1892,14 @@ public class StorageProxy implements StorageProxyMBean
             readMetrics.timeouts.mark();
             casReadMetrics.timeouts.mark();
             readMetricsForLevel(consistencyLevel).timeouts.mark();
+            logRequestException(e, group.queries);
+            throw e;
+        }
+        catch (ReadAbortException e)
+        {
+            readMetrics.markAbort(e);
+            casReadMetrics.markAbort(e);
+            readMetricsForLevel(consistencyLevel).markAbort(e);
             throw e;
         }
         catch (ReadFailureException e)
@@ -1802,7 +1911,7 @@ public class StorageProxy implements StorageProxyMBean
         }
         finally
         {
-            long latency = System.nanoTime() - start;
+            long latency = nanoTime() - start;
             readMetrics.addNano(latency);
             casReadMetrics.addNano(latency);
             readMetricsForLevel(consistencyLevel).addNano(latency);
@@ -1816,7 +1925,7 @@ public class StorageProxy implements StorageProxyMBean
     private static PartitionIterator readRegular(SinglePartitionReadCommand.Group group, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
     throws UnavailableException, ReadFailureException, ReadTimeoutException
     {
-        long start = System.nanoTime();
+        long start = nanoTime();
         try
         {
             PartitionIterator result = fetchRows(group.queries, consistencyLevel, queryStartNanoTime);
@@ -1833,12 +1942,19 @@ public class StorageProxy implements StorageProxyMBean
         {
             readMetrics.unavailables.mark();
             readMetricsForLevel(consistencyLevel).unavailables.mark();
+            logRequestException(e, group.queries);
             throw e;
         }
         catch (ReadTimeoutException e)
         {
             readMetrics.timeouts.mark();
             readMetricsForLevel(consistencyLevel).timeouts.mark();
+            logRequestException(e, group.queries);
+            throw e;
+        }
+        catch (ReadAbortException e)
+        {
+            recordReadRegularAbort(consistencyLevel, e);
             throw e;
         }
         catch (ReadFailureException e)
@@ -1849,13 +1965,19 @@ public class StorageProxy implements StorageProxyMBean
         }
         finally
         {
-            long latency = System.nanoTime() - start;
+            long latency = nanoTime() - start;
             readMetrics.addNano(latency);
             readMetricsForLevel(consistencyLevel).addNano(latency);
             // TODO avoid giving every command the same latency number.  Can fix this in CASSADRA-5329
             for (ReadCommand command : group.queries)
                 Keyspace.openAndGetStore(command.metadata()).metric.coordinatorReadLatency.update(latency, TimeUnit.NANOSECONDS);
         }
+    }
+
+    public static void recordReadRegularAbort(ConsistencyLevel consistencyLevel, Throwable cause)
+    {
+        readMetrics.markAbort(cause);
+        readMetricsForLevel(consistencyLevel).markAbort(cause);
     }
 
     public static PartitionIterator concatAndBlockOnRepair(List<PartitionIterator> iterators, List<ReadRepair<?, ?>> repairs)
@@ -1909,6 +2031,11 @@ public class StorageProxy implements StorageProxyMBean
         for (int i=0; i<cmdCount; i++)
         {
             reads[i] = AbstractReadExecutor.getReadExecutor(commands.get(i), consistencyLevel, queryStartNanoTime);
+
+            if (reads[i].hasLocalRead())
+                readMetrics.localRequests.mark();
+            else
+                readMetrics.remoteRequests.mark();
         }
 
         // sends a data request to the closest replica, and a digest request to the others. If we have a speculating
@@ -1927,9 +2054,10 @@ public class StorageProxy implements StorageProxyMBean
 
         // wait for enough responses to meet the consistency level. If there's a digest mismatch, begin the read
         // repair process by sending full data reads to all replicas we received responses from.
+        boolean logBlockingRepairAttempts = instance.isLoggingReadRepairs();
         for (int i=0; i<cmdCount; i++)
         {
-            reads[i].awaitResponses();
+            reads[i].awaitResponses(logBlockingRepairAttempts);
         }
 
         // read repair - if it looks like we may not receive enough full data responses to meet CL, send
@@ -1982,6 +2110,9 @@ public class StorageProxy implements StorageProxyMBean
         {
             try
             {
+                MessageParams.reset();
+
+                boolean readRejected = false;
                 command.setMonitoringTime(approxCreationTimeNanos, false, verb.expiresAfterNanos(), DatabaseDescriptor.getSlowQueryTimeout(NANOSECONDS));
 
                 ReadResponse response;
@@ -1990,6 +2121,14 @@ public class StorageProxy implements StorageProxyMBean
                 {
                     response = command.createResponse(iterator, controller.getRepairedDataInfo());
                 }
+                catch (RejectException e)
+                {
+                    if (!command.isTrackingWarnings())
+                        throw e;
+                    
+                    response = command.createEmptyResponse();
+                    readRejected = true;
+                }
 
                 if (command.complete())
                 {
@@ -1997,11 +2136,12 @@ public class StorageProxy implements StorageProxyMBean
                 }
                 else
                 {
-                    MessagingService.instance().metrics.recordSelfDroppedMessage(verb, MonotonicClock.approxTime.now() - approxCreationTimeNanos, NANOSECONDS);
+                    MessagingService.instance().metrics.recordSelfDroppedMessage(verb, MonotonicClock.Global.approxTime.now() - approxCreationTimeNanos, NANOSECONDS);
                     handler.onFailure(FBUtilities.getBroadcastAddressAndPort(), RequestFailureReason.UNKNOWN);
                 }
 
-                MessagingService.instance().latencySubscribers.add(FBUtilities.getBroadcastAddressAndPort(), MonotonicClock.approxTime.now() - approxCreationTimeNanos, NANOSECONDS);
+                if (!readRejected)
+                    MessagingService.instance().latencySubscribers.add(FBUtilities.getBroadcastAddressAndPort(), MonotonicClock.Global.approxTime.now() - approxCreationTimeNanos, NANOSECONDS);
             }
             catch (Throwable t)
             {
@@ -2023,6 +2163,18 @@ public class StorageProxy implements StorageProxyMBean
                                                   ConsistencyLevel consistencyLevel,
                                                   long queryStartNanoTime)
     {
+        if (DatabaseDescriptor.getPartitionDenylistEnabled() && DatabaseDescriptor.getDenylistRangeReadsEnabled())
+        {
+            final int denylisted = partitionDenylist.getDeniedKeysInRangeCount(command.metadata().id, command.dataRange().keyRange());
+            if (denylisted > 0)
+            {
+                denylistMetrics.incrementRangeReadsRejected();
+                String tokens = command.loggableTokens();
+                throw new InvalidRequestException(String.format("Attempted to read a range containing %d denylisted keys in %s/%s." +
+                                                                " Range read: %s", denylisted, command.metadata().keyspace, command.metadata().name,
+                                                                tokens));
+            }
+        }
         return RangeCommands.partitions(command, consistencyLevel, queryStartNanoTime);
     }
 
@@ -2046,16 +2198,16 @@ public class StorageProxy implements StorageProxyMBean
         final String myVersion = Schema.instance.getVersion().toString();
         final Map<InetAddressAndPort, UUID> versions = new ConcurrentHashMap<>();
         final Set<InetAddressAndPort> liveHosts = Gossiper.instance.getLiveMembers();
-        final CountDownLatch latch = new CountDownLatch(liveHosts.size());
+        final CountDownLatch latch = newCountDownLatch(liveHosts.size());
 
         RequestCallback<UUID> cb = message ->
         {
             // record the response from the remote node.
             versions.put(message.from(), message.payload);
-            latch.countDown();
+            latch.decrement();
         };
         // an empty message acts as a request to the SchemaVersionVerbHandler.
-        Message message = Message.out(Verb.SCHEMA_VERSION_REQ, noPayload);
+        Message message = out(SCHEMA_VERSION_REQ, noPayload);
         for (InetAddressAndPort endpoint : liveHosts)
             MessagingService.instance().sendWithCallback(message, endpoint, cb);
 
@@ -2064,14 +2216,14 @@ public class StorageProxy implements StorageProxyMBean
             // wait for as long as possible. timeout-1s if possible.
             latch.await(DatabaseDescriptor.getRpcTimeout(NANOSECONDS), NANOSECONDS);
         }
-        catch (InterruptedException ex)
+        catch (InterruptedException e)
         {
-            throw new AssertionError("This latch shouldn't have been interrupted.");
+            throw new UncheckedInterruptedException(e);
         }
 
         // maps versions to hosts that are on that version.
         Map<String, List<String>> results = new HashMap<String, List<String>>();
-        Iterable<InetAddressAndPort> allHosts = Iterables.concat(Gossiper.instance.getLiveMembers(), Gossiper.instance.getUnreachableMembers());
+        Iterable<InetAddressAndPort> allHosts = concat(Gossiper.instance.getLiveMembers(), Gossiper.instance.getUnreachableMembers());
         for (InetAddressAndPort host : allHosts)
         {
             UUID version = versions.get(host);
@@ -2087,7 +2239,7 @@ public class StorageProxy implements StorageProxyMBean
 
         // we're done: the results map is ready to return to the client.  the rest is just debug logging:
         if (results.get(UNREACHABLE) != null)
-            logger.debug("Hosts not in agreement. Didn't get a response from everybody: {}", StringUtils.join(results.get(UNREACHABLE), ","));
+            logger.debug("Hosts not in agreement. Didn't get a response from everybody: {}", join(results.get(UNREACHABLE), ","));
         for (Map.Entry<String, List<String>> entry : results.entrySet())
         {
             // check for version disagreement. log the hosts that don't agree.
@@ -2143,11 +2295,40 @@ public class StorageProxy implements StorageProxyMBean
         DatabaseDescriptor.setMaxHintWindow(ms);
     }
 
+    public int getMaxHintsSizePerHostInMiB()
+    {
+        return DatabaseDescriptor.getMaxHintsSizePerHostInMiB();
+    }
+
+    public void setMaxHintsSizePerHostInMiB(int value)
+    {
+        DatabaseDescriptor.setMaxHintsSizePerHostInMiB(value);
+    }
+
     public static boolean shouldHint(Replica replica)
     {
-        if (!DatabaseDescriptor.hintedHandoffEnabled())
-            return false;
-        if (replica.isTransient() || replica.isSelf())
+        return shouldHint(replica, true);
+    }
+
+    /**
+     * Determines whether a hint should be stored or not.
+     * It rejects early if any of the condition is met:
+     * - Hints disabled entirely or for the belonging datacetner of the replica
+     * - The replica is transient or is the self node
+     * - The replica is no longer part of the ring
+     * - The hint window has expired
+     * - The hints have reached to the size limit for the node
+     * Otherwise, it permits.
+     *
+     * @param replica, the replica for the hint
+     * @param tryEnablePersistentWindow, true to consider hint_window_persistent_enabled; otherwise, ignores
+     * @return true to permit or false to reject hint
+     */
+    public static boolean shouldHint(Replica replica, boolean tryEnablePersistentWindow)
+    {
+        if (!DatabaseDescriptor.hintedHandoffEnabled()
+            || replica.isTransient()
+            || replica.isSelf())
             return false;
 
         Set<String> disabledDCs = DatabaseDescriptor.hintedHandoffDisabledDCs();
@@ -2160,13 +2341,46 @@ public class StorageProxy implements StorageProxyMBean
                 return false;
             }
         }
-        boolean hintWindowExpired = Gossiper.instance.getEndpointDowntime(replica.endpoint()) > DatabaseDescriptor.getMaxHintWindow();
+
+        InetAddressAndPort endpoint = replica.endpoint();
+        int maxHintWindow = DatabaseDescriptor.getMaxHintWindow();
+        long endpointDowntime = Gossiper.instance.getEndpointDowntime(endpoint);
+        boolean hintWindowExpired = endpointDowntime > maxHintWindow;
+
+        UUID hostIdForEndpoint = StorageService.instance.getHostIdForEndpoint(endpoint);
+        if (hostIdForEndpoint == null)
+        {
+            Tracing.trace("Discarding hint for endpoint not part of ring: {}", endpoint);
+            return false;
+        }
+
+        // if persisting hints window, hintWindowExpired might be updated according to the timestamp of the earliest hint
+        if (tryEnablePersistentWindow && !hintWindowExpired && DatabaseDescriptor.hintWindowPersistentEnabled())
+        {
+            long earliestHint = HintsService.instance.getEarliestHintForHost(hostIdForEndpoint);
+            hintWindowExpired = Clock.Global.currentTimeMillis() - maxHintWindow > earliestHint;
+            if (hintWindowExpired)
+                Tracing.trace("Not hinting {} for which there is the earliest hint stored at {}", replica, earliestHint);
+        }
+
         if (hintWindowExpired)
         {
-            HintsService.instance.metrics.incrPastWindow(replica.endpoint());
-            Tracing.trace("Not hinting {} which has been down {} ms", replica, Gossiper.instance.getEndpointDowntime(replica.endpoint()));
+            HintsService.instance.metrics.incrPastWindow(endpoint);
+            Tracing.trace("Not hinting {} which has been down {} ms", endpoint, endpointDowntime);
+            return false;
         }
-        return !hintWindowExpired;
+
+        long maxHintsSize = DatabaseDescriptor.getMaxHintsSizePerHost();
+        long actualTotalHintsSize = HintsService.instance.getTotalHintsSize(hostIdForEndpoint);
+        boolean hasHintsReachedMaxSize = maxHintsSize > 0 && actualTotalHintsSize > maxHintsSize;
+        if (hasHintsReachedMaxSize)
+        {
+            Tracing.trace("Not hinting {} which has reached to the max hints size {} bytes on disk. The actual hints size on disk: {}",
+                          endpoint, maxHintsSize, actualTotalHintsSize);
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -2225,7 +2439,7 @@ public class StorageProxy implements StorageProxyMBean
     public interface WritePerformer
     {
         public void apply(IMutation mutation,
-                          ReplicaPlan.ForTokenWrite targets,
+                          ReplicaPlan.ForWrite targets,
                           AbstractWriteResponseHandler<IMutation> responseHandler,
                           String localDataCenter) throws OverloadedException;
     }
@@ -2258,13 +2472,13 @@ public class StorageProxy implements StorageProxyMBean
 
         public DroppableRunnable(Verb verb)
         {
-            this.approxCreationTimeNanos = MonotonicClock.approxTime.now();
+            this.approxCreationTimeNanos = MonotonicClock.Global.approxTime.now();
             this.verb = verb;
         }
 
         public final void run()
         {
-            long approxCurrentTimeNanos = MonotonicClock.approxTime.now();
+            long approxCurrentTimeNanos = MonotonicClock.Global.approxTime.now();
             long expirationTimeNanos = verb.expiresAtNanos(approxCreationTimeNanos);
             if (approxCurrentTimeNanos > expirationTimeNanos)
             {
@@ -2291,7 +2505,7 @@ public class StorageProxy implements StorageProxyMBean
      */
     private static abstract class LocalMutationRunnable implements Runnable
     {
-        private final long approxCreationTimeNanos = MonotonicClock.approxTime.now();
+        private final long approxCreationTimeNanos = MonotonicClock.Global.approxTime.now();
 
         private final Replica localReplica;
 
@@ -2303,7 +2517,7 @@ public class StorageProxy implements StorageProxyMBean
         public final void run()
         {
             final Verb verb = verb();
-            long nowNanos = MonotonicClock.approxTime.now();
+            long nowNanos = MonotonicClock.Global.approxTime.now();
             long expirationTimeNanos = verb.expiresAtNanos(approxCreationTimeNanos);
             if (nowNanos > expirationTimeNanos)
             {
@@ -2333,6 +2547,17 @@ public class StorageProxy implements StorageProxyMBean
 
         abstract protected Verb verb();
         abstract protected void runMayThrow() throws Exception;
+    }
+
+    public static void logRequestException(Exception exception, Collection<? extends ReadCommand> commands)
+    {
+        NoSpamLogger.log(logger, NoSpamLogger.Level.INFO, FAILURE_LOGGING_INTERVAL_SECONDS, TimeUnit.SECONDS,
+                         "\"{}\" while executing {}",
+                         () -> new Object[]
+                               {
+                                   exception.getMessage(),
+                                   commands.stream().map(ReadCommand::toCQLString).collect(Collectors.joining("; "))
+                               });
     }
 
     /**
@@ -2435,7 +2660,7 @@ public class StorageProxy implements StorageProxyMBean
                         logger.debug("Discarding hint for endpoint not part of ring: {}", target);
                 }
                 logger.trace("Adding hints for {}", validTargets);
-                HintsService.instance.write(hostIds, Hint.create(mutation, System.currentTimeMillis()));
+                HintsService.instance.write(hostIds, Hint.create(mutation, currentTimeMillis()));
                 validTargets.forEach(HintsService.instance.metrics::incrCreatedHints);
                 // Notify the handler only for CL == ANY
                 if (responseHandler != null && responseHandler.replicaPlan.consistencyLevel() == ConsistencyLevel.ANY)
@@ -2496,6 +2721,11 @@ public class StorageProxy implements StorageProxyMBean
     public long getReadRepairRepairedBackground()
     {
         return ReadRepairMetrics.repairedBackground.getCount();
+    }
+
+    public long getReadRepairRepairTimedOut()
+    {
+        return ReadRepairMetrics.timedOut.getCount();
     }
 
     public int getNumberOfTables()
@@ -2598,10 +2828,10 @@ public class StorageProxy implements StorageProxyMBean
 
     static class PaxosBallotAndContention
     {
-        final UUID ballot;
+        final Ballot ballot;
         final int contentions;
 
-        PaxosBallotAndContention(UUID ballot, int contentions)
+        PaxosBallotAndContention(Ballot ballot, int contentions)
         {
             this.ballot = ballot;
             this.contentions = contentions;
@@ -2677,5 +2907,181 @@ public class StorageProxy implements StorageProxyMBean
     public void disableCheckForDuplicateRowsDuringCompaction()
     {
         DatabaseDescriptor.setCheckForDuplicateRowsDuringCompaction(false);
+    }
+
+    public void initialLoadPartitionDenylist()
+    {
+        partitionDenylist.initialLoad();
+    }
+
+    @Override
+    public void loadPartitionDenylist()
+    {
+        partitionDenylist.load();
+    }
+
+    @Override
+    public int getPartitionDenylistLoadAttempts()
+    {
+        return partitionDenylist.getLoadAttempts();
+    }
+
+    @Override
+    public int getPartitionDenylistLoadSuccesses()
+    {
+        return partitionDenylist.getLoadSuccesses();
+    }
+
+    @Override
+    public void setEnablePartitionDenylist(boolean enabled)
+    {
+        DatabaseDescriptor.setPartitionDenylistEnabled(enabled);
+    }
+
+    @Override
+    public void setEnableDenylistWrites(boolean enabled)
+    {
+        DatabaseDescriptor.setDenylistWritesEnabled(enabled);
+    }
+
+    @Override
+    public void setEnableDenylistReads(boolean enabled)
+    {
+        DatabaseDescriptor.setDenylistReadsEnabled(enabled);
+    }
+
+    @Override
+    public void setEnableDenylistRangeReads(boolean enabled)
+    {
+        DatabaseDescriptor.setDenylistRangeReadsEnabled(enabled);
+    }
+
+    @Override
+    public void setDenylistMaxKeysPerTable(int value)
+    {
+        DatabaseDescriptor.setDenylistMaxKeysPerTable(value);
+    }
+
+    @Override
+    public void setDenylistMaxKeysTotal(int value)
+    {
+        DatabaseDescriptor.setDenylistMaxKeysTotal(value);
+    }
+
+    /**
+     * Actively denies read and write access to the provided Partition Key
+     * @param keyspace Name of keyspace containing the PK you wish to deny access to
+     * @param table Name of table containing the PK you wish to deny access to
+     * @param partitionKeyAsString String representation of the PK you want to deny access to
+     * @return true if successfully added, false if failure
+     */
+    @Override
+    public boolean denylistKey(String keyspace, String table, String partitionKeyAsString)
+    {
+        if (!Schema.instance.getKeyspaces().contains(keyspace))
+            return false;
+
+        final ColumnFamilyStore cfs = ColumnFamilyStore.getIfExists(keyspace, table);
+        if (cfs == null)
+            return false;
+
+        final ByteBuffer bytes = cfs.metadata.get().partitionKeyType.fromString(partitionKeyAsString);
+        return partitionDenylist.addKeyToDenylist(keyspace, table, bytes);
+    }
+
+    /**
+     * Attempts to remove the provided pk from the ks + table deny list
+     * @param keyspace Keyspace containing the pk to remove the denylist entry for
+     * @param table Table containing the pk to remove denylist entry for
+     * @param partitionKeyAsString String representation of the PK you want to re-allow access to
+     * @return true if found and removed, false if not
+     */
+    @Override
+    public boolean removeDenylistKey(String keyspace, String table, String partitionKeyAsString)
+    {
+        if (!Schema.instance.getKeyspaces().contains(keyspace))
+            return false;
+
+        final ColumnFamilyStore cfs = ColumnFamilyStore.getIfExists(keyspace, table);
+        if (cfs == null)
+            return false;
+
+        final ByteBuffer bytes = cfs.metadata.get().partitionKeyType.fromString(partitionKeyAsString);
+        return partitionDenylist.removeKeyFromDenylist(keyspace, table, bytes);
+    }
+
+    /**
+     * A simple check for operators to determine what the denylisted value for a pk is on a node
+     */
+    public boolean isKeyDenylisted(String keyspace, String table, String partitionKeyAsString)
+    {
+        if (!Schema.instance.getKeyspaces().contains(keyspace))
+            return false;
+
+        final ColumnFamilyStore cfs = ColumnFamilyStore.getIfExists(keyspace, table);
+        if (cfs == null)
+            return false;
+
+        final ByteBuffer bytes = cfs.metadata.get().partitionKeyType.fromString(partitionKeyAsString);
+        return !partitionDenylist.isKeyPermitted(keyspace, table, bytes);
+    }
+
+    @Override
+    public void logBlockingReadRepairAttemptsForNSeconds(int seconds)
+    {
+        logBlockingReadRepairAttemptsUntilNanos = nanoTime() + TimeUnit.SECONDS.toNanos(seconds);
+    }
+
+    @Override
+    public boolean isLoggingReadRepairs()
+    {
+        return nanoTime() <= StorageProxy.instance.logBlockingReadRepairAttemptsUntilNanos;
+    }
+
+    @Override
+    public void setPaxosVariant(String variant)
+    {
+        Preconditions.checkNotNull(variant);
+        Paxos.setPaxosVariant(Config.PaxosVariant.valueOf(variant));
+    }
+
+    @Override
+    public String getPaxosVariant()
+    {
+        return Paxos.getPaxosVariant().toString();
+    }
+
+    @Override
+    public boolean getUseStatementsEnabled()
+    {
+        return DatabaseDescriptor.getUseStatementsEnabled();
+    }
+
+    @Override
+    public void setUseStatementsEnabled(boolean enabled)
+    {
+        DatabaseDescriptor.setUseStatementsEnabled(enabled);
+    }
+
+    public void setPaxosContentionStrategy(String spec)
+    {
+        ContentionStrategy.setStrategy(spec);
+    }
+
+    public String getPaxosContentionStrategy()
+    {
+        return ContentionStrategy.getStrategySpec();
+    }
+
+    @Override
+    public void setPaxosCoordinatorLockingDisabled(boolean disabled)
+    {
+        PaxosState.setDisableCoordinatorLocking(disabled);
+    }
+
+    @Override
+    public boolean getPaxosCoordinatorLockingDisabled()
+    {
+        return PaxosState.getDisableCoordinatorLocking();
     }
 }

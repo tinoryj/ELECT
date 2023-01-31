@@ -27,7 +27,7 @@ public interface IndexSummaryManagerMBean
 
     /**
      * Returns the current actual off-heap memory usage of the index summaries for all non-compacting sstables.
-     * @return The amount of memory used in MB.
+     * @return The amount of memory used in MiB.
      */
     public double getMemoryPoolSizeInMB();
 
@@ -41,5 +41,10 @@ public interface IndexSummaryManagerMBean
     public void redistributeSummaries() throws IOException;
 
     public int getResizeIntervalInMinutes();
+
+    /**
+     * Set resizeIntervalInMinutes = -1 for disabled; This is the equivalent of index_summary_resize_interval being
+     * set to null in cassandra.yaml
+     */
     public void setResizeIntervalInMinutes(int resizeIntervalInMinutes);
 }

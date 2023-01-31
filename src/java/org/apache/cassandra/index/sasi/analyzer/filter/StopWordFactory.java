@@ -18,7 +18,6 @@
 package org.apache.cassandra.index.sasi.analyzer.filter;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -28,11 +27,11 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CompletionException;
 
-import com.google.common.util.concurrent.MoreExecutors;
-
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 
+import org.apache.cassandra.concurrent.ImmediateExecutor;
+import org.apache.cassandra.io.util.File;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,13 +44,13 @@ public class StopWordFactory
 
     private static final String DEFAULT_RESOURCE_EXT = "_ST.txt";
     private static final String DEFAULT_RESOURCE_PREFIX = StopWordFactory.class.getPackage()
-            .getName().replace(".", File.separator);
+            .getName().replace(".", File.pathSeparator());
     private static final Set<String> SUPPORTED_LANGUAGES = new HashSet<>(
             Arrays.asList("ar","bg","cs","de","en","es","fi","fr","hi","hu","it",
             "pl","pt","ro","ru","sv"));
 
     private static final LoadingCache<String, Set<String>> STOP_WORDS_CACHE = Caffeine.newBuilder()
-            .executor(MoreExecutors.directExecutor())
+            .executor(ImmediateExecutor.INSTANCE)
             .build(StopWordFactory::getStopWordsFromResource);
 
     public static Set<String> getStopWordsForLanguage(Locale locale)
@@ -74,7 +73,7 @@ public class StopWordFactory
     private static Set<String> getStopWordsFromResource(String language)
     {
         Set<String> stopWords = new HashSet<>();
-        String resourceName = DEFAULT_RESOURCE_PREFIX + File.separator + language + DEFAULT_RESOURCE_EXT;
+        String resourceName = DEFAULT_RESOURCE_PREFIX + File.pathSeparator() + language + DEFAULT_RESOURCE_EXT;
         try (InputStream is = StopWordFactory.class.getClassLoader().getResourceAsStream(resourceName);
              BufferedReader r = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8)))
         {

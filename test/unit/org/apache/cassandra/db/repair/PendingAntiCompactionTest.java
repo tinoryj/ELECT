@@ -24,12 +24,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -41,9 +39,14 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListenableFutureTask;
-import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+
+import org.apache.cassandra.Util;
+import org.apache.cassandra.concurrent.ExecutorPlus;
+import org.apache.cassandra.concurrent.FutureTask;
+import org.apache.cassandra.concurrent.ImmediateExecutor;
+import org.apache.cassandra.utils.TimeUUID;
+import org.apache.cassandra.utils.concurrent.Future;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -76,10 +79,12 @@ import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.utils.ByteBufferUtil;
-import org.apache.cassandra.utils.UUIDGen;
 import org.apache.cassandra.utils.WrappedRunnable;
 import org.apache.cassandra.utils.concurrent.Transactional;
 
+import static java.util.Collections.emptyList;
+import static org.apache.cassandra.concurrent.ExecutorFactory.Global.executorFactory;
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -93,18 +98,18 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
 
     private static class InstrumentedAcquisitionCallback extends PendingAntiCompaction.AcquisitionCallback
     {
-        public InstrumentedAcquisitionCallback(UUID parentRepairSession, RangesAtEndpoint ranges)
+        public InstrumentedAcquisitionCallback(TimeUUID parentRepairSession, RangesAtEndpoint ranges)
         {
             super(parentRepairSession, ranges, () -> false);
         }
 
         Set<TableId> submittedCompactions = new HashSet<>();
 
-        ListenableFuture<?> submitPendingAntiCompaction(PendingAntiCompaction.AcquireResult result)
+        Future<Void> submitPendingAntiCompaction(PendingAntiCompaction.AcquireResult result)
         {
             submittedCompactions.add(result.cfs.metadata.id);
             result.abort();  // prevent ref leak complaints
-            return ListenableFutureTask.create(() -> {}, null);
+            return new FutureTask<>(() -> {});
         }
     }
 
@@ -122,12 +127,12 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         {
             QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (?, ?)", ks, tbl), i, i);
         }
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
         for (int i = 8; i < 12; i++)
         {
             QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (?, ?)", ks, tbl), i, i);
         }
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
         assertEquals(2, cfs.getLiveSSTables().size());
 
         Token left = ByteOrderedPartitioner.instance.getToken(ByteBufferUtil.bytes((int) 6));
@@ -136,7 +141,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         Collection<Range<Token>> ranges = Collections.singleton(new Range<>(left, right));
 
         // create a session so the anti compaction can fine it
-        UUID sessionID = UUIDGen.getTimeUUID();
+        TimeUUID sessionID = nextTimeUUID();
         ActiveRepairService.instance.registerParentRepairSession(sessionID, InetAddressAndPort.getLocalHost(), tables, ranges, true, 1, true, PreviewKind.NONE);
 
         PendingAntiCompaction pac;
@@ -174,7 +179,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
             ranges.add(new Range<>(sstable.first.getToken(), sstable.last.getToken()));
         }
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, ranges, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, ranges, nextTimeUUID(), 0, 0);
 
         logger.info("SSTables: {}", sstables);
         logger.info("Expected: {}", expected);
@@ -208,7 +213,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 1, null, false);
         repaired.reloadSSTableMetadata();
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
 
@@ -231,13 +236,13 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         assertTrue(repaired.intersects(FULL_RANGE));
         assertTrue(unrepaired.intersects(FULL_RANGE));
 
-        UUID sessionId = prepareSession();
+        TimeUUID sessionId = prepareSession();
         LocalSessionAccessor.finalizeUnsafe(sessionId);
         repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false);
         repaired.reloadSSTableMetadata();
         assertTrue(repaired.isPendingRepair());
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
 
@@ -260,12 +265,12 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         assertTrue(repaired.intersects(FULL_RANGE));
         assertTrue(unrepaired.intersects(FULL_RANGE));
 
-        UUID sessionId = prepareSession();
+        TimeUUID sessionId = prepareSession();
         repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false);
         repaired.reloadSSTableMetadata();
         assertTrue(repaired.isPendingRepair());
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNull(result);
     }
@@ -277,7 +282,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
 
         assertEquals(0, cfs.getLiveSSTables().size());
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
 
@@ -293,11 +298,11 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
 
-        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(UUIDGen.getTimeUUID(), atEndpoint(FULL_RANGE, NO_RANGES));
+        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(nextTimeUUID(), atEndpoint(FULL_RANGE, NO_RANGES));
         assertTrue(cb.submittedCompactions.isEmpty());
         cb.apply(Lists.newArrayList(result));
 
@@ -316,12 +321,12 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
         assertEquals(Transactional.AbstractTransactional.State.IN_PROGRESS, result.txn.state());
 
-        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(UUIDGen.getTimeUUID(), atEndpoint(FULL_RANGE, Collections.emptyList()));
+        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(nextTimeUUID(), atEndpoint(FULL_RANGE, emptyList()));
         assertTrue(cb.submittedCompactions.isEmpty());
         cb.apply(Lists.newArrayList(result, null));
 
@@ -339,14 +344,14 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
 
         ColumnFamilyStore cfs2 = Schema.instance.getColumnFamilyStoreInstance(Schema.instance.getTableMetadata("system", "peers").id);
         PendingAntiCompaction.AcquireResult fakeResult = new PendingAntiCompaction.AcquireResult(cfs2, null, null);
 
-        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(UUIDGen.getTimeUUID(), atEndpoint(FULL_RANGE, NO_RANGES));
+        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(nextTimeUUID(), atEndpoint(FULL_RANGE, NO_RANGES));
         assertTrue(cb.submittedCompactions.isEmpty());
         cb.apply(Lists.newArrayList(result, fakeResult));
 
@@ -362,9 +367,9 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
-        UUID sessionID = UUIDGen.getTimeUUID();
+        TimeUUID sessionID = nextTimeUUID();
         ActiveRepairService.instance.registerParentRepairSession(sessionID,
                                                                  InetAddressAndPort.getByName("127.0.0.1"),
                                                                  Lists.newArrayList(cfs),
@@ -382,9 +387,9 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         cfs.disableAutoCompaction();
         makeSSTables(1);
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, UUIDGen.getTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
-        UUID sessionID = UUIDGen.getTimeUUID();
+        TimeUUID sessionID = nextTimeUUID();
         ActiveRepairService.instance.registerParentRepairSession(sessionID,
                                                                  InetAddressAndPort.getByName("127.0.0.1"),
                                                                  Lists.newArrayList(cfs),
@@ -410,22 +415,22 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
     {
         cfs.disableAutoCompaction();
         makeSSTables(2);
-        UUID prsid = UUID.randomUUID();
-        ListeningExecutorService es = MoreExecutors.listeningDecorator(MoreExecutors.newDirectExecutorService());
+        TimeUUID prsid = nextTimeUUID();
+        ExecutorPlus es = ImmediateExecutor.INSTANCE;
         PendingAntiCompaction pac = new PendingAntiCompaction(prsid, Collections.singleton(cfs), atEndpoint(FULL_RANGE, NO_RANGES), es, () -> false) {
             @Override
-            protected AcquisitionCallback getAcquisitionCallback(UUID prsId, RangesAtEndpoint tokenRanges)
+            protected AcquisitionCallback getAcquisitionCallback(TimeUUID prsId, RangesAtEndpoint tokenRanges)
             {
                 return new AcquisitionCallback(prsid, tokenRanges, () -> false)
                 {
                     @Override
-                    ListenableFuture<?> submitPendingAntiCompaction(AcquireResult result)
+                    Future submitPendingAntiCompaction(AcquireResult result)
                     {
                         Runnable r = new WrappedRunnable()
                         {
                             protected void runMayThrow()
                             {
-                                throw new CompactionInterruptedException(null);
+                                throw new CompactionInterruptedException("antiCompactionExceptionTest");
                             }
                         };
                         return es.submit(r);
@@ -451,14 +456,14 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         ExecutorService es = Executors.newFixedThreadPool(1);
 
         makeSSTables(2);
-        UUID prsid = UUID.randomUUID();
+        TimeUUID prsid = nextTimeUUID();
         Set<SSTableReader> sstables = cfs.getLiveSSTables();
         List<ISSTableScanner> scanners = sstables.stream().map(SSTableReader::getScanner).collect(Collectors.toList());
         try
         {
             try (LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.ANTICOMPACTION);
                  CompactionController controller = new CompactionController(cfs, sstables, 0);
-                 CompactionIterator ci = CompactionManager.getAntiCompactionIterator(scanners, controller, 0, UUID.randomUUID(), CompactionManager.instance.active, () -> false))
+                 CompactionIterator ci = CompactionManager.getAntiCompactionIterator(scanners, controller, 0, nextTimeUUID(), CompactionManager.instance.active, () -> false))
             {
                 // `ci` is our imaginary ongoing anticompaction which makes no progress until after 30s
                 // now we try to start a new AC, which will try to cancel all ongoing compactions
@@ -505,14 +510,14 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         cfs.disableAutoCompaction();
         ExecutorService es = Executors.newFixedThreadPool(1);
         makeSSTables(2);
-        UUID prsid = prepareSession();
+        TimeUUID prsid = prepareSession();
         Set<SSTableReader> sstables = cfs.getLiveSSTables();
         List<ISSTableScanner> scanners = sstables.stream().map(SSTableReader::getScanner).collect(Collectors.toList());
         try
         {
             try (LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.ANTICOMPACTION);
                  CompactionController controller = new CompactionController(cfs, sstables, 0);
-                 CompactionIterator ci = new CompactionIterator(OperationType.COMPACTION, scanners, controller, 0, UUID.randomUUID()))
+                 CompactionIterator ci = new CompactionIterator(OperationType.COMPACTION, scanners, controller, 0, nextTimeUUID()))
             {
                 // `ci` is our imaginary ongoing anticompaction which makes no progress until after 5s
                 // now we try to start a new AC, which will try to cancel all ongoing compactions
@@ -584,7 +589,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         for (int i = 1; i <= 10; i++)
         {
             SSTableReader sstable = MockSchema.sstable(i + 20, i * 10, i * 10 + 9, cfs);
-            AbstractPendingRepairTest.mutateRepaired(sstable, UUID.randomUUID(), false);
+            AbstractPendingRepairTest.mutateRepaired(sstable, nextTimeUUID(), false);
             pendingSSTables.add(sstable);
         }
 
@@ -604,7 +609,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         {
             public CompactionInfo getCompactionInfo()
             {
-                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 1000, UUID.randomUUID(), compacting);
+                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 1000, nextTimeUUID(), compacting);
             }
 
             public boolean isGlobal()
@@ -617,7 +622,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         {
             PendingAntiCompaction.AntiCompactionPredicate predicate =
             new PendingAntiCompaction.AntiCompactionPredicate(Collections.singleton(new Range<>(new Murmur3Partitioner.LongToken(0), new Murmur3Partitioner.LongToken(100))),
-                                                              UUID.randomUUID());
+                                                              nextTimeUUID());
             Set<SSTableReader> live = cfs.getLiveSSTables().stream().filter(predicate).collect(Collectors.toSet());
             if (shouldFail)
                 fail("should fail - we try to grab already anticompacting sstables for anticompaction");
@@ -640,12 +645,12 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         ColumnFamilyStore cfs = MockSchema.newCFS();
         cfs.addSSTable(MockSchema.sstable(1, true, cfs));
         CountDownLatch cdl = new CountDownLatch(5);
-        ExecutorService es = Executors.newFixedThreadPool(1);
+        ExecutorPlus es = executorFactory().sequential("test");
         CompactionInfo.Holder holder = new CompactionInfo.Holder()
         {
             public CompactionInfo getCompactionInfo()
             {
-                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 0, UUID.randomUUID(), cfs.getLiveSSTables());
+                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 0, nextTimeUUID(), cfs.getLiveSSTables());
             }
 
             public boolean isGlobal()
@@ -655,7 +660,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         };
         try
         {
-            PendingAntiCompaction.AntiCompactionPredicate acp = new PendingAntiCompaction.AntiCompactionPredicate(FULL_RANGE, UUID.randomUUID())
+            PendingAntiCompaction.AntiCompactionPredicate acp = new PendingAntiCompaction.AntiCompactionPredicate(FULL_RANGE, nextTimeUUID())
             {
                 @Override
                 public boolean apply(SSTableReader sstable)
@@ -667,7 +672,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
                 }
             };
             CompactionManager.instance.active.beginCompaction(holder);
-            PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, UUID.randomUUID(), 10, 1, acp);
+            PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, nextTimeUUID(), 10, 1, acp);
             Future f = es.submit(acquisitionCallable);
             cdl.await();
             assertNotNull(f.get());
@@ -684,12 +689,12 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
     {
         ColumnFamilyStore cfs = MockSchema.newCFS();
         cfs.addSSTable(MockSchema.sstable(1, true, cfs));
-        ExecutorService es = Executors.newFixedThreadPool(1);
+        ExecutorPlus es = executorFactory().sequential("test");
         CompactionInfo.Holder holder = new CompactionInfo.Holder()
         {
             public CompactionInfo getCompactionInfo()
             {
-                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 0, UUID.randomUUID(), cfs.getLiveSSTables());
+                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 0, nextTimeUUID(), cfs.getLiveSSTables());
             }
 
             public boolean isGlobal()
@@ -699,7 +704,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         };
         try
         {
-            PendingAntiCompaction.AntiCompactionPredicate acp = new PendingAntiCompaction.AntiCompactionPredicate(FULL_RANGE, UUID.randomUUID())
+            PendingAntiCompaction.AntiCompactionPredicate acp = new PendingAntiCompaction.AntiCompactionPredicate(FULL_RANGE, nextTimeUUID())
             {
                 @Override
                 public boolean apply(SSTableReader sstable)
@@ -708,7 +713,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
                 }
             };
             CompactionManager.instance.active.beginCompaction(holder);
-            PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, UUID.randomUUID(), 2, 1000, acp);
+            PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, nextTimeUUID(), 2, 1000, acp);
             Future fut = es.submit(acquisitionCallable);
             assertNull(fut.get());
         }
@@ -728,7 +733,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         ExecutorService es = Executors.newFixedThreadPool(1);
         try
         {
-            UUID prsid = prepareSession();
+            TimeUUID prsid = prepareSession();
             for (SSTableReader sstable : cfs2.getLiveSSTables())
                 assertFalse(sstable.isPendingRepair());
 

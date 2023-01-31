@@ -19,7 +19,6 @@ package org.apache.cassandra.hints;
 
 import java.io.DataInput;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,6 +34,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableMap;
+
+import org.apache.cassandra.io.util.File;
+import org.apache.cassandra.io.util.FileInputStreamPlus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -207,6 +209,16 @@ final class HintsDescriptor
         return String.format("%s-%s-%s.crc32", hostId, timestamp, version);
     }
 
+    File file(File hintsDirectory)
+    {
+        return new File(hintsDirectory, fileName());
+    }
+
+    File checksumFile(File hintsDirectory)
+    {
+        return new File(hintsDirectory, checksumFileName());
+    }
+
     int messagingVersion()
     {
         return messagingVersion(version);
@@ -232,13 +244,13 @@ final class HintsDescriptor
 
     static Optional<HintsDescriptor> readFromFileQuietly(Path path)
     {
-        try (RandomAccessFile raf = new RandomAccessFile(path.toFile(), "r"))
+        try (FileInputStreamPlus raf = new FileInputStreamPlus(path))
         {
             return Optional.of(deserialize(raf));
         }
         catch (ChecksumMismatchException e)
         {
-            throw new FSReadError(e, path.toFile());
+            throw new FSReadError(e, path);
         }
         catch (IOException e)
         {
@@ -271,15 +283,15 @@ final class HintsDescriptor
         }
     }
 
-    static HintsDescriptor readFromFile(Path path)
+    static HintsDescriptor readFromFile(File path)
     {
-        try (RandomAccessFile raf = new RandomAccessFile(path.toFile(), "r"))
+        try (FileInputStreamPlus raf = new FileInputStreamPlus(path))
         {
             return deserialize(raf);
         }
         catch (IOException e)
         {
-            throw new FSReadError(e, path.toFile());
+            throw new FSReadError(e, path);
         }
     }
 

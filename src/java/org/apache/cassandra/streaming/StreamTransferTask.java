@@ -22,7 +22,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -33,12 +32,12 @@ import com.google.common.base.Throwables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.concurrent.NamedThreadFactory;
+import org.apache.cassandra.concurrent.ScheduledExecutorPlus;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.streaming.messages.OutgoingStreamMessage;
+import org.apache.cassandra.utils.ExecutorUtils;
 
-import static org.apache.cassandra.utils.ExecutorUtils.awaitTermination;
-import static org.apache.cassandra.utils.ExecutorUtils.shutdown;
+import static org.apache.cassandra.concurrent.ExecutorFactory.Global.executorFactory;
 
 /**
  * StreamTransferTask sends streams for a given table
@@ -46,7 +45,7 @@ import static org.apache.cassandra.utils.ExecutorUtils.shutdown;
 public class StreamTransferTask extends StreamTask
 {
     private static final Logger logger = LoggerFactory.getLogger(StreamTransferTask.class);
-    private static final ScheduledThreadPoolExecutor timeoutExecutor = createTimeoutExecutor();
+    private static final ScheduledExecutorPlus timeoutExecutor = executorFactory().scheduled(false, "StreamingTransferTaskTimeouts");
 
     private final AtomicInteger sequenceNumber = new AtomicInteger(0);
     private boolean aborted = false;
@@ -91,13 +90,33 @@ public class StreamTransferTask extends StreamTask
             if (stream != null)
                 stream.complete();
 
-            logger.debug("recevied sequenceNumber {}, remaining files {}", sequenceNumber, streams.keySet());
+            logger.debug("received sequenceNumber {}, remaining files {}", sequenceNumber, streams.keySet());
             signalComplete = streams.isEmpty();
         }
 
         // all file sent, notify session this task is complete.
         if (signalComplete)
             session.taskCompleted(this);
+    }
+
+    /**
+     * Received ACK for stream at {@code sequenceNumber}.
+     *
+     * @param sequenceNumber sequence number of stream
+     */
+    public void timeout(int sequenceNumber)
+    {
+        synchronized (this)
+        {
+            timeoutTasks.remove(sequenceNumber);
+            OutgoingStreamMessage stream = streams.remove(sequenceNumber);
+            if (stream == null) return;
+            stream.complete();
+
+            logger.debug("timeout sequenceNumber {}, remaining files {}", sequenceNumber, streams.keySet());
+        }
+
+        session.sessionTimeout();
     }
 
     public synchronized void abort()
@@ -169,35 +188,15 @@ public class StreamTransferTask extends StreamTask
         if (!streams.containsKey(sequenceNumber))
             return null;
 
-        ScheduledFuture<?> future = timeoutExecutor.schedule(new Runnable()
-        {
-            public void run()
-            {
-                synchronized (StreamTransferTask.this)
-                {
-                    // remove so we don't cancel ourselves
-                    timeoutTasks.remove(sequenceNumber);
-                    StreamTransferTask.this.complete(sequenceNumber);
-                }
-            }
-        }, time, unit);
-
+        ScheduledFuture<?> future = timeoutExecutor.scheduleTimeoutWithDelay(() -> StreamTransferTask.this.timeout(sequenceNumber), time, unit);
         ScheduledFuture<?> prev = timeoutTasks.put(sequenceNumber, future);
         assert prev == null;
         return future;
     }
 
-    private static ScheduledThreadPoolExecutor createTimeoutExecutor()
-    {
-        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1, new NamedThreadFactory("StreamingTransferTaskTimeouts"));
-        executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
-        return executor;
-    }
-
     @VisibleForTesting
     public static void shutdownAndWait(long timeout, TimeUnit units) throws InterruptedException, TimeoutException
     {
-        shutdown(timeoutExecutor);
-        awaitTermination(timeout, units, timeoutExecutor);
+        ExecutorUtils.shutdownAndWait(timeout, units, timeoutExecutor);
     }
 }

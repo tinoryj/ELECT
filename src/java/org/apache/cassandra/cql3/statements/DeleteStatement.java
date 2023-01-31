@@ -145,8 +145,6 @@ public class DeleteStatement extends ModificationStatement
                                                         Conditions conditions,
                                                         Attributes attrs)
         {
-            checkFalse(metadata.isVirtual(), "Virtual tables don't support DELETE statements");
-
             Operations operations = new Operations(type);
 
             for (Operation.RawDeletion deletion : deletions)
@@ -177,6 +175,8 @@ public class DeleteStatement extends ModificationStatement
 
             if (stmt.hasConditions() && !restrictions.hasAllPKColumnsRestrictedByEqualities())
             {
+                checkFalse(stmt.isVirtual(), "DELETE statements must restrict all PRIMARY KEY columns with equality relations");
+
                 checkFalse(operations.appliesToRegularColumns(),
                            "DELETE statements must restrict all PRIMARY KEY columns with equality relations in order to delete non static columns");
 
@@ -198,6 +198,6 @@ public class DeleteStatement extends ModificationStatement
     @Override
     public AuditLogContext getAuditLogContext()
     {
-        return new AuditLogContext(AuditLogEntryType.DELETE, keyspace(), columnFamily());
+        return new AuditLogContext(AuditLogEntryType.DELETE, keyspace(), table());
     }
 }

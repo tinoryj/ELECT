@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,18 +34,20 @@ import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.CassandraVersion;
+import org.apache.cassandra.utils.NullableSerializer;
+
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 /**
  * This abstraction represents both the HeartBeatState and the ApplicationState in an EndpointState
  * instance. Any state for a given endpoint can be retrieved from this instance.
  */
-
-
 public class EndpointState
 {
     protected static final Logger logger = LoggerFactory.getLogger(EndpointState.class);
 
     public final static IVersionedSerializer<EndpointState> serializer = new EndpointStateSerializer();
+    public final static IVersionedSerializer<EndpointState> nullableSerializer = NullableSerializer.wrap(serializer);
 
     private volatile HeartBeatState hbState;
     private final AtomicReference<Map<ApplicationState, VersionedValue>> applicationState;
@@ -66,11 +70,12 @@ public class EndpointState
     {
         hbState = initialHbState;
         applicationState = new AtomicReference<Map<ApplicationState, VersionedValue>>(new EnumMap<>(states));
-        updateTimestamp = System.nanoTime();
+        updateTimestamp = nanoTime();
         isAlive = true;
     }
 
-    HeartBeatState getHeartBeatState()
+    @VisibleForTesting
+    public HeartBeatState getHeartBeatState()
     {
         return hbState;
     }
@@ -173,7 +178,7 @@ public class EndpointState
 
     void updateTimestamp()
     {
-        updateTimestamp = System.nanoTime();
+        updateTimestamp = nanoTime();
     }
 
     public boolean isAlive()
@@ -249,6 +254,20 @@ public class EndpointState
     public String toString()
     {
         return "EndpointState: HeartBeatState = " + hbState + ", AppStateMap = " + applicationState.get();
+    }
+
+    public boolean isSupersededBy(EndpointState that)
+    {
+        int thisGeneration = this.getHeartBeatState().getGeneration();
+        int thatGeneration = that.getHeartBeatState().getGeneration();
+
+        if (thatGeneration > thisGeneration)
+            return true;
+
+        if (thisGeneration > thatGeneration)
+            return false;
+
+        return Gossiper.getMaxEndpointStateVersion(that) > Gossiper.getMaxEndpointStateVersion(this);
     }
 }
 

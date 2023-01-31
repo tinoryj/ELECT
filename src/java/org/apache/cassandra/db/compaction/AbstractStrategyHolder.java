@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.Supplier;
 
 import com.google.common.base.Preconditions;
@@ -31,7 +30,6 @@ import com.google.common.base.Preconditions;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.lifecycle.LifecycleNewTracker;
-import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.index.Index;
@@ -41,6 +39,7 @@ import org.apache.cassandra.io.sstable.SSTableMultiWriter;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.schema.CompactionParams;
+import org.apache.cassandra.utils.TimeUUID;
 
 /**
  * Wrapper that's aware of how sstables are divided between separate strategies,
@@ -193,7 +192,7 @@ public abstract class AbstractStrategyHolder
     public abstract SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor,
                                                                 long keyCount,
                                                                 long repairedAt,
-                                                                UUID pendingRepair,
+                                                                TimeUUID pendingRepair,
                                                                 boolean isTransient,
                                                                 MetadataCollector collector,
                                                                 SerializationHeader header,

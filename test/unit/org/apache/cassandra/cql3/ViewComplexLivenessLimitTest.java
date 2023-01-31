@@ -22,6 +22,7 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
+import org.apache.cassandra.Util;
 import org.apache.cassandra.db.Keyspace;
 
 import static org.junit.Assert.assertEquals;
@@ -36,7 +37,7 @@ import static org.junit.Assert.assertEquals;
  * - ...
  * - ViewComplex*Test
  */
-public class ViewComplexLivenessLimitTest extends ViewComplexTester
+public class ViewComplexLivenessLimitTest extends ViewAbstractParameterizedTest
 {
     @Test
     public void testExpiredLivenessLimitWithFlush() throws Throwable
@@ -56,13 +57,11 @@ public class ViewComplexLivenessLimitTest extends ViewComplexTester
     {
         createTable("CREATE TABLE %s (k int PRIMARY KEY, a int, b int);");
 
-        execute("USE " + keyspace());
-        executeNet(version, "USE " + keyspace());
         Keyspace ks = Keyspace.open(keyspace());
 
-        String mv1 = createView("CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s " +
+        String mv1 = createView("CREATE MATERIALIZED VIEW %s AS SELECT * FROM %s " +
                                 "WHERE k IS NOT NULL AND a IS NOT NULL PRIMARY KEY (k, a)");
-        String mv2 = createView("CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s " +
+        String mv2 = createView("CREATE MATERIALIZED VIEW %s AS SELECT * FROM %s " +
                                 "WHERE k IS NOT NULL AND a IS NOT NULL PRIMARY KEY (a, k)");
         ks.getColumnFamilyStore(mv1).disableAutoCompaction();
         ks.getColumnFamilyStore(mv2).disableAutoCompaction();
@@ -76,19 +75,20 @@ public class ViewComplexLivenessLimitTest extends ViewComplexTester
             // create expired liveness
             updateView("DELETE a FROM %s WHERE k = ?;", i);
         }
+
         if (flush)
         {
-            ks.getColumnFamilyStore(mv1).forceBlockingFlush();
-            ks.getColumnFamilyStore(mv2).forceBlockingFlush();
+            Util.flushTable(ks, mv1);
+            Util.flushTable(ks, mv2);
         }
 
         for (String view : Arrays.asList(mv1, mv2))
         {
             // paging
-            assertEquals(1, executeNetWithPaging(version, String.format("SELECT k,a,b FROM %s limit 1", view), 1).all().size());
-            assertEquals(2, executeNetWithPaging(version, String.format("SELECT k,a,b FROM %s limit 2", view), 1).all().size());
-            assertEquals(2, executeNetWithPaging(version, String.format("SELECT k,a,b FROM %s", view), 1).all().size());
-            assertRowsNet(version, executeNetWithPaging(version, String.format("SELECT k,a,b FROM %s ", view), 1),
+            assertEquals(1, executeNetWithPaging(String.format("SELECT k,a,b FROM %s limit 1", view), 1).all().size());
+            assertEquals(2, executeNetWithPaging(String.format("SELECT k,a,b FROM %s limit 2", view), 1).all().size());
+            assertEquals(2, executeNetWithPaging(String.format("SELECT k,a,b FROM %s", view), 1).all().size());
+            assertRowsNet(executeNetWithPaging(String.format("SELECT k,a,b FROM %s ", view), 1),
                           row(50, 50, 50),
                           row(100, 100, 100));
             // limit

@@ -19,7 +19,6 @@ package org.apache.cassandra.io.compress;
 
 import java.io.DataOutputStream;
 import java.io.EOFException;
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;

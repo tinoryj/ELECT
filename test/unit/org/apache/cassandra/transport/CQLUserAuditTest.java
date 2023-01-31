@@ -26,7 +26,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -39,17 +38,18 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.AuthenticationException;
+import org.apache.cassandra.ServerTestUtils;
 import org.apache.cassandra.audit.AuditEvent;
 import org.apache.cassandra.audit.AuditLogEntryType;
 import org.apache.cassandra.audit.AuditLogManager;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.OverrideConfigurationLoader;
 import org.apache.cassandra.config.ParameterizedClass;
-import org.apache.cassandra.cql3.CQLTester;
 import org.apache.cassandra.diag.DiagnosticEventService;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.service.EmbeddedCassandraService;
 
+import static org.apache.cassandra.utils.concurrent.BlockingQueues.newBlockingQueue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -57,7 +57,7 @@ import static org.junit.Assert.assertTrue;
 public class CQLUserAuditTest
 {
     private static EmbeddedCassandraService embedded;
-    private static final BlockingQueue<AuditEvent> auditEvents = new LinkedBlockingQueue<>();
+    private static final BlockingQueue<AuditEvent> auditEvents = newBlockingQueue();
 
     @BeforeClass
     public static void setup() throws Exception
@@ -69,11 +69,10 @@ public class CQLUserAuditTest
             config.audit_logging_options.enabled = true;
             config.audit_logging_options.logger = new ParameterizedClass("DiagnosticEventAuditLogger", null);
         });
-        CQLTester.prepareServer();
 
         System.setProperty("cassandra.superuser_setup_delay_ms", "0");
-        embedded = new EmbeddedCassandraService();
-        embedded.start();
+
+        embedded = ServerTestUtils.startEmbeddedCassandraService();
 
         executeAs(Arrays.asList("CREATE ROLE testuser WITH LOGIN = true AND SUPERUSER = false AND PASSWORD = 'foo'",
                                 "CREATE ROLE testuser_nologin WITH LOGIN = false AND SUPERUSER = false AND PASSWORD = 'foo'",
@@ -230,9 +229,9 @@ public class CQLUserAuditTest
         AuditEvent event = auditEvents.poll(100, TimeUnit.MILLISECONDS);
         assertEquals(expectedAuthType, event.getType());
         assertTrue(!authFailed || event.getType() == AuditLogEntryType.LOGIN_ERROR);
-        assertEquals(InetAddressAndPort.getLoopbackAddress().address,
-                     event.getEntry().getSource().address);
-        assertTrue(event.getEntry().getSource().port > 0);
+        assertEquals(InetAddressAndPort.getLoopbackAddress().getAddress(),
+                     event.getEntry().getSource().getAddress());
+        assertTrue(event.getEntry().getSource().getPort() > 0);
         if (event.getType() != AuditLogEntryType.LOGIN_ERROR)
             assertEquals(username, event.toMap().get("user"));
 

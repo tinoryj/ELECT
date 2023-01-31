@@ -18,7 +18,6 @@
 package org.apache.cassandra.auth;
 
 import java.util.Set;
-
 import com.google.common.base.Objects;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -28,7 +27,7 @@ import org.apache.cassandra.dht.Datacenters;
  * Returned from IAuthenticator#authenticate(), represents an authenticated user everywhere internally.
  *
  * Holds the name of the user and the roles that have been granted to the user. The roles will be cached
- * for roles_validity_in_ms.
+ * for roles_validity.
  */
 public class AuthenticatedUser
 {
@@ -39,11 +38,19 @@ public class AuthenticatedUser
     public static final AuthenticatedUser ANONYMOUS_USER = new AuthenticatedUser(ANONYMOUS_USERNAME);
 
     // User-level permissions cache.
-    private static final PermissionsCache permissionsCache = new PermissionsCache(DatabaseDescriptor.getAuthorizer());
-    private static final NetworkAuthCache networkAuthCache = new NetworkAuthCache(DatabaseDescriptor.getNetworkAuthorizer());
+    public static final PermissionsCache permissionsCache = new PermissionsCache(DatabaseDescriptor.getAuthorizer());
+    public static final NetworkPermissionsCache networkPermissionsCache = new NetworkPermissionsCache(DatabaseDescriptor.getNetworkAuthorizer());
+
+    /** Use {@link AuthCacheService#initializeAndRegisterCaches} rather than calling this directly */
+    public static void init()
+    {
+        AuthCacheService.instance.register(permissionsCache);
+        AuthCacheService.instance.register(networkPermissionsCache);
+    }
 
     private final String name;
-    // primary Role of the logged in user
+
+    // Primary Role of the logged in user
     private final RoleResource role;
 
     public AuthenticatedUser(String name)
@@ -136,7 +143,7 @@ public class AuthenticatedUser
      */
     public boolean hasLocalAccess()
     {
-        return networkAuthCache.get(this.getPrimaryRole()).canAccess(Datacenters.thisDatacenter());
+        return networkPermissionsCache.get(this.getPrimaryRole()).canAccess(Datacenters.thisDatacenter());
     }
 
     @Override
@@ -164,5 +171,4 @@ public class AuthenticatedUser
     {
         return Objects.hashCode(name);
     }
-
 }

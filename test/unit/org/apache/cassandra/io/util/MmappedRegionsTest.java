@@ -18,7 +18,6 @@
 
 package org.apache.cassandra.io.util;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
@@ -38,11 +37,13 @@ import org.apache.cassandra.io.compress.CompressionMetadata;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.schema.CompressionParams;
 
-import static junit.framework.Assert.assertNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 public class MmappedRegionsTest
 {
@@ -57,7 +58,7 @@ public class MmappedRegionsTest
     private static ByteBuffer allocateBuffer(int size)
     {
         ByteBuffer ret = ByteBuffer.allocate(Ints.checkedCast(size));
-        long seed = System.nanoTime();
+        long seed = nanoTime();
         //seed = 365238103404423L;
         logger.info("Seed {}", seed);
 
@@ -301,11 +302,11 @@ public class MmappedRegionsTest
         File f = FileUtils.createTempFile("testMapForCompressionMetadata", "1");
         f.deleteOnExit();
 
-        File cf = FileUtils.createTempFile(f.getName() + ".metadata", "1");
+        File cf = FileUtils.createTempFile(f.name() + ".metadata", "1");
         cf.deleteOnExit();
 
         MetadataCollector sstableMetadataCollector = new MetadataCollector(new ClusteringComparator(BytesType.instance));
-        try(SequentialWriter writer = new CompressedSequentialWriter(f, cf.getAbsolutePath(),
+        try(SequentialWriter writer = new CompressedSequentialWriter(f, cf.absolutePath(),
                                                                      null, SequentialWriterOption.DEFAULT,
                                                                      CompressionParams.snappy(), sstableMetadataCollector))
         {
@@ -313,7 +314,7 @@ public class MmappedRegionsTest
             writer.finish();
         }
 
-        CompressionMetadata metadata = new CompressionMetadata(cf.getAbsolutePath(), f.length(), true);
+        CompressionMetadata metadata = new CompressionMetadata(cf.absolutePath(), f.length(), true);
         try(ChannelProxy channel = new ChannelProxy(f);
             MmappedRegions regions = MmappedRegions.map(channel, metadata))
         {

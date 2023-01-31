@@ -522,6 +522,8 @@ public class ByteBufferUtil
             return ByteBufferUtil.bytes((InetAddress) obj);
         else if (obj instanceof String)
             return ByteBufferUtil.bytes((String) obj);
+        else if (obj instanceof byte[])
+            return ByteBuffer.wrap((byte[]) obj);
         else if (obj instanceof ByteBuffer)
             return (ByteBuffer) obj;
         else
@@ -660,6 +662,11 @@ public class ByteBufferUtil
     public static ByteBuffer bytes(UUID uuid)
     {
         return ByteBuffer.wrap(UUIDGen.decompose(uuid));
+    }
+
+    public static ByteBuffer bytes(TimeUUID uuid)
+    {
+        return bytes(uuid.asUUID());
     }
 
     // Returns whether {@code prefix} is a prefix of {@code value}.

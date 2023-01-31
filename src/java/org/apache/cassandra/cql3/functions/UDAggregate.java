@@ -39,6 +39,7 @@ import org.apache.cassandra.transport.ProtocolVersion;
 
 import static com.google.common.collect.Iterables.any;
 import static com.google.common.collect.Iterables.transform;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 /**
  * Base class for user-defined-aggregates.
@@ -97,6 +98,12 @@ public class UDAggregate extends AbstractFunction implements AggregateFunction, 
                         .filter(f -> f.name().equals(name) && Functions.typesMatch(f.argTypes(), arguments))
                         .findFirst()
                         .orElseThrow(() -> new ConfigurationException(String.format("Unable to find function %s referenced by UDA %s", name, udaName)));
+    }
+
+    public boolean isPure()
+    {
+        // Right now, we have no way to check if an UDA is pure. Due to that we consider them as non pure to avoid any risk.
+        return false;
     }
 
     public boolean hasReferenceTo(Function function)
@@ -182,7 +189,7 @@ public class UDAggregate extends AbstractFunction implements AggregateFunction, 
             {
                 maybeInit(protocolVersion);
 
-                long startTime = System.nanoTime();
+                long startTime = nanoTime();
                 stateFunctionCount++;
                 if (stateFunction instanceof UDFunction)
                 {
@@ -194,7 +201,7 @@ public class UDAggregate extends AbstractFunction implements AggregateFunction, 
                 {
                     throw new UnsupportedOperationException("UDAs only support UDFs");
                 }
-                stateFunctionDuration += (System.nanoTime() - startTime) / 1000;
+                stateFunctionDuration += (nanoTime() - startTime) / 1000;
             }
 
             private void maybeInit(ProtocolVersion protocolVersion)

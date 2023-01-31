@@ -25,6 +25,7 @@ import java.util.Set;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.cassandra.Util;
 import org.apache.cassandra.config.Config.DiskFailurePolicy;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
@@ -47,6 +48,7 @@ import org.apache.cassandra.io.sstable.format.SSTableReadsListener;
 import org.apache.cassandra.io.util.FileDataInput;
 import org.apache.cassandra.service.CassandraDaemon;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.utils.Throwables;
 
 import static org.apache.cassandra.distributed.api.Feature.GOSSIP;
 import static org.apache.cassandra.distributed.api.Feature.NATIVE_PROTOCOL;
@@ -55,13 +57,13 @@ import static org.apache.cassandra.distributed.api.Feature.NETWORK;
 public class JVMStabilityInspectorCorruptSSTableExceptionTest extends TestBaseImpl
 {
     @Test
-    public void testAbstractLocalAwareExecutorServiceOnIgnoredDiskFailurePolicy() throws Exception
+    public void testAbstractLocalAwareExecutorPlusOnIgnoredDiskFailurePolicy() throws Exception
     {
         test(DiskFailurePolicy.ignore, true, true);
     }
 
     @Test
-    public void testAbstractLocalAwareExecutorServiceOnStopParanoidDiskFailurePolicy() throws Exception
+    public void testAbstractLocalAwareExecutorPlusOnStopParanoidDiskFailurePolicy() throws Exception
     {
         test(DiskFailurePolicy.stop_paranoid, false, false);
     }
@@ -71,6 +73,7 @@ public class JVMStabilityInspectorCorruptSSTableExceptionTest extends TestBaseIm
         String table = policy.name();
         try (final Cluster cluster = init(getCluster(policy).start()))
         {
+            cluster.setUncaughtExceptionsFilter(t -> Throwables.anyCauseMatches(t, t2 -> t2.getClass().getCanonicalName().equals(CorruptSSTableException.class.getCanonicalName())));
             IInvokableInstance node = cluster.get(1);
             boolean[] setup = node.callOnInstance(() -> {
                 CassandraDaemon instanceForTesting = CassandraDaemon.getInstanceForTesting();
@@ -159,7 +162,7 @@ public class JVMStabilityInspectorCorruptSSTableExceptionTest extends TestBaseIm
     {
         node.runOnInstance(() -> {
             ColumnFamilyStore cf = Keyspace.open(keyspace).getColumnFamilyStore(table);
-            cf.forceBlockingFlush();
+            Util.flush(cf);
 
             Set<SSTableReader> remove = cf.getLiveSSTables();
             Set<SSTableReader> replace = new HashSet<>();
@@ -187,13 +190,13 @@ public class JVMStabilityInspectorCorruptSSTableExceptionTest extends TestBaseIm
         }
 
         @Override
-        public UnfilteredRowIterator iterator(DecoratedKey key, Slices slices, ColumnFilter selectedColumns, boolean reversed, SSTableReadsListener listener)
+        public UnfilteredRowIterator rowIterator(DecoratedKey key, Slices slices, ColumnFilter selectedColumns, boolean reversed, SSTableReadsListener listener)
         {
             throw throwCorrupted();
         }
 
         @Override
-        public UnfilteredRowIterator iterator(FileDataInput file, DecoratedKey key, RowIndexEntry indexEntry, Slices slices, ColumnFilter selectedColumns, boolean reversed)
+        public UnfilteredRowIterator rowIterator(FileDataInput file, DecoratedKey key, RowIndexEntry indexEntry, Slices slices, ColumnFilter selectedColumns, boolean reversed)
         {
             throw throwCorrupted();
         }

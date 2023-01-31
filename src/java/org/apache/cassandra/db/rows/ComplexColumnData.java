@@ -28,11 +28,8 @@ import org.apache.cassandra.db.DeletionPurger;
 import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.Digest;
 import org.apache.cassandra.db.LivenessInfo;
-import org.apache.cassandra.db.context.CounterContext;
 import org.apache.cassandra.db.filter.ColumnFilter;
-import org.apache.cassandra.db.marshal.AbstractType;
 import org.apache.cassandra.db.marshal.ByteType;
-import org.apache.cassandra.db.marshal.CollectionType;
 import org.apache.cassandra.db.marshal.SetType;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.DroppedColumn;
@@ -136,6 +133,13 @@ public class ComplexColumnData extends ColumnData implements Iterable<Cell<?>>
         return size;
     }
 
+    public long unsharedHeapSize()
+    {
+        long heapSize = EMPTY_SIZE + ObjectSizes.sizeOfArray(cells) + complexDeletion.unsharedHeapSize();
+        return BTree.<Cell>accumulate(cells, (cell, value) -> value + cell.unsharedHeapSize(), heapSize);
+    }
+
+    @Override
     public long unsharedHeapSizeExcludingData()
     {
         long heapSize = EMPTY_SIZE + ObjectSizes.sizeOfArray(cells);
@@ -208,6 +212,12 @@ public class ComplexColumnData extends ColumnData implements Iterable<Cell<?>>
     public ComplexColumnData withOnlyQueriedData(ColumnFilter filter)
     {
         return transformAndFilter(complexDeletion, (cell) -> filter.fetchedCellIsQueried(column, cell.path()) ? null : cell);
+    }
+
+    public ComplexColumnData purgeDataOlderThan(long timestamp)
+    {
+        DeletionTime newDeletion = complexDeletion.markedForDeleteAt() < timestamp ? DeletionTime.LIVE : complexDeletion;
+        return transformAndFilter(newDeletion, (cell) -> cell.purgeDataOlderThan(timestamp));
     }
 
     private ComplexColumnData update(DeletionTime newDeletion, Object[] newCells)

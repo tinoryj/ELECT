@@ -23,8 +23,8 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.util.concurrent.AbstractFuture;
 
+import org.apache.cassandra.utils.concurrent.AsyncFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,10 +32,15 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.repair.messages.RepairMessage;
+import org.apache.cassandra.repair.messages.SyncRequest;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.tracing.Tracing;
 
-public abstract class SyncTask extends AbstractFuture<SyncStat> implements Runnable
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
+import static org.apache.cassandra.net.Verb.SYNC_REQ;
+
+public abstract class SyncTask extends AsyncFuture<SyncStat> implements Runnable
 {
     private static final Logger logger = LoggerFactory.getLogger(SyncTask.class);
 
@@ -70,7 +75,7 @@ public abstract class SyncTask extends AbstractFuture<SyncStat> implements Runna
      */
     public final void run()
     {
-        startTime = System.currentTimeMillis();
+        startTime = currentTimeMillis();
 
 
         // choose a repair method based on the significance of the difference
@@ -79,7 +84,7 @@ public abstract class SyncTask extends AbstractFuture<SyncStat> implements Runna
         {
             logger.info(String.format(format, "are consistent"));
             Tracing.traceRepair("Endpoint {} is consistent with {} for {}", nodePair.coordinator, nodePair.peer, desc.columnFamily);
-            set(stat);
+            trySuccess(stat);
             return;
         }
 
@@ -97,8 +102,16 @@ public abstract class SyncTask extends AbstractFuture<SyncStat> implements Runna
     protected void finished()
     {
         if (startTime != Long.MIN_VALUE)
-            Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily).metric.repairSyncTime.update(System.currentTimeMillis() - startTime, TimeUnit.MILLISECONDS);
+            Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily).metric.repairSyncTime.update(currentTimeMillis() - startTime, TimeUnit.MILLISECONDS);
     }
 
     public void abort() {}
+
+    void sendRequest(SyncRequest request, InetAddressAndPort to)
+    {
+        RepairMessage.sendMessageWithFailureCB(request,
+                                               SYNC_REQ,
+                                               to,
+                                               this::tryFailure);
+    }
 }

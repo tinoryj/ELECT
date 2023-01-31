@@ -20,13 +20,13 @@ package org.apache.cassandra.streaming.management;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import javax.management.openmbean.*;
 
 import com.google.common.base.Throwables;
 
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.streaming.ProgressInfo;
+import org.apache.cassandra.utils.TimeUUID;
 
 public class ProgressInfoCompositeData
 {
@@ -72,12 +72,12 @@ public class ProgressInfoCompositeData
         }
     }
 
-    public static CompositeData toCompositeData(UUID planId, ProgressInfo progressInfo)
+    public static CompositeData toCompositeData(TimeUUID planId, ProgressInfo progressInfo)
     {
         Map<String, Object> valueMap = new HashMap<>();
         valueMap.put(ITEM_NAMES[0], planId.toString());
-        valueMap.put(ITEM_NAMES[1], progressInfo.peer.address.getHostAddress());
-        valueMap.put(ITEM_NAMES[2], progressInfo.peer.port);
+        valueMap.put(ITEM_NAMES[1], progressInfo.peer.getAddress().getHostAddress());
+        valueMap.put(ITEM_NAMES[2], progressInfo.peer.getPort());
         valueMap.put(ITEM_NAMES[3], progressInfo.sessionIndex);
         valueMap.put(ITEM_NAMES[4], progressInfo.fileName);
         valueMap.put(ITEM_NAMES[5], progressInfo.direction.name());

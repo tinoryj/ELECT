@@ -20,17 +20,16 @@ package org.apache.cassandra.net;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeoutException;
 
 import javax.annotation.Nullable;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import org.apache.cassandra.concurrent.ScheduledExecutorPlus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.Mutation;
@@ -47,8 +46,11 @@ import org.apache.cassandra.utils.FBUtilities;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static org.apache.cassandra.concurrent.ExecutorFactory.Global.executorFactory;
+import static org.apache.cassandra.concurrent.ExecutorFactory.SimulatorSemantics.DISCARD;
 import static org.apache.cassandra.concurrent.Stage.INTERNAL_RESPONSE;
-import static org.apache.cassandra.utils.MonotonicClock.preciseTime;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
+import static org.apache.cassandra.utils.MonotonicClock.Global.preciseTime;
 
 /**
  * An expiring map of request callbacks.
@@ -64,14 +66,14 @@ public class RequestCallbacks implements OutboundMessageCallbacks
     private static final Logger logger = LoggerFactory.getLogger(RequestCallbacks.class);
 
     private final MessagingService messagingService;
-    private final ScheduledExecutorService executor = new DebuggableScheduledThreadPoolExecutor("Callback-Map-Reaper");
+    private final ScheduledExecutorPlus executor = executorFactory().scheduled("Callback-Map-Reaper", DISCARD);
     private final ConcurrentMap<CallbackKey, CallbackInfo> callbacks = new ConcurrentHashMap<>();
 
     RequestCallbacks(MessagingService messagingService)
     {
         this.messagingService = messagingService;
 
-        long expirationInterval = DatabaseDescriptor.getMinRpcTimeout(NANOSECONDS) / 2;
+        long expirationInterval = defaultExpirationInterval();
         executor.scheduleWithFixedDelay(this::expire, expirationInterval, expirationInterval, NANOSECONDS);
     }
 
@@ -88,7 +90,8 @@ public class RequestCallbacks implements OutboundMessageCallbacks
      * Remove and return the {@link CallbackInfo} associated with given id and peer, if known.
      */
     @Nullable
-    CallbackInfo remove(long id, InetAddressAndPort peer)
+    @VisibleForTesting
+    public CallbackInfo remove(long id, InetAddressAndPort peer)
     {
         return callbacks.remove(key(id, peer));
     }
@@ -99,12 +102,11 @@ public class RequestCallbacks implements OutboundMessageCallbacks
     void addWithExpiration(RequestCallback cb, Message message, InetAddressAndPort to)
     {
         // mutations need to call the overload with a ConsistencyLevel
-        assert message.verb() != Verb.MUTATION_REQ && message.verb() != Verb.COUNTER_MUTATION_REQ && message.verb() != Verb.PAXOS_COMMIT_REQ;
+        assert message.verb() != Verb.MUTATION_REQ && message.verb() != Verb.COUNTER_MUTATION_REQ;
         CallbackInfo previous = callbacks.put(key(message.id(), to), new CallbackInfo(message, to, cb));
         assert previous == null : format("Callback already exists for id %d/%s! (%s)", message.id(), to, previous);
     }
 
-    // FIXME: shouldn't need a special overload for writes; hinting should be part of AbstractWriteResponseHandler
     public void addWithExpiration(AbstractWriteResponseHandler<?> cb,
                                   Message<?> message,
                                   Replica to,
@@ -169,14 +171,6 @@ public class RequestCallbacks implements OutboundMessageCallbacks
 
         if (info.invokeOnFailure())
             INTERNAL_RESPONSE.submit(() -> info.callback.onFailure(info.peer, RequestFailureReason.TIMEOUT));
-
-        // FIXME: this has never belonged here, should be part of onFailure() in AbstractWriteResponseHandler
-        if (info.shouldHint())
-        {
-            WriteCallbackInfo writeCallbackInfo = ((WriteCallbackInfo) info);
-            Mutation mutation = writeCallbackInfo.mutation();
-            StorageProxy.submitHint(mutation, writeCallbackInfo.getReplica(), null);
-        }
     }
 
     void shutdownNow(boolean expireCallbacks)
@@ -199,7 +193,7 @@ public class RequestCallbacks implements OutboundMessageCallbacks
     {
         if (!executor.isTerminated())
         {
-            long wait = deadlineNanos - System.nanoTime();
+            long wait = deadlineNanos - nanoTime();
             if (wait <= 0 || !executor.awaitTermination(wait, NANOSECONDS))
                 throw new TimeoutException();
         }
@@ -249,13 +243,14 @@ public class RequestCallbacks implements OutboundMessageCallbacks
         }
     }
 
-    static class CallbackInfo
+    @VisibleForTesting
+    public static class CallbackInfo
     {
         final long createdAtNanos;
         final long expiresAtNanos;
 
         final InetAddressAndPort peer;
-        final RequestCallback callback;
+        public final RequestCallback callback;
 
         @Deprecated // for 3.0 compatibility purposes only
         public final Verb responseVerb;
@@ -374,5 +369,10 @@ public class RequestCallbacks implements OutboundMessageCallbacks
         ForwardingInfo forwardTo = message.forwardTo();
         if (null != forwardTo)
             forwardTo.forEach(this::removeAndExpire);
+    }
+
+    public static long defaultExpirationInterval()
+    {
+        return DatabaseDescriptor.getMinRpcTimeout(NANOSECONDS) / 2;
     }
 }

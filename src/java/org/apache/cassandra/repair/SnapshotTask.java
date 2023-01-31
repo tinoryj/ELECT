@@ -19,21 +19,20 @@ package org.apache.cassandra.repair;
 
 import java.util.concurrent.RunnableFuture;
 
-import com.google.common.util.concurrent.AbstractFuture;
-
 import org.apache.cassandra.exceptions.RequestFailureReason;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.RequestCallback;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.repair.messages.SnapshotMessage;
+import org.apache.cassandra.utils.concurrent.AsyncFuture;
 
 import static org.apache.cassandra.net.Verb.SNAPSHOT_MSG;
 
 /**
  * SnapshotTask is a task that sends snapshot request.
  */
-public class SnapshotTask extends AbstractFuture<InetAddressAndPort> implements RunnableFuture<InetAddressAndPort>
+public class SnapshotTask extends AsyncFuture<InetAddressAndPort> implements RunnableFuture<InetAddressAndPort>
 {
     private final RepairJobDesc desc;
     private final InetAddressAndPort endpoint;
@@ -54,7 +53,7 @@ public class SnapshotTask extends AbstractFuture<InetAddressAndPort> implements 
     /**
      * Callback for snapshot request. Run on INTERNAL_RESPONSE stage.
      */
-    static class SnapshotCallback implements RequestCallback
+    static class SnapshotCallback implements RequestCallback<InetAddressAndPort>
     {
         final SnapshotTask task;
 
@@ -71,7 +70,7 @@ public class SnapshotTask extends AbstractFuture<InetAddressAndPort> implements 
         @Override
         public void onResponse(Message msg)
         {
-            task.set(task.endpoint);
+            task.trySuccess(task.endpoint);
         }
 
         @Override
@@ -83,7 +82,7 @@ public class SnapshotTask extends AbstractFuture<InetAddressAndPort> implements 
         @Override
         public void onFailure(InetAddressAndPort from, RequestFailureReason failureReason)
         {
-            task.setException(new RuntimeException("Could not create snapshot at " + from));
+            task.tryFailure(new RuntimeException("Could not create snapshot at " + from + "; " + failureReason));
         }
     }
 }

@@ -40,6 +40,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -49,8 +50,8 @@ public class JsonTest extends CQLTester
     @BeforeClass
     public static void setUpClass()
     {
-        if (ROW_CACHE_SIZE_IN_MB > 0)
-            DatabaseDescriptor.setRowCacheSizeInMB(ROW_CACHE_SIZE_IN_MB);
+        if (ROW_CACHE_SIZE_IN_MIB > 0)
+            DatabaseDescriptor.setRowCacheSizeInMiB(ROW_CACHE_SIZE_IN_MIB);
 
         StorageService.instance.setPartitionerUnsafe(ByteOrderedPartitioner.instance);
 
@@ -1329,7 +1330,7 @@ public class JsonTest extends CQLTester
         for (int i = 0; i < numRows; i++)
             execute("INSERT INTO %s (k, v) VALUES (?, ?)", "" + i, "" + i);
 
-        long seed = System.nanoTime();
+        long seed = nanoTime();
         System.out.println("Seed " + seed);
         final Random rand = new Random(seed);
 

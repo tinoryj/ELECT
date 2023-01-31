@@ -481,7 +481,7 @@ public class NetworkTopologyStrategyTest
         StorageService.instance.getTokenMetadata().updateNormalToken(new LongToken(1), FBUtilities.getBroadcastAddressAndPort());
         
         ClientWarn.instance.captureWarnings();
-        strategy.maybeWarnOnOptions();
+        strategy.maybeWarnOnOptions(null);
         assertTrue(ClientWarn.instance.getWarnings().stream().anyMatch(s -> s.contains("Your replication factor")));
     }
 }

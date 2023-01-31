@@ -35,13 +35,17 @@ import static org.junit.Assert.fail;
 
 public class FailingTruncationTest extends TestBaseImpl
 {
+    private static final String BB_FAIL_HELPER_PROP = "test.bbfailhelper.enabled";
+
     @Test
     public void testFailingTruncation() throws IOException
     {
-        try(Cluster cluster = init(Cluster.build(2)
-                                          .withInstanceInitializer(BBFailHelper::install)
-                                          .start()))
+        try (Cluster cluster = init(Cluster.build(2)
+                                           .withInstanceInitializer(BBFailHelper::install)
+                                           .start()))
         {
+            cluster.setUncaughtExceptionsFilter(t -> "truncateBlocking".equals(t.getMessage()));
+            System.setProperty(BB_FAIL_HELPER_PROP, "true");
             cluster.schemaChange("create table " + KEYSPACE + ".tbl (id int primary key, t int)");
             try
             {
@@ -53,11 +57,11 @@ public class FailingTruncationTest extends TestBaseImpl
                 assertTrue(e.getMessage().contains("Truncate failed on replica /127.0.0.2"));
             }
         }
-
     }
 
     public static class BBFailHelper
     {
+
         static void install(ClassLoader cl, int nodeNumber)
         {
             if (nodeNumber == 2)
@@ -72,8 +76,8 @@ public class FailingTruncationTest extends TestBaseImpl
 
         public static void truncateBlocking()
         {
-            throw new RuntimeException();
+            if (Boolean.getBoolean(BB_FAIL_HELPER_PROP))
+                throw new RuntimeException("truncateBlocking");
         }
     }
-
 }

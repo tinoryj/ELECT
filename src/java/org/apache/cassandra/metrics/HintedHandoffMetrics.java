@@ -19,19 +19,19 @@ package org.apache.cassandra.metrics;
 
 import java.util.Map.Entry;
 
-import com.google.common.util.concurrent.MoreExecutors;
-
 import com.codahale.metrics.Counter;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 
+import org.apache.cassandra.concurrent.ImmediateExecutor;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.locator.InetAddressAndPort;
-import org.apache.cassandra.utils.UUIDGen;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.cassandra.metrics.CassandraMetricsRegistry.Metrics;
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
 /**
  * Metrics for {@link org.apache.cassandra.hints.HintsService}.
@@ -44,12 +44,12 @@ public class HintedHandoffMetrics
 
     /** Total number of hints which are not stored, This is not a cache. */
     private final LoadingCache<InetAddressAndPort, DifferencingCounter> notStored = Caffeine.newBuilder()
-                                                                                            .executor(MoreExecutors.directExecutor())
+                                                                                            .executor(ImmediateExecutor.INSTANCE)
                                                                                             .build(DifferencingCounter::new);
 
     /** Total number of hints that have been created, This is not a cache. */
     private final LoadingCache<InetAddressAndPort, Counter> createdHintCounts = Caffeine.newBuilder()
-                                                                                        .executor(MoreExecutors.directExecutor())
+                                                                                        .executor(ImmediateExecutor.INSTANCE)
                                                                                         .build(address -> Metrics.counter(factory.createMetricName("Hints_created-" + address.toString().replace(':', '.'))));
 
     public void incrCreatedHints(InetAddressAndPort address)
@@ -70,7 +70,7 @@ public class HintedHandoffMetrics
             if (difference == 0)
                 continue;
             logger.warn("{} has {} dropped hints, because node is down past configured hint window.", entry.getKey(), difference);
-            SystemKeyspace.updateHintsDropped(entry.getKey(), UUIDGen.getTimeUUID(), (int) difference);
+            SystemKeyspace.updateHintsDropped(entry.getKey(), nextTimeUUID(), (int) difference);
         }
     }
 

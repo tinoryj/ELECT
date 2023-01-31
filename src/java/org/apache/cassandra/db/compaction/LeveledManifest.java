@@ -161,7 +161,7 @@ public class LeveledManifest
         {
             builder.append(sstable.descriptor.cfname)
                    .append('-')
-                   .append(sstable.descriptor.generation)
+                   .append(sstable.descriptor.id)
                    .append("(L")
                    .append(sstable.getSSTableLevel())
                    .append("), ");
@@ -393,6 +393,11 @@ public class LeveledManifest
     public synchronized int[] getAllLevelSize()
     {
         return generations.getAllLevelSize();
+    }
+
+    public synchronized long[] getAllLevelSizeBytes()
+    {
+        return generations.getAllLevelSizeBytes();
     }
 
     @VisibleForTesting

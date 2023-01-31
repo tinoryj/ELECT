@@ -20,16 +20,21 @@ package org.apache.cassandra.hints;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.concurrent.ExecutorPlus;
+import org.apache.cassandra.utils.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.concurrent.DebuggableThreadPoolExecutor;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.FSError;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
+
+import static org.apache.cassandra.concurrent.ExecutorFactory.Global.executorFactory;
 
 /**
  * A single threaded executor that exclusively writes all the hints and otherwise manipulate the writers.
@@ -46,18 +51,18 @@ final class HintsWriteExecutor
 
     private final HintsCatalog catalog;
     private final ByteBuffer writeBuffer;
-    private final ExecutorService executor;
+    private final ExecutorPlus executor;
 
     HintsWriteExecutor(HintsCatalog catalog)
     {
         this.catalog = catalog;
 
         writeBuffer = ByteBuffer.allocateDirect(WRITE_BUFFER_SIZE);
-        executor = DebuggableThreadPoolExecutor.createWithFixedPoolSize("HintsWriteExecutor", 1);
+        executor = executorFactory().sequential("HintsWriteExecutor");
     }
 
     /*
-     * Should be very fast (worst case scenario - write a few 10s of megabytes to disk).
+     * Should be very fast (worst case scenario - write a few 10s of mebibytes to disk).
      */
     void shutdownBlocking()
     {
@@ -102,7 +107,11 @@ final class HintsWriteExecutor
         {
             executor.submit(new FsyncWritersTask(stores)).get();
         }
-        catch (InterruptedException | ExecutionException e)
+        catch (InterruptedException e)
+        {
+            throw new UncheckedInterruptedException(e);
+        }
+        catch (ExecutionException e)
         {
             throw new RuntimeException(e);
         }
@@ -185,7 +194,7 @@ final class HintsWriteExecutor
         {
             HintsBuffer buffer = bufferPool.currentBuffer();
             buffer.waitForModifications();
-            stores.forEach(store -> flush(buffer.consumingHintsIterator(store.hostId), store));
+            stores.forEach(store -> flush(buffer.consumingHintsIterator(store.hostId), store, buffer));
         }
     }
 
@@ -207,10 +216,10 @@ final class HintsWriteExecutor
 
     private void flush(HintsBuffer buffer)
     {
-        buffer.hostIds().forEach(hostId -> flush(buffer.consumingHintsIterator(hostId), catalog.get(hostId)));
+        buffer.hostIds().forEach(hostId -> flush(buffer.consumingHintsIterator(hostId), catalog.get(hostId), buffer));
     }
 
-    private void flush(Iterator<ByteBuffer> iterator, HintsStore store)
+    private void flush(Iterator<ByteBuffer> iterator, HintsStore store, HintsBuffer buffer)
     {
         while (true)
         {
@@ -222,7 +231,27 @@ final class HintsWriteExecutor
 
             // exceeded the size limit for an individual file, but still have more to write
             // close the current writer and continue flushing to a new one in the next iteration
-            store.closeWriter();
+            try
+            {
+                store.closeWriter();
+            }
+            finally
+            {
+                /*
+                We remove the earliest hint for a respective hostId of the store from the buffer,
+                we are removing it specifically after we closed the store above in try block
+                so hints are persisted on disk before.
+
+                There is a periodic flushing of a buffer driven by hints_flush_period and clearing
+                this entry upon every flush would remove the information what is the earliest hint in the buffer
+                for a respective node prematurely.
+
+                Since this flushing method is called for every host id a buffer holds, we will eventually
+                remove all hostIds of the earliest hints of the buffer, and it will be added again as soon as there
+                is a new hint for that node to be delivered.
+                */
+                buffer.clearEarliestHintForHostId(store.hostId);
+            }
         }
     }
 

@@ -19,8 +19,9 @@
 package org.apache.cassandra.io.sstable.format.big;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
@@ -28,6 +29,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.cassandra.io.util.File;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -116,7 +118,7 @@ public class BigTableZeroCopyWriterTest
             .applyUnsafe();
             expectedRowCount++;
         }
-        store.forceBlockingFlush();
+        Util.flush(store);
 
         sstable = store.getLiveSSTables().iterator().next();
     }
@@ -161,7 +163,14 @@ public class BigTableZeroCopyWriterTest
             {
                 Pair<DataInputPlus, Long> pair = getSSTableComponentData(sstable, component, bufferMapper);
 
-                btzcw.writeComponent(component.type, pair.left, pair.right);
+                try
+                {
+                    btzcw.writeComponent(component.type, pair.left, pair.right);
+                }
+                catch (ClosedChannelException e)
+                {
+                    throw new UncheckedIOException(e);
+                }
             }
         }
 
@@ -182,11 +191,11 @@ public class BigTableZeroCopyWriterTest
         for (int i = 0; i < store.metadata().params.minIndexInterval; i++)
         {
             DecoratedKey dk = Util.dk(String.valueOf(i));
-            UnfilteredRowIterator rowIter = sstable.iterator(dk,
-                                                             Slices.ALL,
-                                                             ColumnFilter.all(store.metadata()),
-                                                             false,
-                                                             SSTableReadsListener.NOOP_LISTENER);
+            UnfilteredRowIterator rowIter = sstable.rowIterator(dk,
+                                                                Slices.ALL,
+                                                                ColumnFilter.all(store.metadata()),
+                                                                false,
+                                                                SSTableReadsListener.NOOP_LISTENER);
             while (rowIter.hasNext())
             {
                 rowIter.next();

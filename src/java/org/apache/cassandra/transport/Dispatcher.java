@@ -20,29 +20,41 @@ package org.apache.cassandra.transport;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
+import com.google.common.base.Predicate;
+import org.apache.cassandra.metrics.ClientMetrics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
 import io.netty.util.AttributeKey;
-import org.apache.cassandra.concurrent.LocalAwareExecutorService;
+import org.apache.cassandra.concurrent.LocalAwareExecutorPlus;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.net.FrameEncoder;
 import org.apache.cassandra.service.ClientWarn;
 import org.apache.cassandra.service.QueryState;
+import org.apache.cassandra.service.reads.thresholds.CoordinatorWarnings;
+import org.apache.cassandra.transport.ClientResourceLimits.Overload;
 import org.apache.cassandra.transport.Flusher.FlushItem;
 import org.apache.cassandra.transport.messages.ErrorMessage;
 import org.apache.cassandra.transport.messages.EventMessage;
 import org.apache.cassandra.utils.JVMStabilityInspector;
+import org.apache.cassandra.utils.NoSpamLogger;
 
 import static org.apache.cassandra.concurrent.SharedExecutorPool.SHARED;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 public class Dispatcher
 {
-    private static final LocalAwareExecutorService requestExecutor = SHARED.newExecutor(DatabaseDescriptor.getNativeTransportMaxThreads(),
-                                                                                        DatabaseDescriptor::setNativeTransportMaxThreads,
-                                                                                        "transport",
-                                                                                        "Native-Transport-Requests");
+    private static final Logger logger = LoggerFactory.getLogger(Dispatcher.class);
+    
+    private static final LocalAwareExecutorPlus requestExecutor = SHARED.newExecutor(DatabaseDescriptor.getNativeTransportMaxThreads(),
+                                                                                     DatabaseDescriptor::setNativeTransportMaxThreads,
+                                                                                     "transport",
+                                                                                     "Native-Transport-Requests");
 
     private static final ConcurrentMap<EventLoop, Flusher> flusherLookup = new ConcurrentHashMap<>();
     private final boolean useLegacyFlusher;
@@ -65,25 +77,53 @@ public class Dispatcher
         this.useLegacyFlusher = useLegacyFlusher;
     }
 
-    public void dispatch(Channel channel, Message.Request request, FlushItemConverter forFlusher)
+    public void dispatch(Channel channel, Message.Request request, FlushItemConverter forFlusher, Overload backpressure)
     {
-        requestExecutor.submit(() -> processRequest(channel, request, forFlusher));
+        requestExecutor.submit(() -> processRequest(channel, request, forFlusher, backpressure));
+        ClientMetrics.instance.markRequestDispatched();
     }
 
     /**
-     * Note: this method may be executed on the netty event loop, during initial protocol negotiation
+     * Note: this method may be executed on the netty event loop, during initial protocol negotiation; the caller is
+     * responsible for cleaning up any global or thread-local state. (ex. tracing, client warnings, etc.).
      */
-    static Message.Response processRequest(ServerConnection connection, Message.Request request)
+    private static Message.Response processRequest(ServerConnection connection, Message.Request request, Overload backpressure)
     {
-        long queryStartNanoTime = System.nanoTime();
+        long queryStartNanoTime = nanoTime();
         if (connection.getVersion().isGreaterOrEqualTo(ProtocolVersion.V4))
             ClientWarn.instance.captureWarnings();
+
+        // even if ClientWarn is disabled, still setup CoordinatorTrackWarnings, as this will populate metrics and
+        // emit logs on the server; the warnings will just be ignored and not sent to the client
+        if (request.isTrackable())
+            CoordinatorWarnings.init();
+
+        if (backpressure == Overload.REQUESTS)
+        {
+            String message = String.format("Request breached global limit of %d requests/second and triggered backpressure.",
+                                           ClientResourceLimits.getNativeTransportMaxRequestsPerSecond());
+
+            NoSpamLogger.log(logger, NoSpamLogger.Level.INFO, 1, TimeUnit.MINUTES, message);
+            ClientWarn.instance.warn(message);
+        }
+        else if (backpressure == Overload.BYTES_IN_FLIGHT)
+        {
+            String message = String.format("Request breached limit(s) on bytes in flight (Endpoint: %d, Global: %d) and triggered backpressure.",
+                                           ClientResourceLimits.getEndpointLimit(), ClientResourceLimits.getGlobalLimit());
+
+            NoSpamLogger.log(logger, NoSpamLogger.Level.INFO, 1, TimeUnit.MINUTES, message);
+            ClientWarn.instance.warn(message);
+        }
 
         QueryState qstate = connection.validateNewMessage(request.type, connection.getVersion());
 
         Message.logger.trace("Received: {}, v={}", request, connection.getVersion());
         connection.requests.inc();
         Message.Response response = request.execute(qstate, queryStartNanoTime);
+
+        if (request.isTrackable())
+            CoordinatorWarnings.done();
+
         response.setStreamId(request.getStreamId());
         response.setWarnings(ClientWarn.instance.getWarnings());
         response.attach(connection);
@@ -92,33 +132,42 @@ public class Dispatcher
     }
 
     /**
-     * Note: this method is not expected to execute on the netty event loop.
+     * Note: this method may be executed on the netty event loop.
      */
-    void processRequest(Channel channel, Message.Request request, FlushItemConverter forFlusher)
+    static Message.Response processRequest(Channel channel, Message.Request request, Overload backpressure)
     {
-        final Message.Response response;
-        final ServerConnection connection;
-        FlushItem<?> toFlush;
         try
         {
-            assert request.connection() instanceof ServerConnection;
-            connection = (ServerConnection) request.connection();
-            response = processRequest(connection, request);
-            toFlush = forFlusher.toFlushItem(channel, request, response);
-            Message.logger.trace("Responding: {}, v={}", response, connection.getVersion());
+            return processRequest((ServerConnection) request.connection(), request, backpressure);
         }
         catch (Throwable t)
         {
             JVMStabilityInspector.inspectThrowable(t);
-            ExceptionHandlers.UnexpectedChannelExceptionHandler handler = new ExceptionHandlers.UnexpectedChannelExceptionHandler(channel, true);
+
+            if (request.isTrackable())
+                CoordinatorWarnings.done();
+
+            Predicate<Throwable> handler = ExceptionHandlers.getUnexpectedExceptionHandler(channel, true);
             ErrorMessage error = ErrorMessage.fromException(t, handler);
             error.setStreamId(request.getStreamId());
-            toFlush = forFlusher.toFlushItem(channel, request, error);
+            error.setWarnings(ClientWarn.instance.getWarnings());
+            return error;
         }
         finally
         {
+            CoordinatorWarnings.reset();
             ClientWarn.instance.resetWarnings();
         }
+    }
+
+    /**
+     * Note: this method is not expected to execute on the netty event loop.
+     */
+    void processRequest(Channel channel, Message.Request request, FlushItemConverter forFlusher, Overload backpressure)
+    {
+        Message.Response response = processRequest(channel, request, backpressure);
+        FlushItem<?> toFlush = forFlusher.toFlushItem(channel, request, response);
+        Message.logger.trace("Responding: {}, v={}", response, request.connection().getVersion());
         flush(toFlush);
     }
 
@@ -152,7 +201,7 @@ public class Dispatcher
      * for delivering events to registered clients is dependent on protocol version and the configuration
      * of the pipeline. For v5 and newer connections, the event message is encoded into an Envelope,
      * wrapped in a FlushItem and then delivered via the pipeline's flusher, in a similar way to
-     * a Response returned from {@link #processRequest(Channel, Message.Request, FlushItemConverter)}.
+     * a Response returned from {@link #processRequest(Channel, Message.Request, FlushItemConverter, Overload)}.
      * It's worth noting that events are not generally fired as a direct response to a client request,
      * so this flush item has a null request attribute. The dispatcher itself is created when the
      * pipeline is first configured during protocol negotiation and is attached to the channel for

@@ -31,6 +31,7 @@ import org.slf4j.helpers.MessageFormatter;
 
 import org.apache.cassandra.audit.AuditLogContext;
 import org.apache.cassandra.audit.AuditLogEntryType;
+import org.apache.cassandra.db.guardrails.Guardrails;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.ColumnMetadata;
@@ -51,6 +52,7 @@ import org.apache.cassandra.utils.Pair;
 import static java.util.function.Predicate.isEqual;
 
 import static org.apache.cassandra.cql3.statements.RequestValidations.checkFalse;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 /**
  * A <code>BATCH</code> statement parsed from a CQL query.
@@ -232,10 +234,10 @@ public class BatchStatement implements CQLStatement
             String cfName = null;
             for (ModificationStatement stmt : statements)
             {
-                if (ksName != null && (!stmt.keyspace().equals(ksName) || !stmt.columnFamily().equals(cfName)))
+                if (ksName != null && (!stmt.keyspace().equals(ksName) || !stmt.table().equals(cfName)))
                     throw new InvalidRequestException("Batch with conditions cannot span multiple tables");
                 ksName = stmt.keyspace();
-                cfName = stmt.columnFamily();
+                cfName = stmt.table();
             }
         }
     }
@@ -264,7 +266,8 @@ public class BatchStatement implements CQLStatement
     }
 
     @VisibleForTesting
-    public List<? extends IMutation> getMutations(BatchQueryOptions options,
+    public List<? extends IMutation> getMutations(ClientState state,
+                                                  BatchQueryOptions options,
                                                   boolean local,
                                                   long batchTimestamp,
                                                   int nowInSeconds,
@@ -280,7 +283,7 @@ public class BatchStatement implements CQLStatement
             ModificationStatement stmt = statements.get(i);
             if (metadata != null && !stmt.metadata.id.equals(metadata.id))
                 metadata = null;
-            List<ByteBuffer> stmtPartitionKeys = stmt.buildPartitionKeyNames(options.forStatement(i));
+            List<ByteBuffer> stmtPartitionKeys = stmt.buildPartitionKeyNames(options.forStatement(i), state);
             partitionKeys.add(stmtPartitionKeys);
             HashMultiset<ByteBuffer> perKeyCountsForTable = partitionCounts.computeIfAbsent(stmt.metadata.id, k -> HashMultiset.create());
             for (int stmtIdx = 0, stmtSize = stmtPartitionKeys.size(); stmtIdx < stmtSize; stmtIdx++)
@@ -305,7 +308,7 @@ public class BatchStatement implements CQLStatement
             }
             QueryOptions statementOptions = options.forStatement(i);
             long timestamp = attrs.getTimestamp(batchTimestamp, statementOptions);
-            statement.addUpdates(collector, partitionKeys.get(i), statementOptions, local, timestamp, nowInSeconds, queryStartNanoTime);
+            statement.addUpdates(collector, partitionKeys.get(i), state, statementOptions, local, timestamp, nowInSeconds, queryStartNanoTime);
         }
 
         if (tablesWithZeroGcGs != null)
@@ -348,9 +351,9 @@ public class BatchStatement implements CQLStatement
             if (size > failThreshold)
             {
                 Tracing.trace(format, tableNames, FBUtilities.prettyPrintMemory(size), FBUtilities.prettyPrintMemory(failThreshold),
-                              FBUtilities.prettyPrintMemory(size - failThreshold), " (see batch_size_fail_threshold_in_kb)");
+                              FBUtilities.prettyPrintMemory(size - failThreshold), " (see batch_size_fail_threshold)");
                 logger.error(format, tableNames, FBUtilities.prettyPrintMemory(size), FBUtilities.prettyPrintMemory(failThreshold),
-                             FBUtilities.prettyPrintMemory(size - failThreshold), " (see batch_size_fail_threshold_in_kb)");
+                             FBUtilities.prettyPrintMemory(size - failThreshold), " (see batch_size_fail_threshold)");
                 throw new InvalidRequestException("Batch too large");
             }
             else if (logger.isWarnEnabled())
@@ -408,13 +411,21 @@ public class BatchStatement implements CQLStatement
         if (options.getSerialConsistency() == null)
             throw new InvalidRequestException("Invalid empty serial consistency level");
 
+        ClientState clientState = queryState.getClientState();
+        Guardrails.writeConsistencyLevels.guard(EnumSet.of(options.getConsistency(), options.getSerialConsistency()),
+                                                clientState);
+
+        for (int i = 0; i < statements.size(); i++ )
+            statements.get(i).validateDiskUsage(options.forStatement(i), clientState);
+
         if (hasConditions)
             return executeWithConditions(options, queryState, queryStartNanoTime);
 
         if (updatesVirtualTables)
             executeInternalWithoutCondition(queryState, options, queryStartNanoTime);
         else    
-            executeWithoutConditions(getMutations(options, false, timestamp, nowInSeconds, queryStartNanoTime), options.getConsistency(), queryStartNanoTime);
+            executeWithoutConditions(getMutations(clientState, options, false, timestamp, nowInSeconds, queryStartNanoTime),
+                                     options.getConsistency(), queryStartNanoTime);
 
         return new ResultMessage.Void();
     }
@@ -486,7 +497,7 @@ public class BatchStatement implements CQLStatement
             ModificationStatement statement = statements.get(i);
             QueryOptions statementOptions = options.forStatement(i);
             long timestamp = attrs.getTimestamp(batchTimestamp, statementOptions);
-            List<ByteBuffer> pks = statement.buildPartitionKeyNames(statementOptions);
+            List<ByteBuffer> pks = statement.buildPartitionKeyNames(statementOptions, state.getClientState());
             if (statement.getRestrictions().keyIsInRelation())
                 throw new IllegalArgumentException("Batch with conditions cannot span multiple partitions (you cannot use IN on the partition key)");
             if (key == null)
@@ -521,7 +532,7 @@ public class BatchStatement implements CQLStatement
             }
             else
             {
-                Clustering<?> clustering = Iterables.getOnlyElement(statement.createClustering(statementOptions));
+                Clustering<?> clustering = Iterables.getOnlyElement(statement.createClustering(statementOptions, state.getClientState()));
                 if (statement.hasConditions())
                 {
                     statement.addConditions(clustering, casRequest, statementOptions);
@@ -550,7 +561,7 @@ public class BatchStatement implements CQLStatement
         if (hasConditions)
             return executeInternalWithConditions(batchOptions, queryState);
 
-        executeInternalWithoutCondition(queryState, batchOptions, System.nanoTime());
+        executeInternalWithoutCondition(queryState, batchOptions, nanoTime());
         return new ResultMessage.Void();
     }
 
@@ -559,7 +570,7 @@ public class BatchStatement implements CQLStatement
         long timestamp = batchOptions.getTimestamp(queryState);
         int nowInSeconds = batchOptions.getNowInSeconds(queryState);
 
-        for (IMutation mutation : getMutations(batchOptions, true, timestamp, nowInSeconds, queryStartNanoTime))
+        for (IMutation mutation : getMutations(queryState.getClientState(), batchOptions, true, timestamp, nowInSeconds, queryStartNanoTime))
             mutation.apply();
         return null;
     }
@@ -576,7 +587,7 @@ public class BatchStatement implements CQLStatement
         long timestamp = options.getTimestamp(state);
         int nowInSeconds = options.getNowInSeconds(state);
 
-        try (RowIterator result = ModificationStatement.casInternal(request, timestamp, nowInSeconds))
+        try (RowIterator result = ModificationStatement.casInternal(state.getClientState(), request, timestamp, nowInSeconds))
         {
             ResultSet resultSet =
                 ModificationStatement.buildCasResultSet(ksName,

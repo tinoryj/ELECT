@@ -22,7 +22,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.junit.AfterClass;
@@ -144,13 +143,13 @@ public class UnableToParseClientMessageTest extends TestBaseImpl
                 // using spinAssertEquals as the metric is updated AFTER replying back to the client
                 // so there is a race where we check the metric before it gets updated
                 Util.spinAssertEquals(currentCount + 1L,
-                        () -> CassandraMetricsRegistry.Metrics.getMeters()
-                                .get("org.apache.cassandra.metrics.Client.ProtocolException")
-                                .getCount(),
-                        10);
+                                      () -> CassandraMetricsRegistry.Metrics.getMeters()
+                                                                            .get("org.apache.cassandra.metrics.Client.ProtocolException")
+                                                                            .getCount(),
+                                      10);
                 Assert.assertEquals(0, CassandraMetricsRegistry.Metrics.getMeters()
-                        .get("org.apache.cassandra.metrics.Client.UnknownException")
-                        .getCount());
+                                                                       .get("org.apache.cassandra.metrics.Client.UnknownException")
+                                                                       .getCount());
             });
             // the logs are noSpamLogger, so each iteration may not produce a new log; only valid if present and not seen before
             List<String> results = node.logs().grep(logStart, "Protocol exception with client networking").getResult();
@@ -165,11 +164,11 @@ public class UnableToParseClientMessageTest extends TestBaseImpl
     private static long getProtocolExceptionCount(IInvokableInstance node)
     {
         return node.callOnInstance(() -> CassandraMetricsRegistry.Metrics.getMeters()
-                .get("org.apache.cassandra.metrics.Client.ProtocolException")
-                .getCount());
+                                                                         .get("org.apache.cassandra.metrics.Client.ProtocolException")
+                                                                         .getCount());
     }
 
-    private static class CustomHeaderMessage extends OptionsMessage
+    public static class CustomHeaderMessage extends OptionsMessage
     {
         private final ByteBuf headerEncoded;
 

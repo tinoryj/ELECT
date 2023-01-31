@@ -19,7 +19,9 @@ package org.apache.cassandra.auth;
 
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.config.CassandraRelevantProperties;
 import org.apache.cassandra.cql3.statements.schema.CreateTableStatement;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.SchemaConstants;
@@ -34,6 +36,8 @@ public final class AuthKeyspace
     private AuthKeyspace()
     {
     }
+
+    private static final int DEFAULT_RF = CassandraRelevantProperties.SYSTEM_AUTH_DEFAULT_RF.getInt();
 
     /**
      * Generation is used as a timestamp for automatic table creation on startup.
@@ -109,7 +113,7 @@ public final class AuthKeyspace
     public static KeyspaceMetadata metadata()
     {
         return KeyspaceMetadata.create(SchemaConstants.AUTH_KEYSPACE_NAME,
-                                       KeyspaceParams.simple(1),
+                                       KeyspaceParams.simple(Math.max(DEFAULT_RF, DatabaseDescriptor.getDefaultKeyspaceRF())),
                                        Tables.of(Roles, RoleMembers, RolePermissions, ResourceRoleIndex, NetworkPermissions));
     }
 }

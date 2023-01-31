@@ -18,34 +18,29 @@
 
 package org.apache.cassandra.distributed.impl;
 
-import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.vdurmont.semver4j.Semver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.distributed.api.Feature;
 import org.apache.cassandra.distributed.api.IInstanceConfig;
 import org.apache.cassandra.distributed.shared.NetworkTopology;
-import org.apache.cassandra.distributed.shared.Shared;
 import org.apache.cassandra.distributed.upgrade.UpgradeTestBase;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.SimpleSeedProvider;
 
-@Shared
 public class InstanceConfig implements IInstanceConfig
 {
-    private static final Object NULL = new Object();
-    private static final Logger logger = LoggerFactory.getLogger(InstanceConfig.class);
-
     public final int num;
     public int num() { return num; }
 
@@ -74,14 +69,16 @@ public class InstanceConfig implements IInstanceConfig
                            String commitlog_directory,
                            String hints_directory,
                            String cdc_raw_directory,
-                           String initial_token,
+                           Collection<String> initial_token,
                            int storage_port,
                            int native_transport_port)
     {
         this.num = num;
         this.networkTopology = networkTopology;
-        this.hostId = java.util.UUID.randomUUID();
-        this    .set("num_tokens", 1)
+        this.hostId = new UUID(0x4000L, (1L << 63) | num); // deterministic hostId for simulator
+        //TODO move away from magic strings in favor of constants
+        this    .set("num_tokens", initial_token.size())
+                .set("initial_token", initial_token.stream().collect(Collectors.joining(",")))
                 .set("broadcast_address", broadcast_address)
                 .set("listen_address", listen_address)
                 .set("broadcast_rpc_address", broadcast_rpc_address)
@@ -91,7 +88,6 @@ public class InstanceConfig implements IInstanceConfig
                 .set("commitlog_directory", commitlog_directory)
                 .set("hints_directory", hints_directory)
                 .set("cdc_raw_directory", cdc_raw_directory)
-                .set("initial_token", initial_token)
                 .set("partitioner", "org.apache.cassandra.dht.Murmur3Partitioner")
                 .set("start_native_transport", true)
                 .set("concurrent_writes", 2)
@@ -100,7 +96,7 @@ public class InstanceConfig implements IInstanceConfig
                 .set("concurrent_reads", 2)
                 .set("memtable_flush_writers", 1)
                 .set("concurrent_compactors", 1)
-                .set("memtable_heap_space_in_mb", 10)
+                .set("memtable_heap_space", "10MiB")
                 .set("commitlog_sync", "batch")
                 .set("storage_port", storage_port)
                 .set("native_transport_port", native_transport_port)
@@ -111,11 +107,11 @@ public class InstanceConfig implements IInstanceConfig
                 .set("diagnostic_events_enabled", true)
                 .set("auto_bootstrap", false)
                 // capacities that are based on `totalMemory` that should be fixed size
-                .set("index_summary_capacity_in_mb", 50l)
-                .set("counter_cache_size_in_mb", 50l)
-                .set("key_cache_size_in_mb", 50l)
+                .set("index_summary_capacity", "50MiB")
+                .set("counter_cache_size", "50MiB")
+                .set("key_cache_size", "50MiB")
                 // legacy parameters
-                .forceSet("commitlog_sync_batch_window_in_ms", 1.0);
+                .forceSet("commitlog_sync_batch_window_in_ms", "1");
         this.featureFlags = EnumSet.noneOf(Feature.class);
     }
 
@@ -129,7 +125,6 @@ public class InstanceConfig implements IInstanceConfig
         this.featureFlags = copy.featureFlags;
         this.broadcastAddressAndPort = copy.broadcastAddressAndPort;
     }
-
 
     @Override
     public InetSocketAddress broadcastAddress()
@@ -193,18 +188,18 @@ public class InstanceConfig implements IInstanceConfig
 
     public InstanceConfig set(String fieldName, Object value)
     {
-        if (value == null)
-            value = NULL;
         getParams(fieldName).put(fieldName, value);
+        return this;
+    }
+
+    public InstanceConfig remove(String fieldName)
+    {
+        getParams(fieldName).remove(fieldName);
         return this;
     }
 
     public InstanceConfig forceSet(String fieldName, Object value)
     {
-        if (value == null)
-            value = NULL;
-
-        // test value
         getParams(fieldName).put(fieldName, value);
         return this;
     }
@@ -222,10 +217,12 @@ public class InstanceConfig implements IInstanceConfig
         throw new IllegalStateException("In-JVM dtests no longer support propagate");
     }
 
+    @Override
     public void validate()
     {
-        if (((int) get("num_tokens")) > 1)
-            throw new IllegalArgumentException("In-JVM dtests do not support vnodes as of now.");
+        // Previous logic would validate vnode was not used, but with vnode support added that validation isn't needed.
+        // Rather than attempting validating the configs here, its best to leave that to the instance; this method
+        // is no longer really needed, but can not be removed due to backwards compatability.
     }
 
     public Object get(String name)
@@ -251,8 +248,8 @@ public class InstanceConfig implements IInstanceConfig
     public static InstanceConfig generate(int nodeNum,
                                           INodeProvisionStrategy provisionStrategy,
                                           NetworkTopology networkTopology,
-                                          File root,
-                                          String token,
+                                          Path root,
+                                          Collection<String> tokens,
                                           int datadirCount)
     {
         return new InstanceConfig(nodeNum,
@@ -268,14 +265,14 @@ public class InstanceConfig implements IInstanceConfig
                                   String.format("%s/node%d/commitlog", root, nodeNum),
                                   String.format("%s/node%d/hints", root, nodeNum),
                                   String.format("%s/node%d/cdc", root, nodeNum),
-                                  token,
+                                  tokens,
                                   provisionStrategy.storagePort(nodeNum),
                                   provisionStrategy.nativeTransportPort(nodeNum));
     }
 
-    private static String[] datadirs(int datadirCount, File root, int nodeNum)
+    private static String[] datadirs(int datadirCount, Path root, int nodeNum)
     {
-        String datadirFormat = String.format("%s/node%d/data%%d", root.getPath(), nodeNum);
+        String datadirFormat = String.format("%s/node%d/data%%d", root, nodeNum);
         String [] datadirs = new String[datadirCount];
         for (int i = 0; i < datadirs.length; i++)
             datadirs[i] = String.format(datadirFormat, i);

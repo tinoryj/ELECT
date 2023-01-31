@@ -18,8 +18,8 @@
 package org.apache.cassandra.io.sstable.format.big;
 
 import java.io.EOFException;
-import java.io.File;
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Map;
@@ -28,6 +28,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.db.lifecycle.LifecycleNewTracker;
+import org.apache.cassandra.io.util.File;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,7 +115,7 @@ public class BigTableZeroCopyWriter extends SSTable implements SSTableMultiWrite
                 out.write(buff, 0, count);
                 bytesRead += count;
             }
-            out.sync();
+            out.sync(); // finish will also call sync(). Leaving here to get stuff flushed as early as possible
         }
         catch (IOException e)
         {
@@ -138,6 +139,10 @@ public class BigTableZeroCopyWriter extends SSTable implements SSTableMultiWrite
     public Collection<SSTableReader> finish(boolean openResult)
     {
         setOpenResult(openResult);
+
+        for (SequentialWriter writer : componentWriters.values())
+            writer.finish();
+
         return finished();
     }
 
@@ -198,7 +203,7 @@ public class BigTableZeroCopyWriter extends SSTable implements SSTableMultiWrite
             writer.close();
     }
 
-    public void writeComponent(Component.Type type, DataInputPlus in, long size)
+    public void writeComponent(Component.Type type, DataInputPlus in, long size) throws ClosedChannelException
     {
         logger.info("Writing component {} to {} length {}", type, componentWriters.get(type).getPath(), prettyPrintMemory(size));
 
@@ -208,7 +213,7 @@ public class BigTableZeroCopyWriter extends SSTable implements SSTableMultiWrite
             write(in, size, componentWriters.get(type));
     }
 
-    private void write(AsyncStreamingInputPlus in, long size, SequentialWriter writer)
+    private void write(AsyncStreamingInputPlus in, long size, SequentialWriter writer) throws ClosedChannelException
     {
         logger.info("Block Writing component to {} length {}", writer.getPath(), prettyPrintMemory(size));
 
@@ -217,10 +222,16 @@ public class BigTableZeroCopyWriter extends SSTable implements SSTableMultiWrite
             in.consume(writer::writeDirectlyToChannel, size);
             writer.sync();
         }
-        // FIXME: handle ACIP exceptions properly
-        catch (EOFException | AsyncStreamingInputPlus.InputTimeoutException e)
+        catch (EOFException e)
         {
             in.close();
+        }
+        catch (ClosedChannelException e)
+        {
+            // FSWriteError triggers disk failure policy, but if we get a connection issue we do not want to do that
+            // so rethrow so the error handling logic higher up is able to deal with this
+            // see CASSANDRA-17116
+            throw e;
         }
         catch (IOException e)
         {

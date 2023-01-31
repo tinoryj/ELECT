@@ -17,7 +17,10 @@
  */
 package org.apache.cassandra.io.sstable.metadata;
 
-import java.io.*;
+import org.apache.cassandra.io.util.*;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.*;
 import java.util.function.UnaryOperator;
 import java.util.zip.CRC32;
@@ -33,15 +36,7 @@ import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.format.Version;
-import org.apache.cassandra.io.util.DataInputBuffer;
-import org.apache.cassandra.io.util.DataOutputBuffer;
-import org.apache.cassandra.io.util.DataOutputPlus;
-import org.apache.cassandra.io.util.DataOutputStreamPlus;
-import org.apache.cassandra.io.util.FileDataInput;
-import org.apache.cassandra.io.util.FileUtils;
-import org.apache.cassandra.io.util.BufferedDataOutputStreamPlus;
-import org.apache.cassandra.io.util.RandomAccessReader;
-import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.utils.TimeUUID;
 
 import static org.apache.cassandra.utils.FBUtilities.updateChecksumInt;
 
@@ -242,7 +237,7 @@ public class MetadataSerializer implements IMetadataSerializer
     }
 
     @Override
-    public void mutateRepairMetadata(Descriptor descriptor, long newRepairedAt, UUID newPendingRepair, boolean isTransient) throws IOException
+    public void mutateRepairMetadata(Descriptor descriptor, long newRepairedAt, TimeUUID newPendingRepair, boolean isTransient) throws IOException
     {
         if (logger.isTraceEnabled())
             logger.trace("Mutating {} to repairedAt time {} and pendingRepair {}",
@@ -263,7 +258,7 @@ public class MetadataSerializer implements IMetadataSerializer
     public void rewriteSSTableMetadata(Descriptor descriptor, Map<MetadataType, MetadataComponent> currentComponents) throws IOException
     {
         String filePath = descriptor.tmpFilenameFor(Component.STATS);
-        try (DataOutputStreamPlus out = new BufferedDataOutputStreamPlus(new FileOutputStream(filePath)))
+        try (DataOutputStreamPlus out = new FileOutputStreamPlus(filePath))
         {
             serialize(currentComponents, out, descriptor.version);
             out.flush();
@@ -273,10 +268,6 @@ public class MetadataSerializer implements IMetadataSerializer
             Throwables.throwIfInstanceOf(e, FileNotFoundException.class);
             throw new FSWriteError(e, filePath);
         }
-        // we cant move a file on top of another file in windows:
-        if (FBUtilities.isWindows)
-            FileUtils.delete(descriptor.filenameFor(Component.STATS));
         FileUtils.renameWithConfirm(filePath, descriptor.filenameFor(Component.STATS));
-
     }
 }

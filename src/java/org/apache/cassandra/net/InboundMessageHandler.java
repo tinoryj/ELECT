@@ -34,8 +34,6 @@ import org.apache.cassandra.exceptions.IncompatibleSchemaException;
 import org.apache.cassandra.io.util.DataInputBuffer;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message.Header;
-import org.apache.cassandra.net.FrameDecoder.Frame;
-import org.apache.cassandra.net.FrameDecoder.FrameProcessor;
 import org.apache.cassandra.net.FrameDecoder.IntactFrame;
 import org.apache.cassandra.net.FrameDecoder.CorruptFrame;
 import org.apache.cassandra.net.ResourceLimits.Limit;
@@ -45,7 +43,7 @@ import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.apache.cassandra.utils.NoSpamLogger;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
-import static org.apache.cassandra.utils.MonotonicClock.approxTime;
+import static org.apache.cassandra.utils.MonotonicClock.Global.approxTime;
 
 /**
  * Implementation of {@link AbstractMessageHandler} for processing internode messages from peers.
@@ -398,7 +396,7 @@ public class InboundMessageHandler extends AbstractMessageHandler
         if (state != null) state.trace("{} message received from {}", header.verb, header.from);
 
         callbacks.onDispatched(task.size(), header);
-        header.verb.stage.execute(task, ExecutorLocals.create(state));
+        header.verb.stage.execute(ExecutorLocals.create(state), task);
     }
 
     private abstract class ProcessMessage implements Runnable

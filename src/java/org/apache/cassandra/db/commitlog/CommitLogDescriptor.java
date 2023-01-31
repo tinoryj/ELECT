@@ -22,9 +22,7 @@ package org.apache.cassandra.db.commitlog;
 
 import java.io.DataInput;
 import java.io.EOFException;
-import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -37,9 +35,12 @@ import java.util.zip.CRC32;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.ParameterizedClass;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.FSReadError;
+import org.apache.cassandra.io.util.File;
+import org.apache.cassandra.io.util.FileInputStreamPlus;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.security.EncryptionContext;
 import org.json.simple.JSONValue;
@@ -51,6 +52,7 @@ public class CommitLogDescriptor
     private static final String SEPARATOR = "-";
     private static final String FILENAME_PREFIX = "CommitLog" + SEPARATOR;
     private static final String FILENAME_EXTENSION = ".log";
+    private static final String INDEX_FILENAME_SUFFIX = "_cdc.idx";
     // match both legacy and new version of commitlogs Ex: CommitLog-12345.log and CommitLog-4-12345.log.
     private static final Pattern COMMIT_LOG_FILE_PATTERN = Pattern.compile(FILENAME_PREFIX + "((\\d+)(" + SEPARATOR + "\\d+)?)" + FILENAME_EXTENSION);
 
@@ -131,9 +133,8 @@ public class CommitLogDescriptor
 
     public static CommitLogDescriptor fromHeader(File file, EncryptionContext encryptionContext)
     {
-        try (RandomAccessFile raf = new RandomAccessFile(file, "r"))
+        try (FileInputStreamPlus raf = new FileInputStreamPlus(file))
         {
-            assert raf.getFilePointer() == 0;
             return readHeader(raf, encryptionContext);
         }
         catch (EOFException e)
@@ -190,15 +191,27 @@ public class CommitLogDescriptor
 
     public static CommitLogDescriptor fromFileName(String name)
     {
-        Matcher matcher;
-        if (!(matcher = COMMIT_LOG_FILE_PATTERN.matcher(name)).matches())
+        Matcher matcher = extactFromFileName(name);
+        long id = Long.parseLong(matcher.group(3).split(SEPARATOR)[1]);
+        return new CommitLogDescriptor(Integer.parseInt(matcher.group(2)), id, null, new EncryptionContext());
+    }
+
+    public static long idFromFileName(String name)
+    {
+        Matcher matcher = extactFromFileName(name);
+        return Long.parseLong(matcher.group(3).split(SEPARATOR)[1]);
+    }
+
+    private static Matcher extactFromFileName(String name)
+    {
+        Matcher matcher = COMMIT_LOG_FILE_PATTERN.matcher(name);
+        if (!matcher.matches())
             throw new RuntimeException("Cannot parse the version of the file: " + name);
 
         if (matcher.group(3) == null)
             throw new UnsupportedOperationException("Commitlog segment is too old to open; upgrade to 1.2.5+ first");
 
-        long id = Long.parseLong(matcher.group(3).split(SEPARATOR)[1]);
-        return new CommitLogDescriptor(Integer.parseInt(matcher.group(2)), id, null, new EncryptionContext());
+        return matcher;
     }
 
     public int getMessagingVersion()
@@ -221,7 +234,21 @@ public class CommitLogDescriptor
 
     public String cdcIndexFileName()
     {
-        return FILENAME_PREFIX + version + SEPARATOR + id + "_cdc.idx";
+        return FILENAME_PREFIX + version + SEPARATOR + id + INDEX_FILENAME_SUFFIX;
+    }
+
+    /**
+     * Infer the corresponding cdc index file using its cdc commitlog file
+     * @param cdcCommitLogSegment
+     * @return cdc index file or null if the cdc index file cannot be inferred.
+     */
+    public static File inferCdcIndexFile(File cdcCommitLogSegment)
+    {
+        if (!isValid(cdcCommitLogSegment.name()))
+            return null;
+        String cdcFileName = cdcCommitLogSegment.name();
+        String indexFileName = cdcFileName.substring(0, cdcFileName.length() - FILENAME_EXTENSION.length()) + INDEX_FILENAME_SUFFIX;
+        return new File(DatabaseDescriptor.getCDCLogLocation(), indexFileName);
     }
 
     /**

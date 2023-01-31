@@ -32,8 +32,11 @@ import org.junit.Test;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.CQLTester;
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.Hex;
+
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 
 public class LongLeveledCompactionStrategyCQLTest extends CQLTester
 {
@@ -47,7 +50,7 @@ public class LongLeveledCompactionStrategyCQLTest extends CQLTester
         ExecutorService es = Executors.newSingleThreadExecutor();
         DatabaseDescriptor.setConcurrentCompactors(8);
         AtomicBoolean stop = new AtomicBoolean(false);
-        long start = System.currentTimeMillis();
+        long start = currentTimeMillis();
         try
         {
             Random r = new Random();
@@ -70,12 +73,12 @@ public class LongLeveledCompactionStrategyCQLTest extends CQLTester
                             throw new RuntimeException(throwable);
                         }
                     }
-                    getCurrentColumnFamilyStore().forceBlockingFlush();
+                    getCurrentColumnFamilyStore().forceBlockingFlush(ColumnFamilyStore.FlushReason.UNIT_TESTS);
                     Uninterruptibles.sleepUninterruptibly(r.nextInt(200), TimeUnit.MILLISECONDS);
                 }
             });
 
-            while(System.currentTimeMillis() - start < TimeUnit.MILLISECONDS.convert(5, TimeUnit.MINUTES))
+            while(currentTimeMillis() - start < TimeUnit.MILLISECONDS.convert(5, TimeUnit.MINUTES))
             {
                 StorageService.instance.getTokenMetadata().invalidateCachedRings();
                 Uninterruptibles.sleepUninterruptibly(r.nextInt(1000), TimeUnit.MILLISECONDS);

@@ -28,11 +28,10 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletableFuture; // checkstyle: permit this import
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -42,6 +41,7 @@ import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.cassandra.concurrent.ImmediateExecutor;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.ColumnIdentifier;
@@ -58,9 +58,11 @@ import org.apache.cassandra.service.ClientWarn;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.JVMStabilityInspector;
+import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
 import static com.google.common.collect.Iterables.any;
 import static com.google.common.collect.Iterables.transform;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 /**
  * Base class for User Defined Functions.
@@ -296,7 +298,7 @@ public abstract class UDFunction extends AbstractFunction implements ScalarFunct
         {
             protected ExecutorService executor()
             {
-                return Executors.newSingleThreadExecutor();
+                return ImmediateExecutor.INSTANCE;
             }
 
             protected Object executeAggregateUserDefined(ProtocolVersion protocolVersion, Object firstParam, List<ByteBuffer> parameters)
@@ -366,6 +368,12 @@ public abstract class UDFunction extends AbstractFunction implements ScalarFunct
         return builder.toString();
     }
 
+    public boolean isPure()
+    {
+        // Right now, we have no way to check if an UDF is pure. Due to that we consider them as non pure to avoid any risk.
+        return false;
+    }
+
     public final ByteBuffer execute(ProtocolVersion protocolVersion, List<ByteBuffer> parameters)
     {
         assertUdfsEnabled(language);
@@ -373,7 +381,7 @@ public abstract class UDFunction extends AbstractFunction implements ScalarFunct
         if (!isCallableWrtNullable(parameters))
             return null;
 
-        long tStart = System.nanoTime();
+        long tStart = nanoTime();
         parameters = makeEmptyParametersNull(parameters);
 
         try
@@ -383,7 +391,7 @@ public abstract class UDFunction extends AbstractFunction implements ScalarFunct
                                 ? executeAsync(protocolVersion, parameters)
                                 : executeUserDefined(protocolVersion, parameters);
 
-            Tracing.trace("Executed UDF {} in {}\u03bcs", name(), (System.nanoTime() - tStart) / 1000);
+            Tracing.trace("Executed UDF {} in {}\u03bcs", name(), (nanoTime() - tStart) / 1000);
             return result;
         }
         catch (InvalidRequestException e)
@@ -412,7 +420,7 @@ public abstract class UDFunction extends AbstractFunction implements ScalarFunct
         if (!calledOnNullInput && firstParam == null || !isCallableWrtNullable(parameters))
             return null;
 
-        long tStart = System.nanoTime();
+        long tStart = nanoTime();
         parameters = makeEmptyParametersNull(parameters);
 
         try
@@ -421,7 +429,7 @@ public abstract class UDFunction extends AbstractFunction implements ScalarFunct
             Object result = DatabaseDescriptor.enableUserDefinedFunctionsThreads()
                                 ? executeAggregateAsync(protocolVersion, firstParam, parameters)
                                 : executeAggregateUserDefined(protocolVersion, firstParam, parameters);
-            Tracing.trace("Executed UDF {} in {}\u03bcs", name(), (System.nanoTime() - tStart) / 1000);
+            Tracing.trace("Executed UDF {} in {}\u03bcs", name(), (nanoTime() - tStart) / 1000);
             return result;
         }
         catch (InvalidRequestException e)
@@ -440,9 +448,9 @@ public abstract class UDFunction extends AbstractFunction implements ScalarFunct
     public static void assertUdfsEnabled(String language)
     {
         if (!DatabaseDescriptor.enableUserDefinedFunctions())
-            throw new InvalidRequestException("User-defined functions are disabled in cassandra.yaml - set enable_user_defined_functions=true to enable");
+            throw new InvalidRequestException("User-defined functions are disabled in cassandra.yaml - set user_defined_functions_enabled=true to enable");
         if (!"java".equalsIgnoreCase(language) && !DatabaseDescriptor.enableScriptedUserDefinedFunctions())
-            throw new InvalidRequestException("Scripted user-defined functions are disabled in cassandra.yaml - set enable_scripted_user_defined_functions=true to enable if you are aware of the security risks");
+            throw new InvalidRequestException("Scripted user-defined functions are disabled in cassandra.yaml - set scripted_user_defined_functions_enabled=true to enable if you are aware of the security risks");
     }
 
     static void initializeThread()
@@ -528,7 +536,7 @@ public abstract class UDFunction extends AbstractFunction implements ScalarFunct
         catch (InterruptedException e)
         {
             Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
+            throw new UncheckedInterruptedException(e);
         }
         catch (ExecutionException e)
         {
@@ -554,7 +562,7 @@ public abstract class UDFunction extends AbstractFunction implements ScalarFunct
             catch (InterruptedException e1)
             {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
+                throw new UncheckedInterruptedException(e1);
             }
             catch (ExecutionException e1)
             {
@@ -758,7 +766,7 @@ public abstract class UDFunction extends AbstractFunction implements ScalarFunct
     private static class UDFClassLoader extends ClassLoader
     {
         // insecureClassLoader is the C* class loader
-        static final ClassLoader insecureClassLoader = Thread.currentThread().getContextClassLoader();
+        static final ClassLoader insecureClassLoader = UDFClassLoader.class.getClassLoader();
 
         private UDFClassLoader()
         {

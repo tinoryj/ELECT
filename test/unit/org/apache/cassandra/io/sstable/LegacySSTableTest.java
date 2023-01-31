@@ -17,19 +17,20 @@
  */
 package org.apache.cassandra.io.sstable;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.UUID;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Iterables;
+import org.apache.cassandra.io.util.File;
+import org.apache.cassandra.io.util.FileInputStreamPlus;
+import org.apache.cassandra.io.util.FileOutputStreamPlus;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -41,47 +42,38 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.SchemaLoader;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.UntypedResultSet;
-import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.AbstractCompactionTask;
 import org.apache.cassandra.db.compaction.CompactionManager;
-import org.apache.cassandra.db.compaction.Verifier;
 import org.apache.cassandra.db.repair.PendingAntiCompaction;
 import org.apache.cassandra.db.streaming.CassandraOutgoingFile;
-import org.apache.cassandra.db.ReadExecutionController;
-import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.SinglePartitionSliceCommandTest;
 import org.apache.cassandra.db.compaction.Verifier;
-import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.rows.RangeTombstoneMarker;
 import org.apache.cassandra.db.rows.Unfiltered;
-import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.io.sstable.format.SSTableFormat;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.Version;
 import org.apache.cassandra.io.sstable.format.big.BigFormat;
-import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.service.CacheService;
-import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.streaming.OutgoingStream;
 import org.apache.cassandra.streaming.StreamPlan;
-import org.apache.cassandra.streaming.StreamSession;
 import org.apache.cassandra.streaming.StreamOperation;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
-import org.apache.cassandra.utils.UUIDGen;
+import org.apache.cassandra.utils.TimeUUID;
 
+import static java.util.Collections.singleton;
 import static org.apache.cassandra.service.ActiveRepairService.NO_PENDING_REPAIR;
 import static org.apache.cassandra.service.ActiveRepairService.UNREPAIRED_SSTABLE;
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -124,7 +116,7 @@ public class LegacySSTableTest
         String scp = System.getProperty(LEGACY_SSTABLE_PROP);
         Assert.assertNotNull("System property " + LEGACY_SSTABLE_PROP + " not set", scp);
 
-        LEGACY_SSTABLE_ROOT = new File(scp).getAbsoluteFile();
+        LEGACY_SSTABLE_ROOT = new File(scp).toAbsolute();
         Assert.assertTrue("System property " + LEGACY_SSTABLE_ROOT + " does not specify a directory", LEGACY_SSTABLE_ROOT.isDirectory());
 
         SchemaLoader.prepareServer();
@@ -150,14 +142,10 @@ public class LegacySSTableTest
     /**
      * Get a descriptor for the legacy sstable at the given version.
      */
-    protected Descriptor getDescriptor(String legacyVersion, String table)
+    protected Descriptor getDescriptor(String legacyVersion, String table) throws IOException
     {
-        return new Descriptor(SSTableFormat.Type.BIG.info.getVersion(legacyVersion),
-                              getTableDir(legacyVersion, table),
-                              "legacy_tables",
-                              table,
-                              1,
-                              SSTableFormat.Type.BIG);
+        Path file = Files.list(getTableDir(legacyVersion, table).toPath()).findFirst().orElseThrow(() -> new RuntimeException(String.format("No files for version=%s and table=%s", legacyVersion, table)));
+        return Descriptor.fromFilename(new File(file));
     }
 
     @Test
@@ -201,7 +189,7 @@ public class LegacySSTableTest
                 boolean isTransient = false;
                 for (SSTableReader sstable : cfs.getLiveSSTables())
                 {
-                    UUID random = UUID.randomUUID();
+                    TimeUUID random = nextTimeUUID();
                     sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, UNREPAIRED_SSTABLE, random, isTransient);
                     sstable.reloadSSTableMetadata();
                     assertEquals(UNREPAIRED_SSTABLE, sstable.getRepairedAt());
@@ -233,7 +221,7 @@ public class LegacySSTableTest
                 // set pending
                 for (SSTableReader sstable : cfs.getLiveSSTables())
                 {
-                    UUID random = UUID.randomUUID();
+                    TimeUUID random = nextTimeUUID();
                     try
                     {
                         cfs.getCompactionStrategyManager().mutateRepaired(Collections.singleton(sstable), UNREPAIRED_SSTABLE, random, false);
@@ -251,7 +239,7 @@ public class LegacySSTableTest
                 {
                     try
                     {
-                        cfs.getCompactionStrategyManager().mutateRepaired(Collections.singleton(sstable), UNREPAIRED_SSTABLE, UUID.randomUUID(), true);
+                        cfs.getCompactionStrategyManager().mutateRepaired(Collections.singleton(sstable), UNREPAIRED_SSTABLE, nextTimeUUID(), true);
                         if (!sstable.descriptor.version.hasIsTransient())
                             fail("We should fail setting pending repair on unsupported sstables "+sstable);
                     }
@@ -379,7 +367,7 @@ public class LegacySSTableTest
             boolean shouldFail = !cfs.getLiveSSTables().stream().allMatch(sstable -> sstable.descriptor.version.hasPendingRepair());
             IPartitioner p = Iterables.getFirst(cfs.getLiveSSTables(), null).getPartitioner();
             Range<Token> r = new Range<>(p.getMinimumToken(), p.getMinimumToken());
-            PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, Collections.singleton(r), UUIDGen.getTimeUUID(), 0, 0);
+            PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, singleton(r), nextTimeUUID(), 0, 0);
             PendingAntiCompaction.AcquireResult res = acquisitionCallable.call();
             assertEquals(shouldFail, res == null);
             if (res != null)
@@ -645,10 +633,10 @@ public class LegacySSTableTest
             }
         }
 
-        StorageService.instance.forceKeyspaceFlush("legacy_tables");
+        StorageService.instance.forceKeyspaceFlush("legacy_tables", ColumnFamilyStore.FlushReason.UNIT_TESTS);
 
         File ksDir = new File(LEGACY_SSTABLE_ROOT, String.format("%s/legacy_tables", BigFormat.latestVersion));
-        ksDir.mkdirs();
+        ksDir.tryCreateDirectories();
         copySstablesFromTestData(String.format("legacy_%s_simple", BigFormat.latestVersion), ksDir);
         copySstablesFromTestData(String.format("legacy_%s_simple_counter", BigFormat.latestVersion), ksDir);
         copySstablesFromTestData(String.format("legacy_%s_clust", BigFormat.latestVersion), ksDir);
@@ -658,11 +646,11 @@ public class LegacySSTableTest
     public static void copySstablesFromTestData(String table, File ksDir) throws IOException
     {
         File cfDir = new File(ksDir, table);
-        cfDir.mkdir();
+        cfDir.tryCreateDirectory();
 
         for (File srcDir : Keyspace.open("legacy_tables").getColumnFamilyStore(table).getDirectories().getCFDirectories())
         {
-            for (File file : srcDir.listFiles())
+            for (File file : srcDir.tryList())
             {
                 copyFile(cfDir, file);
             }
@@ -673,7 +661,7 @@ public class LegacySSTableTest
     {
         File tableDir = getTableDir(legacyVersion, table);
         Assert.assertTrue("The table directory " + tableDir + " was not found", tableDir.isDirectory());
-        for (File file : tableDir.listFiles())
+        for (File file : tableDir.tryList())
         {
             copyFile(cfDir, file);
         }
@@ -689,10 +677,10 @@ public class LegacySSTableTest
         byte[] buf = new byte[65536];
         if (file.isFile())
         {
-            File target = new File(cfDir, file.getName());
+            File target = new File(cfDir, file.name());
             int rd;
-            try (FileInputStream is = new FileInputStream(file);
-                 FileOutputStream os = new FileOutputStream(target);) {
+            try (FileInputStreamPlus is = new FileInputStreamPlus(file);
+                 FileOutputStreamPlus os = new FileOutputStreamPlus(target);) {
                 while ((rd = is.read(buf)) >= 0)
                     os.write(buf, 0, rd);
                 }

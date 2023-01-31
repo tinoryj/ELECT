@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.Iterables;
@@ -57,20 +56,23 @@ import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.notifications.SSTableAddedNotification;
 import org.apache.cassandra.notifications.SSTableRepairStatusChanged;
-import org.apache.cassandra.repair.RepairJobDesc;
 import org.apache.cassandra.repair.ValidationManager;
+import org.apache.cassandra.repair.state.ValidationState;
+import org.apache.cassandra.schema.MockSchema;
+import org.apache.cassandra.streaming.PreviewKind;
+import org.apache.cassandra.repair.RepairJobDesc;
 import org.apache.cassandra.repair.Validator;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.KeyspaceParams;
-import org.apache.cassandra.schema.MockSchema;
 import org.apache.cassandra.service.ActiveRepairService;
-import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
+import org.apache.cassandra.utils.TimeUUID;
 import org.awaitility.Awaitility;
 
 import static java.util.Collections.singleton;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -122,7 +124,7 @@ public class LeveledCompactionStrategyTest
      */
     @Test
     public void testGrouperLevels() throws Exception{
-        ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KB value, make it easy to have multiple files
+        ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KiB value, make it easy to have multiple files
 
         //Need entropy to prevent compression so size is predictable with compression enabled/disabled
         new Random().nextBytes(value.array());
@@ -138,7 +140,7 @@ public class LeveledCompactionStrategyTest
             for (int c = 0; c < columns; c++)
                 update.newRow("column" + c).add("val", value);
             update.applyUnsafe();
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
         }
 
         waitForLeveling(cfs);
@@ -180,7 +182,7 @@ public class LeveledCompactionStrategyTest
     {
         byte [] b = new byte[100 * 1024];
         new Random().nextBytes(b);
-        ByteBuffer value = ByteBuffer.wrap(b); // 100 KB value, make it easy to have multiple files
+        ByteBuffer value = ByteBuffer.wrap(b); // 100 KiB value, make it easy to have multiple files
 
         // Enough data to have a level 1 and 2
         int rows = 40;
@@ -193,7 +195,7 @@ public class LeveledCompactionStrategyTest
             for (int c = 0; c < columns; c++)
                 update.newRow("column" + c).add("val", value);
             update.applyUnsafe();
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
         }
 
         waitForLeveling(cfs);
@@ -204,7 +206,7 @@ public class LeveledCompactionStrategyTest
 
         Range<Token> range = new Range<>(Util.token(""), Util.token(""));
         int gcBefore = keyspace.getColumnFamilyStore(CF_STANDARDDLEVELED).gcBefore(FBUtilities.nowInSeconds());
-        UUID parentRepSession = UUID.randomUUID();
+        TimeUUID parentRepSession = nextTimeUUID();
         ActiveRepairService.instance.registerParentRepairSession(parentRepSession,
                                                                  FBUtilities.getBroadcastAddressAndPort(),
                                                                  Arrays.asList(cfs),
@@ -213,8 +215,8 @@ public class LeveledCompactionStrategyTest
                                                                  ActiveRepairService.UNREPAIRED_SSTABLE,
                                                                  true,
                                                                  PreviewKind.NONE);
-        RepairJobDesc desc = new RepairJobDesc(parentRepSession, UUID.randomUUID(), KEYSPACE1, CF_STANDARDDLEVELED, Arrays.asList(range));
-        Validator validator = new Validator(desc, FBUtilities.getBroadcastAddressAndPort(), gcBefore, PreviewKind.NONE);
+        RepairJobDesc desc = new RepairJobDesc(parentRepSession, nextTimeUUID(), KEYSPACE1, CF_STANDARDDLEVELED, Arrays.asList(range));
+        Validator validator = new Validator(new ValidationState(desc, FBUtilities.getBroadcastAddressAndPort()), gcBefore, PreviewKind.NONE);
 
         ValidationManager.instance.submitValidation(cfs, validator).get();
     }
@@ -267,7 +269,7 @@ public class LeveledCompactionStrategyTest
             for (int c = 0; c < columns; c++)
                 update.newRow("column" + c).add("val", value);
             update.applyUnsafe();
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
         }
 
         waitForLeveling(cfs);
@@ -291,7 +293,7 @@ public class LeveledCompactionStrategyTest
     public void testMutateLevel() throws Exception
     {
         cfs.disableAutoCompaction();
-        ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KB value, make it easy to have multiple files
+        ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KiB value, make it easy to have multiple files
 
         // Enough data to have a level 1 and 2
         int rows = 40;
@@ -304,9 +306,9 @@ public class LeveledCompactionStrategyTest
             for (int c = 0; c < columns; c++)
                 update.newRow("column" + c).add("val", value);
             update.applyUnsafe();
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
         }
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
         LeveledCompactionStrategy strategy = (LeveledCompactionStrategy) cfs.getCompactionStrategyManager().getStrategies().get(1).get(0);
         cfs.forceMajorCompaction();
 
@@ -332,7 +334,7 @@ public class LeveledCompactionStrategyTest
     {
         byte [] b = new byte[100 * 1024];
         new Random().nextBytes(b);
-        ByteBuffer value = ByteBuffer.wrap(b); // 100 KB value, make it easy to have multiple files
+        ByteBuffer value = ByteBuffer.wrap(b); // 100 KiB value, make it easy to have multiple files
 
         // Enough data to have a level 1 and 2
         int rows = 40;
@@ -345,7 +347,7 @@ public class LeveledCompactionStrategyTest
             for (int c = 0; c < columns; c++)
                 update.newRow("column" + c).add("val", value);
             update.applyUnsafe();
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
         }
         waitForLeveling(cfs);
         cfs.disableAutoCompaction();
@@ -400,7 +402,7 @@ public class LeveledCompactionStrategyTest
         // Disable auto compaction so cassandra does not compact
         CompactionManager.instance.disableAutoCompaction();
 
-        ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KB value, make it easy to have multiple files
+        ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KiB value, make it easy to have multiple files
 
         DecoratedKey key1 = Util.dk(String.valueOf(1));
         DecoratedKey key2 = Util.dk(String.valueOf(2));
@@ -420,7 +422,7 @@ public class LeveledCompactionStrategyTest
                     update.newRow("column" + c).add("val", value);
                 update.applyUnsafe();
             }
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
         }
 
         // create 20 more sstables with 10 containing data for key1 and other 10 containing data for key2
@@ -430,7 +432,7 @@ public class LeveledCompactionStrategyTest
                 for (int c = 0; c < columns; c++)
                     update.newRow("column" + c).add("val", value);
                 update.applyUnsafe();
-                cfs.forceBlockingFlush();
+                Util.flush(cfs);
             }
         }
 
@@ -470,7 +472,7 @@ public class LeveledCompactionStrategyTest
                     update.newRow("column" + c).add("val", value);
                 update.applyUnsafe();
             }
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
         }
 
         // create 20 more sstables with 10 containing data for key1 and other 10 containing data for key2
@@ -482,7 +484,7 @@ public class LeveledCompactionStrategyTest
                 for (int c = 0; c < columns; c++)
                     update.newRow("column" + c).add("val", value);
                 update.applyUnsafe();
-                cfs.forceBlockingFlush();
+                Util.flush(cfs);
             }
         }
 
@@ -526,7 +528,7 @@ public class LeveledCompactionStrategyTest
             for (int c = 0; c < columns; c++)
                 update.newRow("column" + c).add("val", value);
             update.applyUnsafe();
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
         }
         LeveledCompactionStrategy strategy = (LeveledCompactionStrategy) (cfs.getCompactionStrategyManager()).getStrategies().get(1).get(0);
         // get readers for level 0 sstables
@@ -767,6 +769,53 @@ public class LeveledCompactionStrategyTest
             }
         }
         return newLevels;
+    }
+    @Test
+    public void testPerLevelSizeBytes() throws IOException
+    {
+        byte [] b = new byte[100];
+        new Random().nextBytes(b);
+        ByteBuffer value = ByteBuffer.wrap(b);
+        int rows = 5;
+        int columns = 5;
+
+        cfs.disableAutoCompaction();
+        for (int r = 0; r < rows; r++)
+        {
+            UpdateBuilder update = UpdateBuilder.create(cfs.metadata(), String.valueOf(r));
+            for (int c = 0; c < columns; c++)
+                update.newRow("column" + c).add("val", value);
+            update.applyUnsafe();
+        }
+        Util.flush(cfs);
+
+        SSTableReader sstable = cfs.getLiveSSTables().iterator().next();
+        long [] levelSizes = cfs.getPerLevelSizeBytes();
+        for (int i = 0; i < levelSizes.length; i++)
+        {
+            if (i != 0)
+                assertEquals(0, levelSizes[i]);
+            else
+                assertEquals(sstable.onDiskLength(), levelSizes[i]);
+        }
+
+        assertEquals(sstable.onDiskLength(), cfs.getPerLevelSizeBytes()[0]);
+
+        LeveledCompactionStrategy strategy = (LeveledCompactionStrategy) ( cfs.getCompactionStrategyManager()).getStrategies().get(1).get(0);
+        strategy.manifest.remove(sstable);
+        sstable.descriptor.getMetadataSerializer().mutateLevel(sstable.descriptor, 2);
+        sstable.reloadSSTableMetadata();
+        strategy.manifest.addSSTables(Collections.singleton(sstable));
+
+        levelSizes = cfs.getPerLevelSizeBytes();
+        for (int i = 0; i < levelSizes.length; i++)
+        {
+            if (i != 2)
+                assertEquals(0, levelSizes[i]);
+            else
+                assertEquals(sstable.onDiskLength(), levelSizes[i]);
+        }
+
     }
 
     /**

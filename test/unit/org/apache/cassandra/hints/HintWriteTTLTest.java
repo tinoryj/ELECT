@@ -18,15 +18,16 @@
 
 package org.apache.cassandra.hints;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.io.util.File;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -42,7 +43,6 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
-import org.apache.cassandra.utils.UUIDGen;
 
 public class HintWriteTTLTest
 {
@@ -94,8 +94,8 @@ public class HintWriteTTLTest
         ttldHint = makeHint(tbm, 2, nowInSeconds - (TTL + 1), GC_GRACE);
 
 
-        File directory = Files.createTempDirectory(null).toFile();
-        HintsDescriptor descriptor = new HintsDescriptor(UUIDGen.getTimeUUID(), s2m(nowInSeconds));
+        File directory = new File(Files.createTempDirectory(null));
+        HintsDescriptor descriptor = new HintsDescriptor(UUID.randomUUID(), s2m(nowInSeconds));
 
         try (HintsWriter writer = HintsWriter.create(directory, descriptor);
              HintsWriter.Session session = writer.newSession(ByteBuffer.allocate(1024)))

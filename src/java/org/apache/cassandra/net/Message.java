@@ -19,9 +19,9 @@ package org.apache.cassandra.net;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -43,9 +43,9 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.tracing.Tracing.TraceType;
-import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MonotonicClockTranslation;
 import org.apache.cassandra.utils.NoSpamLogger;
+import org.apache.cassandra.utils.TimeUUID;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -56,7 +56,8 @@ import static org.apache.cassandra.net.MessagingService.VERSION_3014;
 import static org.apache.cassandra.net.MessagingService.VERSION_30;
 import static org.apache.cassandra.net.MessagingService.VERSION_40;
 import static org.apache.cassandra.net.MessagingService.instance;
-import static org.apache.cassandra.utils.MonotonicClock.approxTime;
+import static org.apache.cassandra.utils.FBUtilities.getBroadcastAddressAndPort;
+import static org.apache.cassandra.utils.MonotonicClock.Global.approxTime;
 import static org.apache.cassandra.utils.vint.VIntCoding.computeUnsignedVIntSize;
 import static org.apache.cassandra.utils.vint.VIntCoding.getUnsignedVInt;
 import static org.apache.cassandra.utils.vint.VIntCoding.skipUnsignedVInt;
@@ -75,7 +76,7 @@ public class Message<T>
     public final Header header;
     public final T payload;
 
-    private Message(Header header, T payload)
+    Message(Header header, T payload)
     {
         this.header = header;
         this.payload = payload;
@@ -90,7 +91,7 @@ public class Message<T>
     /** Whether the message has crossed the node boundary, that is whether it originated from another node. */
     public boolean isCrossNode()
     {
-        return !from().equals(FBUtilities.getBroadcastAddressAndPort());
+        return !from().equals(getBroadcastAddressAndPort());
     }
 
     /**
@@ -143,6 +144,11 @@ public class Message<T>
         return header.callBackOnFailure();
     }
 
+    public boolean trackWarnings()
+    {
+        return header.trackWarnings();
+    }
+
     /** See CASSANDRA-14145 */
     public boolean trackRepairedData()
     {
@@ -164,7 +170,7 @@ public class Message<T>
     }
 
     @Nullable
-    public UUID traceSession()
+    public TimeUUID traceSession()
     {
         return header.traceSession();
     }
@@ -195,6 +201,11 @@ public class Message<T>
         return outWithParam(nextId(), verb, payload, null, null);
     }
 
+    public static <T> Message<T> synthetic(InetAddressAndPort from, Verb verb, T payload)
+    {
+        return new Message<>(new Header(-1, verb, from, -1, -1, 0, NO_PARAMS), payload);
+    }
+
     public static <T> Message<T> out(Verb verb, T payload, long expiresAtNanos)
     {
         return outWithParam(nextId(), verb, expiresAtNanos, payload, 0, null, null);
@@ -212,6 +223,7 @@ public class Message<T>
         return outWithParam(nextId(), verb, 0, payload, flag2.addTo(flag1.addTo(0)), null, null);
     }
 
+    @VisibleForTesting
     static <T> Message<T> outWithParam(long id, Verb verb, T payload, ParamType paramType, Object paramValue)
     {
         return outWithParam(id, verb, 0, payload, paramType, paramValue);
@@ -224,10 +236,14 @@ public class Message<T>
 
     private static <T> Message<T> outWithParam(long id, Verb verb, long expiresAtNanos, T payload, int flags, ParamType paramType, Object paramValue)
     {
+        return withParam(getBroadcastAddressAndPort(), id, verb, expiresAtNanos, payload, flags, paramType, paramValue);
+    }
+
+    private static <T> Message<T> withParam(InetAddressAndPort from, long id, Verb verb, long expiresAtNanos, T payload, int flags, ParamType paramType, Object paramValue)
+    {
         if (payload == null)
             throw new IllegalArgumentException();
 
-        InetAddressAndPort from = FBUtilities.getBroadcastAddressAndPort();
         long createdAtNanos = approxTime.now();
         if (expiresAtNanos == 0)
             expiresAtNanos = verb.expiresAtNanos(createdAtNanos);
@@ -239,6 +255,18 @@ public class Message<T>
     {
         assert verb.isResponse();
         return outWithParam(0, verb, payload, null, null);
+    }
+
+    /**
+     * Used by the {@code MultiRangeReadCommand} to split multi-range responses from a replica
+     * into single-range responses.
+     */
+    public static <T> Message<T> remoteResponse(InetAddressAndPort from, Verb verb, T payload)
+    {
+        assert verb.isResponse();
+        long createdAtNanos = approxTime.now();
+        long expiresAtNanos = verb.expiresAtNanos(createdAtNanos);
+        return new Message<>(new Header(0, verb, from, createdAtNanos, expiresAtNanos, 0, NO_PARAMS), payload);
     }
 
     /** Builds a response Message with provided payload, and all the right fields inferred from request Message */
@@ -264,6 +292,11 @@ public class Message<T>
         return outWithParam(id, Verb.FAILURE_RSP, expiresAtNanos, reason, null, null);
     }
 
+    public <V> Message<V> withPayload(V newPayload)
+    {
+        return new Message<>(header, newPayload);
+    }
+
     Message<T> withCallBackOnFailure()
     {
         return new Message<>(header.withFlag(MessageFlag.CALL_BACK_ON_FAILURE), payload);
@@ -272,6 +305,23 @@ public class Message<T>
     public Message<T> withForwardTo(ForwardingInfo peers)
     {
         return new Message<>(header.withParam(ParamType.FORWARD_TO, peers), payload);
+    }
+
+    public Message<T> withFlag(MessageFlag flag)
+    {
+        return new Message<>(header.withFlag(flag), payload);
+    }
+
+    public Message<T> withParam(ParamType type, Object value)
+    {
+        return new Message<>(header.withParam(type, value), payload);
+    }
+
+    public Message<T> withParams(Map<ParamType, Object> values)
+    {
+        if (values == null || values.isEmpty())
+            return this;
+        return new Message<>(header.withParams(values), payload);
     }
 
     private static final EnumMap<ParamType, Object> NO_PARAMS = new EnumMap<>(ParamType.class);
@@ -299,6 +349,16 @@ public class Message<T>
 
         params = new EnumMap<>(params);
         params.put(type, value);
+        return params;
+    }
+
+    private static Map<ParamType, Object> addParams(Map<ParamType, Object> params, Map<ParamType, Object> values)
+    {
+        if (values == null || values.isEmpty())
+            return params;
+
+        params = new EnumMap<>(params);
+        params.putAll(values);
         return params;
     }
 
@@ -390,6 +450,11 @@ public class Message<T>
             return new Header(id, verb, from, createdAtNanos, expiresAtNanos, flags, addParam(params, type, value));
         }
 
+        Header withParams(Map<ParamType, Object> values)
+        {
+            return new Header(id, verb, from, createdAtNanos, expiresAtNanos, flags, addParams(params, values));
+        }
+
         boolean callBackOnFailure()
         {
             return MessageFlag.CALL_BACK_ON_FAILURE.isIn(flags);
@@ -398,6 +463,11 @@ public class Message<T>
         boolean trackRepairedData()
         {
             return MessageFlag.TRACK_REPAIRED_DATA.isIn(flags);
+        }
+
+        boolean trackWarnings()
+        {
+            return MessageFlag.TRACK_WARNINGS.isIn(flags);
         }
 
         @Nullable
@@ -409,19 +479,26 @@ public class Message<T>
         @Nullable
         InetAddressAndPort respondTo()
         {
-            return (InetAddressAndPort) params.get(ParamType.RESPOND_TO);
+            InetAddressAndPort respondTo = (InetAddressAndPort) params.get(ParamType.RESPOND_TO);
+            if (respondTo == null) respondTo = from;
+            return respondTo;
         }
 
         @Nullable
-        public UUID traceSession()
+        public TimeUUID traceSession()
         {
-            return (UUID) params.get(ParamType.TRACE_SESSION);
+            return (TimeUUID) params.get(ParamType.TRACE_SESSION);
         }
 
         @Nullable
         public TraceType traceType()
         {
             return (TraceType) params.getOrDefault(ParamType.TRACE_TYPE, TraceType.QUERY);
+        }
+
+        public Map<ParamType, Object> params()
+        {
+            return Collections.unmodifiableMap(params);
         }
     }
 
@@ -503,7 +580,7 @@ public class Message<T>
             if (expiresAtNanos == 0 && verb != null && createdAtNanos != 0)
                 expiresAtNanos = verb.expiresAtNanos(createdAtNanos);
             if (!this.verb.isResponse() && from == null) // default to sending from self if we're a request verb
-                from = FBUtilities.getBroadcastAddressAndPort();
+                from = getBroadcastAddressAndPort();
             return this;
         }
 
@@ -764,7 +841,7 @@ public class Message<T>
         {
             serializeHeaderPost40(message.header, out, version);
             out.writeUnsignedVInt(message.payloadSize(version));
-            message.getPayloadSerializer().serialize(message.payload, out, version);
+            message.verb().serializer().serialize(message.payload, out, version);
         }
 
         private <T> Message<T> deserializePost40(DataInputPlus in, InetAddressAndPort peer, int version) throws IOException

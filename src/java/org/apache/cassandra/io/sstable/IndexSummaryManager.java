@@ -30,10 +30,12 @@ import java.util.concurrent.TimeoutException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+
+import com.codahale.metrics.Timer;
+import org.apache.cassandra.concurrent.ScheduledExecutorPlus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.cassandra.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
@@ -51,6 +53,7 @@ import org.apache.cassandra.utils.MBeanWrapper;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.WrappedRunnable;
 
+import static org.apache.cassandra.concurrent.ExecutorFactory.Global.executorFactory;
 /**
  * Manages the fixed-size memory pool for index summaries, periodically resizing them
  * in order to give more memory to hot sstables and less memory to cold sstables.
@@ -63,7 +66,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
 
     private long memoryPoolBytes;
 
-    private final DebuggableScheduledThreadPoolExecutor executor;
+    private final ScheduledExecutorPlus executor;
 
     // our next scheduled resizing run
     private ScheduledFuture future;
@@ -76,14 +79,14 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
 
     private IndexSummaryManager()
     {
-        executor = new DebuggableScheduledThreadPoolExecutor(1, "IndexSummaryManager", Thread.MIN_PRIORITY);
+        executor = executorFactory().scheduled(false, "IndexSummaryManager", Thread.MIN_PRIORITY);
 
-        long indexSummarySizeInMB = DatabaseDescriptor.getIndexSummaryCapacityInMB();
+        long indexSummarySizeInMB = DatabaseDescriptor.getIndexSummaryCapacityInMiB();
         int interval = DatabaseDescriptor.getIndexSummaryResizeIntervalInMinutes();
         logger.info("Initializing index summary manager with a memory pool size of {} MB and a resize interval of {} minutes",
                     indexSummarySizeInMB, interval);
 
-        setMemoryPoolCapacityInMB(DatabaseDescriptor.getIndexSummaryCapacityInMB());
+        setMemoryPoolCapacityInMB(DatabaseDescriptor.getIndexSummaryCapacityInMiB());
         setResizeIntervalInMinutes(DatabaseDescriptor.getIndexSummaryResizeIntervalInMinutes());
     }
 
@@ -229,7 +232,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
         Pair<Long, Map<TableId, LifecycleTransaction>> redistributionTransactionInfo = getRestributionTransactions();
         Map<TableId, LifecycleTransaction> transactions = redistributionTransactionInfo.right;
         long nonRedistributingOffHeapSize = redistributionTransactionInfo.left;
-        try
+        try (Timer.Context ctx = CompactionManager.instance.getMetrics().indexSummaryRedistributionTime.time())
         {
             redistributeSummaries(new IndexSummaryRedistribution(transactions,
                                                                  nonRedistributingOffHeapSize,
@@ -277,6 +280,11 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
     @VisibleForTesting
     public void shutdownAndWait(long timeout, TimeUnit unit) throws InterruptedException, TimeoutException
     {
+        if (future != null)
+        {
+            future.cancel(false);
+            future = null;
+        }
         ExecutorUtils.shutdownAndWait(timeout, unit, executor);
     }
 }

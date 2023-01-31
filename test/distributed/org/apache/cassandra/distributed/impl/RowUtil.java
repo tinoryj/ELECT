@@ -29,7 +29,6 @@ import com.google.common.collect.Lists;
 
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
-
 import org.apache.cassandra.cql3.ColumnSpecification;
 import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.distributed.api.QueryResults;

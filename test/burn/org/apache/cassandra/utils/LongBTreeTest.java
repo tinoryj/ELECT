@@ -53,6 +53,7 @@ import static com.google.common.collect.Iterables.transform;
 import static java.util.Comparator.naturalOrder;
 import static java.util.Comparator.reverseOrder;
 import static org.apache.cassandra.utils.btree.BTree.iterable;
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -1180,7 +1181,7 @@ public class LongBTreeTest
     {
         args = Arrays.copyOf(args, args.length + 1);
         System.arraycopy(args, 0, args, 1, args.length - 1);
-        args[0] = System.currentTimeMillis();
+        args[0] = currentTimeMillis();
         System.out.printf("%tT: " + formatstr + "\n", args);
     }
 }

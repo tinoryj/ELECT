@@ -29,15 +29,18 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.ParameterizedClass;
 import org.apache.cassandra.config.TransparentDataEncryptionOptions;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.compress.LZ4Compressor;
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileDataInput;
 import org.apache.cassandra.io.util.FileSegmentInputStream;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.security.EncryptionContext;
 import org.apache.cassandra.security.EncryptionContextGenerator;
+import org.assertj.core.api.Assertions;
 
 public class CommitLogDescriptorTest
 {
@@ -84,6 +87,21 @@ public class CommitLogDescriptorTest
         Assert.assertEquals(MessagingService.current_version, new CommitLogDescriptor(1340512736956320000L, null, neverEnabledEncryption).getMessagingVersion());
         String newCLName = "CommitLog-" + CommitLogDescriptor.current_version + "-1340512736956320000.log";
         Assert.assertEquals(MessagingService.current_version, CommitLogDescriptor.fromFileName(newCLName).getMessagingVersion());
+    }
+
+    @Test
+    public void testExactIdFromFileName()
+    {
+        Assertions.assertThatThrownBy(() -> CommitLogDescriptor.idFromFileName("CommitLog-1340512736956320000.log"))
+                  .hasMessageContaining("Commitlog segment is too old to open")
+                  .isInstanceOf(UnsupportedOperationException.class);
+
+        Assertions.assertThatThrownBy(() -> CommitLogDescriptor.idFromFileName("CommitLog--1340512736956320000.log"))
+                  .hasMessageContaining("Cannot parse the version of the file")
+                  .isInstanceOf(RuntimeException.class);
+
+        Assertions.assertThat(CommitLogDescriptor.idFromFileName("CommitLog-2-1340512736956320000.log"))
+                  .isEqualTo(1340512736956320000L);
     }
 
     // migrated from CommitLogTest
@@ -308,5 +326,20 @@ public class CommitLogDescriptorTest
 
         CommitLogDescriptor desc2 = new CommitLogDescriptor(CommitLogDescriptor.current_version, 1, compression, enabledEncryption);
         Assert.assertEquals(desc1, desc2);
+    }
+
+    @Test
+    public void testInferCDCIndexFile()
+    {
+        DatabaseDescriptor.daemonInitialization();
+        String fileNameSuffix = "CommitLog-2-1340512736956320000";
+        File validCdcLink = new File(fileNameSuffix + ".log");
+        File inferredIndexFile = CommitLogDescriptor.inferCdcIndexFile(validCdcLink);
+        Assert.assertNotNull(inferredIndexFile);
+        Assert.assertEquals(fileNameSuffix + "_cdc.idx", inferredIndexFile.name());
+
+        File invalidCdcLink = new File(fileNameSuffix + ".invalidlog");
+        inferredIndexFile = CommitLogDescriptor.inferCdcIndexFile(invalidCdcLink);
+        Assert.assertNull(inferredIndexFile);
     }
 }

@@ -40,8 +40,9 @@ import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.schema.KeyspaceMetadata;
 import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.schema.Schema;
+import org.apache.cassandra.schema.SchemaTestUtil;
 import org.apache.cassandra.schema.TableMetadata;
-import org.apache.cassandra.service.QueryState;
+import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.utils.FBUtilities;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -63,6 +64,7 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 
 @BenchmarkMode(Mode.Throughput)
@@ -87,7 +89,7 @@ public class BatchStatementBench
     String table = "tbl";
 
     int nowInSec = FBUtilities.nowInSeconds();
-    long queryStartTime = System.nanoTime();
+    long queryStartTime = nanoTime();
     BatchStatement bs;
     BatchQueryOptions bqo;
 
@@ -100,11 +102,11 @@ public class BatchStatementBench
     @Setup
     public void setup() throws Throwable
     {
-        Schema.instance.load(KeyspaceMetadata.create(keyspace, KeyspaceParams.simple(1)));
+        SchemaTestUtil.addOrUpdateKeyspace(KeyspaceMetadata.create(keyspace, KeyspaceParams.simple(1)), false);
         KeyspaceMetadata ksm = Schema.instance.getKeyspaceMetadata(keyspace);
         TableMetadata metadata = CreateTableStatement.parse(String.format("CREATE TABLE %s (id int, ck int, v int, primary key (id, ck))", table), keyspace).build();
 
-        Schema.instance.load(ksm.withSwapped(ksm.tables.with(metadata)));
+        SchemaTestUtil.addOrUpdateKeyspace(ksm.withSwapped(ksm.tables.with(metadata)), false);
 
         List<ModificationStatement> modifications = new ArrayList<>(batchSize);
         List<List<ByteBuffer>> parameters = new ArrayList<>(batchSize);
@@ -124,7 +126,7 @@ public class BatchStatementBench
     @Benchmark
     public void bench()
     {
-        bs.getMutations(bqo, false, nowInSec, nowInSec, queryStartTime);
+        bs.getMutations(ClientState.forInternalCalls(), bqo, false, nowInSec, nowInSec, queryStartTime);
     }
 
 

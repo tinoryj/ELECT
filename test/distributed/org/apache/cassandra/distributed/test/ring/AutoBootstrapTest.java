@@ -49,7 +49,7 @@ public class AutoBootstrapTest extends TestBaseImpl
                                         .withConfig(config -> config.with(NETWORK, GOSSIP))
                                         .start())
         {
-            populate(cluster,0, 100);
+            populate(cluster, 0, 100);
             bootstrapAndJoinNode(cluster);
 
             for (Map.Entry<Integer, Long> e : count(cluster).entrySet())

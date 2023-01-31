@@ -17,19 +17,11 @@
  */
 package org.apache.cassandra.repair;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.hash.Funnel;
-import com.google.common.hash.HashCode;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hasher;
-import com.google.common.hash.Hashing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +34,11 @@ import org.apache.cassandra.db.rows.UnfilteredRowIterators;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.metrics.TopPartitionTracker;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.repair.messages.ValidationResponse;
+import org.apache.cassandra.repair.state.ValidationState;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.tracing.Tracing;
@@ -84,21 +78,24 @@ public class Validator implements Runnable
     private DecoratedKey lastKey;
 
     private final PreviewKind previewKind;
+    public final ValidationState state;
+    public TopPartitionTracker.Collector topPartitionCollector;
 
-    public Validator(RepairJobDesc desc, InetAddressAndPort initiator, int nowInSec, PreviewKind previewKind)
+    public Validator(ValidationState state, int nowInSec, PreviewKind previewKind)
     {
-        this(desc, initiator, nowInSec, false, false, previewKind);
+        this(state, nowInSec, false, false, previewKind);
     }
 
-    public Validator(RepairJobDesc desc, InetAddressAndPort initiator, int nowInSec, boolean isIncremental, PreviewKind previewKind)
+    public Validator(ValidationState state, int nowInSec, boolean isIncremental, PreviewKind previewKind)
     {
-        this(desc, initiator, nowInSec, false, isIncremental, previewKind);
+        this(state, nowInSec, false, isIncremental, previewKind);
     }
 
-    public Validator(RepairJobDesc desc, InetAddressAndPort initiator, int nowInSec, boolean evenTreeDistribution, boolean isIncremental, PreviewKind previewKind)
+    public Validator(ValidationState state, int nowInSec, boolean evenTreeDistribution, boolean isIncremental, PreviewKind previewKind)
     {
-        this.desc = desc;
-        this.initiator = initiator;
+        this.state = state;
+        this.desc = state.desc;
+        this.initiator = state.initiator;
         this.nowInSec = nowInSec;
         this.isIncremental = isIncremental;
         this.previewKind = previewKind;
@@ -108,21 +105,22 @@ public class Validator implements Runnable
         this.evenTreeDistribution = evenTreeDistribution;
     }
 
-    public void prepare(ColumnFamilyStore cfs, MerkleTrees tree)
+    public void prepare(ColumnFamilyStore cfs, MerkleTrees trees, TopPartitionTracker.Collector topPartitionCollector)
     {
-        this.trees = tree;
+        this.trees = trees;
+        this.topPartitionCollector = topPartitionCollector;
 
-        if (!tree.partitioner().preservesOrder() || evenTreeDistribution)
+        if (!trees.partitioner().preservesOrder() || evenTreeDistribution)
         {
-            // You can't beat an even tree distribution for md5
-            tree.init();
+            // You can't beat even trees distribution for md5
+            trees.init();
         }
         else
         {
             List<DecoratedKey> keys = new ArrayList<>();
             Random random = new Random();
 
-            for (Range<Token> range : tree.ranges())
+            for (Range<Token> range : trees.ranges())
             {
                 for (DecoratedKey sample : cfs.keySamples(range))
                 {
@@ -132,8 +130,8 @@ public class Validator implements Runnable
 
                 if (keys.isEmpty())
                 {
-                    // use an even tree distribution
-                    tree.init(range);
+                    // use even trees distribution
+                    trees.init(range);
                 }
                 else
                 {
@@ -142,15 +140,15 @@ public class Validator implements Runnable
                     while (true)
                     {
                         DecoratedKey dk = keys.get(random.nextInt(numKeys));
-                        if (!tree.split(dk.getToken()))
+                        if (!trees.split(dk.getToken()))
                             break;
                     }
                     keys.clear();
                 }
             }
         }
-        logger.debug("Prepared AEService trees of size {} for {}", trees.size(), desc);
-        ranges = tree.rangeIterator();
+        logger.debug("Prepared AEService trees of size {} for {}", this.trees.size(), desc);
+        ranges = trees.rangeIterator();
     }
 
     /**
@@ -182,6 +180,8 @@ public class Validator implements Runnable
         RowHash rowHash = rowHash(partition);
         if (rowHash != null)
         {
+            if(topPartitionCollector != null)
+                topPartitionCollector.trackPartitionSize(partition.partitionKey(), rowHash.size);
             range.addHash(rowHash);
         }
     }
@@ -224,6 +224,7 @@ public class Validator implements Runnable
             trees.logRowSizePerLeaf(logger);
         }
 
+        state.phase.sendingTrees();
         Stage.ANTI_ENTROPY.execute(this);
     }
 
@@ -232,9 +233,9 @@ public class Validator implements Runnable
      * This sends RepairStatus to inform the initiator that the validation has failed.
      * The actual reason for failure should be looked up in the log of the host calling this function.
      */
-    public void fail()
+    public void fail(Throwable e)
     {
-        logger.error("Failed creating a merkle tree for {}, {} (see log for details)", desc, initiator);
+        state.phase.fail(e);
         respond(new ValidationResponse(desc));
     }
 
@@ -254,7 +255,13 @@ public class Validator implements Runnable
             Tracing.traceRepair("Local completed merkle tree for {} for {}.{}", initiator, desc.keyspace, desc.columnFamily);
 
         }
+        state.phase.success();
         respond(new ValidationResponse(desc, trees));
+    }
+
+    public PreviewKind getPreviewKind()
+    {
+        return previewKind;
     }
 
     private boolean initiatorIsRemote()
@@ -273,7 +280,7 @@ public class Validator implements Runnable
         /*
          * For local initiators, DO NOT send the message to self over loopback. This is a wasted ser/de loop
          * and a ton of garbage. Instead, move the trees off heap and invoke message handler. We could do it
-         * directly, since this method will only be called from {@code Stage.ENTI_ENTROPY}, but we do instead
+         * directly, since this method will only be called from {@code Stage.ANTI_ENTROPY}, but we do instead
          * execute a {@code Runnable} on the stage - in case that assumption ever changes by accident.
          */
         Stage.ANTI_ENTROPY.execute(() ->

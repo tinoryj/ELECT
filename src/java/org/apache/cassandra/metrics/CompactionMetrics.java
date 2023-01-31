@@ -18,18 +18,17 @@
 package org.apache.cassandra.metrics;
 
 import java.util.*;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Meter;
 
+import com.codahale.metrics.Timer;
+import org.apache.cassandra.concurrent.ExecutorPlus;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.compaction.ActiveCompactions;
 import org.apache.cassandra.db.compaction.CompactionInfo;
 import org.apache.cassandra.db.compaction.CompactionManager;
-import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.TableMetadata;
 
@@ -53,7 +52,8 @@ public class CompactionMetrics
     public final Meter totalCompactionsCompleted;
     /** Total number of bytes compacted since server [re]start */
     public final Counter bytesCompacted;
-
+    /** Time spent redistributing index summaries */
+    public final Timer indexSummaryRedistributionTime;
 
     /** Total number of compactions that have had sstables drop out of them */
     public final Counter compactionsReduced;
@@ -64,7 +64,7 @@ public class CompactionMetrics
     /** Total number of compactions which have outright failed due to lack of disk space */
     public final Counter compactionsAborted;
 
-    public CompactionMetrics(final ThreadPoolExecutor... collectors)
+    public CompactionMetrics(final ExecutorPlus... collectors)
     {
         pendingTasks = Metrics.register(factory.createMetricName("PendingTasks"), new Gauge<Integer>()
         {
@@ -139,7 +139,7 @@ public class CompactionMetrics
             public Long getValue()
             {
                 long completedTasks = 0;
-                for (ThreadPoolExecutor collector : collectors)
+                for (ExecutorPlus collector : collectors)
                     completedTasks += collector.getCompletedTaskCount();
                 return completedTasks;
             }
@@ -151,5 +151,6 @@ public class CompactionMetrics
         compactionsReduced = Metrics.counter(factory.createMetricName("CompactionsReduced"));
         sstablesDropppedFromCompactions = Metrics.counter(factory.createMetricName("SSTablesDroppedFromCompaction"));
         compactionsAborted = Metrics.counter(factory.createMetricName("CompactionsAborted"));
+        indexSummaryRedistributionTime = Metrics.timer(factory.createMetricName("IndexSummaryRedistributionTime"));
     }
 }

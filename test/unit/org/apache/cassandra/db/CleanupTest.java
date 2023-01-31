@@ -56,6 +56,7 @@ import org.apache.cassandra.schema.KeyspaceParams;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -155,8 +156,8 @@ public class CleanupTest
 
         ColumnMetadata cdef = cfs.metadata().getColumn(COLUMN);
         String indexName = "birthdate_key_index";
-        long start = System.nanoTime();
-        while (!cfs.getBuiltIndexes().contains(indexName) && System.nanoTime() - start < TimeUnit.SECONDS.toNanos(10))
+        long start = nanoTime();
+        while (!cfs.getBuiltIndexes().contains(indexName) && nanoTime() - start < TimeUnit.SECONDS.toNanos(10))
             Thread.sleep(10);
 
         RowFilter cf = RowFilter.create();
@@ -283,7 +284,7 @@ public class CleanupTest
             .add("val", VALUE)
             .build()
             .applyUnsafe();
-            cfs.forceBlockingFlush();
+            Util.flush(cfs);
         }
 
         Set<SSTableReader> beforeFirstCleanup = Sets.newHashSet(cfs.getLiveSSTables());
@@ -432,7 +433,7 @@ public class CleanupTest
                     .applyUnsafe();
         }
 
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
     }
 
     protected List<Long> getMaxTimestampList(ColumnFamilyStore cfs)

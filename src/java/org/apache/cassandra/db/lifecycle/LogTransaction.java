@@ -18,7 +18,6 @@
 package org.apache.cassandra.db.lifecycle;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -31,11 +30,12 @@ import java.util.function.Predicate;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.Runnables;
 
+import com.codahale.metrics.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.concurrent.ScheduledExecutors;
-import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.OperationType;
@@ -44,14 +44,17 @@ import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTable;
-import org.apache.cassandra.io.sstable.SnapshotDeletingTask;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.concurrent.Ref;
 import org.apache.cassandra.utils.concurrent.RefCounted;
 import org.apache.cassandra.utils.concurrent.Transactional;
+
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
 /**
  * IMPORTANT: When this object is involved in a transactional graph, and is not encapsulated in a LifecycleTransaction,
@@ -112,8 +115,7 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
     // We need an explicit lock because the transaction tidier cannot store a reference to the transaction
     private final Object lock;
     private final Ref<LogTransaction> selfRef;
-    // Deleting sstables is tricky because the mmapping might not have been finalized yet,
-    // and delete will fail (on Windows) until it is (we only force the unmapping on SUN VMs).
+    // Deleting sstables is tricky because the mmapping might not have been finalized yet.
     // Additionally, we need to make sure to delete the data file first, so on restart the others
     // will be recognized as GCable.
     private static final Queue<Runnable> failedDeletions = new ConcurrentLinkedQueue<>();
@@ -126,7 +128,7 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
     LogTransaction(OperationType opType, Tracker tracker)
     {
         this.tracker = tracker;
-        this.txnFile = new LogFile(opType, UUIDGen.getTimeUUID());
+        this.txnFile = new LogFile(opType, nextTimeUUID());
         this.lock = new Object();
         this.selfRef = new Ref<>(this, new TransactionTidier(txnFile, lock));
 
@@ -209,7 +211,7 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
         return txnFile.type();
     }
 
-    UUID id()
+    TimeUUID id()
     {
         return txnFile.id();
     }
@@ -349,21 +351,25 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
         // must not retain a reference to the SSTableReader, else leak detection cannot kick in
         private final Descriptor desc;
         private final long sizeOnDisk;
-        private final Tracker tracker;
         private final boolean wasNew;
         private final Object lock;
         private final Ref<LogTransaction> parentRef;
-        private final UUID txnId;
+        private final Counter totalDiskSpaceUsed;
 
         public SSTableTidier(SSTableReader referent, boolean wasNew, LogTransaction parent)
         {
             this.desc = referent.descriptor;
             this.sizeOnDisk = referent.bytesOnDisk();
-            this.tracker = parent.tracker;
             this.wasNew = wasNew;
             this.lock = parent.lock;
             this.parentRef = parent.selfRef.tryRef();
-            this.txnId = parent.id();
+
+            // While the parent cfs may be dropped in the interim of us taking a reference to this and using it, at worst
+            // we'll be updating a metric for a now dropped ColumnFamilyStore. We do not hold a reference to the tracker or
+            // cfs as that would create a strong ref loop and violate our ability to do leak detection.
+            totalDiskSpaceUsed = parent.tracker != null && parent.tracker.cfstore != null ?
+                                 parent.tracker.cfstore.metric.totalDiskSpaceUsed :
+                                 null;
 
             if (this.parentRef == null)
                 throw new IllegalStateException("Transaction already completed");
@@ -371,8 +377,10 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
 
         public void run()
         {
-            if (tracker != null && !tracker.isDummy())
-                SystemKeyspace.clearSSTableReadMeter(desc.ksname, desc.cfname, desc.generation);
+            // While this may be a dummy tracker w/out information in the metrics table, we attempt to delete regardless
+            // and allow the delete to silently fail if this is an invalid ks + cf combination at time of tidy run.
+            if (DatabaseDescriptor.isDaemonInitialized())
+                SystemKeyspace.clearSSTableReadMeter(desc.ksname, desc.cfname, desc.id);
 
             synchronized (lock)
             {
@@ -399,8 +407,11 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
                     return;
                 }
 
-                if (tracker != null && tracker.cfstore != null && !wasNew)
-                    tracker.cfstore.metric.totalDiskSpaceUsed.dec(sizeOnDisk);
+                // It's possible we're the last one's holding a ref to this metric if it's already been released in the
+                // parent TableMetrics; we run this regardless rather than holding a ref to that CFS or Tracker and thus
+                // creating a strong ref loop
+                if (DatabaseDescriptor.isDaemonInitialized() && totalDiskSpaceUsed != null && !wasNew)
+                    totalDiskSpaceUsed.dec(sizeOnDisk);
 
                 // release the referent to the parent so that the all transaction files can be released
                 parentRef.release();
@@ -422,9 +433,6 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
         Runnable task;
         while ( null != (task = failedDeletions.poll()))
             ScheduledExecutors.nonPeriodicTasks.submit(task);
-
-        // On Windows, snapshots cannot be deleted so long as a segment of the root element is memory-mapped in NTFS.
-        SnapshotDeletingTask.rescheduleFailedTasks();
     }
 
     static void waitForDeletions()
@@ -506,16 +514,16 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
 
         void list(File directory)
         {
-            Arrays.stream(directory.listFiles(LogFile::isLogFile)).forEach(this::add);
+            Arrays.stream(directory.tryList(LogFile::isLogFile)).forEach(this::add);
         }
 
         void add(File file)
         {
-            List<File> filesByName = files.get(file.getName());
+            List<File> filesByName = files.get(file.name());
             if (filesByName == null)
             {
                 filesByName = new ArrayList<>();
-                files.put(file.getName(), filesByName);
+                files.put(file.name(), filesByName);
             }
 
             filesByName.add(file);

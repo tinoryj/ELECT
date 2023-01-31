@@ -23,14 +23,12 @@ import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
 import java.util.function.Consumer;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 
-import org.apache.cassandra.config.OverrideConfigurationLoader;
 import org.apache.cassandra.diag.DiagnosticEventService;
 import org.apache.cassandra.gms.GossiperEvent;
 import org.apache.cassandra.locator.EndpointsForRange;
@@ -40,16 +38,12 @@ import org.apache.cassandra.locator.RangesByEndpoint;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
-import org.junit.rules.TestWatcher;
-import org.junit.runner.Description;
 
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.locator.ReplicaCollection;
-import org.apache.cassandra.schema.MigrationManager;
+import org.apache.cassandra.schema.SchemaTestUtil;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.marshal.BytesType;
@@ -194,7 +188,7 @@ public class MoveTest
                                                                                     .addPartitionKeyColumn("key", BytesType.instance)
                                                                                     .build()));
 
-        MigrationManager.announceNewKeyspace(keyspace);
+        SchemaTestUtil.announceNewKeyspace(keyspace);
     }
 
     private static Object[] configOptions(Integer[] replicas)
@@ -563,7 +557,7 @@ public class MoveTest
     private void assertPendingRanges(TokenMetadata tmd, Map<Range<Token>, EndpointsForRange> pendingRanges, String keyspaceName) throws ConfigurationException
     {
         boolean keyspaceFound = false;
-        for (String nonSystemKeyspaceName : Schema.instance.getNonLocalStrategyKeyspaces())
+        for (String nonSystemKeyspaceName : Schema.instance.getNonLocalStrategyKeyspaces().names())
         {
             if(!keyspaceName.equals(nonSystemKeyspaceName))
                 continue;
@@ -632,7 +626,7 @@ public class MoveTest
         assertTrue(tmd.isMoving(hosts.get(MOVING_NODE)));
 
         AbstractReplicationStrategy strategy;
-        for (String keyspaceName : Schema.instance.getNonLocalStrategyKeyspaces())
+        for (String keyspaceName : Schema.instance.getNonLocalStrategyKeyspaces().names())
         {
             strategy = getStrategy(keyspaceName, tmd);
             if(strategy instanceof NetworkTopologyStrategy)

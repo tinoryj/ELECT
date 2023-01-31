@@ -91,6 +91,9 @@ public final class CreateAggregateStatement extends AlterSchemaStatement
         if (ifNotExists && orReplace)
             throw ire("Cannot use both 'OR REPLACE' and 'IF NOT EXISTS' directives");
 
+        if (!FunctionName.isNameValid(aggregateName))
+            throw ire("Aggregate name '%s' is invalid", aggregateName);
+
         rawArgumentTypes.stream()
                         .filter(raw -> !raw.isTuple() && raw.isFrozen())
                         .findFirst()
@@ -109,9 +112,9 @@ public final class CreateAggregateStatement extends AlterSchemaStatement
 
         List<AbstractType<?>> argumentTypes =
             rawArgumentTypes.stream()
-                            .map(t -> t.prepare(keyspaceName, keyspace.types).getType())
+                            .map(t -> t.prepare(keyspaceName, keyspace.types).getType().udfType())
                             .collect(toList());
-        AbstractType<?> stateType = rawStateType.prepare(keyspaceName, keyspace.types).getType();
+        AbstractType<?> stateType = rawStateType.prepare(keyspaceName, keyspace.types).getType().udfType();
         List<AbstractType<?>> stateFunctionArguments = Lists.newArrayList(concat(singleton(stateType), argumentTypes));
 
         Function stateFunction =

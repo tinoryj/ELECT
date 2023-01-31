@@ -17,13 +17,13 @@
  */
 package org.apache.cassandra.db.compaction.writers;
 
-import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.*;
 
 import com.google.common.primitives.Longs;
 import org.junit.*;
 
+import org.apache.cassandra.Util;
 import org.apache.cassandra.cql3.CQLTester;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.*;
@@ -33,10 +33,12 @@ import org.apache.cassandra.db.compaction.CompactionIterator;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.schema.MockSchema;
 import org.apache.cassandra.utils.FBUtilities;
-import org.apache.cassandra.utils.UUIDGen;
 
+import static org.apache.cassandra.db.compaction.OperationType.COMPACTION;
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 import static org.junit.Assert.assertEquals;
 
 public class CompactionAwareWriterTest extends CQLTester
@@ -208,7 +210,7 @@ public class CompactionAwareWriterTest extends CQLTester
         int nowInSec = FBUtilities.nowInSeconds();
         try (AbstractCompactionStrategy.ScannerList scanners = cfs.getCompactionStrategyManager().getScanners(txn.originals());
              CompactionController controller = new CompactionController(cfs, txn.originals(), cfs.gcBefore(nowInSec));
-             CompactionIterator ci = new CompactionIterator(OperationType.COMPACTION, scanners.scanners, controller, nowInSec, UUIDGen.getTimeUUID()))
+             CompactionIterator ci = new CompactionIterator(COMPACTION, scanners.scanners, controller, nowInSec, nextTimeUUID()))
         {
             while (ci.hasNext())
             {
@@ -231,7 +233,7 @@ public class CompactionAwareWriterTest extends CQLTester
                 execute(String.format("INSERT INTO %s.%s(k, t, v) VALUES (?, ?, ?)", KEYSPACE, TABLE), i, j, b);
 
         ColumnFamilyStore cfs = getColumnFamilyStore();
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
         if (cfs.getLiveSSTables().size() > 1)
         {
             // we want just one big sstable to avoid doing actual compaction in compact() above

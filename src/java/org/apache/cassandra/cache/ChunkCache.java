@@ -26,9 +26,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Iterables;
-import com.google.common.util.concurrent.MoreExecutors;
 
 import com.github.benmanes.caffeine.cache.*;
+import org.apache.cassandra.concurrent.ImmediateExecutor;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.util.*;
@@ -39,8 +39,8 @@ import org.apache.cassandra.utils.memory.BufferPools;
 public class ChunkCache
         implements CacheLoader<ChunkCache.Key, ChunkCache.Buffer>, RemovalListener<ChunkCache.Key, ChunkCache.Buffer>, CacheSize
 {
-    public static final int RESERVED_POOL_SPACE_IN_MB = 32;
-    public static final long cacheSize = 1024L * 1024L * Math.max(0, DatabaseDescriptor.getFileCacheSizeInMB() - RESERVED_POOL_SPACE_IN_MB);
+    public static final int RESERVED_POOL_SPACE_IN_MiB = 32;
+    public static final long cacheSize = 1024L * 1024L * Math.max(0, DatabaseDescriptor.getFileCacheSizeInMiB() - RESERVED_POOL_SPACE_IN_MiB);
     public static final boolean roundUp = DatabaseDescriptor.getFileCacheRoundUp();
 
     private static boolean enabled = DatabaseDescriptor.getFileCacheEnabled() && cacheSize > 0;
@@ -143,7 +143,7 @@ public class ChunkCache
         metrics = new ChunkCacheMetrics(this);
         cache = Caffeine.newBuilder()
                         .maximumWeight(cacheSize)
-                        .executor(MoreExecutors.directExecutor())
+                        .executor(ImmediateExecutor.INSTANCE)
                         .weigher((key, buffer) -> ((Buffer) buffer).buffer.capacity())
                         .removalListener(this)
                         .recordStats(() -> metrics)

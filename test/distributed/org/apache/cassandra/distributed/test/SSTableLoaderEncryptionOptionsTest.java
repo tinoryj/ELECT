@@ -19,7 +19,6 @@
 package org.apache.cassandra.distributed.test;
 
 import java.io.IOException;
-import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
@@ -30,9 +29,11 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.distributed.Cluster;
 import org.apache.cassandra.distributed.api.Feature;
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.tools.BulkLoader;
 import org.apache.cassandra.tools.ToolRunner;
 import org.apache.cassandra.service.StorageService;
@@ -41,6 +42,7 @@ import org.apache.cassandra.utils.NativeSSTableLoaderClient;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
+import static com.google.common.collect.Lists.transform;
 import static org.apache.cassandra.distributed.test.ExecUtil.rethrow;
 import static org.apache.cassandra.distributed.shared.AssertUtils.assertRows;
 import static org.apache.cassandra.distributed.shared.AssertUtils.row;
@@ -96,7 +98,7 @@ public class SSTableLoaderEncryptionOptionsTest extends AbstractEncryptionOption
                                                             "--truststore", validTrustStorePath,
                                                             "--truststore-password", validTrustStorePassword,
                                                             "--conf-path", "test/conf/sstableloader_with_encryption.yaml",
-                                                            sstables_to_upload.getAbsolutePath());
+                                                            sstables_to_upload.absolutePath());
         tool.assertOnCleanExit();
         assertTrue(tool.getStdout().contains("Summary statistics"));
         assertRows(CLUSTER.get(1).executeInternal("SELECT count(*) FROM ssl_upload_tables.test"), row(42L));
@@ -116,7 +118,7 @@ public class SSTableLoaderEncryptionOptionsTest extends AbstractEncryptionOption
                                                             "--truststore", validTrustStorePath,
                                                             "--truststore-password", validTrustStorePassword,
                                                             "--conf-path", "test/conf/sstableloader_with_encryption.yaml",
-                                                            sstables_to_upload.getAbsolutePath());
+                                                            sstables_to_upload.absolutePath());
         tool.assertOnCleanExit();
         assertTrue(tool.getStdout().contains("Summary statistics"));
         assertTrue(tool.getStdout().contains("ssl storage port is deprecated and not used"));
@@ -156,7 +158,8 @@ public class SSTableLoaderEncryptionOptionsTest extends AbstractEncryptionOption
         {
             CLUSTER.get(1).executeInternal(String.format("INSERT INTO ssl_upload_tables.test (pk, val) VALUES (%s, '%s')", i, i));
         }
-        CLUSTER.get(1).runOnInstance(rethrow(() -> StorageService.instance.forceKeyspaceFlush("ssl_upload_tables")));
+        CLUSTER.get(1).runOnInstance(rethrow(() -> StorageService.instance.forceKeyspaceFlush("ssl_upload_tables",
+                                                                                              ColumnFamilyStore.FlushReason.UNIT_TESTS)));
     }
 
     private static void truncateGeneratedTables() throws IOException
@@ -167,16 +170,18 @@ public class SSTableLoaderEncryptionOptionsTest extends AbstractEncryptionOption
     private static File copySstablesFromDataDir(String table) throws IOException
     {
         File cfDir = new File("build/test/cassandra/ssl_upload_tables", table);
-        cfDir.mkdirs();
-        List<File> keyspace_dirs = CLUSTER.get(1).callOnInstance(() -> Keyspace.open("ssl_upload_tables").getColumnFamilyStore(table).getDirectories().getCFDirectories());
-        for (File srcDir : keyspace_dirs)
+        cfDir.tryCreateDirectories();
+        // Get paths as Strings, because org.apache.cassandra.io.util.File in the dtest
+        // node is loaded by org.apache.cassandra.distributed.shared.InstanceClassLoader.
+        List<String> keyspace_dir_paths = CLUSTER.get(1).callOnInstance(() -> {
+            List<File> cfDirs = Keyspace.open("ssl_upload_tables").getColumnFamilyStore(table).getDirectories().getCFDirectories();
+            return transform(cfDirs, (d) -> d.absolutePath());
+        });
+        for (File srcDir : transform(keyspace_dir_paths, (p) -> new File(p)))
         {
-            for (File file : srcDir.listFiles())
+            for (File file : srcDir.tryList((file) -> file.isFile()))
             {
-                if (file.isFile())
-                {
-                    FileUtils.copyFileToDirectory(file, cfDir);
-                }
+                FileUtils.copyFileToDirectory(file.toJavaIOFile(), cfDir.toJavaIOFile());
             }
         }
         return cfDir;

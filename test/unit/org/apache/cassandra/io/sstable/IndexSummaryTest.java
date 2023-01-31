@@ -42,6 +42,7 @@ import org.apache.cassandra.utils.Pair;
 import static org.apache.cassandra.io.sstable.IndexSummaryBuilder.downsample;
 import static org.apache.cassandra.io.sstable.IndexSummaryBuilder.entriesAtSamplingLevel;
 import static org.apache.cassandra.io.sstable.Downsampling.BASE_SAMPLING_LEVEL;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.junit.Assert.*;
 
 public class IndexSummaryTest
@@ -53,7 +54,7 @@ public class IndexSummaryTest
     {
         DatabaseDescriptor.daemonInitialization();
 
-        final long seed = System.nanoTime();
+        final long seed = nanoTime();
         System.out.println("Using seed: " + seed);
         random.setSeed(seed);
     }
@@ -63,7 +64,7 @@ public class IndexSummaryTest
     @BeforeClass
     public static void setup()
     {
-        final long seed = System.nanoTime();
+        final long seed = nanoTime();
         System.out.println("Using seed: " + seed);
         random.setSeed(seed);
     }
@@ -111,7 +112,7 @@ public class IndexSummaryTest
     }
 
     /**
-     * Test an index summary whose total size is bigger than 2GB,
+     * Test an index summary whose total size is bigger than 2GiB,
      * the index summary builder should log an error but it should still
      * create an index summary, albeit one that does not cover the entire sstable.
      */
@@ -145,7 +146,7 @@ public class IndexSummaryTest
     }
 
     /**
-     * Test an index summary whose total size is bigger than 2GB,
+     * Test an index summary whose total size is bigger than 2GiB,
      * having updated IndexSummaryBuilder.defaultExpectedKeySize to match the size,
      * the index summary should be downsampled automatically.
      */

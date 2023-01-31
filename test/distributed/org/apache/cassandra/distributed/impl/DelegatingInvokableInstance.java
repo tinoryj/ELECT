@@ -21,6 +21,8 @@ package org.apache.cassandra.distributed.impl;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.UUID;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -31,6 +33,7 @@ import org.apache.cassandra.distributed.api.ICluster;
 import org.apache.cassandra.distributed.api.ICoordinator;
 import org.apache.cassandra.distributed.api.IInstanceConfig;
 import org.apache.cassandra.distributed.api.IInvokableInstance;
+import org.apache.cassandra.distributed.api.IIsolatedExecutor;
 import org.apache.cassandra.distributed.api.IListen;
 import org.apache.cassandra.distributed.api.IMessage;
 import org.apache.cassandra.distributed.api.SimpleQueryResult;
@@ -49,7 +52,7 @@ public abstract class DelegatingInvokableInstance implements IInvokableInstance
     @Override
     public InetSocketAddress broadcastAddress()
     {
-        return delegate().broadcastAddress();
+        return config().broadcastAddress();
     }
 
     @Override
@@ -131,6 +134,18 @@ public abstract class DelegatingInvokableInstance implements IInvokableInstance
     public Future<Void> shutdown()
     {
         return delegate().shutdown();
+    }
+
+    @Override
+    public IIsolatedExecutor with(ExecutorService executor)
+    {
+        return delegate().with(executor);
+    }
+
+    @Override
+    public Executor executor()
+    {
+        return delegate().executor();
     }
 
     @Override
@@ -254,11 +269,6 @@ public abstract class DelegatingInvokableInstance implements IInvokableInstance
     }
 
     @Override
-    public <O> O callOnInstance(SerializableCallable<O> call)
-    {
-        return delegate().callOnInstance(call);
-    }
-
     public <I1, I2, I3, I4, O> QuadFunction<I1, I2, I3, I4, Future<O>> async(QuadFunction<I1, I2, I3, I4, O> f)
     {
         return delegate().async(f);

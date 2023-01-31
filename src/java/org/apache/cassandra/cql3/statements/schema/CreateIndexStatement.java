@@ -19,6 +19,7 @@ package org.apache.cassandra.cql3.statements.schema;
 
 import java.util.*;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
@@ -31,6 +32,7 @@ import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.cql3.QualifiedName;
 import org.apache.cassandra.cql3.statements.schema.IndexTarget.Type;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.guardrails.Guardrails;
 import org.apache.cassandra.db.marshal.MapType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.index.sasi.SASIIndex;
@@ -52,6 +54,8 @@ public final class CreateIndexStatement extends AlterSchemaStatement
     private final IndexAttributes attrs;
     private final boolean ifNotExists;
 
+    private ClientState state;
+
     public CreateIndexStatement(String keyspaceName,
                                 String tableName,
                                 String indexName,
@@ -67,11 +71,22 @@ public final class CreateIndexStatement extends AlterSchemaStatement
         this.ifNotExists = ifNotExists;
     }
 
+    @Override
+    public void validate(ClientState state)
+    {
+        super.validate(state);
+
+        // save the query state to use it for guardrails validation in #apply
+        this.state = state;
+    }
+
     public Keyspaces apply(Keyspaces schema)
     {
         attrs.validate();
 
-        if (attrs.isCustom && attrs.customClass.equals(SASIIndex.class.getName()) && !DatabaseDescriptor.getEnableSASIIndexes())
+        Guardrails.createSecondaryIndexesEnabled.ensureEnabled("Creating secondary indexes", state);
+
+        if (attrs.isCustom && attrs.customClass.equals(SASIIndex.class.getName()) && !DatabaseDescriptor.getSASIIndexesEnabled())
             throw new InvalidRequestException("SASI indexes are disabled. Enable in cassandra.yaml to use.");
 
         KeyspaceMetadata keyspace = schema.getNullable(keyspaceName);
@@ -98,6 +113,14 @@ public final class CreateIndexStatement extends AlterSchemaStatement
 
         if (Keyspace.open(table.keyspace).getReplicationStrategy().hasTransientReplicas())
             throw new InvalidRequestException("Secondary indexes are not supported on transiently replicated keyspaces");
+
+        // guardrails to limit number of secondary indexes per table.
+        Guardrails.secondaryIndexesPerTable.guard(table.indexes.size() + 1,
+                                                  Strings.isNullOrEmpty(indexName)
+                                                  ? String.format("on table %s", table.name)
+                                                  : String.format("%s on table %s", indexName, table.name),
+                                                  false,
+                                                  state);
 
         List<IndexTarget> indexTargets = Lists.newArrayList(transform(rawIndexTargets, t -> t.prepare(table)));
 

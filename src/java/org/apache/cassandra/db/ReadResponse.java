@@ -48,6 +48,11 @@ public abstract class ReadResponse
         return new LocalDataResponse(data, command, rdi);
     }
 
+    public static ReadResponse createSimpleDataResponse(UnfilteredPartitionIterator data, ColumnFilter selection)
+    {
+        return new LocalDataResponse(data, selection);
+    }
+
     @VisibleForTesting
     public static ReadResponse createRemoteDataResponse(UnfilteredPartitionIterator data,
                                                         ByteBuffer repairedDataDigest,
@@ -182,6 +187,11 @@ public abstract class ReadResponse
                   rdi.getDigest(), rdi.isConclusive(),
                   MessagingService.current_version,
                   DeserializationHelper.Flag.LOCAL);
+        }
+
+        private LocalDataResponse(UnfilteredPartitionIterator iter, ColumnFilter selection)
+        {
+            super(build(iter, selection), null, false, MessagingService.current_version, DeserializationHelper.Flag.LOCAL);
         }
 
         private static ByteBuffer build(UnfilteredPartitionIterator iter, ColumnFilter selection)

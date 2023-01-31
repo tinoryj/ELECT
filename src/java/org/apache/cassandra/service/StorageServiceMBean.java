@@ -35,7 +35,7 @@ import javax.management.openmbean.TabularData;
 
 import org.apache.cassandra.db.ColumnFamilyStoreMBean;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.utils.BreaksJMX;
 
 public interface StorageServiceMBean extends NotificationEmitter
 {
@@ -271,10 +271,19 @@ public interface StorageServiceMBean extends NotificationEmitter
     public void clearSnapshot(String tag, String... keyspaceNames) throws IOException;
 
     /**
-     *  Get the details of all the snapshot
+     * Get the details of all the snapshot
      * @return A map of snapshotName to all its details in Tabular form.
      */
+    @Deprecated
     public Map<String, TabularData> getSnapshotDetails();
+
+    /**
+     * Get the details of all the snapshots
+     *
+     * @param options map of options used for filtering of snapshots
+     * @return A map of snapshotName to all its details in Tabular form.
+     */
+    public Map<String, TabularData> getSnapshotDetails(Map<String, String> options);
 
     /**
      * Get the true size taken by all snapshots across all keyspaces.
@@ -328,6 +337,11 @@ public interface StorageServiceMBean extends NotificationEmitter
     public void forceKeyspaceCompactionForTokenRange(String keyspaceName, String startToken, String endToken, String... tableNames) throws IOException, ExecutionException, InterruptedException;
 
     /**
+     * Forces major compactions for the range represented by the partition key
+     */
+    public void forceKeyspaceCompactionForPartitionKey(String keyspaceName, String partitionKey, String... tableNames) throws IOException, ExecutionException, InterruptedException;
+
+    /**
      * Trigger a cleanup of keys on a single keyspace
      */
     @Deprecated
@@ -364,7 +378,14 @@ public interface StorageServiceMBean extends NotificationEmitter
      */
     @Deprecated
     public int upgradeSSTables(String keyspaceName, boolean excludeCurrentVersion, String... tableNames) throws IOException, ExecutionException, InterruptedException;
-    public int upgradeSSTables(String keyspaceName, boolean excludeCurrentVersion, int jobs, String... tableNames) throws IOException, ExecutionException, InterruptedException;
+    @Deprecated
+    default int upgradeSSTables(String keyspaceName, boolean excludeCurrentVersion, int jobs, String... tableNames) throws IOException, ExecutionException, InterruptedException
+    {
+        return upgradeSSTables(keyspaceName, excludeCurrentVersion, Long.MAX_VALUE, jobs, tableNames);
+    }
+
+    public int upgradeSSTables(String keyspaceName, boolean excludeCurrentVersion, long maxSSTableTimestamp, int jobs, String... tableNames) throws IOException, ExecutionException, InterruptedException;
+    public int recompressSSTables(String keyspaceName, int jobs, String... tableNames) throws IOException, ExecutionException, InterruptedException;
 
     /**
      * Rewrites all sstables from the given tables to remove deleted data.
@@ -527,12 +548,12 @@ public interface StorageServiceMBean extends NotificationEmitter
     public void updateSnitch(String epSnitchClassName, Boolean dynamic, Integer dynamicUpdateInterval, Integer dynamicResetInterval, Double dynamicBadnessThreshold) throws ClassNotFoundException;
 
     /*
-      Update dynamic_snitch_update_interval_in_ms
+      Update dynamic_snitch_update_interval in ms
      */
     public void setDynamicUpdateInterval(int dynamicUpdateInterval);
 
     /*
-      Get dynamic_snitch_update_interval_in_ms
+      Get dynamic_snitch_update_interval in ms
      */
     public int getDynamicUpdateInterval();
 
@@ -562,7 +583,10 @@ public interface StorageServiceMBean extends NotificationEmitter
     public void setNativeTransportMaxConcurrentRequestsInBytes(long newLimit);
     public long getNativeTransportMaxConcurrentRequestsInBytesPerIp();
     public void setNativeTransportMaxConcurrentRequestsInBytesPerIp(long newLimit);
-
+    public int getNativeTransportMaxRequestsPerSecond();
+    public void setNativeTransportMaxRequestsPerSecond(int newPerSecond);
+    public void setNativeTransportRateLimitingEnabled(boolean enabled);
+    public boolean getNativeTransportRateLimitingEnabled();
 
     // allows a node that have been started without joining the ring to join it
     public void joinRing() throws IOException;
@@ -606,12 +630,72 @@ public interface StorageServiceMBean extends NotificationEmitter
     public void setTruncateRpcTimeout(long value);
     public long getTruncateRpcTimeout();
 
+    public void setStreamThroughputMbitPerSec(int value);
+    /**
+     * @return stream_throughput_outbound in megabits
+     * @deprecated Use getStreamThroughputMbitPerSecAsDouble instead as this one will provide a rounded value
+     */
+    @Deprecated
+    public int getStreamThroughputMbitPerSec();
+    public double getStreamThroughputMbitPerSecAsDouble();
+
+    @Deprecated
     public void setStreamThroughputMbPerSec(int value);
+
+    /**
+     * @return stream_throughput_outbound in MiB
+     * @deprecated Use getStreamThroughputMebibytesPerSecAsDouble instead as this one will provide a rounded value
+     */
+    @Deprecated
     public int getStreamThroughputMbPerSec();
+    public void setStreamThroughputMebibytesPerSec(int value);
+    /**
+     * Below method returns stream_throughput_outbound rounded, for precise number, please, use getStreamThroughputMebibytesPerSecAsDouble
+     * @return stream_throughput_outbound in MiB
+     */
+    public int getStreamThroughputMebibytesPerSec();
+    public double getStreamThroughputMebibytesPerSecAsDouble();
 
+    public void setInterDCStreamThroughputMbitPerSec(int value);
+
+    /**
+     * @return inter_dc_stream_throughput_outbound in megabits
+     * @deprecated Use getInterDCStreamThroughputMbitPerSecAsDouble instead as this one will provide a rounded value
+     */
+    @Deprecated
+    public int getInterDCStreamThroughputMbitPerSec();
+    public double getInterDCStreamThroughputMbitPerSecAsDouble();
+
+    @Deprecated
     public void setInterDCStreamThroughputMbPerSec(int value);
-    public int getInterDCStreamThroughputMbPerSec();
 
+    /**
+     * @return inter_dc_stream_throughput_outbound in MiB
+     * @deprecated Use getInterDCStreamThroughputMebibytesPerSecAsDouble instead as this one will provide a rounded value
+     */
+    @Deprecated
+    public int getInterDCStreamThroughputMbPerSec();
+    public void setInterDCStreamThroughputMebibytesPerSec(int value);
+    /**
+     * Below method returns Inter_dc_stream_throughput_outbound rounded, for precise number, please, use getInterDCStreamThroughputMebibytesPerSecAsDouble
+     * @return inter_dc_stream_throughput_outbound in MiB
+     */
+    public int getInterDCStreamThroughputMebibytesPerSec();
+    public double getInterDCStreamThroughputMebibytesPerSecAsDouble();
+
+    public void setEntireSSTableStreamThroughputMebibytesPerSec(int value);
+    public double getEntireSSTableStreamThroughputMebibytesPerSecAsDouble();
+
+    public void setEntireSSTableInterDCStreamThroughputMebibytesPerSec(int value);
+    public double getEntireSSTableInterDCStreamThroughputMebibytesPerSecAsDouble();
+
+    public double getCompactionThroughtputMibPerSecAsDouble();
+    public long getCompactionThroughtputBytesPerSec();
+    /**
+     * @return  compaction_throughgput in MiB
+     * @deprecated Use getCompactionThroughtputMibPerSecAsDouble instead as this one will provide a rounded value
+     */
+    @Deprecated
     public int getCompactionThroughputMbPerSec();
     public void setCompactionThroughputMbPerSec(int value);
 
@@ -749,6 +833,11 @@ public interface StorageServiceMBean extends NotificationEmitter
     /** Sets the number of rows cached at the coordinator before filtering/index queries fail outright. */
     public void setCachedReplicaRowsFailThreshold(int threshold);
 
+    /** Returns the granularity of the collation index of rows within a partition **/
+    public int getColumnIndexSizeInKiB();
+    /** Sets the granularity of the collation index of rows within a partition **/
+    public void setColumnIndexSize(int columnIndexSizeInKB);
+
     /** Returns the threshold for skipping the column index when caching partition info **/
     public int getColumnIndexCacheSize();
     /** Sets the threshold for skipping the column index when caching partition info **/
@@ -764,7 +853,7 @@ public interface StorageServiceMBean extends NotificationEmitter
     /** Sets the threshold for warning queries due to a large batch size */
     public void setBatchSizeWarnThreshold(int batchSizeDebugThreshold);
 
-    /** Sets the hinted handoff throttle in kb per second, per delivery thread. */
+    /** Sets the hinted handoff throttle in KiB per second, per delivery thread. */
     public void setHintedHandoffThrottleInKB(int throttleInKB);
 
     /**
@@ -796,8 +885,24 @@ public interface StorageServiceMBean extends NotificationEmitter
     /** Clears the history of clients that have connected in the past **/
     void clearConnectionHistory();
     public void disableAuditLog();
-    public void enableAuditLog(String loggerName, Map<String, String> parameters, String includedKeyspaces, String excludedKeyspaces, String includedCategories, String excludedCategories, String includedUsers, String excludedUsers) throws ConfigurationException;
-    public void enableAuditLog(String loggerName, String includedKeyspaces, String excludedKeyspaces, String includedCategories, String excludedCategories, String includedUsers, String excludedUsers) throws ConfigurationException;
+    public void enableAuditLog(String loggerName, Map<String, String> parameters, String includedKeyspaces, String excludedKeyspaces, String includedCategories, String excludedCategories,
+                               String includedUsers, String excludedUsers, Integer maxArchiveRetries, Boolean block, String rollCycle,
+                               Long maxLogSize, Integer maxQueueWeight, String archiveCommand) throws IllegalStateException;
+
+    @BreaksJMX("This API was exposed as throwing ConfigurationException, removing is binary compatible but not source; see https://docs.oracle.com/javase/specs/jls/se7/html/jls-13.html")
+    @Deprecated
+    public void enableAuditLog(String loggerName, Map<String, String> parameters, String includedKeyspaces, String excludedKeyspaces, String includedCategories, String excludedCategories,
+                               String includedUsers, String excludedUsers) throws ConfigurationException, IllegalStateException;
+
+    @BreaksJMX("This API was exposed as throwing ConfigurationException, removing is binary compatible but not source; see https://docs.oracle.com/javase/specs/jls/se7/html/jls-13.html")
+    @Deprecated
+    public void enableAuditLog(String loggerName, String includedKeyspaces, String excludedKeyspaces, String includedCategories, String excludedCategories,
+                               String includedUsers, String excludedUsers) throws ConfigurationException, IllegalStateException;
+
+    public void enableAuditLog(String loggerName, String includedKeyspaces, String excludedKeyspaces, String includedCategories, String excludedCategories,
+                               String includedUsers, String excludedUsers, Integer maxArchiveRetries, Boolean block, String rollCycle,
+                               Long maxLogSize, Integer maxQueueWeight, String archiveCommand) throws IllegalStateException;
+
     public boolean isAuditLogEnabled();
     public String getCorruptedTombstoneStrategy();
     public void setCorruptedTombstoneStrategy(String strategy);
@@ -858,8 +963,87 @@ public interface StorageServiceMBean extends NotificationEmitter
     public boolean autoOptimisePreviewRepairStreams();
     public void setAutoOptimisePreviewRepairStreams(boolean enabled);
 
+    // warning thresholds will be replaced by equivalent guardrails
+    @Deprecated
     int getTableCountWarnThreshold();
+    @Deprecated
     void setTableCountWarnThreshold(int value);
+    @Deprecated
     int getKeyspaceCountWarnThreshold();
+    @Deprecated
     void setKeyspaceCountWarnThreshold(int value);
+
+    public void setCompactionTombstoneWarningThreshold(int count);
+    public int getCompactionTombstoneWarningThreshold();
+
+    public boolean getReadThresholdsEnabled();
+    public void setReadThresholdsEnabled(boolean value);
+
+    public String getCoordinatorLargeReadWarnThreshold();
+    public void setCoordinatorLargeReadWarnThreshold(String threshold);
+    public String getCoordinatorLargeReadAbortThreshold();
+    public void setCoordinatorLargeReadAbortThreshold(String threshold);
+
+    public String getLocalReadTooLargeWarnThreshold();
+    public void setLocalReadTooLargeWarnThreshold(String value);
+    public String getLocalReadTooLargeAbortThreshold();
+    public void setLocalReadTooLargeAbortThreshold(String value);
+
+    public String getRowIndexReadSizeWarnThreshold();
+    public void setRowIndexReadSizeWarnThreshold(String value);
+    public String getRowIndexReadSizeAbortThreshold();
+    public void setRowIndexReadSizeAbortThreshold(String value);
+
+    public void setDefaultKeyspaceReplicationFactor(int value);
+    public int getDefaultKeyspaceReplicationFactor();
+
+    boolean getSkipPaxosRepairOnTopologyChange();
+    void setSkipPaxosRepairOnTopologyChange(boolean v);
+
+    String getSkipPaxosRepairOnTopologyChangeKeyspaces();
+    void setSkipPaxosRepairOnTopologyChangeKeyspaces(String v);
+
+    boolean getPaxosAutoRepairsEnabled();
+    void setPaxosAutoRepairsEnabled(boolean enabled);
+
+    boolean getPaxosStateFlushEnabled();
+    void setPaxosStateFlushEnabled(boolean enabled);
+
+    List<String> getPaxosAutoRepairTables();
+
+    long getPaxosPurgeGraceSeconds();
+    void setPaxosPurgeGraceSeconds(long v);
+
+    String getPaxosOnLinearizabilityViolations();
+    void setPaxosOnLinearizabilityViolations(String v);
+
+    String getPaxosStatePurging();
+    void setPaxosStatePurging(String v);
+
+    boolean getPaxosRepairEnabled();
+    void setPaxosRepairEnabled(boolean v);
+
+    boolean getPaxosDcLocalCommitEnabled();
+    void setPaxosDcLocalCommitEnabled(boolean v);
+
+    String getPaxosBallotLowBound(String keyspace, String table, String key);
+
+    public Long getRepairRpcTimeout();
+    public void setRepairRpcTimeout(Long timeoutInMillis);
+
+    public void evictHungRepairs();
+    public void clearPaxosRepairs();
+    public void setSkipPaxosRepairCompatibilityCheck(boolean v);
+    public boolean getSkipPaxosRepairCompatibilityCheck();
+
+    String getToken(String keyspaceName, String table, String partitionKey);
+    public boolean topPartitionsEnabled();
+    public int getMaxTopSizePartitionCount();
+    public void setMaxTopSizePartitionCount(int value);
+    public int getMaxTopTombstonePartitionCount();
+    public void setMaxTopTombstonePartitionCount(int value);
+    public String getMinTrackedPartitionSize();
+    public void setMinTrackedPartitionSize(String value);
+    public long getMinTrackedPartitionTombstoneCount();
+    public void setMinTrackedPartitionTombstoneCount(long value);
 }

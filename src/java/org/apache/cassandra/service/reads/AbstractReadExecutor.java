@@ -45,9 +45,10 @@ import org.apache.cassandra.service.StorageProxy.LocalReadRunnable;
 import org.apache.cassandra.service.reads.repair.ReadRepair;
 import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.FBUtilities;
 
 import static com.google.common.collect.Iterables.all;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
 /**
  * Sends a read request to the replicas needed to satisfy a given ConsistencyLevel.
@@ -195,7 +196,7 @@ public abstract class AbstractReadExecutor
 
         // There are simply no extra replicas to speculate.
         // Handle this separately so it can record failed attempts to speculate due to lack of replicas
-        if (replicaPlan.contacts().size() == replicaPlan.candidates().size())
+        if (replicaPlan.contacts().size() == replicaPlan.readCandidates().size())
         {
             boolean recordFailedSpeculation = consistencyLevel != ConsistencyLevel.ALL;
             return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime, recordFailedSpeculation);
@@ -207,6 +208,11 @@ public abstract class AbstractReadExecutor
             return new SpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime);
     }
 
+    public boolean hasLocalRead()
+    {
+        return replicaPlan().lookup(FBUtilities.getBroadcastAddressAndPort()) != null;
+    }
+
     /**
      *  Returns true if speculation should occur and if it should then block until it is time to
      *  send the speculative reads
@@ -214,10 +220,16 @@ public abstract class AbstractReadExecutor
     boolean shouldSpeculateAndMaybeWait()
     {
         // no latency information, or we're overloaded
-        if (cfs.sampleReadLatencyNanos > command.getTimeout(NANOSECONDS))
+        if (cfs.sampleReadLatencyMicros > command.getTimeout(MICROSECONDS))
+        {
+            if (logger.isTraceEnabled())
+                logger.trace("Decided not to speculate as {} > {}", cfs.sampleReadLatencyMicros, command.getTimeout(MICROSECONDS));
             return false;
+        }
 
-        return !handler.await(cfs.sampleReadLatencyNanos, NANOSECONDS);
+        if (logger.isTraceEnabled())
+            logger.trace("Awaiting {} microseconds before speculating", cfs.sampleReadLatencyMicros);
+        return !handler.await(cfs.sampleReadLatencyMicros, MICROSECONDS);
     }
 
     ReplicaPlan.ForTokenRead replicaPlan()
@@ -263,7 +275,7 @@ public abstract class AbstractReadExecutor
             // We're hitting additional targets for read repair (??).  Since our "extra" replica is the least-
             // preferred by the snitch, we do an extra data read to start with against a replica more
             // likely to respond; better to let RR fail than the entire query.
-            super(cfs, command, replicaPlan, replicaPlan.blockFor() < replicaPlan.contacts().size() ? 2 : 1, queryStartNanoTime);
+            super(cfs, command, replicaPlan, replicaPlan.readQuorum() < replicaPlan.contacts().size() ? 2 : 1, queryStartNanoTime);
         }
 
         public void maybeTryAdditionalReplicas()
@@ -357,13 +369,18 @@ public abstract class AbstractReadExecutor
     public void setResult(PartitionIterator result)
     {
         Preconditions.checkState(this.result == null, "Result can only be set once");
-        this.result = DuplicateRowChecker.duringRead(result, this.replicaPlan.get().candidates().endpointList());
+        this.result = DuplicateRowChecker.duringRead(result, this.replicaPlan.get().readCandidates().endpointList());
+    }
+
+    public void awaitResponses() throws ReadTimeoutException
+    {
+        awaitResponses(false);
     }
 
     /**
      * Wait for the CL to be satisfied by responses
      */
-    public void awaitResponses() throws ReadTimeoutException
+    public void awaitResponses(boolean logBlockingReadRepairAttempt) throws ReadTimeoutException
     {
         try
         {
@@ -391,6 +408,13 @@ public abstract class AbstractReadExecutor
         {
             Tracing.trace("Digest mismatch: Mismatch for key {}", getKey());
             readRepair.startRepair(digestResolver, this::setResult);
+            if (logBlockingReadRepairAttempt)
+            {
+                logger.info("Blocking Read Repair triggered for query [{}] at CL.{} with endpoints {}",
+                            command.toCQLString(),
+                            replicaPlan().consistencyLevel(),
+                            replicaPlan().contacts());
+            }
         }
     }
 

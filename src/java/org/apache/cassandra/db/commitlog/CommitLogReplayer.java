@@ -18,10 +18,8 @@
  */
 package org.apache.cassandra.db.commitlog;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -31,7 +29,10 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 
+import org.apache.cassandra.io.util.File;
 import org.apache.commons.lang3.StringUtils;
+
+import org.apache.cassandra.utils.concurrent.Future;
 import org.cliffc.high_scale_lib.NonBlockingHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +52,6 @@ import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadataRef;
-import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.WrappedRunnable;
 
@@ -130,7 +130,41 @@ public class CommitLogReplayer implements CommitLogReadHandler
                 }
             }
 
-            IntervalSet<CommitLogPosition> filter = persistedIntervals(cfs.getLiveSSTables(), truncatedAt, localHostId);
+            IntervalSet<CommitLogPosition> filter;
+            final CommitLogPosition snapshotPosition = commitLog.archiver.snapshotCommitLogPosition;
+            if (snapshotPosition == CommitLogPosition.NONE)
+            {
+                // normal path: snapshot position is not explicitly specified, find it from sstables
+                if (!cfs.memtableWritesAreDurable())
+                {
+                    filter = persistedIntervals(cfs.getLiveSSTables(), truncatedAt, localHostId);
+                }
+                else
+                {
+                    if (commitLog.archiver.restorePointInTime == Long.MAX_VALUE)
+                    {
+                        // Normal restart, everything is persisted and restored by the memtable itself.
+                        filter = new IntervalSet<>(CommitLogPosition.NONE, CommitLog.instance.getCurrentPosition());
+                    }
+                    else
+                    {
+                        // Point-in-time restore with a persistent memtable. In this case user should have restored
+                        // the memtable from a snapshot and specified that snapshot's commit log position, reaching
+                        // the "else" path below.
+                        // If they haven't, do not filter any commit log data -- this supports a mode of operation where
+                        // the user deletes old archived commit log segments when a snapshot completes -- but issue a
+                        // message as this may be inefficient / not what the user wants.
+                        logger.info("Point-in-time restore on a persistent memtable started without a snapshot time. " +
+                                    "All commit log data will be replayed.");
+                        filter = IntervalSet.empty();
+                    }
+                }
+            }
+            else
+            {
+                // If the positions is specified, it must override whatever we calculate.
+                filter = new IntervalSet<>(CommitLogPosition.NONE, snapshotPosition);
+            }
             cfPersisted.put(cfs.metadata.id, filter);
         }
         CommitLogPosition globalPosition = firstNotCovered(cfPersisted.values());
@@ -170,7 +204,7 @@ public class CommitLogReplayer implements CommitLogReadHandler
         // Can only reach this point if CDC is enabled, thus we have a CDCSegmentManager
         ((CommitLogSegmentManagerCDC)CommitLog.instance.segmentManager).addCDCSize(f.length());
 
-        File dest = new File(DatabaseDescriptor.getCDCLogLocation(), f.getName());
+        File dest = new File(DatabaseDescriptor.getCDCLogLocation(), f.name());
 
         // If hard link already exists, assume it's from a previous node run. If people are mucking around in the cdc_raw
         // directory that's on them.
@@ -212,12 +246,14 @@ public class CommitLogReplayer implements CommitLogReadHandler
             if (keyspace.getName().equals(SchemaConstants.SYSTEM_KEYSPACE_NAME))
                 flushingSystem = true;
 
-            futures.addAll(keyspace.flush());
+            futures.addAll(keyspace.flush(ColumnFamilyStore.FlushReason.STARTUP));
         }
 
         // also flush batchlog incase of any MV updates
         if (!flushingSystem)
-            futures.add(Keyspace.open(SchemaConstants.SYSTEM_KEYSPACE_NAME).getColumnFamilyStore(SystemKeyspace.BATCHES).forceFlush());
+            futures.add(Keyspace.open(SchemaConstants.SYSTEM_KEYSPACE_NAME)
+                                .getColumnFamilyStore(SystemKeyspace.BATCHES)
+                                .forceFlush(ColumnFamilyStore.FlushReason.INTERNALLY_FORCED));
 
         FBUtilities.waitOnFutures(futures);
 

@@ -17,15 +17,16 @@
  */
 package org.apache.cassandra.io.sstable;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Stream;
 
 import com.google.common.collect.Sets;
+import org.apache.cassandra.io.util.File;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -123,7 +124,7 @@ public class SSTableReaderTest
                 .build()
                 .applyUnsafe();
         }
-        store.forceBlockingFlush();
+        Util.flush(store);
         CompactionManager.instance.performMaximal(store, false);
 
         List<Range<Token>> ranges = new ArrayList<>();
@@ -167,7 +168,7 @@ public class SSTableReaderTest
                 .build()
                 .applyUnsafe();
             }
-            store.forceBlockingFlush();
+            Util.flush(store);
             CompactionManager.instance.performMaximal(store, false);
 
             // check that all our keys are found correctly
@@ -207,7 +208,7 @@ public class SSTableReaderTest
             .build()
             .applyUnsafe();
         }
-        store.forceBlockingFlush();
+        Util.flush(store);
 
         clearAndLoad(store);
         assert store.metric.maxPartitionSize.getValue() != 0;
@@ -235,7 +236,7 @@ public class SSTableReaderTest
             .applyUnsafe();
         }
 
-        store.forceBlockingFlush();
+        Util.flush(store);
 
         SSTableReader sstable = store.getLiveSSTables().iterator().next();
         assertEquals(0, sstable.getReadMeter().count());
@@ -266,7 +267,7 @@ public class SSTableReaderTest
             .applyUnsafe();
 
         }
-        store.forceBlockingFlush();
+        Util.flush(store);
         CompactionManager.instance.performMaximal(store, false);
 
         SSTableReader sstable = store.getLiveSSTables().iterator().next();
@@ -297,7 +298,7 @@ public class SSTableReaderTest
             .build()
             .applyUnsafe();
 
-        store.forceBlockingFlush();
+        Util.flush(store);
 
         // check if opening and querying works
         assertIndexQueryWorks(store);
@@ -319,7 +320,7 @@ public class SSTableReaderTest
             .build()
             .applyUnsafe();
         }
-        store.forceBlockingFlush();
+        Util.flush(store);
         CompactionManager.instance.performMaximal(store, false);
 
         SSTableReader sstable = store.getLiveSSTables().iterator().next();
@@ -354,7 +355,7 @@ public class SSTableReaderTest
                     .build()
                     .applyUnsafe();
         }
-        store.forceBlockingFlush();
+        Util.flush(store);
         CompactionManager.instance.performMaximal(store, false);
 
         SSTableReader sstable = store.getLiveSSTables().iterator().next();
@@ -421,7 +422,7 @@ public class SSTableReaderTest
                 .build()
                 .applyUnsafe();
         }
-        store.forceBlockingFlush();
+        Util.flush(store);
 
         SSTableReader sstable = store.getLiveSSTables().iterator().next();
         Descriptor desc = sstable.descriptor;
@@ -485,7 +486,7 @@ public class SSTableReaderTest
         // check that only the summary is regenerated when it is deleted
         components.add(Component.FILTER);
         summaryModified = Files.getLastModifiedTime(summaryPath).toMillis();
-        summaryFile.delete();
+        summaryFile.tryDelete();
 
         TimeUnit.MILLISECONDS.sleep(1000); // sleep to ensure modified time will be different
         bloomModified = Files.getLastModifiedTime(bloomPath).toMillis();
@@ -522,7 +523,7 @@ public class SSTableReaderTest
         .build()
         .applyUnsafe();
 
-        store.forceBlockingFlush();
+        Util.flush(store);
 
         for(ColumnFamilyStore indexCfs : store.indexManager.getAllIndexColumnFamilyStores())
         {
@@ -550,7 +551,7 @@ public class SSTableReaderTest
             .build()
             .applyUnsafe();
 
-        store.forceBlockingFlush();
+        Util.flush(store);
         boolean foundScanner = false;
         for (SSTableReader s : store.getLiveSSTables())
         {
@@ -582,7 +583,7 @@ public class SSTableReaderTest
             .applyUnsafe();
 
         }
-        store.forceBlockingFlush();
+        Util.flush(store);
         CompactionManager.instance.performMaximal(store, false);
 
         // construct a range which is present in the sstable, but whose
@@ -619,7 +620,7 @@ public class SSTableReaderTest
             .applyUnsafe();
 
         }
-        store.forceBlockingFlush();
+        Util.flush(store);
         CompactionManager.instance.performMaximal(store, false);
 
         Collection<SSTableReader> sstables = store.getLiveSSTables();
@@ -696,7 +697,7 @@ public class SSTableReaderTest
             .applyUnsafe();
 
         }
-        store.forceBlockingFlush();
+        Util.flush(store);
         CompactionManager.instance.performMaximal(store, false);
 
         Collection<SSTableReader> sstables = store.getLiveSSTables();
@@ -751,7 +752,7 @@ public class SSTableReaderTest
         Keyspace keyspace = Keyspace.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARD);
         SSTableReader sstable = getNewSSTable(cfs);
-        Descriptor notLiveDesc = new Descriptor(new File("/tmp"), "", "", 0);
+        Descriptor notLiveDesc = new Descriptor(new File("/tmp"), "", "", SSTableIdFactory.instance.defaultBuilder().generator(Stream.empty()).get());
         SSTableReader.moveAndOpenSSTable(cfs, sstable.descriptor, notLiveDesc, sstable.components, false);
     }
 
@@ -761,7 +762,7 @@ public class SSTableReaderTest
         Keyspace keyspace = Keyspace.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_STANDARD);
         SSTableReader sstable = getNewSSTable(cfs);
-        Descriptor notLiveDesc = new Descriptor(new File("/tmp"), "", "", 0);
+        Descriptor notLiveDesc = new Descriptor(new File("/tmp"), "", "", SSTableIdFactory.instance.defaultBuilder().generator(Stream.empty()).get());
         SSTableReader.moveAndOpenSSTable(cfs, notLiveDesc, sstable.descriptor, sstable.components, false);
     }
 
@@ -773,9 +774,10 @@ public class SSTableReaderTest
         SSTableReader sstable = getNewSSTable(cfs);
         cfs.clearUnsafe();
         sstable.selfRef().release();
-        File tmpdir = Files.createTempDirectory("testMoveAndOpen").toFile();
+        File tmpdir = new File(Files.createTempDirectory("testMoveAndOpen"));
         tmpdir.deleteOnExit();
-        Descriptor notLiveDesc = new Descriptor(tmpdir, sstable.descriptor.ksname, sstable.descriptor.cfname, 100);
+        SSTableId id = SSTableIdFactory.instance.defaultBuilder().generator(Stream.empty()).get();
+        Descriptor notLiveDesc = new Descriptor(tmpdir, sstable.descriptor.ksname, sstable.descriptor.cfname, id);
         // make sure the new directory is empty and that the old files exist:
         for (Component c : sstable.components)
         {
@@ -789,7 +791,7 @@ public class SSTableReaderTest
         {
             File f = new File(notLiveDesc.filenameFor(c));
             assertTrue(f.exists());
-            assertTrue(f.toString().contains("-100-"));
+            assertTrue(f.toString().contains(String.format("-%s-", id)));
             f.deleteOnExit();
             assertFalse(new File(sstable.descriptor.filenameFor(c)).exists());
         }
@@ -806,7 +808,7 @@ public class SSTableReaderTest
             .build()
             .applyUnsafe();
         }
-        cfs.forceBlockingFlush();
+        Util.flush(cfs);
         return Sets.difference(cfs.getLiveSSTables(), before).iterator().next();
     }
 
@@ -836,7 +838,7 @@ public class SSTableReaderTest
 
         // delete the compression info, so it is corrupted.
         File compressionInfoFile = new File(desc.filenameFor(Component.COMPRESSION_INFO));
-        compressionInfoFile.delete();
+        compressionInfoFile.tryDelete();
         assertFalse("CompressionInfo file should not exist", compressionInfoFile.exists());
 
         // discovert the components on disk after deletion
@@ -856,7 +858,7 @@ public class SSTableReaderTest
 
         // mark the toc file not readable in order to trigger the FSReadError
         File tocFile = new File(desc.filenameFor(Component.TOC));
-        tocFile.setReadable(false);
+        tocFile.trySetReadable(false);
 
         expectedException.expect(FSReadError.class);
         expectedException.expectMessage("TOC.txt");

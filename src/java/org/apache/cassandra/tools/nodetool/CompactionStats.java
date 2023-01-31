@@ -44,6 +44,11 @@ public class CompactionStats extends NodeToolCmd
             description = "Display bytes in human readable form, i.e. KiB, MiB, GiB, TiB")
     private boolean humanReadable = false;
 
+    @Option(title = "vtable_output",
+            name = {"-V", "--vtable"},
+            description = "Display fields matching vtable output")
+    private boolean vtableOutput = false;
+
     @Override
     public void execute(NodeProbe probe)
     {
@@ -70,17 +75,26 @@ public class CompactionStats extends NodeToolCmd
             }
         }
         out.println();
-        reportCompactionTable(cm.getCompactions(), probe.getCompactionThroughput(), humanReadable, out);
+        reportCompactionTable(cm.getCompactions(), probe.getCompactionThroughputBytes(), humanReadable, vtableOutput, out);
     }
 
-    public static void reportCompactionTable(List<Map<String,String>> compactions, int compactionThroughput, boolean humanReadable, PrintStream out)
+    public static void reportCompactionTable(List<Map<String,String>> compactions, long compactionThroughputInBytes, boolean humanReadable, PrintStream out)
+    {
+        reportCompactionTable(compactions, compactionThroughputInBytes, humanReadable, false, out);
+    }
+
+    public static void reportCompactionTable(List<Map<String,String>> compactions, long compactionThroughputInBytes, boolean humanReadable, boolean vtableOutput, PrintStream out)
     {
         if (!compactions.isEmpty())
         {
             long remainingBytes = 0;
             TableBuilder table = new TableBuilder();
 
-            table.add("id", "compaction type", "keyspace", "table", "completed", "total", "unit", "progress");
+            if (vtableOutput)
+                table.add("keyspace", "table", "task id", "completion ratio", "kind", "progress", "sstables", "total", "unit");
+            else
+                table.add("id", "compaction type", "keyspace", "table", "completed", "total", "unit", "progress");
+
             for (Map<String, String> c : compactions)
             {
                 long total = Long.parseLong(c.get(CompactionInfo.TOTAL));
@@ -90,19 +104,24 @@ public class CompactionStats extends NodeToolCmd
                 String columnFamily = c.get(CompactionInfo.COLUMNFAMILY);
                 String unit = c.get(CompactionInfo.UNIT);
                 boolean toFileSize = humanReadable && Unit.isFileSize(unit);
-                String completedStr = toFileSize ? FileUtils.stringifyFileSize(completed) : Long.toString(completed);
+                String[] tables = c.get(CompactionInfo.SSTABLES).split(",");
+                String progressStr = toFileSize ? FileUtils.stringifyFileSize(completed) : Long.toString(completed);
                 String totalStr = toFileSize ? FileUtils.stringifyFileSize(total) : Long.toString(total);
                 String percentComplete = total == 0 ? "n/a" : new DecimalFormat("0.00").format((double) completed / total * 100) + "%";
                 String id = c.get(CompactionInfo.COMPACTION_ID);
-                table.add(id, taskType, keyspace, columnFamily, completedStr, totalStr, unit, percentComplete);
+                if (vtableOutput)
+                    table.add(keyspace, columnFamily, id, percentComplete, taskType, progressStr, String.valueOf(tables.length), totalStr, unit);
+                else
+                    table.add(id, taskType, keyspace, columnFamily, progressStr, totalStr, unit, percentComplete);
+
                 remainingBytes += total - completed;
             }
             table.printTo(out);
 
             String remainingTime = "n/a";
-            if (compactionThroughput != 0)
+            if (compactionThroughputInBytes != 0)
             {
-                long remainingTimeInSecs = remainingBytes / (1024L * 1024L * compactionThroughput);
+                long remainingTimeInSecs = remainingBytes / compactionThroughputInBytes;
                 remainingTime = format("%dh%02dm%02ds", remainingTimeInSecs / 3600, (remainingTimeInSecs % 3600) / 60, (remainingTimeInSecs % 60));
             }
             out.printf("%25s%10s%n", "Active compaction remaining time : ", remainingTime);

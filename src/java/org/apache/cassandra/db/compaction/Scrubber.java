@@ -17,8 +17,10 @@
  */
 package org.apache.cassandra.db.compaction;
 
+import java.io.IOError;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.io.*;
+
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -28,6 +30,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
 
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -43,6 +46,8 @@ import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.concurrent.Refs;
 import org.apache.cassandra.utils.memory.HeapCloner;
+
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
 public class Scrubber implements Closeable
 {
@@ -275,7 +280,8 @@ public class Scrubber implements Closeable
 
                             outputHandler.warn("Retry failed too. Skipping to next partition (retry's stacktrace follows)", th2);
                             badPartitions++;
-                            seekToNextPartition();
+                            if (!seekToNextPartition())
+                                break;
                         }
                     }
                     else
@@ -285,7 +291,8 @@ public class Scrubber implements Closeable
                         outputHandler.warn("Partition starting at position " + dataStart + " is unreadable; skipping to next");
                         badPartitions++;
                         if (currentIndexKey != null)
-                            seekToNextPartition();
+                            if (!seekToNextPartition())
+                                break;
                     }
                 }
             }
@@ -408,14 +415,14 @@ public class Scrubber implements Closeable
         return indexFile != null && !indexFile.isEOF();
     }
 
-    private void seekToNextPartition()
+    private boolean seekToNextPartition()
     {
         while(nextPartitionPositionFromIndex < dataFile.length())
         {
             try
             {
                 dataFile.seek(nextPartitionPositionFromIndex);
-                return;
+                return true;
             }
             catch (Throwable th)
             {
@@ -426,6 +433,8 @@ public class Scrubber implements Closeable
 
             updateIndexKey();
         }
+
+        return false;
     }
 
     private void saveOutOfOrderPartition(DecoratedKey prevKey, DecoratedKey key, UnfilteredRowIterator iterator)
@@ -486,7 +495,7 @@ public class Scrubber implements Closeable
     {
         private final RandomAccessReader dataFile;
         private final SSTableReader sstable;
-        private final UUID scrubCompactionId;
+        private final TimeUUID scrubCompactionId;
         private final Lock fileReadLock;
 
         public ScrubInfo(RandomAccessReader dataFile, SSTableReader sstable, Lock fileReadLock)
@@ -494,7 +503,7 @@ public class Scrubber implements Closeable
             this.dataFile = dataFile;
             this.sstable = sstable;
             this.fileReadLock = fileReadLock;
-            scrubCompactionId = UUIDGen.getTimeUUID();
+            scrubCompactionId = nextTimeUUID();
         }
 
         public CompactionInfo getCompactionInfo()

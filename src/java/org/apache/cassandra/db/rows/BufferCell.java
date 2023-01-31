@@ -135,6 +135,12 @@ public class BufferCell extends AbstractCell<ByteBuffer>
     }
 
     @Override
+    public long unsharedHeapSize()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(value) + (path == null ? 0 : path.unsharedHeapSize());
+    }
+
+    @Override
     public Cell<?> clone(ByteBufferCloner cloner)
     {
         if (!value.hasRemaining())
@@ -143,6 +149,7 @@ public class BufferCell extends AbstractCell<ByteBuffer>
         return super.clone(cloner);
     }
 
+    @Override
     public long unsharedHeapSizeExcludingData()
     {
         return EMPTY_SIZE + ObjectSizes.sizeOnHeapExcludingData(value) + (path == null ? 0 : path.unsharedHeapSizeExcludingData());

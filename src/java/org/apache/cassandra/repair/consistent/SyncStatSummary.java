@@ -18,15 +18,16 @@
 
 package org.apache.cassandra.repair.consistent;
 
+import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import com.google.common.collect.Lists;
 
-import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.repair.RepairResult;
 import org.apache.cassandra.repair.RepairSessionResult;
 import org.apache.cassandra.repair.SyncStat;
@@ -44,14 +45,14 @@ public class SyncStatSummary
 
     private static class Session
     {
-        final InetAddressAndPort src;
-        final InetAddressAndPort dst;
+        final InetSocketAddress src;
+        final InetSocketAddress dst;
 
         int files = 0;
         long bytes = 0;
         long ranges = 0;
 
-        Session(InetAddressAndPort src, InetAddressAndPort dst)
+        Session(InetSocketAddress src, InetSocketAddress dst)
         {
             this.src = src;
             this.dst = dst;
@@ -86,7 +87,7 @@ public class SyncStatSummary
         int ranges = -1;
         boolean totalsCalculated = false;
 
-        final Map<Pair<InetAddressAndPort, InetAddressAndPort>, Session> sessions = new HashMap<>();
+        final Map<Pair<InetSocketAddress, InetSocketAddress>, Session> sessions = new HashMap<>();
 
         Table(String keyspace, String table)
         {
@@ -94,9 +95,9 @@ public class SyncStatSummary
             this.table = table;
         }
 
-        Session getOrCreate(InetAddressAndPort from, InetAddressAndPort to)
+        Session getOrCreate(InetSocketAddress from, InetSocketAddress to)
         {
-            Pair<InetAddressAndPort, InetAddressAndPort> k = Pair.create(from, to);
+            Pair<InetSocketAddress, InetSocketAddress> k = Pair.create(from, to);
             if (!sessions.containsKey(k))
             {
                 sessions.put(k, new Session(from, to));
@@ -178,11 +179,11 @@ public class SyncStatSummary
         summaries.get(cf).consumeStats(result.stats);
     }
 
-    public void consumeSessionResults(List<RepairSessionResult> results)
+    public void consumeSessionResults(Optional<List<RepairSessionResult>> results)
     {
-        if (results != null)
+        if (results.isPresent())
         {
-            filter(results, Objects::nonNull).forEach(r -> filter(r.repairJobResults, Objects::nonNull).forEach(this::consumeRepairResult));
+            filter(results.get(), Objects::nonNull).forEach(r -> filter(r.repairJobResults, Objects::nonNull).forEach(this::consumeRepairResult));
         }
     }
 

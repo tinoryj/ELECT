@@ -148,6 +148,12 @@ public class FunctionCall extends Term.NonTerminal
             return new Raw(name, Collections.singletonList(raw));
         }
 
+        public static Raw newCast(Term.Raw raw, CQL3Type type)
+        {
+            FunctionName name = FunctionName.nativeFunction(CastFcts.getFunctionName(type));
+            return new Raw(name, Collections.singletonList(raw));
+        }
+
         public Term prepare(String keyspace, ColumnSpecification receiver) throws InvalidRequestException
         {
             Function fun = FunctionResolver.get(keyspace, name, terms, receiver.ksName, receiver.cfName, receiver.type);
@@ -202,9 +208,9 @@ public class FunctionCall extends Term.NonTerminal
                 if (fun != null && fun.name().equals(FromJsonFct.NAME))
                     return TestResult.WEAKLY_ASSIGNABLE;
 
-                if (fun != null && receiver.type.equals(fun.returnType()))
+                if (fun != null && receiver.type.udfType().equals(fun.returnType()))
                     return AssignmentTestable.TestResult.EXACT_MATCH;
-                else if (fun == null || receiver.type.isValueCompatibleWith(fun.returnType()))
+                else if (fun == null || receiver.type.udfType().isValueCompatibleWith(fun.returnType()))
                     return AssignmentTestable.TestResult.WEAKLY_ASSIGNABLE;
                 else
                     return AssignmentTestable.TestResult.NOT_ASSIGNABLE;

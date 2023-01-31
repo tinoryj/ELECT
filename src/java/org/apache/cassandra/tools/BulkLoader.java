@@ -23,29 +23,36 @@ import java.util.Set;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
-import com.datastax.driver.core.AuthProvider;
-import com.datastax.driver.core.RemoteEndpointAwareJdkSSLOptions;
-import com.datastax.driver.core.SSLOptions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
+import com.datastax.driver.core.AuthProvider;
+import com.datastax.driver.core.RemoteEndpointAwareJdkSSLOptions;
+import com.datastax.driver.core.SSLOptions;
 import com.datastax.shaded.netty.channel.socket.SocketChannel;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.EncryptionOptions;
 import org.apache.cassandra.io.sstable.SSTableLoader;
-import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.security.SSLFactory;
-import org.apache.cassandra.streaming.*;
+import org.apache.cassandra.streaming.ProgressInfo;
+import org.apache.cassandra.streaming.SessionInfo;
+import org.apache.cassandra.streaming.StreamEvent;
+import org.apache.cassandra.streaming.StreamEventHandler;
+import org.apache.cassandra.streaming.StreamResultFuture;
+import org.apache.cassandra.streaming.StreamState;
+import org.apache.cassandra.streaming.StreamingChannel;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.apache.cassandra.utils.NativeSSTableLoaderClient;
 import org.apache.cassandra.utils.OutputHandler;
 
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
+
 public class BulkLoader
 {
-    public static void main(String args[]) throws BulkLoadException
+    public static void main(String[] args) throws BulkLoadException
     {
         LoaderOptions options = LoaderOptions.builder().parseArgs(args).build();
         load(options);
@@ -56,7 +63,7 @@ public class BulkLoader
         DatabaseDescriptor.toolInitialization();
         OutputHandler handler = new OutputHandler.SystemOutput(options.verbose, options.debug);
         SSTableLoader loader = new SSTableLoader(
-                options.directory.getAbsoluteFile(),
+                options.directory.toAbsolute(),
                 new ExternalClient(
                         options.hosts,
                         options.storagePort,
@@ -66,9 +73,11 @@ public class BulkLoader
                         handler,
                         options.connectionsPerHost,
                         options.targetKeyspace);
-        DatabaseDescriptor.setStreamThroughputOutboundMegabitsPerSec(options.throttle);
-        DatabaseDescriptor.setInterDCStreamThroughputOutboundMegabitsPerSec(options.interDcThrottle);
-        StreamResultFuture future = null;
+        DatabaseDescriptor.setStreamThroughputOutboundBytesPerSec(options.throttleBytes);
+        DatabaseDescriptor.setInterDCStreamThroughputOutboundBytesPerSec(options.interDcThrottleBytes);
+        DatabaseDescriptor.setEntireSSTableStreamThroughputOutboundMebibytesPerSec(options.entireSSTableThrottleMebibytes);
+        DatabaseDescriptor.setEntireSSTableInterDCStreamThroughputOutboundMebibytesPerSec(options.entireSSTableInterDcThrottleMebibytes);
+        StreamResultFuture future;
 
         ProgressIndicator indicator = new ProgressIndicator();
         try
@@ -119,18 +128,18 @@ public class BulkLoader
     // Return true when everything is at 100%
     static class ProgressIndicator implements StreamEventHandler
     {
-        private long start;
+        private final long start;
         private long lastProgress;
         private long lastTime;
 
         private long peak = 0;
         private int totalFiles = 0;
 
-        private final Multimap<InetAddressAndPort, SessionInfo> sessionsByHost = HashMultimap.create();
+        private final Multimap<InetSocketAddress, SessionInfo> sessionsByHost = HashMultimap.create();
 
         public ProgressIndicator()
         {
-            start = lastTime = System.nanoTime();
+            start = lastTime = nanoTime();
         }
 
         public void onSuccess(StreamState finalState)
@@ -156,7 +165,7 @@ public class BulkLoader
                     progressInfo = ((StreamEvent.ProgressEvent) event).progress;
                 }
 
-                long time = System.nanoTime();
+                long time = nanoTime();
                 long deltaTime = time - lastTime;
 
                 StringBuilder sb = new StringBuilder();
@@ -167,7 +176,7 @@ public class BulkLoader
 
                 boolean updateTotalFiles = totalFiles == 0;
                 // recalculate progress across all sessions in all hosts and display
-                for (InetAddressAndPort peer : sessionsByHost.keySet())
+                for (InetSocketAddress peer : sessionsByHost.keySet())
                 {
                     sb.append("[").append(peer).append("]");
 
@@ -218,7 +227,7 @@ public class BulkLoader
                 }
                 sb.append(" (avg: ").append(FBUtilities.prettyPrintMemoryPerSecond(totalProgress, time - start)).append(")");
 
-                System.out.println(sb.toString());
+                System.out.println(sb);
             }
         }
 
@@ -229,7 +238,7 @@ public class BulkLoader
 
         private void printSummary(int connectionsPerHost)
         {
-            long end = System.nanoTime();
+            long end = nanoTime();
             long durationMS = ((end - start) / (1000000));
 
             StringBuilder sb = new StringBuilder();
@@ -240,14 +249,14 @@ public class BulkLoader
             sb.append(String.format("   %-24s: %-10s%n", "Total duration ", durationMS + " ms"));
             sb.append(String.format("   %-24s: %-10s%n", "Average transfer rate ", FBUtilities.prettyPrintMemoryPerSecond(lastProgress, end - start)));
             sb.append(String.format("   %-24s: %-10s%n", "Peak transfer rate ",  FBUtilities.prettyPrintMemoryPerSecond(peak)));
-            System.out.println(sb.toString());
+            System.out.println(sb);
         }
     }
 
     private static SSLOptions buildSSLOptions(EncryptionOptions clientEncryptionOptions)
     {
 
-        if (!clientEncryptionOptions.isEnabled())
+        if (!clientEncryptionOptions.getEnabled())
         {
             return null;
         }
@@ -297,7 +306,7 @@ public class BulkLoader
         }
 
         @Override
-        public StreamConnectionFactory getConnectionFactory()
+        public StreamingChannel.Factory getConnectionFactory()
         {
             return new BulkLoadConnectionFactory(serverEncOptions, storagePort);
         }

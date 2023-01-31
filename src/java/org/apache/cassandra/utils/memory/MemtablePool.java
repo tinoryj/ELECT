@@ -32,6 +32,8 @@ import org.apache.cassandra.metrics.DefaultNameFactory;
 import org.apache.cassandra.utils.concurrent.WaitQueue;
 import org.apache.cassandra.utils.ExecutorUtils;
 
+import static org.apache.cassandra.utils.concurrent.WaitQueue.newWaitQueue;
+
 
 /**
  * Represents an amount of memory used for a given purpose, that can be allocated to specific tasks through
@@ -48,7 +50,7 @@ public abstract class MemtablePool
     public final Timer blockedOnAllocating;
     public final Gauge<Long> numPendingTasks;
 
-    final WaitQueue hasRoom = new WaitQueue();
+    final WaitQueue hasRoom = newWaitQueue();
 
     MemtablePool(long maxOnHeapMemory, long maxOffHeapMemory, float cleanThreshold, MemtableCleaner cleaner)
     {
@@ -57,7 +59,6 @@ public abstract class MemtablePool
         this.onHeap = getSubPool(maxOnHeapMemory, cleanThreshold);
         this.offHeap = getSubPool(maxOffHeapMemory, cleanThreshold);
         this.cleaner = getCleaner(cleaner);
-        this.cleaner.start();
         DefaultNameFactory nameFactory = new DefaultNameFactory("MemtablePool");
         blockedOnAllocating = CassandraMetricsRegistry.Metrics.timer(nameFactory.createMetricName("BlockedOnAllocation"));
         numPendingTasks = CassandraMetricsRegistry.Metrics.register(nameFactory.createMetricName("PendingFlushTasks"),
@@ -80,7 +81,7 @@ public abstract class MemtablePool
         ExecutorUtils.shutdownNowAndWait(timeout, unit, cleaner);
     }
 
-    public abstract MemtableAllocator newAllocator();
+    public abstract MemtableAllocator newAllocator(String table);
 
     public boolean needsCleaning()
     {

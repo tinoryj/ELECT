@@ -59,6 +59,7 @@ import static java.lang.String.format;
 import static org.apache.cassandra.Util.throwAssert;
 import static org.apache.cassandra.utils.ByteBufferUtil.EMPTY_BYTE_BUFFER;
 import static org.apache.cassandra.utils.ByteBufferUtil.bytes;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -114,7 +115,7 @@ public class SecondaryIndexTest extends CQLTester
                              "CREATE INDEX " + indexName + " ON %s(b)");
 
         // IF NOT EXISTS should apply in cases where the new index differs from an existing one in name only
-        String otherIndexName = "index_" + System.nanoTime();
+        String otherIndexName = "index_" + nanoTime();
         assertEquals(1, getCurrentColumnFamilyStore().metadata().indexes.size());
         createIndex("CREATE INDEX IF NOT EXISTS " + otherIndexName + " ON %s(b)");
         assertEquals(1, getCurrentColumnFamilyStore().metadata().indexes.size());
@@ -611,7 +612,7 @@ public class SecondaryIndexTest extends CQLTester
     /**
      * Test for CASSANDRA-5732, Can not query secondary index
      * migrated from cql_tests.py:TestCQL.bug_5732_test(),
-     * which was executing with a row cache size of 100 MB
+     * which was executing with a row cache size of 100 MiB
      * and restarting the node, here we just cleanup the cache.
      */
     @Test
@@ -671,14 +672,14 @@ public class SecondaryIndexTest extends CQLTester
         long batchSizeThreshold = DatabaseDescriptor.getBatchSizeFailThreshold();
         try
         {
-            DatabaseDescriptor.setBatchSizeFailThresholdInKB( (TOO_BIG / 1024) * 2);
+            DatabaseDescriptor.setBatchSizeFailThresholdInKiB((TOO_BIG / 1024) * 2);
             succeedInsert("BEGIN BATCH\n" +
                           "INSERT INTO %s (a, b, c) VALUES (1, 1, ?) IF NOT EXISTS;\n" +
                           "APPLY BATCH", ByteBuffer.allocate(TOO_BIG));
         }
         finally
         {
-            DatabaseDescriptor.setBatchSizeFailThresholdInKB((int) (batchSizeThreshold / 1024));
+            DatabaseDescriptor.setBatchSizeFailThresholdInKiB((int) (batchSizeThreshold / 1024));
         }
     }
 
@@ -724,14 +725,14 @@ public class SecondaryIndexTest extends CQLTester
         long batchSizeThreshold = DatabaseDescriptor.getBatchSizeFailThreshold();
         try
         {
-            DatabaseDescriptor.setBatchSizeFailThresholdInKB( (TOO_BIG / 1024) * 2);
+            DatabaseDescriptor.setBatchSizeFailThresholdInKiB((TOO_BIG / 1024) * 2);
             succeedInsert("BEGIN BATCH\n" +
                           "INSERT INTO %s (a, b, c) VALUES (1, 1, ?) IF NOT EXISTS;\n" +
                           "APPLY BATCH", ByteBuffer.allocate(TOO_BIG));
         }
         finally
         {
-            DatabaseDescriptor.setBatchSizeFailThresholdInKB((int)(batchSizeThreshold / 1024));
+            DatabaseDescriptor.setBatchSizeFailThresholdInKiB((int)(batchSizeThreshold / 1024));
         }
     }
 

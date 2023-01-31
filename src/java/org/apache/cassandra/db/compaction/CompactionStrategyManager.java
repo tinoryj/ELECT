@@ -18,7 +18,6 @@
 package org.apache.cassandra.db.compaction;
 
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,7 +28,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -39,6 +37,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Longs;
+import org.apache.cassandra.io.util.File;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +73,7 @@ import org.apache.cassandra.repair.consistent.admin.CleanupSummary;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.utils.TimeUUID;
 
 import static org.apache.cassandra.db.compaction.AbstractStrategyHolder.GroupedSSTableContainer;
 
@@ -421,7 +421,7 @@ public class CompactionStrategyManager implements INotificationConsumer
         return transientRepairs;
     }
 
-    public boolean hasDataForPendingRepair(UUID sessionID)
+    public boolean hasDataForPendingRepair(TimeUUID sessionID)
     {
         readLock.lock();
         try
@@ -587,9 +587,47 @@ public class CompactionStrategyManager implements INotificationConsumer
         return null;
     }
 
+    public long[] getPerLevelSizeBytes()
+    {
+        readLock.lock();
+        try
+        {
+            if (repaired.first() instanceof LeveledCompactionStrategy)
+            {
+                long [] res = new long[LeveledGenerations.MAX_LEVEL_COUNT];
+                for (AbstractCompactionStrategy strategy : getAllStrategies())
+                {
+                    long[] repairedCountPerLevel = ((LeveledCompactionStrategy) strategy).getAllLevelSizeBytes();
+                    res = sumArrays(res, repairedCountPerLevel);
+                }
+                return res;
+            }
+            return null;
+        }
+        finally
+        {
+            readLock.unlock();
+        }
+    }
+
     static int[] sumArrays(int[] a, int[] b)
     {
         int[] res = new int[Math.max(a.length, b.length)];
+        for (int i = 0; i < res.length; i++)
+        {
+            if (i < a.length && i < b.length)
+                res[i] = a[i] + b[i];
+            else if (i < a.length)
+                res[i] = a[i];
+            else
+                res[i] = b[i];
+        }
+        return res;
+    }
+
+    static long[] sumArrays(long[] a, long[] b)
+    {
+        long[] res = new long[Math.max(a.length, b.length)];
         for (int i = 0; i < res.length; i++)
         {
             if (i < a.length && i < b.length)
@@ -633,7 +671,7 @@ public class CompactionStrategyManager implements INotificationConsumer
         throw new IllegalStateException("No holder claimed " + sstable);
     }
 
-    private AbstractStrategyHolder getHolder(long repairedAt, UUID pendingRepair, boolean isTransient)
+    private AbstractStrategyHolder getHolder(long repairedAt, TimeUUID pendingRepair, boolean isTransient)
     {
         return getHolder(repairedAt != ActiveRepairService.UNREPAIRED_SSTABLE,
                          pendingRepair != ActiveRepairService.NO_PENDING_REPAIR,
@@ -903,7 +941,7 @@ public class CompactionStrategyManager implements INotificationConsumer
             boolean repaired = firstSSTable.isRepaired();
             int firstIndex = compactionStrategyIndexFor(firstSSTable);
             boolean isPending = firstSSTable.isPendingRepair();
-            UUID pendingRepair = firstSSTable.getSSTableMetadata().pendingRepair;
+            TimeUUID pendingRepair = firstSSTable.getSSTableMetadata().pendingRepair;
             for (SSTableReader sstable : input)
             {
                 if (sstable.isRepaired() != repaired)
@@ -1061,7 +1099,7 @@ public class CompactionStrategyManager implements INotificationConsumer
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor,
                                                        long keyCount,
                                                        long repairedAt,
-                                                       UUID pendingRepair,
+                                                       TimeUUID pendingRepair,
                                                        boolean isTransient,
                                                        MetadataCollector collector,
                                                        SerializationHeader header,
@@ -1106,13 +1144,13 @@ public class CompactionStrategyManager implements INotificationConsumer
                 {
                     int idx = holder.getStrategyIndex(strategy);
                     if (idx >= 0)
-                        return Collections.singletonList(locations[idx].location.getAbsolutePath());
+                        return Collections.singletonList(locations[idx].location.absolutePath());
                 }
             }
             List<String> folders = new ArrayList<>(locations.length);
             for (Directories.DataDirectory location : locations)
             {
-                folders.add(location.location.getAbsolutePath());
+                folders.add(location.location.absolutePath());
             }
             return folders;
         }
@@ -1146,7 +1184,7 @@ public class CompactionStrategyManager implements INotificationConsumer
      * Mutates sstable repairedAt times and notifies listeners of the change with the writeLock held. Prevents races
      * with other processes between when the metadata is changed and when sstables are moved between strategies.
       */
-    public void mutateRepaired(Collection<SSTableReader> sstables, long repairedAt, UUID pendingRepair, boolean isTransient) throws IOException
+    public void mutateRepaired(Collection<SSTableReader> sstables, long repairedAt, TimeUUID pendingRepair, boolean isTransient) throws IOException
     {
         Set<SSTableReader> changed = new HashSet<>();
 
@@ -1175,7 +1213,7 @@ public class CompactionStrategyManager implements INotificationConsumer
         }
     }
 
-    private static void verifyMetadata(SSTableReader sstable, long repairedAt, UUID pendingRepair, boolean isTransient)
+    private static void verifyMetadata(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair, boolean isTransient)
     {
         if (!Objects.equals(pendingRepair, sstable.getPendingRepair()))
             throw new IllegalStateException(String.format("Failed setting pending repair to %s on %s (pending repair is %s)", pendingRepair, sstable, sstable.getPendingRepair()));
@@ -1185,7 +1223,7 @@ public class CompactionStrategyManager implements INotificationConsumer
             throw new IllegalStateException(String.format("Failed setting isTransient to %b on %s (isTransient is %b)", isTransient, sstable, sstable.isTransient()));
     }
 
-    public CleanupSummary releaseRepairData(Collection<UUID> sessions)
+    public CleanupSummary releaseRepairData(Collection<TimeUUID> sessions)
     {
         List<CleanupTask> cleanupTasks = new ArrayList<>();
         readLock.lock();

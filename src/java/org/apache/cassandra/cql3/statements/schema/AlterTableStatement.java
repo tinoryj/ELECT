@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.cql3.statements.schema;
 
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -42,6 +41,7 @@ import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.cql3.QualifiedName;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.guardrails.Guardrails;
 import org.apache.cassandra.db.marshal.AbstractType;
 
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -77,14 +77,16 @@ import static org.apache.cassandra.schema.TableMetadata.Flag;
 public abstract class AlterTableStatement extends AlterSchemaStatement
 {
     protected final String tableName;
+    private final boolean ifExists;
 
-    public AlterTableStatement(String keyspaceName, String tableName)
+    public AlterTableStatement(String keyspaceName, String tableName, boolean ifExists)
     {
         super(keyspaceName);
         this.tableName = tableName;
+        this.ifExists = ifExists;
     }
 
-    public Keyspaces apply(Keyspaces schema) throws UnknownHostException
+    public Keyspaces apply(Keyspaces schema)
     {
         KeyspaceMetadata keyspace = schema.getNullable(keyspaceName);
 
@@ -93,7 +95,11 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
                             : keyspace.getTableOrViewNullable(tableName);
 
         if (null == table)
-            throw ire("Table '%s.%s' doesn't exist", keyspaceName, tableName);
+        {
+            if (!ifExists)
+                throw ire("Table '%s.%s' doesn't exist", keyspaceName, tableName);
+            return schema;
+        }
 
         if (table.isView())
             throw ire("Cannot use ALTER TABLE on a materialized view; use ALTER MATERIALIZED VIEW instead");
@@ -122,18 +128,18 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
         return format("%s (%s, %s)", getClass().getSimpleName(), keyspaceName, tableName);
     }
 
-    abstract KeyspaceMetadata apply(KeyspaceMetadata keyspace, TableMetadata table) throws UnknownHostException;
+    abstract KeyspaceMetadata apply(KeyspaceMetadata keyspace, TableMetadata table);
 
     /**
-     * ALTER TABLE <table> ALTER <column> TYPE <newtype>;
+     * ALTER TABLE [IF EXISTS] <table> ALTER <column> TYPE <newtype>;
      *
      * No longer supported.
      */
     public static class AlterColumn extends AlterTableStatement
     {
-        AlterColumn(String keyspaceName, String tableName)
+        AlterColumn(String keyspaceName, String tableName, boolean ifTableExists)
         {
-            super(keyspaceName, tableName);
+            super(keyspaceName, tableName, ifTableExists);
         }
 
         public KeyspaceMetadata apply(KeyspaceMetadata keyspace, TableMetadata table)
@@ -143,8 +149,8 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
     }
 
     /**
-     * ALTER TABLE <table> ADD <column> <newtype>
-     * ALTER TABLE <table> ADD (<column> <newtype>, <column1> <newtype1>, ... <columnn> <newtypen>)
+     * ALTER TABLE [IF EXISTS] <table> ADD [IF NOT EXISTS] <column> <newtype>
+     * ALTER TABLE [IF EXISTS] <table> ADD [IF NOT EXISTS] (<column> <newtype>, <column1> <newtype1>, ... <columnn> <newtypen>)
      */
     private static class AddColumns extends AlterTableStatement
     {
@@ -163,18 +169,29 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
         }
 
         private final Collection<Column> newColumns;
+        private final boolean ifColumnNotExists;
 
-        private AddColumns(String keyspaceName, String tableName, Collection<Column> newColumns)
+        private AddColumns(String keyspaceName, String tableName, Collection<Column> newColumns, boolean ifTableExists, boolean ifColumnNotExists)
         {
-            super(keyspaceName, tableName);
+            super(keyspaceName, tableName, ifTableExists);
             this.newColumns = newColumns;
+            this.ifColumnNotExists = ifColumnNotExists;
+        }
+
+        @Override
+        public void validate(ClientState state)
+        {
+            super.validate(state);
         }
 
         public KeyspaceMetadata apply(KeyspaceMetadata keyspace, TableMetadata table)
         {
             TableMetadata.Builder tableBuilder = table.unbuild();
             Views.Builder viewsBuilder = keyspace.views.unbuild();
-            newColumns.forEach(c -> addColumn(keyspace, table, c, tableBuilder, viewsBuilder));
+            newColumns.forEach(c -> addColumn(keyspace, table, c, ifColumnNotExists, tableBuilder, viewsBuilder));
+
+            Guardrails.columnsPerTable.guard(tableBuilder.numColumns(), tableName, false, state);
+
             TableMetadata tableMetadata = tableBuilder.build();
             tableMetadata.validate();
 
@@ -185,6 +202,7 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
         private void addColumn(KeyspaceMetadata keyspace,
                                TableMetadata table,
                                Column column,
+                               boolean ifColumnNotExists,
                                TableMetadata.Builder tableBuilder,
                                Views.Builder viewsBuilder)
         {
@@ -192,8 +210,11 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
             AbstractType<?> type = column.type.prepare(keyspaceName, keyspace.types).getType();
             boolean isStatic = column.isStatic;
 
-            if (null != tableBuilder.getColumn(name))
-                throw ire("Column with name '%s' already exists", name);
+            if (null != tableBuilder.getColumn(name)) {
+                if (!ifColumnNotExists)
+                    throw ire("Column with name '%s' already exists", name);
+                return;
+            }
 
             if (table.isCompactTable())
                 throw ire("Cannot add new column to a COMPACT STORAGE table");
@@ -206,7 +227,7 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
             {
                 // After #8099, not safe to re-add columns of incompatible types - until *maybe* deser logic with dropped
                 // columns is pushed deeper down the line. The latter would still be problematic in cases of schema races.
-                if (!type.isValueCompatibleWith(droppedColumn.type))
+                if (!type.isSerializationCompatibleWith(droppedColumn.type))
                 {
                     throw ire("Cannot re-add previously dropped column '%s' of type %s, incompatible with previous type %s",
                               name,
@@ -247,34 +268,39 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
     }
 
     /**
-     * ALTER TABLE <table> DROP <column>
-     * ALTER TABLE <table> DROP ( <column>, <column1>, ... <columnn>)
+     * ALTER TABLE [IF EXISTS] <table> DROP [IF EXISTS] <column>
+     * ALTER TABLE [IF EXISTS] <table> DROP [IF EXISTS] ( <column>, <column1>, ... <columnn>)
      */
     // TODO: swap UDT refs with expanded tuples on drop
     private static class DropColumns extends AlterTableStatement
     {
         private final Set<ColumnIdentifier> removedColumns;
+        private final boolean ifColumnExists;
         private final Long timestamp;
 
-        private DropColumns(String keyspaceName, String tableName, Set<ColumnIdentifier> removedColumns, Long timestamp)
+        private DropColumns(String keyspaceName, String tableName, Set<ColumnIdentifier> removedColumns, boolean ifTableExists, boolean ifColumnExists, Long timestamp)
         {
-            super(keyspaceName, tableName);
+            super(keyspaceName, tableName, ifTableExists);
             this.removedColumns = removedColumns;
+            this.ifColumnExists = ifColumnExists;
             this.timestamp = timestamp;
         }
 
         public KeyspaceMetadata apply(KeyspaceMetadata keyspace, TableMetadata table)
         {
             TableMetadata.Builder builder = table.unbuild();
-            removedColumns.forEach(c -> dropColumn(keyspace, table, c, builder));
+            removedColumns.forEach(c -> dropColumn(keyspace, table, c, ifColumnExists, builder));
             return keyspace.withSwapped(keyspace.tables.withSwapped(builder.build()));
         }
 
-        private void dropColumn(KeyspaceMetadata keyspace, TableMetadata table, ColumnIdentifier column, TableMetadata.Builder builder)
+        private void dropColumn(KeyspaceMetadata keyspace, TableMetadata table, ColumnIdentifier column, boolean ifExists, TableMetadata.Builder builder)
         {
             ColumnMetadata currentColumn = table.getColumn(column);
-            if (null == currentColumn)
-                throw ire("Column %s was not found in table '%s'", column, table);
+            if (null == currentColumn) {
+                if (!ifExists)
+                    throw ire("Column %s was not found in table '%s'", column, table);
+                return;
+            }
 
             if (currentColumn.isPrimaryKeyColumn())
                 throw ire("Cannot drop PRIMARY KEY column %s", column);
@@ -313,23 +339,25 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
     }
 
     /**
-     * ALTER TABLE <table> RENAME <column> TO <column>;
+     * ALTER TABLE [IF EXISTS] <table> RENAME [IF EXISTS] <column> TO <column>;
      */
     private static class RenameColumns extends AlterTableStatement
     {
         private final Map<ColumnIdentifier, ColumnIdentifier> renamedColumns;
+        private final boolean ifColumnsExists;
 
-        private RenameColumns(String keyspaceName, String tableName, Map<ColumnIdentifier, ColumnIdentifier> renamedColumns)
+        private RenameColumns(String keyspaceName, String tableName, Map<ColumnIdentifier, ColumnIdentifier> renamedColumns, boolean ifTableExists, boolean ifColumnsExists)
         {
-            super(keyspaceName, tableName);
+            super(keyspaceName, tableName, ifTableExists);
             this.renamedColumns = renamedColumns;
+            this.ifColumnsExists = ifColumnsExists;
         }
 
         public KeyspaceMetadata apply(KeyspaceMetadata keyspace, TableMetadata table)
         {
             TableMetadata.Builder tableBuilder = table.unbuild();
             Views.Builder viewsBuilder = keyspace.views.unbuild();
-            renamedColumns.forEach((o, n) -> renameColumn(keyspace, table, o, n, tableBuilder, viewsBuilder));
+            renamedColumns.forEach((o, n) -> renameColumn(keyspace, table, o, n, ifColumnsExists, tableBuilder, viewsBuilder));
 
             return keyspace.withSwapped(keyspace.tables.withSwapped(tableBuilder.build()))
                            .withSwapped(viewsBuilder.build());
@@ -339,12 +367,17 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
                                   TableMetadata table,
                                   ColumnIdentifier oldName,
                                   ColumnIdentifier newName,
+                                  boolean ifColumnsExists,
                                   TableMetadata.Builder tableBuilder,
                                   Views.Builder viewsBuilder)
         {
             ColumnMetadata column = table.getExistingColumn(oldName);
             if (null == column)
-                throw ire("Column %s was not found in table %s", oldName, table);
+            {
+                if (!ifColumnsExists)
+                    throw ire("Column %s was not found in table %s", oldName, table);
+                return;
+            }
 
             if (!column.isPrimaryKeyColumn())
                 throw ire("Cannot rename non PRIMARY KEY column %s", oldName);
@@ -379,16 +412,24 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
     }
 
     /**
-     * ALTER TABLE <table> WITH <property> = <value>
+     * ALTER TABLE [IF EXISTS] <table> WITH <property> = <value>
      */
     private static class AlterOptions extends AlterTableStatement
     {
         private final TableAttributes attrs;
 
-        private AlterOptions(String keyspaceName, String tableName, TableAttributes attrs)
+        private AlterOptions(String keyspaceName, String tableName, TableAttributes attrs, boolean ifTableExists)
         {
-            super(keyspaceName, tableName);
+            super(keyspaceName, tableName, ifTableExists);
             this.attrs = attrs;
+        }
+
+        @Override
+        public void validate(ClientState state)
+        {
+            super.validate(state);
+
+            Guardrails.tableProperties.guard(attrs.updatedProperties(), attrs::removeProperty, state);
         }
 
         public KeyspaceMetadata apply(KeyspaceMetadata keyspace, TableMetadata table)
@@ -415,21 +456,24 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
                 throw ire("read_repair must be set to 'NONE' for transiently replicated keyspaces");
             }
 
+            if (!params.compression.isEnabled())
+                Guardrails.uncompressedTablesEnabled.ensureEnabled(state);
+
             return keyspace.withSwapped(keyspace.tables.withSwapped(table.withSwapped(params)));
         }
     }
 
 
     /**
-     * ALTER TABLE <table> DROP COMPACT STORAGE
+     * ALTER TABLE [IF EXISTS] <table> DROP COMPACT STORAGE
      */
     private static class DropCompactStorage extends AlterTableStatement
     {
         private static final Logger logger = LoggerFactory.getLogger(AlterTableStatement.class);
         private static final NoSpamLogger noSpamLogger = NoSpamLogger.getLogger(logger, 5L, TimeUnit.MINUTES);
-        private DropCompactStorage(String keyspaceName, String tableName)
+        private DropCompactStorage(String keyspaceName, String tableName, boolean ifTableExists)
         {
-            super(keyspaceName, tableName);
+            super(keyspaceName, tableName, ifTableExists);
         }
 
         public KeyspaceMetadata apply(KeyspaceMetadata keyspace, TableMetadata table)
@@ -527,6 +571,9 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
         }
 
         private final QualifiedName name;
+        private final boolean ifTableExists;
+        private boolean ifColumnExists;
+        private boolean ifColumnNotExists;
 
         private Kind kind;
 
@@ -543,9 +590,10 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
         // OPTIONS
         public final TableAttributes attrs = new TableAttributes();
 
-        public Raw(QualifiedName name)
+        public Raw(QualifiedName name, boolean ifTableExists)
         {
             this.name = name;
+            this.ifTableExists = ifTableExists;
         }
 
         public AlterTableStatement prepare(ClientState state)
@@ -555,12 +603,12 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
 
             switch (kind)
             {
-                case          ALTER_COLUMN: return new AlterColumn(keyspaceName, tableName);
-                case           ADD_COLUMNS: return new AddColumns(keyspaceName, tableName, addedColumns);
-                case          DROP_COLUMNS: return new DropColumns(keyspaceName, tableName, droppedColumns, timestamp);
-                case        RENAME_COLUMNS: return new RenameColumns(keyspaceName, tableName, renamedColumns);
-                case         ALTER_OPTIONS: return new AlterOptions(keyspaceName, tableName, attrs);
-                case  DROP_COMPACT_STORAGE: return new DropCompactStorage(keyspaceName, tableName);
+                case          ALTER_COLUMN: return new AlterColumn(keyspaceName, tableName, ifTableExists);
+                case           ADD_COLUMNS: return new AddColumns(keyspaceName, tableName, addedColumns, ifTableExists, ifColumnNotExists);
+                case          DROP_COLUMNS: return new DropColumns(keyspaceName, tableName, droppedColumns, ifTableExists, ifColumnExists, timestamp);
+                case        RENAME_COLUMNS: return new RenameColumns(keyspaceName, tableName, renamedColumns, ifTableExists, ifColumnExists);
+                case         ALTER_OPTIONS: return new AlterOptions(keyspaceName, tableName, attrs, ifTableExists);
+                case  DROP_COMPACT_STORAGE: return new DropCompactStorage(keyspaceName, tableName, ifTableExists);
             }
 
             throw new AssertionError();
@@ -581,6 +629,16 @@ public abstract class AlterTableStatement extends AlterSchemaStatement
         {
             kind = Kind.DROP_COLUMNS;
             droppedColumns.add(name);
+        }
+
+        public void ifColumnNotExists(boolean ifNotExists)
+        {
+            ifColumnNotExists = ifNotExists;
+        }
+
+        public void ifColumnExists(boolean ifExists)
+        {
+            ifColumnExists = ifExists;
         }
 
         public void dropCompactStorage()

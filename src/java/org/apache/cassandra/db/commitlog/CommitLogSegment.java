@@ -17,8 +17,6 @@
  */
 package org.apache.cassandra.db.commitlog;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -31,6 +29,8 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.zip.CRC32;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.cassandra.io.util.File;
+import org.apache.cassandra.io.util.FileWriter;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 
 import com.codahale.metrics.Timer;
@@ -48,7 +48,9 @@ import org.apache.cassandra.utils.IntegerInterval;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 import org.apache.cassandra.utils.concurrent.WaitQueue;
 
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 import static org.apache.cassandra.utils.FBUtilities.updateChecksumInt;
+import static org.apache.cassandra.utils.concurrent.WaitQueue.newWaitQueue;
 
 /*
  * A single commit log file on disk. Manages creation of the file and writing mutations to disk,
@@ -66,19 +68,19 @@ public abstract class CommitLogSegment
         FORBIDDEN,
         CONTAINS
     }
-    Object cdcStateLock = new Object();
+    final Object cdcStateLock = new Object();
 
     private final static AtomicInteger nextId = new AtomicInteger(1);
     private static long replayLimitId;
     static
     {
         long maxId = Long.MIN_VALUE;
-        for (File file : new File(DatabaseDescriptor.getCommitLogLocation()).listFiles())
+        for (File file : new File(DatabaseDescriptor.getCommitLogLocation()).tryList())
         {
-            if (CommitLogDescriptor.isValid(file.getName()))
-                maxId = Math.max(CommitLogDescriptor.fromFileName(file.getName()).id, maxId);
+            if (CommitLogDescriptor.isValid(file.name()))
+                maxId = Math.max(CommitLogDescriptor.fromFileName(file.name()).id, maxId);
         }
-        replayLimitId = idBase = Math.max(System.currentTimeMillis(), maxId + 1);
+        replayLimitId = idBase = Math.max(currentTimeMillis(), maxId + 1);
     }
 
     // The commit log entry overhead in bytes (int: length + int: head checksum + int: tail checksum)
@@ -110,7 +112,7 @@ public abstract class CommitLogSegment
     private int endOfBuffer;
 
     // a signal for writers to wait on to confirm the log message they provided has been written to disk
-    private final WaitQueue syncComplete = new WaitQueue();
+    private final WaitQueue syncComplete = newWaitQueue();
 
     // a map of Cf->dirty interval in this segment; if interval is not covered by the clean set, the log contains unflushed data
     private final NonBlockingHashMap<TableId, IntegerInterval> tableDirty = new NonBlockingHashMap<>(1024);
@@ -368,7 +370,11 @@ public abstract class CommitLogSegment
 
         if (flush || close)
         {
-            flush(startMarker, sectionEnd);
+            try (Timer.Context ignored = CommitLog.instance.metrics.waitingOnFlush.time())
+            {
+                flush(startMarker, sectionEnd);
+            }
+            
             if (cdcState == CDCState.CONTAINS)
                 writeCDCIndexFile(descriptor, sectionEnd, close);
             lastSyncedOffset = lastMarkerOffset = nextMarker;
@@ -457,7 +463,7 @@ public abstract class CommitLogSegment
      */
     public String getPath()
     {
-        return logFile.getPath();
+        return logFile.path();
     }
 
     /**
@@ -465,7 +471,7 @@ public abstract class CommitLogSegment
      */
     public String getName()
     {
-        return logFile.getName();
+        return logFile.name();
     }
 
     /**
@@ -473,7 +479,7 @@ public abstract class CommitLogSegment
      */
     public File getCDCFile()
     {
-        return new File(DatabaseDescriptor.getCDCLogLocation(), logFile.getName());
+        return new File(DatabaseDescriptor.getCDCLogLocation(), logFile.name());
     }
 
     /**
@@ -501,15 +507,13 @@ public abstract class CommitLogSegment
         }
     }
 
-    void waitForSync(int position, Timer waitingOnCommit)
+    void waitForSync(int position)
     {
         while (lastSyncedOffset < position)
         {
-            WaitQueue.Signal signal = waitingOnCommit != null ?
-                                      syncComplete.register(waitingOnCommit.time()) :
-                                      syncComplete.register();
+            WaitQueue.Signal signal = syncComplete.register();
             if (lastSyncedOffset < position)
-                signal.awaitUninterruptibly();
+                signal.awaitThrowUncheckedOnInterrupt();
             else
                 signal.cancel();
         }
@@ -673,9 +677,8 @@ public abstract class CommitLogSegment
     {
         public int compare(File f, File f2)
         {
-            CommitLogDescriptor desc = CommitLogDescriptor.fromFileName(f.getName());
-            CommitLogDescriptor desc2 = CommitLogDescriptor.fromFileName(f2.getName());
-            return Long.compare(desc.id, desc2.id);
+            return Long.compare(CommitLogDescriptor.idFromFileName(f.name()),
+                                CommitLogDescriptor.idFromFileName(f2.name()));
         }
     }
 
@@ -748,7 +751,10 @@ public abstract class CommitLogSegment
 
         void awaitDiskSync(Timer waitingOnCommit)
         {
-            segment.waitForSync(position, waitingOnCommit);
+            try (Timer.Context ignored = waitingOnCommit.time())
+            {
+                segment.waitForSync(position);
+            }
         }
 
         /**

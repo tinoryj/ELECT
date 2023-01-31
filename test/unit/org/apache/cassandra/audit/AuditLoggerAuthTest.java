@@ -33,11 +33,10 @@ import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.AuthenticationException;
 import com.datastax.driver.core.exceptions.SyntaxError;
 import com.datastax.driver.core.exceptions.UnauthorizedException;
-
+import org.apache.cassandra.ServerTestUtils;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.OverrideConfigurationLoader;
 import org.apache.cassandra.config.ParameterizedClass;
-import org.apache.cassandra.cql3.CQLTester;
 import org.apache.cassandra.cql3.PasswordObfuscator;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.service.EmbeddedCassandraService;
@@ -61,6 +60,7 @@ public class AuditLoggerAuthTest
     private static final String TEST_USER = "testuser";
     private static final String TEST_ROLE = "testrole";
     private static final String TEST_PW = "testpassword";
+    private static final String TEST_PW_HASH = "$2a$10$1fI9MDCe13ZmEYW4XXZibuASNKyqOY828ELGUtml/t.0Mk/6Kqnsq";
     private static final String CASS_USER = "cassandra";
     private static final String CASS_PW = "cassandra";
 
@@ -74,11 +74,9 @@ public class AuditLoggerAuthTest
             config.audit_logging_options.enabled = true;
             config.audit_logging_options.logger = new ParameterizedClass("InMemoryAuditLogger", null);
         });
-        CQLTester.prepareServer();
 
         System.setProperty("cassandra.superuser_setup_delay_ms", "0");
-        embedded = new EmbeddedCassandraService();
-        embedded.start();
+        embedded = ServerTestUtils.startEmbeddedCassandraService();
 
         executeWithCredentials(
         Arrays.asList(getCreateRoleCql(TEST_USER, true, false, false),
@@ -144,6 +142,21 @@ public class AuditLoggerAuthTest
     }
 
     @Test
+    public void testCqlCreateRoleSyntaxErrorWithHashedPwd()
+    {
+        String createTestRoleCQL = String.format("CREATE ROLE %s WITH LOGIN = %s ANDSUPERUSER = %s AND HASHED PASSWORD",
+                                                 TEST_ROLE, true, false) + TEST_PW_HASH;
+        String createTestRoleCQLExpected = String.format("CREATE ROLE %s WITH LOGIN = %s ANDSUPERUSER = %s AND HASHED PASSWORD ",
+                                                         TEST_ROLE, true, false) + PasswordObfuscator.OBFUSCATION_TOKEN;
+
+        executeWithCredentials(Collections.singletonList(createTestRoleCQL), CASS_USER, CASS_PW, AuditLogEntryType.LOGIN_SUCCESS);
+        assertTrue(getInMemAuditLogger().size() > 0);
+        AuditLogEntry logEntry = getInMemAuditLogger().poll();
+        assertLogEntry(logEntry, AuditLogEntryType.REQUEST_FAILURE, createTestRoleCQLExpected, CASS_USER,  TEST_PW);
+        assertEquals(0, getInMemAuditLogger().size());
+    }
+
+    @Test
     public void testCqlALTERRoleAuditing()
     {
         createTestRole();
@@ -151,7 +164,28 @@ public class AuditLoggerAuthTest
         executeWithCredentials(Arrays.asList(cql), CASS_USER, CASS_PW, AuditLogEntryType.LOGIN_SUCCESS);
         assertTrue(getInMemAuditLogger().size() > 0);
         AuditLogEntry logEntry = getInMemAuditLogger().poll();
-        assertLogEntry(logEntry, AuditLogEntryType.ALTER_ROLE, "ALTER ROLE " + TEST_ROLE + " WITH PASSWORD = '" + PasswordObfuscator.OBFUSCATION_TOKEN + "'", CASS_USER, "foo_bar");
+        assertLogEntry(logEntry,
+                       AuditLogEntryType.ALTER_ROLE,
+                       "ALTER ROLE " + TEST_ROLE + " WITH PASSWORD = '" + PasswordObfuscator.OBFUSCATION_TOKEN + "'",
+                       CASS_USER,
+                       "foo_bar");
+        assertEquals(0, getInMemAuditLogger().size());
+    }
+
+    @Test
+    public void testCqlALTERRoleAuditingWithHashedPwd()
+    {
+        createTestRole();
+        String cql = "ALTER ROLE " + TEST_ROLE + " WITH HASHED PASSWORD = '" + TEST_PW_HASH + "'";
+        executeWithCredentials(Arrays.asList(cql), CASS_USER, CASS_PW, AuditLogEntryType.LOGIN_SUCCESS);
+        assertTrue(getInMemAuditLogger().size() > 0);
+        AuditLogEntry logEntry = getInMemAuditLogger().poll();
+        assertLogEntry(logEntry,
+                       AuditLogEntryType.ALTER_ROLE,
+                       "ALTER ROLE " + TEST_ROLE +
+                       " WITH HASHED PASSWORD = '" + PasswordObfuscator.OBFUSCATION_TOKEN + "'",
+                       CASS_USER,
+                       TEST_PW_HASH);
         assertEquals(0, getInMemAuditLogger().size());
     }
 
@@ -260,6 +294,45 @@ public class AuditLoggerAuthTest
                        TEST_PW);
     }
 
+    @Test
+    public void testCqlUSERCommandsAuditingWithHashedPwd()
+    {
+        //CREATE USER and ALTER USER are supported only for backwards compatibility.
+
+        String user = TEST_ROLE + "userHasedPwd";
+        String cql = "CREATE USER " + user + " WITH HASHED PASSWORD '" + TEST_PW_HASH + "'";
+        executeWithCredentials(Arrays.asList(cql), CASS_USER, CASS_PW, AuditLogEntryType.LOGIN_SUCCESS);
+        assertTrue(getInMemAuditLogger().size() > 0);
+        AuditLogEntry logEntry = getInMemAuditLogger().poll();
+        assertLogEntry(logEntry,
+                       AuditLogEntryType.CREATE_ROLE,
+                       "CREATE USER " + user + " WITH HASHED PASSWORD '" + PasswordObfuscator.OBFUSCATION_TOKEN + "'",
+                       CASS_USER,
+                       TEST_PW_HASH);
+
+        cql = "ALTER USER " + user + " WITH HASHED PASSWORD '" + TEST_PW_HASH + "'";
+        executeWithCredentials(Arrays.asList(cql), CASS_USER, CASS_PW, AuditLogEntryType.LOGIN_SUCCESS);
+        assertTrue(getInMemAuditLogger().size() > 0);
+        logEntry = getInMemAuditLogger().poll();
+        assertLogEntry(logEntry,
+                       AuditLogEntryType.ALTER_ROLE,
+                       "ALTER USER " + user + " WITH HASHED PASSWORD '" + PasswordObfuscator.OBFUSCATION_TOKEN + "'",
+                       CASS_USER,
+                       TEST_PW_HASH);
+
+        cql = "ALTER USER " + user + " WITH HASHED PASSWORD " + TEST_PW_HASH;
+        executeWithCredentials(Arrays.asList(cql), CASS_USER, CASS_PW, AuditLogEntryType.LOGIN_SUCCESS);
+        assertTrue(getInMemAuditLogger().size() > 0);
+        logEntry = getInMemAuditLogger().poll();
+        assertLogEntry(logEntry,
+                       AuditLogEntryType.REQUEST_FAILURE,
+                       "ALTER USER " + user
+                       + " WITH HASHED PASSWORD " + PasswordObfuscator.OBFUSCATION_TOKEN
+                       + "; Syntax Exception. Obscured for security reasons.",
+                       CASS_USER,
+                       TEST_PW_HASH);
+    }
+
     /**
      * Helper methods
      */
@@ -329,8 +402,8 @@ public class AuditLoggerAuthTest
 
     private static void assertSource(AuditLogEntry logEntry, String username)
     {
-        assertEquals(InetAddressAndPort.getLoopbackAddress().address, logEntry.getSource().address);
-        assertTrue(logEntry.getSource().port > 0);
+        assertEquals(InetAddressAndPort.getLoopbackAddress().getAddress(), logEntry.getSource().getAddress());
+        assertTrue(logEntry.getSource().getPort() > 0);
         if (logEntry.getType() != AuditLogEntryType.LOGIN_ERROR)
             assertEquals(username, logEntry.getUser());
     }

@@ -38,11 +38,14 @@ import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
-import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 import org.apache.cassandra.schema.CompactionParams;
+import org.apache.cassandra.utils.TimeUUID;
+
+import static org.apache.cassandra.io.sstable.Component.DATA;
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 
 /**
  * Pluggable compaction strategy determines how SSTables get merged.
@@ -388,7 +391,7 @@ public abstract class AbstractCompactionStrategy
         // since we use estimations to calculate, there is a chance that compaction will not drop tombstones actually.
         // if that happens we will end up in infinite compaction loop, so first we check enough if enough time has
         // elapsed since SSTable created.
-        if (System.currentTimeMillis() < sstable.getCreationTimeFor(Component.DATA) + tombstoneCompactionInterval * 1000)
+        if (currentTimeMillis() < sstable.getCreationTimeFor(DATA) + tombstoneCompactionInterval * 1000)
            return false;
 
         double droppableRatio = sstable.getEstimatedDroppableTombstoneRatio(gcBefore);
@@ -542,7 +545,7 @@ public abstract class AbstractCompactionStrategy
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor,
                                                        long keyCount,
                                                        long repairedAt,
-                                                       UUID pendingRepair,
+                                                       TimeUUID pendingRepair,
                                                        boolean isTransient,
                                                        MetadataCollector meta,
                                                        SerializationHeader header,

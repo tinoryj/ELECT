@@ -19,55 +19,55 @@
 package org.apache.cassandra.schema;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import org.apache.cassandra.SchemaLoader;
+import org.apache.cassandra.ServerTestUtils;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.commitlog.CommitLog;
+import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.utils.FBUtilities;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 public class SchemaTest
 {
     @BeforeClass
-    public static void setupDatabaseDescriptor()
+    public static void setup()
     {
         DatabaseDescriptor.daemonInitialization();
+        ServerTestUtils.prepareServer();
+        Schema.instance.loadFromDisk();
     }
 
     @Test
     public void testTransKsMigration() throws IOException
     {
-        CommitLog.instance.start();
-        SchemaLoader.cleanupAndLeaveDirs();
-        Schema.instance.loadFromDisk();
         assertEquals(0, Schema.instance.getNonSystemKeyspaces().size());
 
-        Gossiper.instance.start((int)(System.currentTimeMillis() / 1000));
-        Keyspace.setInitialized();
-
+        Gossiper.instance.start((int) (System.currentTimeMillis() / 1000));
         try
         {
             // add a few.
-            MigrationManager.announceNewKeyspace(KeyspaceMetadata.create("ks0", KeyspaceParams.simple(3)));
-            MigrationManager.announceNewKeyspace(KeyspaceMetadata.create("ks1", KeyspaceParams.simple(3)));
+            saveKeyspaces();
+            Schema.instance.reloadSchemaAndAnnounceVersion();
 
             assertNotNull(Schema.instance.getKeyspaceMetadata("ks0"));
             assertNotNull(Schema.instance.getKeyspaceMetadata("ks1"));
 
-            Schema.instance.unload(Schema.instance.getKeyspaceMetadata("ks0"));
-            Schema.instance.unload(Schema.instance.getKeyspaceMetadata("ks1"));
+            Schema.instance.transform(keyspaces -> keyspaces.without(Arrays.asList("ks0", "ks1")));
 
             assertNull(Schema.instance.getKeyspaceMetadata("ks0"));
             assertNull(Schema.instance.getKeyspaceMetadata("ks1"));
 
-            Schema.instance.loadFromDisk();
+            saveKeyspaces();
+            Schema.instance.reloadSchemaAndAnnounceVersion();
 
             assertNotNull(Schema.instance.getKeyspaceMetadata("ks0"));
             assertNotNull(Schema.instance.getKeyspaceMetadata("ks1"));
@@ -78,4 +78,37 @@ public class SchemaTest
         }
     }
 
+    @Test
+    public void testKeyspaceCreationWhenNotInitialized() {
+        Keyspace.unsetInitialized();
+        try
+        {
+            SchemaTestUtil.addOrUpdateKeyspace(KeyspaceMetadata.create("test", KeyspaceParams.simple(1)), true);
+            assertNotNull(Schema.instance.getKeyspaceMetadata("test"));
+            assertNull(Schema.instance.getKeyspaceInstance("test"));
+
+            SchemaTestUtil.dropKeyspaceIfExist("test", true);
+            assertNull(Schema.instance.getKeyspaceMetadata("test"));
+            assertNull(Schema.instance.getKeyspaceInstance("test"));
+        }
+        finally
+        {
+            Keyspace.setInitialized();
+        }
+
+        SchemaTestUtil.addOrUpdateKeyspace(KeyspaceMetadata.create("test", KeyspaceParams.simple(1)), true);
+        assertNotNull(Schema.instance.getKeyspaceMetadata("test"));
+        assertNotNull(Schema.instance.getKeyspaceInstance("test"));
+
+        SchemaTestUtil.dropKeyspaceIfExist("test", true);
+        assertNull(Schema.instance.getKeyspaceMetadata("test"));
+        assertNull(Schema.instance.getKeyspaceInstance("test"));
+    }
+
+    private void saveKeyspaces()
+    {
+        Collection<Mutation> mutations = Arrays.asList(SchemaKeyspace.makeCreateKeyspaceMutation(KeyspaceMetadata.create("ks0", KeyspaceParams.simple(3)), FBUtilities.timestampMicros()).build(),
+                                                       SchemaKeyspace.makeCreateKeyspaceMutation(KeyspaceMetadata.create("ks1", KeyspaceParams.simple(3)), FBUtilities.timestampMicros()).build());
+        SchemaKeyspace.applyChanges(mutations);
+    }
 }

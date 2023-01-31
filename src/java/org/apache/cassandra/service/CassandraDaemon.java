@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.service;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
@@ -37,8 +36,8 @@ import javax.management.StandardMBean;
 import javax.management.remote.JMXConnectorServer;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.collect.ImmutableList;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +51,7 @@ import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 
 import org.apache.cassandra.audit.AuditLogManager;
+import org.apache.cassandra.auth.AuthCacheService;
 import org.apache.cassandra.concurrent.ScheduledExecutors;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
@@ -59,8 +59,7 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SizeEstimatesRecorder;
 import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.db.SystemKeyspaceMigrator40;
-import org.apache.cassandra.db.WindowsFailedSnapshotTracker;
+import org.apache.cassandra.db.SystemKeyspaceMigrator41;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.virtual.SystemViewsKeyspace;
 import org.apache.cassandra.db.virtual.VirtualKeyspaceRegistry;
@@ -68,27 +67,27 @@ import org.apache.cassandra.db.virtual.VirtualSchemaKeyspace;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.StartupException;
 import org.apache.cassandra.gms.Gossiper;
-import org.apache.cassandra.io.FSError;
-import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.sstable.SSTableHeaderFix;
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.metrics.CassandraMetricsRegistry;
 import org.apache.cassandra.metrics.DefaultNameFactory;
-import org.apache.cassandra.metrics.StorageMetrics;
 import org.apache.cassandra.net.StartupClusterConnectivityChecker;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.security.ThreadAwareSecurityManager;
-import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.streaming.StreamManager;
+import org.apache.cassandra.service.paxos.PaxosState;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.JMXServerUtils;
 import org.apache.cassandra.utils.JVMStabilityInspector;
 import org.apache.cassandra.utils.MBeanWrapper;
 import org.apache.cassandra.utils.Mx4jTool;
 import org.apache.cassandra.utils.NativeLibrary;
-import org.apache.cassandra.utils.WindowsTimer;
+import org.apache.cassandra.utils.concurrent.Future;
+import org.apache.cassandra.utils.concurrent.FutureCombiner;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.apache.cassandra.config.CassandraRelevantProperties.CASSANDRA_FOREGROUND;
@@ -217,7 +216,7 @@ public class CassandraDaemon
     public CassandraDaemon(boolean runManaged)
     {
         this.runManaged = runManaged;
-        this.startupChecks = new StartupChecks().withDefaultTests();
+        this.startupChecks = new StartupChecks().withDefaultTests().withTest(new FileSystemOwnershipCheck());
         this.setupCompleted = false;
     }
 
@@ -242,10 +241,6 @@ public class CassandraDaemon
         {
             exitOrFail(StartupException.ERR_WRONG_DISK_STATE, e.getMessage(), e);
         }
-
-        // Delete any failed snapshot deletions on Windows - see CASSANDRA-9658
-        if (FBUtilities.isWindows)
-            WindowsFailedSnapshotTracker.deleteOldSnapshots();
 
         maybeInitJmx();
 
@@ -274,9 +269,9 @@ public class CassandraDaemon
         // This should be the first write to SystemKeyspace (CASSANDRA-11742)
         SystemKeyspace.persistLocalMetadata();
 
-        Thread.setDefaultUncaughtExceptionHandler(CassandraDaemon::uncaughtException);
+        Thread.setDefaultUncaughtExceptionHandler(JVMStabilityInspector::uncaughtException);
 
-        SystemKeyspaceMigrator40.migrate();
+        SystemKeyspaceMigrator41.migrate();
 
         // Populate token metadata before flushing, for token-aware sstable partitioning (#6696)
         StorageService.instance.populateTokenMetadata();
@@ -333,7 +328,6 @@ public class CassandraDaemon
             }
         }
 
-
         try
         {
             loadRowAndKeyCacheAsync().get();
@@ -355,6 +349,9 @@ public class CassandraDaemon
         }
 
         // Replay any CommitLogSegments found on disk
+        PaxosState.initializeTrackers();
+
+        // replay the log if necessary
         try
         {
             CommitLog.instance.recoverSegmentsOnDisk();
@@ -367,7 +364,14 @@ public class CassandraDaemon
         // Re-populate token metadata after commit log recover (new peers might be loaded onto system keyspace #10293)
         StorageService.instance.populateTokenMetadata();
 
-        SystemKeyspace.finishStartup();
+        try
+        {
+            PaxosState.maybeRebuildUncommittedState();
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
 
         // Clean up system.size_estimates entries left lying around from missed keyspace drops (CASSANDRA-14905)
         StorageService.instance.cleanupSizeEstimates();
@@ -379,6 +383,7 @@ public class CassandraDaemon
             ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(SizeEstimatesRecorder.instance, 30, sizeRecorderInterval, TimeUnit.SECONDS);
 
         ActiveRepairService.instance.start();
+        StreamManager.instance.start();
 
         // Prepared statements
         QueryProcessor.instance.preloadPreparedStatements();
@@ -435,7 +440,7 @@ public class CassandraDaemon
             logger.debug("Completed submission of build tasks for any materialized views defined at startup");
         };
 
-        ScheduledExecutors.optionalTasks.schedule(viewRebuild, StorageService.RING_DELAY, TimeUnit.MILLISECONDS);
+        ScheduledExecutors.optionalTasks.schedule(viewRebuild, StorageService.RING_DELAY_MILLIS, TimeUnit.MILLISECONDS);
 
         if (!FBUtilities.getBroadcastAddressAndPort().equals(InetAddressAndPort.getLoopbackAddress()))
             Gossiper.waitToSettle();
@@ -479,6 +484,15 @@ public class CassandraDaemon
 
         initializeClientTransports();
 
+        // Ensure you've registered all caches during startup you want pre-warmed before this call -> be wary of adding
+        // init below this mark before completeSetup().
+        if (DatabaseDescriptor.getAuthCacheWarmingEnabled())
+            AuthCacheService.instance.warmCaches();
+        else
+            logger.info("Prewarming of auth caches is disabled");
+
+        PaxosState.startAutoRepairs();
+
         completeSetup();
     }
 
@@ -486,7 +500,7 @@ public class CassandraDaemon
     {
         try
         {
-            startupChecks.verify();
+            startupChecks.verify(DatabaseDescriptor.getStartupChecksOptions());
         }
         catch (StartupException e)
         {
@@ -574,33 +588,18 @@ public class CassandraDaemon
             nativeTransportService = new NativeTransportService();
     }
 
-    @VisibleForTesting
-    public static void uncaughtException(Thread t, Throwable e)
-    {
-        StorageMetrics.uncaughtExceptions.inc();
-        logger.error("Exception in thread {}", t, e);
-        Tracing.trace("Exception in thread {}", t, e);
-        for (Throwable e2 = e; e2 != null; e2 = e2.getCause())
-        {
-            // make sure error gets logged exactly once.
-            if (e2 != e && (e2 instanceof FSError || e2 instanceof CorruptSSTableException))
-                logger.error("Exception in thread {}", t, e2);
-        }
-        JVMStabilityInspector.inspectThrowable(e);
-    }
-
     /*
      * Asynchronously load the row and key cache in one off threads and return a compound future of the result.
      * Error handling is pushed into the cache load since cache loads are allowed to fail and are handled by logging.
      */
-    private ListenableFuture<?> loadRowAndKeyCacheAsync()
+    private Future<?> loadRowAndKeyCacheAsync()
     {
-        final ListenableFuture<Integer> keyCacheLoad = CacheService.instance.keyCache.loadSavedAsync();
+        final Future<Integer> keyCacheLoad = CacheService.instance.keyCache.loadSavedAsync();
 
-        final ListenableFuture<Integer> rowCacheLoad = CacheService.instance.rowCache.loadSavedAsync();
+        final Future<Integer> rowCacheLoad = CacheService.instance.rowCache.loadSavedAsync();
 
         @SuppressWarnings("unchecked")
-        ListenableFuture<List<Integer>> retval = Futures.successfulAsList(keyCacheLoad, rowCacheLoad);
+        Future<List<Integer>> retval = FutureCombiner.allOf(ImmutableList.of(keyCacheLoad, rowCacheLoad));
 
         return retval;
     }
@@ -710,11 +709,6 @@ public class CassandraDaemon
         destroyClientTransports();
         StorageService.instance.setRpcReady(false);
 
-        // On windows, we need to stop the entire system as prunsrv doesn't have the jsvc hooks
-        // We rely on the shutdown hook to drain the node
-        if (FBUtilities.isWindows)
-            System.exit(0);
-
         if (jmxServer != null)
         {
             try
@@ -754,13 +748,6 @@ public class CassandraDaemon
             applyConfig();
 
             registerNativeAccess();
-
-            if (FBUtilities.isWindows)
-            {
-                // We need to adjust the system timer on windows from the default 15ms down to the minimum of 1ms as this
-                // impacts timer intervals, thread scheduling, driver interrupts, etc.
-                WindowsTimer.startTimerPeriod(DatabaseDescriptor.getWindowsTimerInterval());
-            }
 
             setup();
 

@@ -29,8 +29,7 @@ import org.github.jamm.MemoryMeter;
  */
 public class ObjectSizes
 {
-    private static final MemoryMeter meter = new MemoryMeter().omitSharedBufferOverhead()
-                                                              .withGuessing(MemoryMeter.Guess.FALLBACK_UNSAFE)
+    private static final MemoryMeter meter = new MemoryMeter().withGuessing(MemoryMeter.Guess.FALLBACK_UNSAFE)
                                                               .ignoreKnownSingletons();
 
     private static final long EMPTY_HEAP_BUFFER_SIZE = measure(ByteBufferUtil.EMPTY_BYTE_BUFFER);

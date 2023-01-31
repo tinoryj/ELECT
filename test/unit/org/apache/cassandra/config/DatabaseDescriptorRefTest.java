@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.google.common.base.Throwables;
 import org.junit.Test;
 
 import org.apache.cassandra.utils.Pair;
@@ -60,12 +61,16 @@ public class DatabaseDescriptorRefTest
     "org.apache.cassandra.audit.BinLogAuditLogger",
     "org.apache.cassandra.audit.IAuditLogger",
     "org.apache.cassandra.auth.AllowAllInternodeAuthenticator",
+    "org.apache.cassandra.auth.AuthCache$BulkLoader",
+    "org.apache.cassandra.auth.Cacheable",
     "org.apache.cassandra.auth.IInternodeAuthenticator",
     "org.apache.cassandra.auth.IAuthenticator",
     "org.apache.cassandra.auth.IAuthorizer",
     "org.apache.cassandra.auth.IRoleManager",
     "org.apache.cassandra.auth.INetworkAuthorizer",
     "org.apache.cassandra.config.DatabaseDescriptor",
+    "org.apache.cassandra.config.CassandraRelevantProperties",
+    "org.apache.cassandra.config.CassandraRelevantProperties$PropertyConverter",
     "org.apache.cassandra.config.ConfigurationLoader",
     "org.apache.cassandra.config.Config",
     "org.apache.cassandra.config.Config$1",
@@ -77,22 +82,56 @@ public class DatabaseDescriptorRefTest
     "org.apache.cassandra.config.Config$FlushCompression",
     "org.apache.cassandra.config.Config$InternodeCompression",
     "org.apache.cassandra.config.Config$MemtableAllocationType",
+    "org.apache.cassandra.config.Config$PaxosOnLinearizabilityViolation",
+    "org.apache.cassandra.config.Config$PaxosStatePurging",
+    "org.apache.cassandra.config.Config$PaxosVariant",
     "org.apache.cassandra.config.Config$RepairCommandPoolFullStrategy",
     "org.apache.cassandra.config.Config$UserFunctionTimeoutPolicy",
     "org.apache.cassandra.config.Config$CorruptedTombstoneStrategy",
     "org.apache.cassandra.config.DatabaseDescriptor$ByteUnit",
-    "org.apache.cassandra.config.ParameterizedClass",
+    "org.apache.cassandra.config.DataRateSpec",
+    "org.apache.cassandra.config.DataRateSpec$DataRateUnit",
+    "org.apache.cassandra.config.DataRateSpec$DataRateUnit$1",
+    "org.apache.cassandra.config.DataRateSpec$DataRateUnit$2",
+    "org.apache.cassandra.config.DataRateSpec$DataRateUnit$3",
+    "org.apache.cassandra.config.DataStorageSpec",
+    "org.apache.cassandra.config.DataStorageSpec$DataStorageUnit",
+    "org.apache.cassandra.config.DataStorageSpec$DataStorageUnit$1",
+    "org.apache.cassandra.config.DataStorageSpec$DataStorageUnit$2",
+    "org.apache.cassandra.config.DataStorageSpec$DataStorageUnit$3",
+    "org.apache.cassandra.config.DataStorageSpec$DataStorageUnit$4",
+    "org.apache.cassandra.config.DataStorageSpec$IntBytesBound",
+    "org.apache.cassandra.config.DataStorageSpec$IntKibibytesBound",
+    "org.apache.cassandra.config.DataStorageSpec$IntMebibytesBound",
+    "org.apache.cassandra.config.DataStorageSpec$LongBytesBound",
+    "org.apache.cassandra.config.DataStorageSpec$LongMebibytesBound",
+    "org.apache.cassandra.config.DurationSpec",
+    "org.apache.cassandra.config.DataRateSpec$LongBytesPerSecondBound",
+    "org.apache.cassandra.config.DurationSpec$LongMillisecondsBound",
+    "org.apache.cassandra.config.DurationSpec$LongNanosecondsBound",
+    "org.apache.cassandra.config.DurationSpec$LongSecondsBound",
+    "org.apache.cassandra.config.DurationSpec$IntMillisecondsBound",
+    "org.apache.cassandra.config.DurationSpec$IntSecondsBound",
+    "org.apache.cassandra.config.DurationSpec$IntMinutesBound",
     "org.apache.cassandra.config.EncryptionOptions",
     "org.apache.cassandra.config.EncryptionOptions$ClientEncryptionOptions",
     "org.apache.cassandra.config.EncryptionOptions$ServerEncryptionOptions",
     "org.apache.cassandra.config.EncryptionOptions$ServerEncryptionOptions$InternodeEncryption",
     "org.apache.cassandra.config.EncryptionOptions$ServerEncryptionOptions$OutgoingEncryptedPortSource",
+    "org.apache.cassandra.config.GuardrailsOptions",
+    "org.apache.cassandra.config.GuardrailsOptions$Config",
+    "org.apache.cassandra.config.GuardrailsOptions$ConsistencyLevels",
+    "org.apache.cassandra.config.GuardrailsOptions$TableProperties",
+    "org.apache.cassandra.config.ParameterizedClass",
     "org.apache.cassandra.config.ReplicaFilteringProtectionOptions",
     "org.apache.cassandra.config.YamlConfigurationLoader",
     "org.apache.cassandra.config.YamlConfigurationLoader$PropertiesChecker",
     "org.apache.cassandra.config.YamlConfigurationLoader$PropertiesChecker$1",
     "org.apache.cassandra.config.YamlConfigurationLoader$CustomConstructor",
     "org.apache.cassandra.config.TransparentDataEncryptionOptions",
+    "org.apache.cassandra.config.StartupChecksOptions",
+    "org.apache.cassandra.config.SubnetGroups",
+    "org.apache.cassandra.config.TrackWarnings",
     "org.apache.cassandra.db.ConsistencyLevel",
     "org.apache.cassandra.db.commitlog.CommitLogSegmentManagerFactory",
     "org.apache.cassandra.db.commitlog.DefaultCommitLogSegmentMgrFactory",
@@ -101,6 +140,11 @@ public class DatabaseDescriptorRefTest
     "org.apache.cassandra.db.commitlog.CommitLogSegmentManagerStandard",
     "org.apache.cassandra.db.commitlog.CommitLog",
     "org.apache.cassandra.db.commitlog.CommitLogMBean",
+    "org.apache.cassandra.db.guardrails.GuardrailsConfig",
+    "org.apache.cassandra.db.guardrails.GuardrailsConfigMBean",
+    "org.apache.cassandra.db.guardrails.GuardrailsConfig$ConsistencyLevels",
+    "org.apache.cassandra.db.guardrails.GuardrailsConfig$TableProperties",
+    "org.apache.cassandra.db.guardrails.Values$Config",
     "org.apache.cassandra.dht.IPartitioner",
     "org.apache.cassandra.distributed.api.IInstance",
     "org.apache.cassandra.distributed.api.IIsolatedExecutor",
@@ -122,9 +166,11 @@ public class DatabaseDescriptorRefTest
     "org.apache.cassandra.exceptions.ConfigurationException",
     "org.apache.cassandra.exceptions.RequestValidationException",
     "org.apache.cassandra.exceptions.CassandraException",
+    "org.apache.cassandra.exceptions.InvalidRequestException",
     "org.apache.cassandra.exceptions.TransportException",
     "org.apache.cassandra.fql.FullQueryLogger",
     "org.apache.cassandra.fql.FullQueryLoggerOptions",
+    "org.apache.cassandra.gms.IFailureDetector",
     "org.apache.cassandra.locator.IEndpointSnitch",
     "org.apache.cassandra.io.FSWriteError",
     "org.apache.cassandra.io.FSError",
@@ -133,23 +179,33 @@ public class DatabaseDescriptorRefTest
     "org.apache.cassandra.io.compress.LZ4Compressor",
     "org.apache.cassandra.io.sstable.metadata.MetadataType",
     "org.apache.cassandra.io.util.BufferedDataOutputStreamPlus",
+    "org.apache.cassandra.io.util.RebufferingInputStream",
+    "org.apache.cassandra.io.util.FileInputStreamPlus",
+    "org.apache.cassandra.io.util.FileOutputStreamPlus",
+    "org.apache.cassandra.io.util.File",
     "org.apache.cassandra.io.util.DataOutputBuffer",
     "org.apache.cassandra.io.util.DataOutputBufferFixed",
     "org.apache.cassandra.io.util.DataOutputStreamPlus",
     "org.apache.cassandra.io.util.DataOutputPlus",
+    "org.apache.cassandra.io.util.DataInputPlus",
     "org.apache.cassandra.io.util.DiskOptimizationStrategy",
     "org.apache.cassandra.io.util.SpinningDiskOptimizationStrategy",
+    "org.apache.cassandra.io.util.PathUtils$IOToLongFunction",
     "org.apache.cassandra.locator.Replica",
+    "org.apache.cassandra.locator.ReplicaCollection",
     "org.apache.cassandra.locator.SimpleSeedProvider",
     "org.apache.cassandra.locator.SeedProvider",
+    "org.apache.cassandra.security.ISslContextFactory",
     "org.apache.cassandra.security.SSLFactory",
     "org.apache.cassandra.security.EncryptionContext",
     "org.apache.cassandra.service.CacheService$CacheType",
+    "org.apache.cassandra.transport.ProtocolException",
     "org.apache.cassandra.utils.binlog.BinLogOptions",
     "org.apache.cassandra.utils.FBUtilities",
     "org.apache.cassandra.utils.FBUtilities$1",
     "org.apache.cassandra.utils.CloseableIterator",
     "org.apache.cassandra.utils.Pair",
+    "org.apache.cassandra.utils.concurrent.UncheckedInterruptedException",
     "org.apache.cassandra.ConsoleAppender",
     "org.apache.cassandra.ConsoleAppender$1",
     "org.apache.cassandra.LogbackStatusListener",
@@ -295,7 +351,7 @@ public class DatabaseDescriptorRefTest
         {
             Method method = databaseDescriptorClass.getDeclaredMethod(methodName);
             method.invoke(null);
-            
+
             if (threadCount != threads.getThreadCount())
             {
                 for (ThreadInfo threadInfo : threads.getThreadInfo(threads.getAllThreadIds()))
@@ -311,15 +367,15 @@ public class DatabaseDescriptorRefTest
     {
         if (!violations.isEmpty())
         {
+            StringBuilder sb = new StringBuilder();
             for (Pair<String, Exception> violation : new ArrayList<>(violations))
-            {
-                err.println();
-                err.println();
-                err.println("VIOLATION: " + violation.left);
-                violation.right.printStackTrace(err);
-            }
+                sb.append("\n\n")
+                  .append("VIOLATION: ").append(violation.left).append('\n')
+                  .append(Throwables.getStackTraceAsString(violation.right));
+            String msg = sb.toString();
+            err.println(msg);
 
-            fail();
+            fail(msg);
         }
     }
 }

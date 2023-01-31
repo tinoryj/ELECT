@@ -50,6 +50,7 @@ import static org.apache.cassandra.distributed.api.Feature.NETWORK;
 
 public class ReadsDuringBootstrapTest extends TestBaseImpl
 {
+
     @Test
     public void readsDuringBootstrapTest() throws IOException, ExecutionException, InterruptedException, TimeoutException
     {
@@ -60,8 +61,8 @@ public class ReadsDuringBootstrapTest extends TestBaseImpl
                                         .withTokenSupplier(TokenSupplier.evenlyDistributedTokens(expandedNodeCount))
                                         .withNodeIdTopology(NetworkTopology.singleDcNetworkTopology(expandedNodeCount, "dc0", "rack0"))
                                         .withConfig(config -> config.with(NETWORK, GOSSIP)
-                                                                    .set("read_request_timeout_in_ms", Integer.MAX_VALUE)
-                                                                    .set("request_timeout_in_ms", Integer.MAX_VALUE))
+                                                                    .set("read_request_timeout", String.format("%dms", Integer.MAX_VALUE))
+                                                                    .set("request_timeout", String.format("%dms", Integer.MAX_VALUE)))
                                         .withInstanceInitializer(BB::install)
                                         .start())
         {
@@ -90,6 +91,7 @@ public class ReadsDuringBootstrapTest extends TestBaseImpl
     {
         public static final AtomicBoolean block = new AtomicBoolean();
         public static final CountDownLatch latch = new CountDownLatch(1);
+
         private static void install(ClassLoader cl, Integer instanceId)
         {
             if (instanceId != 1)
@@ -110,5 +112,4 @@ public class ReadsDuringBootstrapTest extends TestBaseImpl
             return zuper.call();
         }
     }
-
 }

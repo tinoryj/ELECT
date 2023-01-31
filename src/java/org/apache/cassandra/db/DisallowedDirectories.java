@@ -20,14 +20,14 @@ package org.apache.cassandra.db;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.utils.MBeanWrapper;
 
 public class DisallowedDirectories implements DisallowedDirectoriesMBean
@@ -49,14 +49,21 @@ public class DisallowedDirectories implements DisallowedDirectoriesMBean
         MBeanWrapper.instance.registerMBean(this, MBEAN_NAME, MBeanWrapper.OnException.LOG);
     }
 
-    public Set<File> getUnreadableDirectories()
+    @Override
+    public Set<java.io.File> getUnreadableDirectories()
     {
-        return Collections.unmodifiableSet(unreadableDirectories);
+        return toJmx(unreadableDirectories);
     }
 
-    public Set<File> getUnwritableDirectories()
+    @Override
+    public Set<java.io.File> getUnwritableDirectories()
     {
-        return Collections.unmodifiableSet(unwritableDirectories);
+        return toJmx(unwritableDirectories);
+    }
+
+    private static Set<java.io.File> toJmx(Set<File> set)
+    {
+        return set.stream().map(f -> f.toPath().toFile()).collect(Collectors.toSet()); // checkstyle: permit this invocation
     }
 
     public void markUnreadable(String path)
@@ -145,11 +152,11 @@ public class DisallowedDirectories implements DisallowedDirectoriesMBean
             return file;
 
         if (file.isFile())
-            return file.getParentFile();
+            return file.parent();
 
         // the file with path cannot be read - try determining the directory manually.
-        if (file.getPath().endsWith(".db"))
-            return file.getParentFile();
+        if (file.path().endsWith(".db"))
+            return file.parent();
 
         // We may not be able to determine if it's a file or a directory if
         // we were called because we couldn't create the file/directory.

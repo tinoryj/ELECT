@@ -29,6 +29,7 @@ import javax.management.openmbean.OpenDataException;
 
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.utils.BreaksJMX;
 
 /**
  * The MBean interface for ColumnFamilyStore
@@ -58,7 +59,18 @@ public interface ColumnFamilyStoreMBean
      *
      * @param tokenRanges The token ranges to be compacted, interpreted as closed intervals.
      */
+    @BreaksJMX("This API was released in 3.10 using a parameter that takes Range of Token, which can only be done IFF client has Cassandra binaries in the classpath")
+    @Deprecated
     public void forceCompactionForTokenRange(Collection<Range<Token>> tokenRanges) throws ExecutionException, InterruptedException;
+
+    /**
+     * Forces a major compaction of specified token ranges in this column family.
+     * <p>
+     * The token ranges will be interpreted as closed intervals to match the closed interval defined by the first and
+     * last keys of a sstable, even though the {@link Range} class is suppossed to be half-open by definition.
+     */
+    public void forceCompactionForTokenRanges(String... tokenRanges);
+
     /**
      * Gets the minimum number of sstables in queue before compaction kicks off
      */
@@ -208,6 +220,12 @@ public interface ColumnFamilyStoreMBean
     public int[] getSSTableCountPerLevel();
 
     /**
+     * @return total size on disk for each level. null unless leveled compaction is used.
+     *         array index corresponds to level(int[0] is for level 0, ...).
+     */
+    public long[] getPerLevelSizeBytes();
+
+    /**
      * @return sstable fanout size for level compaction strategy.
      */
     public int getLevelFanoutSize();
@@ -256,4 +274,9 @@ public interface ColumnFamilyStoreMBean
     public boolean hasMisplacedSSTables();
 
     public List<String> getDataPaths() throws IOException;
+
+    public Map<String, Long> getTopSizePartitions();
+    public Long getTopSizePartitionsLastUpdate();
+    public Map<String, Long> getTopTombstonePartitions();
+    public Long getTopTombstonePartitionsLastUpdate();
 }

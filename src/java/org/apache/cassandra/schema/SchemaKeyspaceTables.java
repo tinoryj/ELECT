@@ -19,19 +19,19 @@ package org.apache.cassandra.schema;
 
 import com.google.common.collect.ImmutableList;
 
-public final class SchemaKeyspaceTables
+public class SchemaKeyspaceTables
 {
-    public static final String INDEXES = "indexes";
-    public static final String AGGREGATES = "aggregates";
-    public static final String FUNCTIONS = "functions";
-    public static final String TYPES = "types";
-    public static final String VIEWS = "views";
-    public static final String TRIGGERS = "triggers";
-    public static final String DROPPED_COLUMNS = "dropped_columns";
-    public static final String COLUMNS = "columns";
-    public static final String TABLES = "tables";
     public static final String KEYSPACES = "keyspaces";
-
+    public static final String TABLES = "tables";
+    public static final String COLUMNS = "columns";
+    public static final String DROPPED_COLUMNS = "dropped_columns";
+    public static final String TRIGGERS = "triggers";
+    public static final String VIEWS = "views";
+    public static final String TYPES = "types";
+    public static final String FUNCTIONS = "functions";
+    public static final String AGGREGATES = "aggregates";
+    public static final String INDEXES = "indexes";
+ 
     /**
      * The order in this list matters.
      *
@@ -56,7 +56,4 @@ public final class SchemaKeyspaceTables
                                                                      VIEWS,
                                                                      KEYSPACES);
 
-    private SchemaKeyspaceTables()
-    {
-    }
 }

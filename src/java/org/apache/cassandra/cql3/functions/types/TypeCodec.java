@@ -31,13 +31,10 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.google.common.reflect.TypeToken;
 
 import org.apache.cassandra.transport.ProtocolVersion;
-import org.apache.cassandra.cql3.functions.types.DataType.CollectionType;
-import org.apache.cassandra.cql3.functions.types.DataType.Name;
 import org.apache.cassandra.cql3.functions.types.exceptions.InvalidTypeException;
 import org.apache.cassandra.cql3.functions.types.utils.Bytes;
 import org.apache.cassandra.utils.vint.VIntCoding;
@@ -3045,19 +3042,20 @@ public abstract class TypeCodec<T>
             VIntCoding.computeVIntSize(months)
             + VIntCoding.computeVIntSize(days)
             + VIntCoding.computeVIntSize(nanoseconds);
-            ByteArrayDataOutput out = ByteStreams.newDataOutput(size);
+            ByteBuffer bb = ByteBuffer.allocate(size);
             try
             {
-                VIntCoding.writeVInt(months, out);
-                VIntCoding.writeVInt(days, out);
-                VIntCoding.writeVInt(nanoseconds, out);
+                VIntCoding.writeVInt(months, bb);
+                VIntCoding.writeVInt(days, bb);
+                VIntCoding.writeVInt(nanoseconds, bb);
             }
             catch (IOException e)
             {
                 // cannot happen
                 throw new AssertionError();
             }
-            return ByteBuffer.wrap(out.toByteArray());
+            bb.flip();
+            return bb;
         }
 
         @Override

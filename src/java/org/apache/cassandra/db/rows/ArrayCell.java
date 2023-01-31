@@ -111,6 +111,13 @@ public class ArrayCell extends AbstractCell<byte[]>
         return super.clone(cloner);
     }
 
+    @Override
+    public long unsharedHeapSize()
+    {
+        return EMPTY_SIZE + ObjectSizes.sizeOfArray(value) + (path == null ? 0 : path.unsharedHeapSize());
+    }
+
+    @Override
     public long unsharedHeapSizeExcludingData()
     {
         return EMPTY_SIZE + ObjectSizes.sizeOfArray(value) - value.length + (path == null ? 0 : path.unsharedHeapSizeExcludingData());

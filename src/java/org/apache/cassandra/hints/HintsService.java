@@ -17,14 +17,16 @@
  */
 package org.apache.cassandra.hints;
 
-import java.io.File;
 import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -32,7 +34,10 @@ import java.util.stream.Collectors;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.locator.ReplicaLayout;
+import org.apache.cassandra.utils.Clock;
+import org.apache.cassandra.utils.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +54,7 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.MBeanWrapper;
+import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
 import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Iterables.transform;
@@ -59,6 +65,7 @@ import static com.google.common.collect.Iterables.transform;
  * - a single-threaded write executor
  * - a multi-threaded dispatch executor
  * - the buffer pool for writing hints into
+ * - an optional scheduled task to clean up the applicable hints files
  *
  * The front-end for everything hints related.
  */
@@ -83,6 +90,7 @@ public final class HintsService implements HintsServiceMBean
 
     private final ScheduledFuture triggerFlushingFuture;
     private volatile ScheduledFuture triggerDispatchFuture;
+    private final ScheduledFuture triggerCleanupFuture;
 
     public final HintedHandoffMetrics metrics;
 
@@ -112,6 +120,11 @@ public final class HintsService implements HintsServiceMBean
                                                                                         flushPeriod,
                                                                                         flushPeriod,
                                                                                         TimeUnit.MILLISECONDS);
+
+        // periodically cleanup the expired hints
+        HintsCleanupTrigger cleanupTrigger = new HintsCleanupTrigger(catalog, dispatchExecutor);
+        triggerCleanupFuture = ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(cleanupTrigger, 1, 1, TimeUnit.HOURS);
+
         metrics = new HintedHandoffMetrics();
     }
 
@@ -183,7 +196,7 @@ public final class HintsService implements HintsServiceMBean
         // judicious use of streams: eagerly materializing probably cheaper
         // than performing filters / translations 2x extra via Iterables.filter/transform
         List<UUID> hostIds = replicas.stream()
-                .filter(StorageProxy::shouldHint)
+                .filter(replica -> StorageProxy.shouldHint(replica, false))
                 .map(replica -> StorageService.instance.getHostIdForEndpoint(replica.endpoint()))
                 .collect(Collectors.toList());
 
@@ -234,6 +247,19 @@ public final class HintsService implements HintsServiceMBean
     }
 
     /**
+     * Get the total size in bytes of all the hints files associating with the host on disk.
+     * @param hostId, belonging host
+     * @return total file size, in bytes
+     */
+    public long getTotalHintsSize(UUID hostId)
+    {
+        HintsStore store = catalog.getNullable(hostId);
+        if (store == null)
+            return 0;
+        return store.getTotalFileSize();
+    }
+
+    /**
      * Gracefully and blockingly shut down the service.
      *
      * Will abort dispatch sessions that are currently in progress (which is okay, it's idempotent),
@@ -251,6 +277,8 @@ public final class HintsService implements HintsServiceMBean
 
         triggerFlushingFuture.cancel(false);
 
+        triggerCleanupFuture.cancel(false);
+
         writeExecutor.flushBufferPool(bufferPool).get();
         writeExecutor.closeAllWriters().get();
 
@@ -259,6 +287,31 @@ public final class HintsService implements HintsServiceMBean
 
         HintsServiceDiagnostics.dispatchingShutdown(this);
         bufferPool.close();
+    }
+
+    /**
+     * Returns all pending hints that this node has.
+     *
+     * @return a list of {@link PendingHintsInfo}
+     */
+    public List<PendingHintsInfo> getPendingHintsInfo()
+    {
+        return catalog.stores()
+                      .filter(HintsStore::hasFiles)
+                      .map(HintsStore::getPendingHintsInfo)
+                      .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns all pending hints that this node has.
+     *
+     * @return a list of maps with endpoints' ids, total number of hint files, their oldest and newest timestamps.
+     */
+    public List<Map<String, String>> getPendingHints()
+    {
+        return getPendingHintsInfo().stream()
+                                    .map(PendingHintsInfo::asMap)
+                                    .collect(Collectors.toList());
     }
 
     /**
@@ -332,7 +385,11 @@ public final class HintsService implements HintsServiceMBean
             flushFuture.get();
             closeFuture.get();
         }
-        catch (InterruptedException | ExecutionException e)
+        catch (InterruptedException e)
+        {
+            throw new UncheckedInterruptedException(e);
+        }
+        catch (ExecutionException e)
         {
             throw new RuntimeException(e);
         }
@@ -369,7 +426,11 @@ public final class HintsService implements HintsServiceMBean
             flushFuture.get();
             closeFuture.get();
         }
-        catch (InterruptedException | ExecutionException e)
+        catch (InterruptedException e)
+        {
+            throw new UncheckedInterruptedException(e);
+        }
+        catch (ExecutionException e)
         {
             throw new RuntimeException(e);
         }
@@ -381,6 +442,20 @@ public final class HintsService implements HintsServiceMBean
         catalog.stores().forEach(dispatchExecutor::completeDispatchBlockingly);
 
         return dispatchExecutor.transfer(catalog, hostIdSupplier);
+    }
+
+    /**
+     * Get the earliest hint written for a particular node,
+     * @param hostId UUID of the node to check it's hints.
+     * @return earliest hint as per unix time or Long.MIN_VALUE if hostID is null
+     */
+    public long getEarliestHintForHost(UUID hostId)
+    {
+        // Need to check only the first descriptor + all buffers.
+        HintsStore store = catalog.get(hostId);
+        HintsDescriptor desc = store.getFirstDescriptor();
+        long timestamp = desc == null ? Clock.Global.currentTimeMillis() : desc.timestamp;
+        return Math.min(timestamp, bufferPool.getEarliestHintForHost(hostId));
     }
 
     HintsCatalog getCatalog()
