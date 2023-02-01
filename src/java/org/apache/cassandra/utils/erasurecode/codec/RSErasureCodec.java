@@ -31,8 +31,8 @@ import org.apache.cassandra.utils.erasurecode.coder.RSErasureEncoder;
 
 public class RSErasureCodec extends ErasureCodec {
 
-  public RSErasureCodec(Configuration conf, ErasureCodecOptions options) {
-    super(conf, options);
+  public RSErasureCodec(ErasureCodecOptions options) {
+    super( options);
   }
 
   @Override

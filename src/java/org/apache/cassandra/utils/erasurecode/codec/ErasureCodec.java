@@ -35,8 +35,7 @@ public abstract class ErasureCodec {
   private ErasureCodecOptions codecOptions;
   private ErasureCoderOptions coderOptions;
 
-  public ErasureCodec(Configuration conf,
-                      ErasureCodecOptions options) {
+  public ErasureCodec(ErasureCodecOptions options) {
     this.schema = options.getSchema();
     this.codecOptions = options;
     boolean allowChangeInputs = false;

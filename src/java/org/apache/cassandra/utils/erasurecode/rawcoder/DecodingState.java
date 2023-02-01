@@ -43,12 +43,12 @@ class DecodingState {
     }
 
     if (erasedIndexes.length != outputs.length) {
-      throw new HadoopIllegalArgumentException(
+      System.out.println(
           "erasedIndexes and outputs mismatch in length");
     }
 
     if (erasedIndexes.length > decoder.getNumParityUnits()) {
-      throw new HadoopIllegalArgumentException(
+      System.out.println(
           "Too many erased, not recoverable");
     }
   }

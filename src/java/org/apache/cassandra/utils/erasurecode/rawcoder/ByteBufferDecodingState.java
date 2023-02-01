@@ -104,11 +104,11 @@ class ByteBufferDecodingState extends DecodingState {
       }
 
       if (buffer.remaining() != decodeLength) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer, not of length " + decodeLength);
       }
       if (buffer.isDirect() != usingDirectBuffer) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer, isDirect should be " + usingDirectBuffer);
       }
 
@@ -116,7 +116,7 @@ class ByteBufferDecodingState extends DecodingState {
     }
 
     if (validInputs < decoder.getNumDataUnits()) {
-      throw new HadoopIllegalArgumentException(
+      System.out.println(
           "No enough valid inputs are provided, not recoverable");
     }
   }
@@ -129,16 +129,16 @@ class ByteBufferDecodingState extends DecodingState {
   void checkOutputBuffers(ByteBuffer[] buffers) {
     for (ByteBuffer buffer : buffers) {
       if (buffer == null) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer found, not allowing null");
       }
 
       if (buffer.remaining() != decodeLength) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer, not of length " + decodeLength);
       }
       if (buffer.isDirect() != usingDirectBuffer) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer, isDirect should be " + usingDirectBuffer);
       }
     }

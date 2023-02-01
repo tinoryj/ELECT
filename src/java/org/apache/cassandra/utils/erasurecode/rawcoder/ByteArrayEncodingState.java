@@ -91,12 +91,12 @@ class ByteArrayEncodingState extends EncodingState {
   void checkBuffers(byte[][] buffers) {
     for (byte[] buffer : buffers) {
       if (buffer == null) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer found, not allowing null");
       }
 
       if (buffer.length != encodeLength) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer not of length " + encodeLength);
       }
     }

@@ -35,10 +35,10 @@ abstract class EncodingState {
    */
   <T> void checkParameters(T[] inputs, T[] outputs) {
     if (inputs.length != encoder.getNumDataUnits()) {
-      throw new HadoopIllegalArgumentException("Invalid inputs length");
+      System.out.println("Invalid inputs length");
     }
     if (outputs.length != encoder.getNumParityUnits()) {
-      throw new HadoopIllegalArgumentException("Invalid outputs length");
+      System.out.println("Invalid outputs length");
     }
   }
 }

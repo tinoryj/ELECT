@@ -167,7 +167,7 @@ public final class CoderUtil {
       }
     }
 
-    throw new HadoopIllegalArgumentException(
+    System.out.println(
         "Invalid inputs are found, all being null");
   }
 

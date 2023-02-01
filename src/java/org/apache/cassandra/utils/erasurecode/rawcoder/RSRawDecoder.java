@@ -59,7 +59,7 @@ public class RSRawDecoder extends RawErasureDecoder {
 
     int numAllUnits = getNumAllUnits();
     if (getNumAllUnits() >= RSUtil.GF.getFieldSize()) {
-      throw new HadoopIllegalArgumentException(
+      System.out.println(
               "Invalid getNumDataUnits() and numParityUnits");
     }
 

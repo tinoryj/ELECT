@@ -91,16 +91,16 @@ class ByteBufferEncodingState extends EncodingState {
   void checkBuffers(ByteBuffer[] buffers) {
     for (ByteBuffer buffer : buffers) {
       if (buffer == null) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer found, not allowing null");
       }
 
       if (buffer.remaining() != encodeLength) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer, not of length " + encodeLength);
       }
       if (buffer.isDirect() != usingDirectBuffer) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer, isDirect should be " + usingDirectBuffer);
       }
     }

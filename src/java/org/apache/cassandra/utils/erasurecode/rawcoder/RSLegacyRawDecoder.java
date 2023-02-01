@@ -43,7 +43,7 @@ public class RSLegacyRawDecoder extends RawErasureDecoder {
   public RSLegacyRawDecoder(ErasureCoderOptions coderOptions) {
     super(coderOptions);
     if (getNumAllUnits() >= RSUtil.GF.getFieldSize()) {
-      throw new HadoopIllegalArgumentException(
+      System.out.println(
               "Invalid numDataUnits and numParityUnits");
     }
 
@@ -144,7 +144,7 @@ public class RSLegacyRawDecoder extends RawErasureDecoder {
         }
       }
       if (!found) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Inputs not fully corresponding to erasedIndexes in null places");
       }
     }
@@ -195,7 +195,7 @@ public class RSLegacyRawDecoder extends RawErasureDecoder {
         }
       }
       if (!found) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Inputs not fully corresponding to erasedIndexes in null places");
       }
     }

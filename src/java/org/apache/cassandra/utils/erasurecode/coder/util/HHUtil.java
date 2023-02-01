@@ -213,8 +213,5 @@ public final class HHUtil {
         return input;
       }
     }
-
-    throw new HadoopIllegalArgumentException(
-            "Invalid inputs are found, all being null");
   }
 }

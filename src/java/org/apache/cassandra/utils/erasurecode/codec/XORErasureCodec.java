@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.utils.erasurecode.codec;
 
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.cassandra.utils.erasurecode.ErasureCodecOptions;
 import org.apache.cassandra.utils.erasurecode.coder.ErasureDecoder;
@@ -31,9 +30,9 @@ import org.apache.cassandra.utils.erasurecode.coder.XORErasureEncoder;
 
 public class XORErasureCodec extends ErasureCodec {
 
-  public XORErasureCodec(Configuration conf, ErasureCodecOptions options) {
-    super(conf, options);
-    assert(options.getSchema().getNumParityUnits() == 1);
+  public XORErasureCodec(ErasureCodecOptions options) {
+    super(options);
+    assert (options.getSchema().getNumParityUnits() == 1);
   }
 
   @Override

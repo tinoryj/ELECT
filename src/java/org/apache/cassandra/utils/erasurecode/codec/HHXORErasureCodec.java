@@ -29,8 +29,8 @@ import org.apache.cassandra.utils.erasurecode.coder.HHXORErasureEncoder;
 
 public class HHXORErasureCodec extends ErasureCodec {
 
-  public HHXORErasureCodec(Configuration conf, ErasureCodecOptions options) {
-    super(conf, options);
+  public HHXORErasureCodec(ErasureCodecOptions options) {
+    super(options);
   }
 
   @Override

@@ -17,9 +17,6 @@
  */
 package org.apache.cassandra.utils.erasurecode.rawcoder;
 
-
-
-
 import java.nio.ByteBuffer;
 
 /**
@@ -35,7 +32,7 @@ class ByteArrayDecodingState extends DecodingState {
   int[] outputOffsets;
 
   ByteArrayDecodingState(RawErasureDecoder decoder, byte[][] inputs,
-                         int[] erasedIndexes, byte[][] outputs) {
+      int[] erasedIndexes, byte[][] outputs) {
     this.decoder = decoder;
     this.inputs = inputs;
     this.outputs = outputs;
@@ -52,12 +49,12 @@ class ByteArrayDecodingState extends DecodingState {
   }
 
   ByteArrayDecodingState(RawErasureDecoder decoder,
-                         int decodeLength,
-                         int[] erasedIndexes,
-                         byte[][] inputs,
-                         int[] inputOffsets,
-                         byte[][] outputs,
-                         int[] outputOffsets) {
+      int decodeLength,
+      int[] erasedIndexes,
+      byte[][] inputs,
+      int[] inputOffsets,
+      byte[][] outputs,
+      int[] outputOffsets) {
     this.decoder = decoder;
     this.decodeLength = decodeLength;
     this.erasedIndexes = erasedIndexes;
@@ -90,6 +87,7 @@ class ByteArrayDecodingState extends DecodingState {
 
   /**
    * Check and ensure the buffers are of the desired length.
+   * 
    * @param buffers the buffers to check
    */
   void checkInputBuffers(byte[][] buffers) {
@@ -101,7 +99,7 @@ class ByteArrayDecodingState extends DecodingState {
       }
 
       if (buffer.length != decodeLength) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer, not of length " + decodeLength);
       }
 
@@ -109,24 +107,25 @@ class ByteArrayDecodingState extends DecodingState {
     }
 
     if (validInputs < decoder.getNumDataUnits()) {
-      throw new HadoopIllegalArgumentException(
+      System.out.println(
           "No enough valid inputs are provided, not recoverable");
     }
   }
 
   /**
    * Check and ensure the buffers are of the desired length.
+   * 
    * @param buffers the buffers to check
    */
   void checkOutputBuffers(byte[][] buffers) {
     for (byte[] buffer : buffers) {
       if (buffer == null) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer found, not allowing null");
       }
 
       if (buffer.length != decodeLength) {
-        throw new HadoopIllegalArgumentException(
+        System.out.println(
             "Invalid buffer not of length " + decodeLength);
       }
     }

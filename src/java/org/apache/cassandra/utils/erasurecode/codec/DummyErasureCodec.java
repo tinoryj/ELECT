@@ -29,8 +29,8 @@ import org.apache.cassandra.utils.erasurecode.coder.ErasureEncoder;
  * test or performance comparison with other erasure coders.
  */
 public class DummyErasureCodec extends ErasureCodec {
-  public DummyErasureCodec(Configuration conf, ErasureCodecOptions options) {
-    super(conf, options);
+  public DummyErasureCodec(ErasureCodecOptions options) {
+    super(options);
   }
 
   @Override

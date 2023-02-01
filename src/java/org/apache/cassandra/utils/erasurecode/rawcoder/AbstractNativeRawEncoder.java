@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.utils.erasurecode.rawcoder;
 
-
 import org.apache.cassandra.utils.erasurecode.ErasureCoderOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,13 +30,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 
 abstract class AbstractNativeRawEncoder extends RawErasureEncoder {
-  public static Logger LOG =
-      LoggerFactory.getLogger(AbstractNativeRawEncoder.class);
+  public static Logger logger = LoggerFactory.getLogger(AbstractNativeRawEncoder.class);
 
   // Protect ISA-L coder data structure in native layer from being accessed and
   // updated concurrently by the init, release and encode functions.
-  protected final ReentrantReadWriteLock encoderLock =
-      new ReentrantReadWriteLock();
+  protected final ReentrantReadWriteLock encoderLock = new ReentrantReadWriteLock();
 
   public AbstractNativeRawEncoder(ErasureCoderOptions coderOptions) {
     super(coderOptions);
@@ -75,8 +72,8 @@ abstract class AbstractNativeRawEncoder extends RawErasureEncoder {
   }
 
   protected abstract void performEncodeImpl(
-          ByteBuffer[] inputs, int[] inputOffsets,
-          int dataLen, ByteBuffer[] outputs, int[] outputOffsets)
+      ByteBuffer[] inputs, int[] inputOffsets,
+      int dataLen, ByteBuffer[] outputs, int[] outputOffsets)
       throws IOException;
 
   @Override
