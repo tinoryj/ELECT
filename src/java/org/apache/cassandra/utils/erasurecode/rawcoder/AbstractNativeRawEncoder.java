@@ -79,8 +79,8 @@ abstract class AbstractNativeRawEncoder extends RawErasureEncoder {
   @Override
   protected void doEncode(ByteArrayEncodingState encodingState)
       throws IOException {
-    PerformanceAdvisory.LOG.debug("convertToByteBufferState is invoked, " +
-        "not efficiently. Please use direct ByteBuffer inputs/outputs");
+    // PerformanceAdvisory.LOG.debug("convertToByteBufferState is invoked, " +
+    // "not efficiently. Please use direct ByteBuffer inputs/outputs");
 
     ByteBufferEncodingState bbeState = encodingState.convertToByteBufferState();
     doEncode(bbeState);

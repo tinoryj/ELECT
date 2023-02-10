@@ -17,8 +17,6 @@
  */
 package org.apache.cassandra.utils.erasurecode.rawcoder;
 
-
-
 import org.apache.cassandra.utils.erasurecode.ECChunk;
 
 import java.nio.ByteBuffer;
@@ -38,6 +36,7 @@ public final class CoderUtil {
 
   /**
    * Make sure to return an empty chunk buffer for the desired length.
+   * 
    * @param leastLength
    * @return empty chunk of zero bytes
    */
@@ -56,6 +55,7 @@ public final class CoderUtil {
   /**
    * Ensure a buffer filled with ZERO bytes from current readable/writable
    * position.
+   * 
    * @param buffer a buffer ready to read / write certain size bytes
    * @return the buffer itself, with ZERO bytes written, the position and limit
    *         are not changed after the call
@@ -71,6 +71,7 @@ public final class CoderUtil {
   /**
    * Ensure the buffer (either input or output) ready to read or write with ZERO
    * bytes fully in specified length of len.
+   * 
    * @param buffer bytes array buffer
    * @return the buffer itself
    */
@@ -94,7 +95,7 @@ public final class CoderUtil {
    * Initialize the output buffers with ZERO bytes.
    */
   static void resetOutputBuffers(byte[][] buffers, int[] offsets,
-                                 int dataLen) {
+      int dataLen) {
     for (int i = 0; i < buffers.length; i++) {
       resetBuffer(buffers[i], offsets[i], dataLen);
     }
@@ -102,6 +103,7 @@ public final class CoderUtil {
 
   /**
    * Convert an array of this chunks to an array of ByteBuffers
+   * 
    * @param chunks chunks to convertToByteArrayState into buffers
    * @return an array of ByteBuffers
    */
@@ -141,6 +143,7 @@ public final class CoderUtil {
   /**
    * Get indexes array for items marked as null, either erased or
    * not to read.
+   * 
    * @return indexes array
    */
   static <T> int[] getNullIndexes(T[] inputs) {
@@ -157,6 +160,7 @@ public final class CoderUtil {
 
   /**
    * Find the valid input from all the inputs.
+   * 
    * @param inputs input buffers to look for valid input
    * @return the first valid input
    */
@@ -167,12 +171,13 @@ public final class CoderUtil {
       }
     }
 
-    System.out.println(
-        "Invalid inputs are found, all being null");
+    System.out.println("Invalid inputs are found, all being null");
+    return null;
   }
 
   /**
    * Picking up indexes of valid inputs.
+   * 
    * @param inputs decoding input buffers
    * @param <T>
    */

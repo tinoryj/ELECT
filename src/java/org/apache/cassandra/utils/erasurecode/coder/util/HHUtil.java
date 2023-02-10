@@ -20,7 +20,6 @@ package org.apache.cassandra.utils.erasurecode.coder.util;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-
 import org.apache.cassandra.utils.erasurecode.rawcoder.RawErasureEncoder;
 import org.apache.cassandra.utils.erasurecode.rawcoder.util.RSUtil;
 
@@ -34,7 +33,7 @@ public final class HHUtil {
   }
 
   public static int[] initPiggyBackIndexWithoutPBVec(int numDataUnits,
-                                                     int numParityUnits) {
+      int numParityUnits) {
     final int piggyBackSize = numDataUnits / (numParityUnits - 1);
     int[] piggyBackIndex = new int[numParityUnits];
 
@@ -49,7 +48,7 @@ public final class HHUtil {
   }
 
   public static int[] initPiggyBackFullIndexVec(int numDataUnits,
-                                                int[] piggyBackIndex) {
+      int[] piggyBackIndex) {
     int[] piggyBackFullIndex = new int[numDataUnits];
 
     for (int i = 1; i < piggyBackIndex.length; ++i) {
@@ -62,10 +61,10 @@ public final class HHUtil {
   }
 
   public static ByteBuffer[] getPiggyBacksFromInput(ByteBuffer[] inputs,
-                                                    int[] piggyBackIndex,
-                                                    int numParityUnits,
-                                                    int pgIndex,
-                                                    RawErasureEncoder encoder)
+      int[] piggyBackIndex,
+      int numParityUnits,
+      int pgIndex,
+      RawErasureEncoder encoder)
       throws IOException {
     ByteBuffer[] emptyInput = new ByteBuffer[inputs.length];
     ByteBuffer[] tempInput = new ByteBuffer[inputs.length];
@@ -74,14 +73,14 @@ public final class HHUtil {
     for (int m = 0; m < inputs.length; ++m) {
       if (inputs[m] != null) {
         emptyInput[m] = allocateByteBuffer(inputs[m].isDirect(),
-                inputs[m].remaining());
+            inputs[m].remaining());
       }
     }
 
     ByteBuffer[] tempOutput = new ByteBuffer[numParityUnits];
     for (int m = 0; m < numParityUnits; ++m) {
       tempOutput[m] = allocateByteBuffer(inputs[m].isDirect(),
-              inputs[0].remaining());
+          inputs[0].remaining());
     }
 
     ByteBuffer[] piggyBacks = new ByteBuffer[numParityUnits - 1];
@@ -139,7 +138,7 @@ public final class HHUtil {
   }
 
   public static ByteBuffer allocateByteBuffer(boolean useDirectBuffer,
-                                              int bufSize) {
+      int bufSize) {
     if (useDirectBuffer) {
       return ByteBuffer.allocateDirect(bufSize);
     } else {
@@ -148,16 +147,16 @@ public final class HHUtil {
   }
 
   public static ByteBuffer getPiggyBackForDecode(ByteBuffer[][] inputs,
-                                                 ByteBuffer[][] outputs,
-                                                 int pbParityIndex,
-                                                 int numDataUnits,
-                                                 int numParityUnits,
-                                                 int pbIndex) {
+      ByteBuffer[][] outputs,
+      int pbParityIndex,
+      int numDataUnits,
+      int numParityUnits,
+      int pbIndex) {
     ByteBuffer fisrtValidInput = HHUtil.findFirstValidInput(inputs[0]);
     int bufSize = fisrtValidInput.remaining();
 
     ByteBuffer piggybacks = allocateByteBuffer(fisrtValidInput.isDirect(),
-            bufSize);
+        bufSize);
 
     // Use piggyBackParityIndex to figure out which parity location has the
     // associated piggyBack
@@ -189,8 +188,8 @@ public final class HHUtil {
         }
 
         sum = RSUtil.GF.add(sum,
-                (0xFF & inputs[0][numDataUnits + pbIndex].get(
-                        inputs[0][numDataUnits + pbIndex].position() + k)));
+            (0xFF & inputs[0][numDataUnits + pbIndex].get(
+                inputs[0][numDataUnits + pbIndex].position() + k)));
 
         piggybacks.put(k, (byte) sum);
       }
@@ -203,7 +202,7 @@ public final class HHUtil {
   /**
    * Find the valid input from all the inputs.
    *
-   * @param <T> Generics Type T.
+   * @param <T>    Generics Type T.
    * @param inputs input buffers to look for valid input
    * @return the first valid input
    */
@@ -213,5 +212,6 @@ public final class HHUtil {
         return input;
       }
     }
+    return null;
   }
 }
