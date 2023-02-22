@@ -27,5 +27,16 @@
 ant -Duse.jdk11=true
 ```
 
-## Architecture
+## Notes
 
+
+1. SSTables' management:
+   1. src/java/org/apache/cassandra/db/ColumnFamilyStore.java
+   2. src/java/org/apache/cassandra/db/compaction/CompactionStrategyManager.java
+   3. get SSTables' level info: /home/tinoryj/Projects/CassandraEC/src/java/org/apache/cassandra/db/compaction/LeveledGenerations.java-> getAllLevelSuize();
+   4. get SSTables' corresponding level: SSTableReader->getSSTableLevel();
+
+
+## Note to Java
+
+1. The Throwable class is the superclass of all errors and exceptions in the Java language. Only objects that are instances of this class (or one of its subclasses) are thrown by the Java Virtual Machine or can be thrown by the Java throw statement. Similarly, only this class or one of its subclasses can be the argument type in a catch clause. For the purposes of compile-time checking of exceptions, Throwable and any subclass of Throwable that is not also a subclass of either RuntimeException or Error are regarded as checked exceptions.
