@@ -19,7 +19,7 @@ package org.apache.cassandra.utils.erasurecode;
 
 // TODO: hadoop functions
 
-import org.apache.cassandra.utils.erasurecode.ECECConfiguration;
+import org.apache.cassandra.utils.erasurecode.ECConfiguration;
 
 import org.apache.cassandra.utils.erasurecode.codec.ErasureCodec;
 import org.apache.cassandra.utils.erasurecode.codec.HHXORErasureCodec;
