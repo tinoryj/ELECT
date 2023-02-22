@@ -17,8 +17,7 @@
  */
 package org.apache.cassandra.utils.erasurecode.codec;
 
-
-import org.apache.hadoop.conf.Configuration;
+import org.apache.cassandra.utils.erasurecode.ECConfiguration;
 import org.apache.cassandra.utils.erasurecode.ErasureCodecOptions;
 import org.apache.cassandra.utils.erasurecode.coder.ErasureDecoder;
 import org.apache.cassandra.utils.erasurecode.coder.ErasureEncoder;
@@ -32,7 +31,7 @@ import org.apache.cassandra.utils.erasurecode.coder.RSErasureEncoder;
 public class RSErasureCodec extends ErasureCodec {
 
   public RSErasureCodec(ErasureCodecOptions options) {
-    super( options);
+    super(options);
   }
 
   @Override

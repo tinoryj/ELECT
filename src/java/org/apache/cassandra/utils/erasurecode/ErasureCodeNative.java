@@ -27,8 +27,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class ErasureCodeNative {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(ErasureCodeNative.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(ErasureCodeNative.class.getName());
 
   /**
    * The reason why ISA-L library is not available, or null if it is available.
@@ -53,14 +52,16 @@ public final class ErasureCodeNative {
 
     if (LOADING_FAILURE_REASON != null) {
       LOG.warn("ISA-L support is not available in your platform... " +
-              "using builtin-java codec where applicable");
+          "using builtin-java codec where applicable");
     }
   }
 
-  private ErasureCodeNative() {}
+  private ErasureCodeNative() {
+  }
 
   /**
    * Are native libraries loaded?
+   * 
    * @return if is native code loaded true,not false.
    */
   public static boolean isNativeCodeLoaded() {
@@ -83,6 +84,7 @@ public final class ErasureCodeNative {
 
   /**
    * Get the native library name that's available or supported.
+   * 
    * @return library name.
    */
   public static native String getLibraryName();

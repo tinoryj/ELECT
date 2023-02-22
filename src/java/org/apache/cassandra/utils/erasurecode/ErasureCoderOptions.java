@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.utils.erasurecode;
 
-
 /**
  * Erasure coder configuration that maintains schema info and coder options.
  */
@@ -34,7 +33,7 @@ public final class ErasureCoderOptions {
   }
 
   public ErasureCoderOptions(int numDataUnits, int numParityUnits,
-                        boolean allowChangeInputs, boolean allowVerboseDump) {
+      boolean allowChangeInputs, boolean allowVerboseDump) {
     this.numDataUnits = numDataUnits;
     this.numParityUnits = numParityUnits;
     this.numAllUnits = numDataUnits + numParityUnits;
@@ -45,6 +44,7 @@ public final class ErasureCoderOptions {
   /**
    * The number of data input units for the coding. A unit can be a byte,
    * chunk or buffer or even a block.
+   * 
    * @return count of data input units
    */
   public int getNumDataUnits() {
@@ -54,6 +54,7 @@ public final class ErasureCoderOptions {
   /**
    * The number of parity output units for the coding. A unit can be a byte,
    * chunk, buffer or even a block.
+   * 
    * @return count of parity output units
    */
   public int getNumParityUnits() {
@@ -62,6 +63,7 @@ public final class ErasureCoderOptions {
 
   /**
    * The number of all the involved units in the coding.
+   * 
    * @return count of all the data units and parity units
    */
   public int getNumAllUnits() {
@@ -71,6 +73,7 @@ public final class ErasureCoderOptions {
   /**
    * Allow changing input buffer content (not positions). Maybe better
    * performance if not allowed.
+   * 
    * @return true if allowing input content to be changed, false otherwise
    */
   public boolean allowChangeInputs() {
@@ -79,6 +82,7 @@ public final class ErasureCoderOptions {
 
   /**
    * Allow dump verbose debug info or not.
+   * 
    * @return true if verbose debug info is desired, false otherwise
    */
   public boolean allowVerboseDump() {
