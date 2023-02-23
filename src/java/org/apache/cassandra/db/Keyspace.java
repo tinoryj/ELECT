@@ -513,8 +513,8 @@ public class Keyspace
         ByteBuffer key = mutation.key().getKey();
         List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
         TableId replicaUUID = null;
-        StorageService.instance.DifferentiationTime += System.currentTimeMillis() - startTime;
-        StorageService.instance.DifferentiationNaTime += System.nanoTime() - startNaTime;
+        // StorageService.instance.DifferentiationTime += System.currentTimeMillis() - startTime;
+        // StorageService.instance.DifferentiationNaTime += System.nanoTime() - startNaTime;
 
         if(StorageService.instance.localIP.equals(ep.get(0))){ 
             replicaUUID = globalNodeIDtoCFIDMap.get(0); 

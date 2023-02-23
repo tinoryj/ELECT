@@ -225,6 +225,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private final SnapshotManager snapshotManager = new SnapshotManager();
     ////
     public InetAddress localIP = FBUtilities.getJustBroadcastAddress();
+    // public long DifferentiationTime = 0;
+    // public long DifferentiationNaTime = 0;
 
     public static final StorageService instance = new StorageService();
 
