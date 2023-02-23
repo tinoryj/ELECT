@@ -35,7 +35,34 @@ ant -Duse.jdk11=true
    2. src/java/org/apache/cassandra/db/compaction/CompactionStrategyManager.java
    3. get SSTables' level info: /home/tinoryj/Projects/CassandraEC/src/java/org/apache/cassandra/db/compaction/LeveledGenerations.java-> getAllLevelSuize();
    4. get SSTables' corresponding level: SSTableReader->getSSTableLevel();
-
+1. Open SSTable:
+   1. `public static SSTableReader open(Descriptor descriptor, Set<Component> components, TableMetadataRef metadata, boolean validate, boolean isOffline)`
+   2. Components: https://developer.aliyun.com/article/701157
+   
+   ```java
+        DATA("Data.db"),
+        // index of the row keys with pointers to their positions in the data file
+        PRIMARY_INDEX("Index.db"),
+        // serialized bloom filter for the row keys in the sstable
+        FILTER("Filter.db"),
+        // file to hold information about uncompressed data length, chunk offsets etc.
+        COMPRESSION_INFO("CompressionInfo.db"),
+        // statistical metadata about the content of the sstable
+        STATS("Statistics.db"),
+        // holds CRC32 checksum of the data file
+        DIGEST("Digest.crc32"),
+        // holds the CRC32 for chunks in an a uncompressed file.
+        CRC("CRC.db"),
+        // holds SSTable Index Summary (sampling of Index component)
+        SUMMARY("Summary.db"),
+        // table of contents, stores the list of all components for the sstable
+        TOC("TOC.txt"),
+        // built-in secondary index (may be multiple per sstable)
+        SECONDARY_INDEX("SI_.*.db"),
+        // custom component, used by e.g. custom compaction strategy
+        CUSTOM(null);
+   ```
+   Java file.length() -> length of the file in bits
 
 ## Note to Java
 

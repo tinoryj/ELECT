@@ -36,22 +36,26 @@ import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.big.*;
 import org.apache.cassandra.utils.erasurecode.*;
 
-public abstract class AbstractSSTableEncoding {
+public abstract class SSTableEncoding {
 
     private int ecBlock_n = 4;
     private int ecBlock_k = 3;
     private int ecBlock_m = ecBlock_n - ecBlock_k;
     ErasureCodeNative eracureCodingObj_;
 
-    AbstractSSTableEncoding(int n, int k) {
+    SSTableEncoding(int n, int k) {
         ecBlock_n = n;
         ecBlock_k = k;
         ecBlock_m = ecBlock_n - ecBlock_k;
     }
 
-    public AbstractSSTableEncoding performErasureCoding(Set<SSTableReader> sstables) {
-        this.nowInSeconds = nowInSec;
-        return this;
+    public boolean deserializeSSTables(Set<String> sstablesInStr) {
+
+        return true;
+    }
+
+    public boolean performErasureCoding(Set<SSTableReader> sstables) {
+        return true;
     }
 
 }
