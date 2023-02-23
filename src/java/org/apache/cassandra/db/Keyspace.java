@@ -120,7 +120,7 @@ public class Keyspace
 
     /* ColumnFamilyStore per column family */
     private final ConcurrentMap<TableId, ColumnFamilyStore> columnFamilyStores = new ConcurrentHashMap<>();
-    public final Map<Integer, TableId> globalNodeIDtoTableIdMap = new HashMap<Integer, TableId>();
+    public final Map<Integer, TableId> globalNodeIDtoCFIDMap = new HashMap<Integer, TableId>();
 
     private volatile AbstractReplicationStrategy replicationStrategy;
     public final ViewManager viewManager;
@@ -471,27 +471,26 @@ public class Keyspace
             // simultaneously is a "don't do that" scenario.
             ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(metadata.id, ColumnFamilyStore.createColumnFamilyStore(this, metadata, loadSSTables));
             /////////////////////////////////////////////////////
-            // if(keyspaceName.equals("CassandraEC")) {
 
-            // }
-            for (ColumnFamilyStore cfStore : columnFamilyStores.values())
-            {
-                logger.debug("##name:{}, cfStore.metadata.cfId:{}, columnFamilyStores size:{}, loadSSTables:{}", cfStore.name, cfStore.metadata.id, columnFamilyStores.size(), loadSSTables);                          
-            }
-            InetAddress LOCAL = FBUtilities.getJustBroadcastAddress();
-            byte localIP[] = LOCAL.getAddress();
-            ColumnFamilyStore newCFS = columnFamilyStores.get(metadata.id);
-            /////////////////////////////////////////////////////
-            if(newCFS!=null && !newCFS.name.equals("primaryData")) {
-                globalNodeIDtoTableIdMap.put(0, metadata.id);
-            } else {
-                globalNodeIDtoTableIdMap.put(1, metadata.id);
-            }
-            
-            for(Map.Entry<Integer, TableId> entry : globalNodeIDtoTableIdMap.entrySet()) {
-                logger.debug("in globalNodeIDtoTableIdMap, nodeID:{}, tableId:{}",entry.getKey(), entry.getValue());
-            }
-            
+            if(keyspaceName.equals("CassandraEC")) {
+                for (ColumnFamilyStore cfStore : columnFamilyStores.values())
+                {
+                    logger.debug("##name:{}, cfStore.metadata.cfId:{}, columnFamilyStores size:{}, loadSSTables:{}", cfStore.name, cfStore.metadata.id, columnFamilyStores.size(), loadSSTables);                          
+                }
+                InetAddress LOCAL = FBUtilities.getJustBroadcastAddress();
+                // byte localIP[] = LOCAL.getAddress();
+                ColumnFamilyStore newCFS = columnFamilyStores.get(metadata.id);
+                /////////////////////////////////////////////////////
+                if(newCFS!=null && !newCFS.name.equals("primaryData")) {
+                    globalNodeIDtoCFIDMap.put(0, metadata.id);
+                } else {
+                    globalNodeIDtoCFIDMap.put(1, metadata.id);
+                }
+                
+                for(Map.Entry<Integer, TableId> entry : globalNodeIDtoCFIDMap.entrySet()) {
+                    logger.debug("in globalNodeIDtoCFIDMap, nodeID:{}, cfId:{}",entry.getKey(), entry.getValue());
+                }
+            }            
             
             // CFS mbean instantiation will error out before we hit this, but in case that changes...
             if (oldCfs != null)
@@ -509,31 +508,25 @@ public class Keyspace
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes)
     {
         String keyspaceName = mutation.getKeyspaceName();
-        // long startTime = System.currentTimeMillis();
-        // long startNaTime = System.nanoTime();
-        // Token tk = mutation.key().getToken();
+        long startTime = System.currentTimeMillis();
+        long startNaTime = System.nanoTime();
         ByteBuffer key = mutation.key().getKey();
         List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
         TableId replicaUUID = null;
-        // 所以这个if语句是从现有的 node 里面获得replicaUUID (CFID)
-        if(StorageService.instance.localIP.equals(ep.get(0))){ // 将本机的ip与 endpoints里面的第一个ip进行比较，这里的endpoints就是论文里说的 node sequence
-            replicaUUID = globalNodeIDtoTableIdMap.get(0); // index=0 是cfs已经存在的并且名称为globalReplicaTable，这个是primary data
-        }else{ // 不是primary data
-            replicaUUID = globalNodeIDtoTableIdMap.get(1); // index=1，那这个就是redundancy咯？
-        }
-        // StorageService.instance.DifferentiationTime += System.currentTimeMillis() - startTime;
-        // StorageService.instance.DifferentiationNaTime += System.nanoTime() - startNaTime;
-        /*
-         * replicaUUID 是空的，只是说明keyspaceName不是 "ycsb"，也说明实验在ycsb的数据集下面跑。
-         * replicaUUID key为0说明mutation对应的CF的名字是globalReplicaTable, 是primary data
-         *             key为1说明mutation
-         */
-        if(replicaUUID==null){ // replicaUUID是空的，就不管，还是按照原来的操作存
-            return applyInternal(mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
-        }else{ // replicaUUID 不是空，说明是实验数据，那就开始decouple replicates
-            return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
+        StorageService.instance.DifferentiationTime += System.currentTimeMillis() - startTime;
+        StorageService.instance.DifferentiationNaTime += System.nanoTime() - startNaTime;
+
+        if(StorageService.instance.localIP.equals(ep.get(0))){ 
+            replicaUUID = globalNodeIDtoCFIDMap.get(0); 
+        }else{ 
+            replicaUUID = globalNodeIDtoCFIDMap.get(1); 
         }
 
+        if(replicaUUID==null){
+            return applyInternal(mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
+        }else{
+            return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
+        }
     }
 
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes, boolean isDroppable,
