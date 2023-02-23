@@ -749,14 +749,14 @@ public class Schema implements SchemaProvider
     private void createTable(Keyspace keyspace, TableMetadata table)
     {
         SchemaDiagnostics.tableCreating(this, table);
-        keyspace.initCf(tableMetadataRefCache.getTableMetadataRef(table.id), true);
+        keyspace.initCf(tableMetadataRefCache.getTableMetadataRef(table.id), true, table.keyspace);
         SchemaDiagnostics.tableCreated(this, table);
     }
 
     private void createView(Keyspace keyspace, ViewMetadata view)
     {
         SchemaDiagnostics.tableCreating(this, view.metadata);
-        keyspace.initCf(tableMetadataRefCache.getTableMetadataRef(view.metadata.id), true);
+        keyspace.initCf(tableMetadataRefCache.getTableMetadataRef(view.metadata.id), true, view.keyspace());
         SchemaDiagnostics.tableCreated(this, view.metadata);
     }
 

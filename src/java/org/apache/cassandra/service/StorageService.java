@@ -223,6 +223,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private final List<Runnable> postShutdownHooks = new ArrayList<>();
 
     private final SnapshotManager snapshotManager = new SnapshotManager();
+    ////
+    public InetAddress localIP = FBUtilities.getJustBroadcastAddress();
 
     public static final StorageService instance = new StorageService();
 
