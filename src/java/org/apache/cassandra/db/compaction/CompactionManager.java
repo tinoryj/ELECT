@@ -264,6 +264,7 @@ public class CompactionManager implements CompactionManagerMBean {
     }
 
     public void finishCompactionsAndShutdown(long timeout, TimeUnit unit) throws InterruptedException {
+        // TODO: start redundancy transition for largest level's SSTable
         executor.shutdown();
         executor.awaitTermination(timeout, unit);
     }

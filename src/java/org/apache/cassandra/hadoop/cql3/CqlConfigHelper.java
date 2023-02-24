@@ -1,5 +1,3 @@
-package org.apache.cassandra.hadoop.cql3;
-
 /*
 *
 * Licensed to the Apache Software Foundation (ASF) under one
@@ -20,6 +18,8 @@ package org.apache.cassandra.hadoop.cql3;
 * under the License.
 *
 */
+package org.apache.cassandra.hadoop.cql3;
+
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.io.InputStream;

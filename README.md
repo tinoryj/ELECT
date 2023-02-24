@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
 <!--
  ~ Licensed to the Apache Software Foundation (ASF) under one
  ~ or more contributor license agreements.  See the NOTICE file
@@ -29,16 +30,17 @@ ant -Duse.jdk11=true
 
 ## Notes
 
-
 1. SSTables' management:
+
    1. src/java/org/apache/cassandra/db/ColumnFamilyStore.java
    2. src/java/org/apache/cassandra/db/compaction/CompactionStrategyManager.java
    3. get SSTables' level info: /home/tinoryj/Projects/CassandraEC/src/java/org/apache/cassandra/db/compaction/LeveledGenerations.java-> getAllLevelSuize();
    4. get SSTables' corresponding level: SSTableReader->getSSTableLevel();
-1. Open SSTable:
+2. Open SSTable:
+
    1. `public static SSTableReader open(Descriptor descriptor, Set<Component> components, TableMetadataRef metadata, boolean validate, boolean isOffline)`
    2. Components: https://developer.aliyun.com/article/701157
-   
+
    ```java
         DATA("Data.db"),
         // index of the row keys with pointers to their positions in the data file
@@ -62,7 +64,11 @@ ant -Duse.jdk11=true
         // custom component, used by e.g. custom compaction strategy
         CUSTOM(null);
    ```
+
    Java file.length() -> length of the file in bits
+
+   3. SSTable name format: <version> - <generation> - <implementation> - <component> .db
+   4. Compaction: OneSSTableOperation() function-> execute()
 
 ## Note to Java
 
