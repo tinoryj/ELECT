@@ -472,7 +472,7 @@ public class Keyspace
             ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(metadata.id, ColumnFamilyStore.createColumnFamilyStore(this, metadata, loadSSTables));
             /////////////////////////////////////////////////////
 
-            if(keyspaceName.equals("CassandraEC")) {
+            if(keyspaceName.equals("cassandraec")) {
                 for (ColumnFamilyStore cfStore : columnFamilyStores.values())
                 {
                     logger.debug("##name:{}, cfStore.metadata.cfId:{}, columnFamilyStores size:{}, loadSSTables:{}", cfStore.name, cfStore.metadata.id, columnFamilyStores.size(), loadSSTables);                          
@@ -480,8 +480,9 @@ public class Keyspace
                 InetAddress LOCAL = FBUtilities.getJustBroadcastAddress();
                 // byte localIP[] = LOCAL.getAddress();
                 ColumnFamilyStore newCFS = columnFamilyStores.get(metadata.id);
+                logger.debug("##Mutation   keyspaceName is :{}, tableName is {}", keyspaceName,newCFS.name);
                 /////////////////////////////////////////////////////
-                if(newCFS!=null && !newCFS.name.equals("primaryData")) {
+                if(newCFS!=null && !newCFS.name.equals("primarydata")) {
                     globalNodeIDtoCFIDMap.put(0, metadata.id);
                 } else {
                     globalNodeIDtoCFIDMap.put(1, metadata.id);
