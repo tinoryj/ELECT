@@ -480,7 +480,6 @@ public class Keyspace
                 InetAddress LOCAL = FBUtilities.getJustBroadcastAddress();
                 // byte localIP[] = LOCAL.getAddress();
                 ColumnFamilyStore newCFS = columnFamilyStores.get(metadata.id);
-                logger.debug("##Mutation   keyspaceName is :{}, tableName is {}", keyspaceName,newCFS.name);
                 /////////////////////////////////////////////////////
                 if(newCFS!=null && !newCFS.name.equals("primarydata")) {
                     globalNodeIDtoCFIDMap.put(0, metadata.id);
@@ -509,13 +508,9 @@ public class Keyspace
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes)
     {
         String keyspaceName = mutation.getKeyspaceName();
-        long startTime = System.currentTimeMillis();
-        long startNaTime = System.nanoTime();
         ByteBuffer key = mutation.key().getKey();
         List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
         TableId replicaUUID = null;
-        // StorageService.instance.DifferentiationTime += System.currentTimeMillis() - startTime;
-        // StorageService.instance.DifferentiationNaTime += System.nanoTime() - startNaTime;
 
         if(StorageService.instance.localIP.equals(ep.get(0))){ 
             replicaUUID = globalNodeIDtoCFIDMap.get(0); 
@@ -563,7 +558,25 @@ public class Keyspace
                       boolean updateIndexes,
                       boolean isDroppable)
     {
-        applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
+        String keyspaceName = mutation.getKeyspaceName();
+        ByteBuffer key = mutation.key().getKey();
+        List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
+        TableId replicaUUID = null;
+        logger.debug("## keyspaceName is: {}, tableName is: {}, endpoints are: {}", keyspaceName, mutation.getTableIds(), ep);
+
+        if(StorageService.instance.localIP.equals(ep.get(0))){ 
+            replicaUUID = globalNodeIDtoCFIDMap.get(0); 
+        }else{ 
+            replicaUUID = globalNodeIDtoCFIDMap.get(1); 
+        }
+
+        if(replicaUUID==null) {
+            applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
+        } else {
+            applyInternal(replicaUUID, mutation, makeDurable, updateIndexes, isDroppable, false, null);
+        }
+        
+        
     }
 
     /**
