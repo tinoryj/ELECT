@@ -434,27 +434,27 @@ public class Keyspace {
             // simultaneously is a "don't do that" scenario.
             ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(metadata.id,
                     ColumnFamilyStore.createColumnFamilyStore(this, metadata, loadSSTables));
+            int replicationFactorInt = replicationParams.getReplicationFactor();
+
+            // if (keyspaceName.equals("cassandraec")) {
+            for (ColumnFamilyStore cfStore : columnFamilyStores.values()) {
+                logger.debug("##cfStore.name:{}, cfStore.metadata.cfId:{}, columnFamilyStores size:{}, loadSSTables:{}",
+                        cfStore.name, cfStore.metadata.id, columnFamilyStores.size(), loadSSTables);
+            }
+            // byte localIP[] = LOCAL.getAddress();
+            ColumnFamilyStore newCFS = columnFamilyStores.get(metadata.id);
             /////////////////////////////////////////////////////
-
-            if (keyspaceName.equals("cassandraec")) {
-                for (ColumnFamilyStore cfStore : columnFamilyStores.values()) {
-                    logger.debug("##name:{}, cfStore.metadata.cfId:{}, columnFamilyStores size:{}, loadSSTables:{}",
-                            cfStore.name, cfStore.metadata.id, columnFamilyStores.size(), loadSSTables);
-                }
-                InetAddress LOCAL = FBUtilities.getJustBroadcastAddress();
-                // byte localIP[] = LOCAL.getAddress();
-                ColumnFamilyStore newCFS = columnFamilyStores.get(metadata.id);
-                /////////////////////////////////////////////////////
-                if (newCFS != null && !newCFS.name.equals("primarydata")) {
-                    globalNodeIDtoCFIDMap.put(0, metadata.id);
-                } else {
-                    globalNodeIDtoCFIDMap.put(1, metadata.id);
-                }
-
-                for (Map.Entry<Integer, TableId> entry : globalNodeIDtoCFIDMap.entrySet()) {
-                    logger.debug("in globalNodeIDtoCFIDMap, nodeID:{}, cfId:{}", entry.getKey(), entry.getValue());
+            for (int i = 0; i < replicationFactorInt; i++) {
+                String columnNameStr = "data" + Integer.toString(i);
+                if (newCFS != null && !newCFS.name.equals(columnNameStr)) {
+                    globalNodeIDtoCFIDMap.put(i, metadata.id);
                 }
             }
+
+            for (Map.Entry<Integer, TableId> entry : globalNodeIDtoCFIDMap.entrySet()) {
+                logger.debug("in globalNodeIDtoCFIDMap, nodeID:{}, cfId:{}", entry.getKey(), entry.getValue());
+            }
+            // }
 
             // CFS mbean instantiation will error out before we hit this, but in case that
             // changes...
@@ -474,18 +474,19 @@ public class Keyspace {
         List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
         TableId replicaUUID = null;
 
-        if (StorageService.instance.localIP.equals(ep.get(0))) {
-            replicaUUID = globalNodeIDtoCFIDMap.get(0);
-        } else {
-            replicaUUID = globalNodeIDtoCFIDMap.get(1);
+        logger.debug("##Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+        for (int i = 0; i < ep.size(); i++) {
+            if (StorageService.instance.localIP.equals(ep.get(i))) {
+                replicaUUID = globalNodeIDtoCFIDMap.get(i);
+                logger.debug("##Find current node at : {}, address : {}-{}", i, StorageService.instance.localIP,
+                        ep.get(i));
+            }
         }
-
         if (replicaUUID == null) {
-            return applyInternal(mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
-        } else {
-            return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true,
-                    new AsyncPromise<>());
+            logger.error("Can not found target replica cf : {}", replicaUUID);
         }
+        return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true,
+                new AsyncPromise<>());
     }
 
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes, boolean isDroppable,
@@ -529,18 +530,18 @@ public class Keyspace {
         logger.debug("## keyspaceName is: {}, tableName is: {}, endpoints are: {}", keyspaceName,
                 mutation.getTableIds(), ep);
 
-        if (StorageService.instance.localIP.equals(ep.get(0))) {
-            replicaUUID = globalNodeIDtoCFIDMap.get(0);
-        } else {
-            replicaUUID = globalNodeIDtoCFIDMap.get(1);
+        for (int i = 0; i < ep.size(); i++) {
+            if (StorageService.instance.localIP.equals(ep.get(i))) {
+                replicaUUID = globalNodeIDtoCFIDMap.get(i);
+                logger.debug("##Find current node at : {}, address : {}-{}", i, StorageService.instance.localIP,
+                        ep.get(i));
+            }
         }
-
         if (replicaUUID == null) {
-            applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
+            logger.error("Can not found target replica cf : {}", replicaUUID);
         } else {
             applyInternal(replicaUUID, mutation, makeDurable, updateIndexes, isDroppable, false, null);
         }
-
     }
 
     /**
