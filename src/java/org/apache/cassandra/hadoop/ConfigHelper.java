@@ -27,7 +27,7 @@ import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.schema.CompressionParams;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.Pair;
-import org.apache.cassandra.utils.erasurecode.ECConfiguration;
+import org.apache.hadoop.conf.Configuration;
 
 public class ConfigHelper {
     private static final String INPUT_PARTITIONER_CONFIG = "cassandra.input.partitioner.class";

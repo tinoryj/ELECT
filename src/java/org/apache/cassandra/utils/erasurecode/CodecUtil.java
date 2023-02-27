@@ -19,7 +19,7 @@ package org.apache.cassandra.utils.erasurecode;
 
 // TODO: hadoop functions
 
-import org.apache.cassandra.utils.erasurecode.ECConfiguration;
+import org.apache.hadoop.conf.Configuration;
 
 import org.apache.cassandra.utils.erasurecode.codec.ErasureCodec;
 import org.apache.cassandra.utils.erasurecode.codec.HHXORErasureCodec;
@@ -39,7 +39,7 @@ import java.lang.reflect.InvocationTargetException;
 /**
  * A codec &amp; coder utility to help create coders conveniently.
  *
- * {@link CodecUtil} includes erasure coder ECconfigurations key and default
+ * {@link CodecUtil} includes erasure coder Configurations key and default
  * values such as coder class name and erasure codec option values included
  * by {@link ErasureCodecOptions}. {@link ErasureEncoder} and
  * {@link ErasureDecoder} are created by createEncoder and createDecoder
@@ -78,10 +78,10 @@ public final class CodecUtil {
    * Create encoder corresponding to given codec.
    * 
    * @param options Erasure codec options
-   * @param conf    ECconfiguration.
+   * @param conf    Configuration.
    * @return erasure encoder
    */
-  public static ErasureEncoder createEncoder(ECConfiguration conf,
+  public static ErasureEncoder createEncoder(Configuration conf,
       ErasureCodecOptions options) {
 
     String codecKey = getCodecClassName(conf,
@@ -95,10 +95,10 @@ public final class CodecUtil {
    * Create decoder corresponding to given codec.
    * 
    * @param options Erasure codec options
-   * @param conf    ECconfiguration.
+   * @param conf    Configuration.
    * @return erasure decoder
    */
-  public static ErasureDecoder createDecoder(ECConfiguration conf,
+  public static ErasureDecoder createDecoder(Configuration conf,
       ErasureCodecOptions options) {
 
     String codecKey = getCodecClassName(conf,
@@ -109,29 +109,29 @@ public final class CodecUtil {
   }
 
   /**
-   * Create RS raw encoder according to ECconfiguration.
+   * Create RS raw encoder according to Configuration.
    * 
-   * @param conf         ECconfiguration
+   * @param conf         Configuration
    * @param coderOptions coder options that's used to create the coder
    * @param codec        the codec to use. If null, will use the default codec
    * @return raw encoder
    */
   public static RawErasureEncoder createRawEncoder(
-      ECConfiguration conf, String codec, ErasureCoderOptions coderOptions) {
+      Configuration conf, String codec, ErasureCoderOptions coderOptions) {
 
     return createRawEncoderWithFallback(conf, codec, coderOptions);
   }
 
   /**
-   * Create RS raw decoder according to ECconfiguration.
+   * Create RS raw decoder according to Configuration.
    * 
-   * @param conf         ECconfiguration
+   * @param conf         Configuration
    * @param coderOptions coder options that's used to create the coder
    * @param codec        the codec to use. If null, will use the default codec
    * @return raw decoder
    */
   public static RawErasureDecoder createRawDecoder(
-      ECConfiguration conf, String codec, ErasureCoderOptions coderOptions) {
+      Configuration conf, String codec, ErasureCoderOptions coderOptions) {
 
     return createRawDecoderWithFallback(conf, codec, coderOptions);
   }
@@ -150,14 +150,14 @@ public final class CodecUtil {
 
   // Return a list of coder names
   private static String[] getRawCoderNames(
-      ECConfiguration conf, String codecName) {
+      Configuration conf, String codecName) {
     return conf.getStrings(
         IO_ERASURECODE_CODEC + codecName + ".rawcoders",
         CodecRegistry.getInstance().getCoderNames(codecName));
   }
 
   private static RawErasureEncoder createRawEncoderWithFallback(
-      ECConfiguration conf, String codecName, ErasureCoderOptions coderOptions) {
+      Configuration conf, String codecName, ErasureCoderOptions coderOptions) {
     String[] rawCoderNames = getRawCoderNames(conf, codecName);
     for (String rawCoderName : rawCoderNames) {
       try {
@@ -179,7 +179,7 @@ public final class CodecUtil {
   }
 
   private static RawErasureDecoder createRawDecoderWithFallback(
-      ECConfiguration conf, String codecName, ErasureCoderOptions coderOptions) {
+      Configuration conf, String codecName, ErasureCoderOptions coderOptions) {
     String[] coders = getRawCoderNames(conf, codecName);
     for (String rawCoderName : coders) {
       try {
@@ -200,13 +200,13 @@ public final class CodecUtil {
         "decoder with given codec: " + codecName);
   }
 
-  private static ErasureCodec createCodec(ECConfiguration conf,
+  private static ErasureCodec createCodec(Configuration conf,
       String codecClassName, ErasureCodecOptions options) {
     ErasureCodec codec = null;
     try {
       Class<? extends ErasureCodec> codecClass = conf.getClassByName(codecClassName)
           .asSubclass(ErasureCodec.class);
-      Constructor<? extends ErasureCodec> constructor = codecClass.getConstructor(ECConfiguration.class,
+      Constructor<? extends ErasureCodec> constructor = codecClass.getConstructor(Configuration.class,
           ErasureCodecOptions.class);
       codec = constructor.newInstance(conf, options);
     } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | NoSuchMethodException
@@ -221,7 +221,7 @@ public final class CodecUtil {
     return codec;
   }
 
-  private static String getCodecClassName(ECConfiguration conf, String codec) {
+  private static String getCodecClassName(Configuration conf, String codec) {
     switch (codec) {
       case ErasureCodeConstants.RS_CODEC_NAME:
         return conf.get(

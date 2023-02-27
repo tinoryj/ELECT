@@ -67,7 +67,9 @@ ant -Duse.jdk11=true
 
    Java file.length() -> length of the file in bits
 
-   3. SSTable name format: <version> - <generation> - <implementation> - <component> .db
+   3. SSTable name format: <version> - <generation> - <implementation> - <component> - <ID> - <level>.db
+      * cfs -> 0++
+      * SSTableReader -> getSSTLevel()
    4. Compaction: OneSSTableOperation() function-> execute()
 
 ## Note to Java

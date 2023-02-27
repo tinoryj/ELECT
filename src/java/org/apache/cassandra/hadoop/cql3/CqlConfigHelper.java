@@ -53,7 +53,7 @@ import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.SSLOptions;
 import com.datastax.driver.core.SocketOptions;
 import org.apache.cassandra.hadoop.ConfigHelper;
-import org.apache.cassandra.utils.erasurecode.ECConfiguration;
+import org.apache.hadoop.conf.Configuration;
 
 public class CqlConfigHelper {
     private static final String INPUT_CQL_COLUMNS_CONFIG = "cassandra.input.columnfamily.columns";

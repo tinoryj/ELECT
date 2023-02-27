@@ -39,7 +39,7 @@ import com.google.common.collect.Multimap;
 
 import com.datastax.driver.core.exceptions.InvalidQueryException;
 import org.apache.cassandra.schema.SchemaConstants;
-import org.apache.cassandra.utils.erasurecode.ECConfiguration;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
