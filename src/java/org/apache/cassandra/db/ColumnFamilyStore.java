@@ -278,6 +278,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     @Deprecated
     private final String oldMBeanName;
     private volatile boolean valid = true;
+    public final boolean isPrimaryCFFlag;
 
     private volatile Memtable.Factory memtableFactory;
 
@@ -457,6 +458,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         this.metadata = metadata;
         this.directories = directories;
         name = columnFamilyName;
+        if (name.endsWith("0")) {
+            isPrimaryCFFlag = true;
+        } else {
+            isPrimaryCFFlag = false;
+        }
         minCompactionThreshold = new DefaultValue<>(metadata.get().params.compaction.minCompactionThreshold());
         maxCompactionThreshold = new DefaultValue<>(metadata.get().params.compaction.maxCompactionThreshold());
         crcCheckChance = new DefaultValue<>(metadata.get().params.crcCheckChance);
@@ -466,7 +472,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         additionalWriteLatencyMicros = DatabaseDescriptor.getWriteRpcTimeout(TimeUnit.MICROSECONDS) / 2;
         memtableFactory = metadata.get().params.memtable.factory();
 
-        logger.info("Initializing {}.{}", keyspace.getName(), name);
+        logger.info("Initializing {}.{}, is primary store ? = {}", keyspace.getName(), name, isPrimaryCFFlag);
 
         // Create Memtable and its metrics object only on online
         Memtable initialMemtable = null;

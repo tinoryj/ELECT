@@ -448,6 +448,7 @@ public class Keyspace {
                 String columnNameStr = "data" + Integer.toString(i);
                 if (newCFS != null && !newCFS.name.equals(columnNameStr)) {
                     globalNodeIDtoCFIDMap.put(i, metadata.id);
+                    break;
                 }
             }
 
@@ -480,6 +481,7 @@ public class Keyspace {
                 replicaUUID = globalNodeIDtoCFIDMap.get(i);
                 logger.debug("##Find current node at : {}, address : {}-{}", i, StorageService.instance.localIP,
                         ep.get(i));
+                        break;
             }
         }
         if (replicaUUID == null) {
@@ -535,6 +537,7 @@ public class Keyspace {
                 replicaUUID = globalNodeIDtoCFIDMap.get(i);
                 logger.debug("##Find current node at : {}, address : {}-{}", i, StorageService.instance.localIP,
                         ep.get(i));
+                        break;
             }
         }
         if (replicaUUID == null) {
