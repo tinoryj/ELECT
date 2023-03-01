@@ -261,10 +261,12 @@ public abstract class SSTableReaderBuilder {
             // CASSANDRAEC_TODO: build new SST reader with only ec metadata rather than
             // data.
             String dataFilePath;
+            boolean useECMetadataReplacedDataFlag = false;
             if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
                 dataFilePath = descriptor.filenameFor(Component.DATA);
             } else {
                 dataFilePath = descriptor.filenameFor(Component.EC_METADATA);
+                useECMetadataReplacedDataFlag = true;
             }
 
             long fileLength = new File(dataFilePath).length();
@@ -273,30 +275,62 @@ public abstract class SSTableReaderBuilder {
             initSummary(dataFilePath, components, statsMetadata);
 
             boolean compression = components.contains(Component.COMPRESSION_INFO);
-            try (FileHandle.Builder ibuilder = new FileHandle.Builder(descriptor.filenameFor(Component.PRIMARY_INDEX))
-                    .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
-                    .withChunkCache(ChunkCache.instance);
-                    FileHandle.Builder dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA))
-                            .compressed(compression)
-                            .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap)
-                            .withChunkCache(ChunkCache.instance)) {
-                long indexFileLength = new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
-                DiskOptimizationStrategy optimizationStrategy = DatabaseDescriptor.getDiskOptimizationStrategy();
-                int dataBufferSize = optimizationStrategy.bufferSize(statsMetadata.estimatedPartitionSize
-                        .percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
-                int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / summary.size());
-                ifile = ibuilder.bufferSize(indexBufferSize).complete();
-                dfile = dbuilder.bufferSize(dataBufferSize).complete();
-                bf = FilterFactory.AlwaysPresent;
+            if (useECMetadataReplacedDataFlag == false) {
+                try (FileHandle.Builder ibuilder = new FileHandle.Builder(
+                        descriptor.filenameFor(Component.PRIMARY_INDEX))
+                        .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
+                        .withChunkCache(ChunkCache.instance);
+                        FileHandle.Builder dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA))
+                                .compressed(compression)
+                                .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap)
+                                .withChunkCache(ChunkCache.instance)) {
+                    long indexFileLength = new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
+                    DiskOptimizationStrategy optimizationStrategy = DatabaseDescriptor.getDiskOptimizationStrategy();
+                    int dataBufferSize = optimizationStrategy.bufferSize(statsMetadata.estimatedPartitionSize
+                            .percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
+                    int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / summary.size());
+                    ifile = ibuilder.bufferSize(indexBufferSize).complete();
+                    dfile = dbuilder.bufferSize(dataBufferSize).complete();
+                    bf = FilterFactory.AlwaysPresent;
 
-                SSTableReader sstable = readerFactory.open(this);
+                    SSTableReader sstable = readerFactory.open(this);
 
-                sstable.first = first;
-                sstable.last = last;
+                    sstable.first = first;
+                    sstable.last = last;
 
-                sstable.setup(false);
-                return sstable;
+                    sstable.setup(false);
+                    return sstable;
+                }
+            } else {
+                // only EC_metadata file
+                try (FileHandle.Builder ibuilder = new FileHandle.Builder(
+                        descriptor.filenameFor(Component.PRIMARY_INDEX))
+                        .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
+                        .withChunkCache(ChunkCache.instance);
+                        FileHandle.Builder dbuilder = new FileHandle.Builder(
+                                descriptor.filenameFor(Component.EC_METADATA))
+                                .compressed(compression)
+                                .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap)
+                                .withChunkCache(ChunkCache.instance)) {
+                    long indexFileLength = new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
+                    DiskOptimizationStrategy optimizationStrategy = DatabaseDescriptor.getDiskOptimizationStrategy();
+                    int dataBufferSize = optimizationStrategy.bufferSize(statsMetadata.estimatedPartitionSize
+                            .percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
+                    int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / summary.size());
+                    ifile = ibuilder.bufferSize(indexBufferSize).complete();
+                    dfile = dbuilder.bufferSize(dataBufferSize).complete();
+                    bf = FilterFactory.AlwaysPresent;
+
+                    SSTableReader sstable = readerFactory.open(this);
+
+                    sstable.first = first;
+                    sstable.last = last;
+
+                    sstable.setup(false);
+                    return sstable;
+                }
             }
+
         }
 
         void initSummary(String dataFilePath, Set<Component> components, StatsMetadata statsMetadata) {
@@ -405,51 +439,93 @@ public abstract class SSTableReaderBuilder {
                 DiskOptimizationStrategy optimizationStrategy,
                 StatsMetadata statsMetadata,
                 Set<Component> components) throws IOException {
-            try (FileHandle.Builder ibuilder = new FileHandle.Builder(descriptor.filenameFor(Component.PRIMARY_INDEX))
-                    .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
-                    .withChunkCache(ChunkCache.instance);
-                    FileHandle.Builder dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA))
-                            .compressed(components.contains(Component.COMPRESSION_INFO))
-                            .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap)
-                            .withChunkCache(ChunkCache.instance)) {
-                loadSummary();
-                boolean buildSummary = summary == null || recreateBloomFilter;
-                if (buildSummary)
-                    buildSummaryAndBloomFilter(recreateBloomFilter, summary != null, components, statsMetadata);
+            if (!(new File(descriptor.filenameFor(Component.DATA)).exists())) {
+                try (FileHandle.Builder ibuilder = new FileHandle.Builder(
+                        descriptor.filenameFor(Component.PRIMARY_INDEX))
+                        .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
+                        .withChunkCache(ChunkCache.instance);
+                        FileHandle.Builder dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA))
+                                .compressed(components.contains(Component.COMPRESSION_INFO))
+                                .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap)
+                                .withChunkCache(ChunkCache.instance)) {
+                    loadSummary();
+                    boolean buildSummary = summary == null || recreateBloomFilter;
+                    if (buildSummary)
+                        buildSummaryAndBloomFilter(recreateBloomFilter, summary != null, components, statsMetadata);
 
-                int dataBufferSize = optimizationStrategy.bufferSize(statsMetadata.estimatedPartitionSize
-                        .percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
+                    int dataBufferSize = optimizationStrategy.bufferSize(statsMetadata.estimatedPartitionSize
+                            .percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
 
-                if (components.contains(Component.PRIMARY_INDEX)) {
-                    long indexFileLength = new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
-                    int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / summary.size());
-                    ifile = ibuilder.bufferSize(indexBufferSize).complete();
+                    if (components.contains(Component.PRIMARY_INDEX)) {
+                        long indexFileLength = new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
+                        int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / summary.size());
+                        ifile = ibuilder.bufferSize(indexBufferSize).complete();
+                    }
+
+                    dfile = dbuilder.bufferSize(dataBufferSize).complete();
+
+                    if (buildSummary) {
+                        if (saveSummaryIfCreated)
+                            SSTableReader.saveSummary(descriptor, first, last, summary);
+                        if (recreateBloomFilter)
+                            SSTableReader.saveBloomFilter(descriptor, bf);
+                    }
+                } catch (Throwable t) { // Because the tidier has not been set-up yet in SSTableReader.open(), we must
+                                        // release the files in case of error
+                    if (ifile != null) {
+                        ifile.close();
+                    }
+
+                    if (dfile != null) {
+                        dfile.close();
+                    }
+
+                    if (summary != null) {
+                        summary.close();
+                    }
+
+                    throw t;
                 }
+            } else {
+                try (FileHandle.Builder ibuilder = new FileHandle.Builder(
+                        descriptor.filenameFor(Component.PRIMARY_INDEX))
+                        .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
+                        .withChunkCache(ChunkCache.instance);
+                        FileHandle.Builder dbuilder = new FileHandle.Builder(
+                                descriptor.filenameFor(Component.EC_METADATA))
+                                .compressed(components.contains(Component.COMPRESSION_INFO))
+                                .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap)
+                                .withChunkCache(ChunkCache.instance)) {
+                    loadSummary();
+                    int dataBufferSize = optimizationStrategy.bufferSize(statsMetadata.estimatedPartitionSize
+                            .percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
 
-                dfile = dbuilder.bufferSize(dataBufferSize).complete();
+                    if (components.contains(Component.PRIMARY_INDEX)) {
+                        long indexFileLength = new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
+                        int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / summary.size());
+                        ifile = ibuilder.bufferSize(indexBufferSize).complete();
+                    }
 
-                if (buildSummary) {
-                    if (saveSummaryIfCreated)
-                        SSTableReader.saveSummary(descriptor, first, last, summary);
-                    if (recreateBloomFilter)
-                        SSTableReader.saveBloomFilter(descriptor, bf);
+                    dfile = dbuilder.bufferSize(dataBufferSize).complete();
+
+                } catch (Throwable t) { // Because the tidier has not been set-up yet in SSTableReader.open(), we must
+                                        // release the files in case of error
+                    if (ifile != null) {
+                        ifile.close();
+                    }
+
+                    if (dfile != null) {
+                        dfile.close();
+                    }
+
+                    if (summary != null) {
+                        summary.close();
+                    }
+
+                    throw t;
                 }
-            } catch (Throwable t) { // Because the tidier has not been set-up yet in SSTableReader.open(), we must
-                                    // release the files in case of error
-                if (ifile != null) {
-                    ifile.close();
-                }
-
-                if (dfile != null) {
-                    dfile.close();
-                }
-
-                if (summary != null) {
-                    summary.close();
-                }
-
-                throw t;
             }
+
         }
     }
 }
