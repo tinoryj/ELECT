@@ -755,7 +755,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
 
             File dataFile = new File(desc.filenameFor(Component.DATA));
-            if (components.contains(Component.DATA) && dataFile.length() > 0)
+            if ((components.contains(Component.DATA) && dataFile.length() > 0)
+                    || components.contains(Component.EC_METADATA))
                 // everything appears to be in order... moving on.
                 continue;
 
@@ -844,7 +845,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     // SSTables that are being loaded might already use these generation numbers.
                     sstableIdGenerator.get(),
                     descriptor.formatType);
-        } while (newDescriptor.fileFor(Component.DATA).exists());
+        } while (newDescriptor.fileFor(Component.DATA).exists()
+                || newDescriptor.fileFor(Component.EC_METADATA).exists());
         return newDescriptor;
     }
 
@@ -896,7 +898,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 name,
                 sstableIdGenerator.get(),
                 format);
-        assert !newDescriptor.fileFor(Component.DATA).exists();
+        assert (!newDescriptor.fileFor(Component.DATA).exists()
+                && !newDescriptor.fileFor(Component.EC_METADATA).exists());
         return newDescriptor;
     }
 

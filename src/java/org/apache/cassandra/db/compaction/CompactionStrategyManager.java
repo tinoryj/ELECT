@@ -245,9 +245,24 @@ public class CompactionStrategyManager implements INotificationConsumer {
                 .stream()
                 .filter(s -> !compacting.contains(s) && !s.descriptor.version.isLatestVersion())
                 .sorted((o1, o2) -> {
-                    File f1 = new File(o1.descriptor.filenameFor(Component.DATA));
-                    File f2 = new File(o2.descriptor.filenameFor(Component.DATA));
-                    return Longs.compare(f1.lastModified(), f2.lastModified());
+                    if ((new File(o1.descriptor.filenameFor(Component.DATA)).exists()) || (new File(
+                            o2.descriptor.filenameFor(Component.DATA)).exists())) {
+                        File f1 = new File(o1.descriptor.filenameFor(Component.DATA));
+                        File f2 = new File(o2.descriptor.filenameFor(Component.DATA));
+                        return Longs.compare(f1.lastModified(), f2.lastModified());
+                    } else if ((new File(o1.descriptor.filenameFor(Component.EC_METADATA)).exists()) || (new File(
+                            o2.descriptor.filenameFor(Component.EC_METADATA)).exists())) {
+                        File f1 = new File(o1.descriptor.filenameFor(Component.EC_METADATA));
+                        File f2 = new File(o2.descriptor.filenameFor(Component.EC_METADATA));
+                        return Longs.compare(f1.lastModified(), f2.lastModified());
+                    } else {
+                        logger.error(
+                                "Error migrate sstable, since the old and new file may not contains the data or ec metadata component");
+                        File f1 = new File(o1.descriptor.filenameFor(Component.DATA));
+                        File f2 = new File(o2.descriptor.filenameFor(Component.DATA));
+                        return Longs.compare(f1.lastModified(), f2.lastModified());
+                    }
+
                 }).collect(Collectors.toList());
         for (SSTableReader sstable : potentialUpgrade) {
             LifecycleTransaction txn = cfs.getTracker().tryModify(sstable, OperationType.UPGRADE_SSTABLES);

@@ -414,7 +414,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     public static SSTableReader openForBatch(Descriptor descriptor, Set<Component> components,
             TableMetadataRef metadata) {
         // Minimum components without which we can't do anything
-        assert components.contains(Component.DATA) : "Data component is missing for sstable " + descriptor;
+        assert components.contains(Component.DATA) || components.contains(Component.EC_METADATA)
+                : "Data component is missing for sstable " + descriptor;
         assert components.contains(Component.PRIMARY_INDEX)
                 : "Primary index component is missing for sstable " + descriptor;
         verifyCompressionInfoExistenceIfApplicable(descriptor, components);
@@ -472,7 +473,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             boolean validate,
             boolean isOffline) {
         // Minimum components without which we can't do anything
-        assert components.contains(Component.DATA) : "Data component is missing for sstable " + descriptor;
+        assert components.contains(Component.DATA) || components.contains(Component.EC_METADATA)
+                : "Data component is missing for sstable " + descriptor;
         assert !validate || components.contains(Component.PRIMARY_INDEX)
                 : "Primary index component is missing for sstable " + descriptor;
 
@@ -1830,6 +1832,19 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     /**
+     * @param component component to get timestamp.
+     * @return last modified time for given component. 0 if given component does not
+     *         exist or IO error occurs.
+     */
+    public boolean getFileExistFlagFor(Component component) {
+        if (new File(descriptor.filenameFor(component)).exists()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * @return Number of key cache hit
      */
     public long getKeyCacheHit() {
@@ -2085,6 +2100,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             // don't ideally want to dropPageCache for the file until all instances have
             // been released
             NativeLibrary.trySkipCache(desc.filenameFor(Component.DATA), 0, 0);
+            NativeLibrary.trySkipCache(desc.filenameFor(Component.EC_METADATA), 0, 0);
             NativeLibrary.trySkipCache(desc.filenameFor(Component.PRIMARY_INDEX), 0, 0);
         }
 
@@ -2199,6 +2215,12 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         if (new File(newDescriptor.filenameFor(Component.DATA)).exists()) {
             String msg = String.format("File %s already exists, can't move the file there",
                     newDescriptor.filenameFor(Component.DATA));
+            logger.error(msg);
+            throw new RuntimeException(msg);
+        }
+        if (new File(newDescriptor.filenameFor(Component.EC_METADATA)).exists()) {
+            String msg = String.format("File %s already exists, can't move the file there",
+                    newDescriptor.filenameFor(Component.EC_METADATA));
             logger.error(msg);
             throw new RuntimeException(msg);
         }

@@ -258,7 +258,15 @@ public abstract class SSTableReaderBuilder {
 
         @Override
         public SSTableReader build() {
-            String dataFilePath = descriptor.filenameFor(Component.DATA);
+            // CASSANDRAEC_TODO: build new SST reader with only ec metadata rather than
+            // data.
+            String dataFilePath;
+            if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
+                dataFilePath = descriptor.filenameFor(Component.DATA);
+            } else {
+                dataFilePath = descriptor.filenameFor(Component.EC_METADATA);
+            }
+
             long fileLength = new File(dataFilePath).length();
             logger.info("Opening {} ({})", descriptor, FBUtilities.prettyPrintMemory(fileLength));
 
@@ -321,7 +329,12 @@ public abstract class SSTableReaderBuilder {
 
         @Override
         public SSTableReader build() {
-            String dataFilePath = descriptor.filenameFor(Component.DATA);
+            String dataFilePath;
+            if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
+                dataFilePath = descriptor.filenameFor(Component.DATA);
+            } else {
+                dataFilePath = descriptor.filenameFor(Component.EC_METADATA);
+            }
             long fileLength = new File(dataFilePath).length();
             logger.info("Opening {} ({})", descriptor, FBUtilities.prettyPrintMemory(fileLength));
 

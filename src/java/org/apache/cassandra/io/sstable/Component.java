@@ -62,6 +62,8 @@ public class Component {
         TOC("TOC.txt"),
         // built-in secondary index (may be multiple per sstable)
         SECONDARY_INDEX("SI_.*.db"),
+        // EC metadata file for current SSTable after redundancy transition
+        EC_METADATA("EC.db"),
         // custom component, used by e.g. custom compaction strategy
         CUSTOM(null);
 
@@ -90,6 +92,7 @@ public class Component {
     public final static Component DIGEST = new Component(Type.DIGEST);
     public final static Component CRC = new Component(Type.CRC);
     public final static Component SUMMARY = new Component(Type.SUMMARY);
+    public final static Component EC_METADATA = new Component(Type.EC_METADATA);
     public final static Component TOC = new Component(Type.TOC);
 
     public final Type type;
@@ -145,6 +148,8 @@ public class Component {
                 return Component.CRC;
             case SUMMARY:
                 return Component.SUMMARY;
+            case EC_METADATA:
+                return Component.EC_METADATA;
             case TOC:
                 return Component.TOC;
             case SECONDARY_INDEX:

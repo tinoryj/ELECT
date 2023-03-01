@@ -128,10 +128,12 @@ public abstract class SSTable {
         // remove the DATA component first if it exists
         if (components.contains(Component.DATA))
             FileUtils.deleteWithConfirm(desc.filenameFor(Component.DATA));
+        if (components.contains(Component.EC_METADATA))
+            FileUtils.deleteWithConfirm(desc.filenameFor(Component.EC_METADATA));
         for (Component component : components) {
-            if (component.equals(Component.DATA) || component.equals(Component.SUMMARY))
+            if (component.equals(Component.DATA) || component.equals(Component.EC_METADATA)
+                    || component.equals(Component.SUMMARY))
                 continue;
-
             FileUtils.deleteWithConfirm(desc.filenameFor(component));
         }
 
@@ -150,7 +152,11 @@ public abstract class SSTable {
         if (components.contains(Component.DATA)) {
             FileUtils.deleteWithConfirm(desc.filenameFor(Component.DATA));
         } else {
-            logger.error("## deleteComponentOnlyData: no DATA component found");
+            if (components.contains(Component.EC_METADATA)) {
+                FileUtils.deleteWithConfirm(desc.filenameFor(Component.EC_METADATA));
+            } else {
+                logger.error("## deleteComponentOnlyData: no DATA or EC_METADATA component found");
+            }
         }
         isDataRemovedByRedundancyTransionFlag = true;
         return true;
@@ -180,7 +186,12 @@ public abstract class SSTable {
     }
 
     public String getFilename() {
-        return descriptor.filenameFor(Component.DATA);
+        if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
+            return descriptor.filenameFor(Component.DATA);
+        } else {
+            return descriptor.filenameFor(Component.EC_METADATA);
+        }
+
     }
 
     public String getIndexFilename() {

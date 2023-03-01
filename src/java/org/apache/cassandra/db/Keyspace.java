@@ -481,7 +481,7 @@ public class Keyspace {
                 replicaUUID = globalNodeIDtoCFIDMap.get(i);
                 logger.debug("##Find current node at : {}, address : {}-{}", i, StorageService.instance.localIP,
                         ep.get(i));
-                        break;
+                break;
             }
         }
         if (replicaUUID == null) {
@@ -537,7 +537,7 @@ public class Keyspace {
                 replicaUUID = globalNodeIDtoCFIDMap.get(i);
                 logger.debug("##Find current node at : {}, address : {}-{}", i, StorageService.instance.localIP,
                         ep.get(i));
-                        break;
+                break;
             }
         }
         if (replicaUUID == null) {

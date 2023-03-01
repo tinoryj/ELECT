@@ -25,8 +25,17 @@
 
 ```shell
 # Build with java 11
+ant clean
 ant -Duse.jdk11=true
 ```
+
+## Plan
+
+### Add EC metadata to avoid SSTables' integrity check fails after the redundancy transition
+
+1. Check all "Component.DATA"
+2. Add a new component `EC_METADATA` for EC metadata in Component.java
+   1. In progress: SSTableReaderBuilder.java: ibuilder+dbuilder
 
 ## Notes
 
@@ -36,6 +45,11 @@ ant -Duse.jdk11=true
    2. src/java/org/apache/cassandra/db/compaction/CompactionStrategyManager.java
    3. get SSTables' level info: /home/tinoryj/Projects/CassandraEC/src/java/org/apache/cassandra/db/compaction/LeveledGenerations.java-> getAllLevelSuize();
    4. get SSTables' corresponding level: SSTableReader->getSSTableLevel();
+   5. SSTableReaders are open()ed by Keyspace.onStart; after that they are created by SSTableWriter.renameAndOpen.
+   6. SSTableReader open()
+   7. SingleSSTavleLCSTask -> only change level, but not perform compaction.
+   8. Load SSTable: SSTableLoader.java -> openSSTables()
+   9. FileHandle->Builder(AutoCloseable) : determine how the file will be read (compression/mapped/cached).
 2. Open SSTable:
 
    1. `public static SSTableReader open(Descriptor descriptor, Set<Component> components, TableMetadataRef metadata, boolean validate, boolean isOffline)`

@@ -112,7 +112,13 @@ public class LeveledManifest {
             SSTableReader sstableWithMaxModificationTime = null;
             long maxModificationTime = Long.MIN_VALUE;
             for (SSTableReader ssTableReader : level) {
-                long modificationTime = ssTableReader.getCreationTimeFor(Component.DATA);
+                long modificationTime;
+                if (ssTableReader.getFileExistFlagFor(Component.DATA)) {
+                    modificationTime = ssTableReader.getCreationTimeFor(Component.DATA);
+                } else {
+                    modificationTime = ssTableReader.getCreationTimeFor(Component.EC_METADATA);
+                }
+
                 if (modificationTime >= maxModificationTime) {
                     sstableWithMaxModificationTime = ssTableReader;
                     maxModificationTime = modificationTime;
