@@ -36,6 +36,8 @@ ant -Duse.jdk11=true
 1. Check all "Component.DATA"
 2. Add a new component `EC_METADATA` for EC metadata in Component.java
    1. In progress: SSTableReaderBuilder.java: ibuilder+dbuilder
+3. Add new writer for SSTableWriter and BigTableWriter to write new SSTs with only EC_METADATA rather than DATA component.
+4. Add isSSTableTransferred flag in `StatsMetadata` and `Version`.
 
 ## Notes
 

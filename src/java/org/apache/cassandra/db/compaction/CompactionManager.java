@@ -1264,7 +1264,8 @@ public class CompactionManager implements CompactionManagerMBean {
                         Collections.singletonList(scanner), controller, nowInSec, nextTimeUUID(), active, null)) {
             StatsMetadata metadata = sstable.getSSTableMetadata();
             writer.switchWriter(createWriter(cfs, compactionFileLocation, expectedBloomFilterSize, metadata.repairedAt,
-                    metadata.pendingRepair, metadata.isTransient, sstable, txn));
+                    metadata.pendingRepair, metadata.isTransient, metadata.isReplicationTransferredToErasureCoding,
+                    sstable, txn));
             long lastBytesScanned = 0;
 
             while (ci.hasNext()) {
@@ -1412,6 +1413,7 @@ public class CompactionManager implements CompactionManagerMBean {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
+            Boolean isReplicationTransferredToErasureCoding,
             SSTableReader sstable,
             LifecycleTransaction txn) {
         FileUtils.createDirectory(compactionFileLocation);
@@ -1422,6 +1424,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 repairedAt,
                 pendingRepair,
                 isTransient,
+                isReplicationTransferredToErasureCoding,
                 sstable.getSSTableLevel(),
                 sstable.header,
                 cfs.indexManager.listIndexes(),
@@ -1434,6 +1437,7 @@ public class CompactionManager implements CompactionManagerMBean {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
+            Boolean isReplicationTransferredToErasureCoding,
             Collection<SSTableReader> sstables,
             ILifecycleTransaction txn) {
         FileUtils.createDirectory(compactionFileLocation);
@@ -1458,6 +1462,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 repairedAt,
                 pendingRepair,
                 isTransient,
+                isReplicationTransferredToErasureCoding,
                 cfs.metadata,
                 new MetadataCollector(sstables, cfs.metadata().comparator, minLevel),
                 SerializationHeader.make(cfs.metadata(), sstables),
@@ -1627,11 +1632,11 @@ public class CompactionManager implements CompactionManagerMBean {
                     (int) (SSTableReader.getApproximateKeyCount(sstableAsSet)));
 
             fullWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, false, sstableAsSet, txn));
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, false, false, sstableAsSet, txn));
             transWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, true, sstableAsSet, txn));
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, true, false, sstableAsSet, txn));
             unrepairedWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false, sstableAsSet, txn));
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false, false, sstableAsSet, txn));
 
             Predicate<Token> fullChecker = !ranges.onlyFull().isEmpty()
                     ? new Range.OrderedRangeContainmentChecker(ranges.onlyFull().ranges())
