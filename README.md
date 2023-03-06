@@ -29,6 +29,13 @@ ant clean
 ant -Duse.jdk11=true
 ```
 
+Set proxy for ant in build.xml after line 29
+
+```
+<setproxy proxyhost="proxy.cse.cuhk.edu.hk"
+proxyport="8000"/>
+```
+
 ## Plan
 
 ### Add EC metadata to avoid SSTables' integrity check fails after the redundancy transition

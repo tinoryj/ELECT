@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.tools;
 
-
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
@@ -43,26 +42,25 @@ import org.apache.cassandra.io.sstable.Descriptor;
  */
 import org.apache.cassandra.io.util.File;
 
-public class SSTableRepairedAtSetter
-{
+public class SSTableRepairedAtSetter {
     /**
      * @param args a list of sstables whose metadata we are changing
      */
-    public static void main(final String[] args) throws IOException
-    {
+    public static void main(final String[] args) throws IOException {
         PrintStream out = System.out;
-        if (args.length == 0)
-        {
+        if (args.length == 0) {
             out.println("This command should be run with Cassandra stopped!");
             out.println("Usage: sstablerepairedset [--is-repaired | --is-unrepaired] [-f <sstable-list> | <sstables>]");
             System.exit(1);
         }
 
-        if (args.length < 3 || !args[0].equals("--really-set") || (!args[1].equals("--is-repaired") && !args[1].equals("--is-unrepaired")))
-        {
-            out.println("This command should be run with Cassandra stopped, otherwise you will get very strange behavior");
+        if (args.length < 3 || !args[0].equals("--really-set")
+                || (!args[1].equals("--is-repaired") && !args[1].equals("--is-unrepaired"))) {
+            out.println(
+                    "This command should be run with Cassandra stopped, otherwise you will get very strange behavior");
             out.println("Verify that Cassandra is not running and then execute the command like this:");
-            out.println("Usage: sstablerepairedset --really-set [--is-repaired | --is-unrepaired] [-f <sstable-list> | <sstables>]");
+            out.println(
+                    "Usage: sstablerepairedset --really-set [--is-repaired | --is-unrepaired] [-f <sstable-list> | <sstables>]");
             System.exit(1);
         }
 
@@ -71,31 +69,30 @@ public class SSTableRepairedAtSetter
         boolean setIsRepaired = args[1].equals("--is-repaired");
 
         List<String> fileNames;
-        if (args[2].equals("-f"))
-        {
+        if (args[2].equals("-f")) {
             fileNames = Files.readAllLines(Paths.get(args[3]), Charset.defaultCharset());
-        }
-        else
-        {
+        } else {
             fileNames = Arrays.asList(args).subList(2, args.length);
         }
 
-        for (String fname: fileNames)
-        {
+        for (String fname : fileNames) {
             Descriptor descriptor = Descriptor.fromFilename(fname);
-            if (!descriptor.version.isCompatible())
-            {
+            if (!descriptor.version.isCompatible()) {
                 System.err.println("SSTable " + fname + " is in a old and unsupported format");
                 continue;
             }
 
-            if (setIsRepaired)
-            {
-                FileTime f = Files.getLastModifiedTime(new File(descriptor.filenameFor(Component.DATA)).toPath());
-                descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false);
-            }
-            else
-            {
+            if (setIsRepaired) {
+                if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
+                    FileTime f = Files.getLastModifiedTime(new File(descriptor.filenameFor(Component.DATA)).toPath());
+                    descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false);
+                } else {
+                    FileTime f = Files
+                            .getLastModifiedTime(new File(descriptor.filenameFor(Component.EC_METADATA)).toPath());
+                    descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false);
+                }
+
+            } else {
                 descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, 0, null, false);
             }
         }
