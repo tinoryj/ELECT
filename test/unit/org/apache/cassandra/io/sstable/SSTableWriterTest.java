@@ -42,21 +42,17 @@ import static org.apache.cassandra.service.ActiveRepairService.NO_PENDING_REPAIR
 import static org.apache.cassandra.service.ActiveRepairService.UNREPAIRED_SSTABLE;
 import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
-public class SSTableWriterTest extends SSTableWriterTestBase
-{
+public class SSTableWriterTest extends SSTableWriterTestBase {
     @Test
-    public void testAbortTxnWithOpenEarlyShouldRemoveSSTable()
-    {
+    public void testAbortTxnWithOpenEarlyShouldRemoveSSTable() {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF);
         truncate(cfs);
 
         File dir = cfs.getDirectories().getDirectoryForNewSSTables();
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE);
-        try (SSTableWriter writer = getWriter(cfs, dir, txn))
-        {
-            for (int i = 0; i < 10000; i++)
-            {
+        try (SSTableWriter writer = getWriter(cfs, dir, txn)) {
+            for (int i = 0; i < 10000; i++) {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
                     builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
@@ -66,8 +62,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
             SSTableReader s = writer.setMaxDataAge(1000).openEarly();
             assert s != null;
             assertFileCounts(dir.tryListNames());
-            for (int i = 10000; i < 20000; i++)
-            {
+            for (int i = 10000; i < 20000; i++) {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
                     builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
@@ -94,20 +89,16 @@ public class SSTableWriterTest extends SSTableWriterTestBase
         }
     }
 
-
     @Test
-    public void testAbortTxnWithClosedWriterShouldRemoveSSTable()
-    {
+    public void testAbortTxnWithClosedWriterShouldRemoveSSTable() {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF);
         truncate(cfs);
 
         File dir = cfs.getDirectories().getDirectoryForNewSSTables();
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.STREAM);
-        try (SSTableWriter writer = getWriter(cfs, dir, txn))
-        {
-            for (int i = 0; i < 10000; i++)
-            {
+        try (SSTableWriter writer = getWriter(cfs, dir, txn)) {
+            for (int i = 0; i < 10000; i++) {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
                     builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
@@ -115,8 +106,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
             }
 
             assertFileCounts(dir.tryListNames());
-            for (int i = 10000; i < 20000; i++)
-            {
+            for (int i = 10000; i < 20000; i++) {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
                     builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
@@ -140,8 +130,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
     }
 
     @Test
-    public void testAbortTxnWithClosedAndOpenWriterShouldRemoveAllSSTables()
-    {
+    public void testAbortTxnWithClosedAndOpenWriterShouldRemoveAllSSTables() {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF);
         truncate(cfs);
@@ -151,10 +140,8 @@ public class SSTableWriterTest extends SSTableWriterTestBase
 
         SSTableWriter writer1 = getWriter(cfs, dir, txn);
         SSTableWriter writer2 = getWriter(cfs, dir, txn);
-        try
-        {
-            for (int i = 0; i < 10000; i++)
-            {
+        try {
+            for (int i = 0; i < 10000; i++) {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
                     builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
@@ -162,8 +149,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
             }
 
             assertFileCounts(dir.tryListNames());
-            for (int i = 10000; i < 20000; i++)
-            {
+            for (int i = 10000; i < 20000; i++) {
                 UpdateBuilder builder = UpdateBuilder.create(cfs.metadata(), random(i, 10)).withTimestamp(1);
                 for (int j = 0; j < 100; j++)
                     builder.newRow("" + j).add("val", ByteBuffer.allocate(1000));
@@ -185,17 +171,14 @@ public class SSTableWriterTest extends SSTableWriterTestBase
             datafiles = assertFileCounts(dir.tryListNames());
             assertEquals(datafiles, 0);
             validateCFS(cfs);
-        }
-        finally
-        {
+        } finally {
             writer1.close();
             writer2.close();
         }
     }
 
     @Test
-    public void testValueTooBigCorruption() throws InterruptedException
-    {
+    public void testValueTooBigCorruption() throws InterruptedException {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_SMALL_MAX_VALUE);
         truncate(cfs);
@@ -203,8 +186,7 @@ public class SSTableWriterTest extends SSTableWriterTestBase
         File dir = cfs.getDirectories().getDirectoryForNewSSTables();
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.STREAM);
 
-        try (SSTableWriter writer1 = getWriter(cfs, dir, txn))
-        {
+        try (SSTableWriter writer1 = getWriter(cfs, dir, txn)) {
             UpdateBuilder largeValue = UpdateBuilder.create(cfs.metadata(), "large_value").withTimestamp(1);
             largeValue.newRow("clustering").add("val", ByteBuffer.allocate(2 * 1024 * 1024));
             writer1.append(largeValue.build().unfilteredIterator());
@@ -213,23 +195,19 @@ public class SSTableWriterTest extends SSTableWriterTestBase
 
             txn.update(sstable, false);
 
-            try
-            {
+            try {
                 DecoratedKey dk = Util.dk("large_value");
                 UnfilteredRowIterator rowIter = sstable.rowIterator(dk,
-                                                                    Slices.ALL,
-                                                                    ColumnFilter.all(cfs.metadata()),
-                                                                    false,
-                                                                    SSTableReadsListener.NOOP_LISTENER);
-                while (rowIter.hasNext())
-                {
+                        Slices.ALL,
+                        ColumnFilter.all(cfs.metadata()),
+                        false,
+                        SSTableReadsListener.NOOP_LISTENER);
+                while (rowIter.hasNext()) {
                     rowIter.next();
                     // no-op read, as values may not appear expected
                 }
                 fail("Expected a CorruptSSTableException to be thrown");
-            }
-            catch (CorruptSSTableException e)
-            {
+            } catch (CorruptSSTableException e) {
             }
 
             txn.abort();
@@ -237,19 +215,17 @@ public class SSTableWriterTest extends SSTableWriterTestBase
         }
     }
 
-    private static void assertValidRepairMetadata(long repairedAt, TimeUUID pendingRepair, boolean isTransient)
-    {
+    private static void assertValidRepairMetadata(long repairedAt, TimeUUID pendingRepair, boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding) {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_SMALL_MAX_VALUE);
         File dir = cfs.getDirectories().getDirectoryForNewSSTables();
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.STREAM);
 
-        try (SSTableWriter writer = getWriter(cfs, dir, txn, repairedAt, pendingRepair, isTransient))
-        {
+        try (SSTableWriter writer = getWriter(cfs, dir, txn, repairedAt, pendingRepair, isTransient,
+                isReplicationTransferredToErasureCoding)) {
             // expected
-        }
-        catch (IllegalArgumentException e)
-        {
+        } catch (IllegalArgumentException e) {
             throw new AssertionError("Unexpected IllegalArgumentException", e);
         }
 
@@ -257,19 +233,17 @@ public class SSTableWriterTest extends SSTableWriterTestBase
         LifecycleTransaction.waitForDeletions();
     }
 
-    private static void assertInvalidRepairMetadata(long repairedAt, TimeUUID pendingRepair, boolean isTransient)
-    {
+    private static void assertInvalidRepairMetadata(long repairedAt, TimeUUID pendingRepair, boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding) {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_SMALL_MAX_VALUE);
         File dir = cfs.getDirectories().getDirectoryForNewSSTables();
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.STREAM);
 
-        try (SSTableWriter writer = getWriter(cfs, dir, txn, repairedAt, pendingRepair, isTransient))
-        {
+        try (SSTableWriter writer = getWriter(cfs, dir, txn, repairedAt, pendingRepair, isTransient,
+                isReplicationTransferredToErasureCoding)) {
             fail("Expected IllegalArgumentException");
-        }
-        catch (IllegalArgumentException e)
-        {
+        } catch (IllegalArgumentException e) {
             // expected
         }
 
@@ -278,19 +252,19 @@ public class SSTableWriterTest extends SSTableWriterTestBase
     }
 
     /**
-     * It should only be possible to create sstables marked transient that also have a pending repair
+     * It should only be possible to create sstables marked transient that also have
+     * a pending repair
      */
     @Test
-    public void testRepairMetadataValidation()
-    {
-        assertValidRepairMetadata(UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false);
-        assertValidRepairMetadata(1, NO_PENDING_REPAIR, false);
-        assertValidRepairMetadata(UNREPAIRED_SSTABLE, nextTimeUUID(), false);
-        assertValidRepairMetadata(UNREPAIRED_SSTABLE, nextTimeUUID(), true);
+    public void testRepairMetadataValidation() {
+        assertValidRepairMetadata(UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false, false);
+        assertValidRepairMetadata(1, NO_PENDING_REPAIR, false, false);
+        assertValidRepairMetadata(UNREPAIRED_SSTABLE, nextTimeUUID(), false, false);
+        assertValidRepairMetadata(UNREPAIRED_SSTABLE, nextTimeUUID(), true, false);
 
-        assertInvalidRepairMetadata(UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, true);
-        assertInvalidRepairMetadata(1, nextTimeUUID(), false);
-        assertInvalidRepairMetadata(1, NO_PENDING_REPAIR, true);
+        assertInvalidRepairMetadata(UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, true, false);
+        assertInvalidRepairMetadata(1, nextTimeUUID(), false, false);
+        assertInvalidRepairMetadata(1, NO_PENDING_REPAIR, true, false);
 
     }
 }

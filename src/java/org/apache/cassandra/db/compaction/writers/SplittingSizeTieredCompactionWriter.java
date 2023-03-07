@@ -36,11 +36,11 @@ import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 /**
  * CompactionAwareWriter that splits input in differently sized sstables
  *
- * Biggest sstable will be total_compaction_size / 2, second biggest total_compaction_size / 4 etc until
+ * Biggest sstable will be total_compaction_size / 2, second biggest
+ * total_compaction_size / 4 etc until
  * the result would be sub 50MiB, all those are put in the same
  */
-public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter
-{
+public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter {
     private static final Logger logger = LoggerFactory.getLogger(SplittingSizeTieredCompactionWriter.class);
 
     public static final long DEFAULT_SMALLEST_SSTABLE_BYTES = 50_000_000;
@@ -51,31 +51,28 @@ public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter
     private int currentRatioIndex = 0;
     private Directories.DataDirectory location;
 
-    public SplittingSizeTieredCompactionWriter(ColumnFamilyStore cfs, Directories directories, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables)
-    {
+    public SplittingSizeTieredCompactionWriter(ColumnFamilyStore cfs, Directories directories, LifecycleTransaction txn,
+            Set<SSTableReader> nonExpiredSSTables) {
         this(cfs, directories, txn, nonExpiredSSTables, DEFAULT_SMALLEST_SSTABLE_BYTES);
     }
 
-    public SplittingSizeTieredCompactionWriter(ColumnFamilyStore cfs, Directories directories, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables, long smallestSSTable)
-    {
+    public SplittingSizeTieredCompactionWriter(ColumnFamilyStore cfs, Directories directories, LifecycleTransaction txn,
+            Set<SSTableReader> nonExpiredSSTables, long smallestSSTable) {
         super(cfs, directories, txn, nonExpiredSSTables, false);
         this.allSSTables = txn.originals();
         totalSize = cfs.getExpectedCompactedFileSize(nonExpiredSSTables, txn.opType());
         double[] potentialRatios = new double[20];
         double currentRatio = 1;
-        for (int i = 0; i < potentialRatios.length; i++)
-        {
+        for (int i = 0; i < potentialRatios.length; i++) {
             currentRatio /= 2;
             potentialRatios[i] = currentRatio;
         }
 
         int noPointIndex = 0;
         // find how many sstables we should create - 50MiB min sstable size
-        for (double ratio : potentialRatios)
-        {
+        for (double ratio : potentialRatios) {
             noPointIndex++;
-            if (ratio * totalSize < smallestSSTable)
-            {
+            if (ratio * totalSize < smallestSSTable) {
                 break;
             }
         }
@@ -84,10 +81,11 @@ public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter
     }
 
     @Override
-    public boolean realAppend(UnfilteredRowIterator partition)
-    {
+    public boolean realAppend(UnfilteredRowIterator partition) {
         RowIndexEntry rie = sstableWriter.append(partition);
-        if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > currentBytesToWrite && currentRatioIndex < ratios.length - 1) // if we underestimate how many keys we have, the last sstable might get more than we expect
+        if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > currentBytesToWrite
+                && currentRatioIndex < ratios.length - 1) // if we underestimate how many keys we have, the last sstable
+                                                          // might get more than we expect
         {
             currentRatioIndex++;
             currentBytesToWrite = getExpectedWriteSize();
@@ -98,28 +96,28 @@ public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter
     }
 
     @Override
-    public void switchCompactionLocation(Directories.DataDirectory location)
-    {
+    public void switchCompactionLocation(Directories.DataDirectory location) {
         this.location = location;
         long currentPartitionsToWrite = Math.round(ratios[currentRatioIndex] * estimatedTotalKeys);
         @SuppressWarnings("resource")
-        SSTableWriter writer = SSTableWriter.create(cfs.newSSTableDescriptor(getDirectories().getLocationForDisk(location)),
-                                                    currentPartitionsToWrite,
-                                                    minRepairedAt,
-                                                    pendingRepair,
-                                                    isTransient,
-                                                    cfs.metadata,
-                                                    new MetadataCollector(allSSTables, cfs.metadata().comparator, 0),
-                                                    SerializationHeader.make(cfs.metadata(), nonExpiredSSTables),
-                                                    cfs.indexManager.listIndexes(),
-                                                    txn);
+        SSTableWriter writer = SSTableWriter.create(
+                cfs.newSSTableDescriptor(getDirectories().getLocationForDisk(location)),
+                currentPartitionsToWrite,
+                minRepairedAt,
+                pendingRepair,
+                isTransient,
+                isReplicationTransferredToErasureCoding,
+                cfs.metadata,
+                new MetadataCollector(allSSTables, cfs.metadata().comparator, 0),
+                SerializationHeader.make(cfs.metadata(), nonExpiredSSTables),
+                cfs.indexManager.listIndexes(),
+                txn);
         logger.trace("Switching writer, currentPartitionsToWrite = {}", currentPartitionsToWrite);
         sstableWriter.switchWriter(writer);
     }
 
     @Override
-    protected long getExpectedWriteSize()
-    {
+    protected long getExpectedWriteSize() {
         return Math.round(totalSize * ratios[currentRatioIndex]);
     }
 }

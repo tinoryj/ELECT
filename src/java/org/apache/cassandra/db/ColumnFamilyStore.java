@@ -610,18 +610,22 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt,
-            TimeUUID pendingRepair, boolean isTransient, int sstableLevel, SerializationHeader header,
+            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            int sstableLevel, SerializationHeader header,
             LifecycleNewTracker lifecycleNewTracker) {
         MetadataCollector collector = new MetadataCollector(metadata().comparator).sstableLevel(sstableLevel);
-        return createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair, isTransient, collector, header,
+        return createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
+                isReplicationTransferredToErasureCoding, collector, header,
                 lifecycleNewTracker);
     }
 
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt,
-            TimeUUID pendingRepair, boolean isTransient, MetadataCollector metadataCollector,
+            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            MetadataCollector metadataCollector,
             SerializationHeader header, LifecycleNewTracker lifecycleNewTracker) {
         return getCompactionStrategyManager().createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair,
-                isTransient, metadataCollector, header, indexManager.listIndexes(), lifecycleNewTracker);
+                isTransient, isReplicationTransferredToErasureCoding, metadataCollector, header,
+                indexManager.listIndexes(), lifecycleNewTracker);
     }
 
     public boolean supportsEarlyOpen() {
@@ -2366,6 +2370,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 keys,
                 0,
                 repairSessionID,
+                false,
                 false,
                 0,
                 new SerializationHeader(true,

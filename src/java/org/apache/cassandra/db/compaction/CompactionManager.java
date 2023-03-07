@@ -730,7 +730,7 @@ public class CompactionManager implements CompactionManagerMBean {
             Collection<Range<Token>> ranges,
             LifecycleTransaction txn,
             TimeUUID sessionID,
-            boolean isTransient) throws IOException {
+            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException {
         if (ranges.isEmpty())
             return;
 
@@ -741,7 +741,7 @@ public class CompactionManager implements CompactionManagerMBean {
 
         cfs.metric.bytesMutatedAnticompaction.inc(SSTableReader.getTotalBytes(fullyContainedSSTables));
         cfs.getCompactionStrategyManager().mutateRepaired(fullyContainedSSTables, UNREPAIRED_SSTABLE, sessionID,
-                isTransient);
+                isTransient, isReplicationTransferredToErasureCoding);
         // since we're just re-writing the sstable metdata for the fully contained
         // sstables, we don't want
         // them obsoleted when the anti-compaction is complete. So they're removed from
@@ -794,9 +794,9 @@ public class CompactionManager implements CompactionManagerMBean {
             Set<SSTableReader> sstables = new HashSet<>(validatedForRepair);
             validateSSTableBoundsForAnticompaction(sessionID, sstables, replicas);
             mutateFullyContainedSSTables(cfs, validatedForRepair, sstables.iterator(), replicas.onlyFull().ranges(),
-                    txn, sessionID, false);
+                    txn, sessionID, false, false);
             mutateFullyContainedSSTables(cfs, validatedForRepair, sstables.iterator(),
-                    replicas.onlyTransient().ranges(), txn, sessionID, true);
+                    replicas.onlyTransient().ranges(), txn, sessionID, true, false);
 
             assert txn.originals().equals(sstables);
             if (!sstables.isEmpty())

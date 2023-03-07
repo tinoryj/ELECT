@@ -44,29 +44,26 @@ import org.apache.cassandra.utils.FBUtilities;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class LongLeveledCompactionStrategyTest
-{
+public class LongLeveledCompactionStrategyTest {
     public static final String KEYSPACE1 = "LongLeveledCompactionStrategyTest";
     public static final String CF_STANDARDLVL = "StandardLeveled";
     public static final String CF_STANDARDLVL2 = "StandardLeveled2";
 
     @BeforeClass
-    public static void defineSchema() throws ConfigurationException
-    {
+    public static void defineSchema() throws ConfigurationException {
         Map<String, String> leveledOptions = new HashMap<>();
         leveledOptions.put("sstable_size_in_mb", "1");
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE1,
-                                    KeyspaceParams.simple(1),
-                                    SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARDLVL)
-                                                .compaction(CompactionParams.lcs(leveledOptions)),
-                                    SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARDLVL2)
-                                                .compaction(CompactionParams.lcs(leveledOptions)));
+                KeyspaceParams.simple(1),
+                SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARDLVL)
+                        .compaction(CompactionParams.lcs(leveledOptions)),
+                SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARDLVL2)
+                        .compaction(CompactionParams.lcs(leveledOptions)));
     }
 
     @Test
-    public void testParallelLeveledCompaction() throws Exception
-    {
+    public void testParallelLeveledCompaction() throws Exception {
         String ksname = KEYSPACE1;
         String cfname = "StandardLeveled";
         Keyspace keyspace = Keyspace.open(ksname);
@@ -81,20 +78,16 @@ public class LongLeveledCompactionStrategyTest
 
         // Execute LCS in parallel
         ExecutorService executor = new ThreadPoolExecutor(4, 4,
-                                                          Long.MAX_VALUE, TimeUnit.SECONDS,
-                                                          new LinkedBlockingDeque<Runnable>());
+                Long.MAX_VALUE, TimeUnit.SECONDS,
+                new LinkedBlockingDeque<Runnable>());
         List<Runnable> tasks = new ArrayList<Runnable>();
-        while (true)
-        {
-            while (true)
-            {
+        while (true) {
+            while (true) {
                 final AbstractCompactionTask nextTask = lcs.getNextBackgroundTask(Integer.MIN_VALUE);
                 if (nextTask == null)
                     break;
-                tasks.add(new Runnable()
-                {
-                    public void run()
-                    {
+                tasks.add(new Runnable() {
+                    public void run() {
                         nextTask.execute(ActiveCompactionsTracker.NOOP);
                     }
                 });
@@ -113,20 +106,19 @@ public class LongLeveledCompactionStrategyTest
         // Assert all SSTables are lined up correctly.
         LeveledManifest manifest = lcs.manifest;
         int levels = manifest.getLevelCount();
-        for (int level = 0; level < levels; level++)
-        {
+        for (int level = 0; level < levels; level++) {
             Set<SSTableReader> sstables = manifest.getLevel(level);
             // score check
-            assert (double) SSTableReader.getTotalBytes(sstables) / manifest.maxBytesForLevel(level, 1 * 1024 * 1024) < 1.00;
+            assert (double) SSTableReader.getTotalBytes(sstables)
+                    / manifest.maxBytesForLevel(level, 1 * 1024 * 1024) < 1.00;
             // overlap check for levels greater than 0
-            for (SSTableReader sstable : sstables)
-            {
+            for (SSTableReader sstable : sstables) {
                 // level check
                 assert level == sstable.getSSTableLevel();
 
-                if (level > 0)
-                {// overlap check for levels greater than 0
-                    Set<SSTableReader> overlaps = LeveledManifest.overlapping(sstable.first.getToken(), sstable.last.getToken(), sstables);
+                if (level > 0) {// overlap check for levels greater than 0
+                    Set<SSTableReader> overlaps = LeveledManifest.overlapping(sstable.first.getToken(),
+                            sstable.last.getToken(), sstables);
                     assert overlaps.size() == 1 && overlaps.contains(sstable);
                 }
             }
@@ -134,8 +126,7 @@ public class LongLeveledCompactionStrategyTest
     }
 
     @Test
-    public void testLeveledScanner() throws Exception
-    {
+    public void testLeveledScanner() throws Exception {
         Keyspace keyspace = Keyspace.open(KEYSPACE1);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF_STANDARDLVL2);
         ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KiB value, make it easy to have multiple files
@@ -150,8 +141,7 @@ public class LongLeveledCompactionStrategyTest
         value = ByteBuffer.wrap(new byte[10 * 1024]); // 10 KiB value
 
         // Adds 10 partitions
-        for (int r = 0; r < 10; r++)
-        {
+        for (int r = 0; r < 10; r++) {
             DecoratedKey key = Util.dk(String.valueOf(r));
             UpdateBuilder builder = UpdateBuilder.create(store.metadata(), key);
             for (int c = 0; c < 10; c++)
@@ -161,36 +151,32 @@ public class LongLeveledCompactionStrategyTest
             rm.apply();
         }
 
-        //Flush sstable
+        // Flush sstable
         Util.flush(store);
 
-        store.runWithCompactionsDisabled(new Callable<Void>()
-        {
-            public Void call() throws Exception
-            {
+        store.runWithCompactionsDisabled(new Callable<Void>() {
+            public Void call() throws Exception {
                 Iterable<SSTableReader> allSSTables = store.getSSTables(SSTableSet.LIVE);
-                for (SSTableReader sstable : allSSTables)
-                {
-                    if (sstable.getSSTableLevel() == 0)
-                    {
-                        System.out.println("Mutating L0-SSTABLE level to L1 to simulate a bug: " + sstable.getFilename());
+                for (SSTableReader sstable : allSSTables) {
+                    if (sstable.getSSTableLevel() == 0) {
+                        System.out
+                                .println("Mutating L0-SSTABLE level to L1 to simulate a bug: " + sstable.getFilename());
                         sstable.descriptor.getMetadataSerializer().mutateLevel(sstable.descriptor, 1);
                         sstable.reloadSSTableMetadata();
                     }
                 }
 
-                try (AbstractCompactionStrategy.ScannerList scannerList = lcs.getScanners(Lists.newArrayList(allSSTables)))
-                {
-                    //Verify that leveled scanners will always iterate in ascending order (CASSANDRA-9935)
-                    for (ISSTableScanner scanner : scannerList.scanners)
-                    {
+                try (AbstractCompactionStrategy.ScannerList scannerList = lcs
+                        .getScanners(Lists.newArrayList(allSSTables))) {
+                    // Verify that leveled scanners will always iterate in ascending order
+                    // (CASSANDRA-9935)
+                    for (ISSTableScanner scanner : scannerList.scanners) {
                         DecoratedKey lastKey = null;
-                        while (scanner.hasNext())
-                        {
+                        while (scanner.hasNext()) {
                             UnfilteredRowIterator row = scanner.next();
-                            if (lastKey != null)
-                            {
-                                assertTrue("row " + row.partitionKey() + " received out of order wrt " + lastKey, row.partitionKey().compareTo(lastKey) >= 0);
+                            if (lastKey != null) {
+                                assertTrue("row " + row.partitionKey() + " received out of order wrt " + lastKey,
+                                        row.partitionKey().compareTo(lastKey) >= 0);
                             }
                             lastKey = row.partitionKey();
                         }
@@ -200,12 +186,10 @@ public class LongLeveledCompactionStrategyTest
             }
         }, true, true);
 
-
     }
 
     @Test
-    public void testRepairStatusChanges() throws Exception
-    {
+    public void testRepairStatusChanges() throws Exception {
         String ksname = KEYSPACE1;
         String cfname = "StandardLeveled";
         Keyspace keyspace = Keyspace.open(ksname);
@@ -220,7 +204,7 @@ public class LongLeveledCompactionStrategyTest
         populateSSTables(store);
         assertTrue(repaired.getSSTables().isEmpty());
         assertFalse(unrepaired.getSSTables().isEmpty());
-        mgr.mutateRepaired(store.getLiveSSTables(), FBUtilities.nowInSeconds(), null, false);
+        mgr.mutateRepaired(store.getLiveSSTables(), FBUtilities.nowInSeconds(), null, false, false);
         assertFalse(repaired.getSSTables().isEmpty());
         assertTrue(unrepaired.getSSTables().isEmpty());
 
@@ -236,15 +220,15 @@ public class LongLeveledCompactionStrategyTest
 
         // mark unrepair
         mgr.mutateRepaired(store.getLiveSSTables().stream().filter(s -> s.isRepaired()).collect(Collectors.toList()),
-                           ActiveRepairService.UNREPAIRED_SSTABLE,
-                           null,
-                           false);
+                ActiveRepairService.UNREPAIRED_SSTABLE,
+                null,
+                false,
+                false);
         assertTrue(repaired.getSSTables().isEmpty());
         assertFalse(unrepaired.getSSTables().isEmpty());
     }
 
-    private void populateSSTables(ColumnFamilyStore store)
-    {
+    private void populateSSTables(ColumnFamilyStore store) {
         ByteBuffer value = ByteBuffer.wrap(new byte[100 * 1024]); // 100 KiB value, make it easy to have multiple files
 
         // Enough data to have a level 1 and 2
@@ -252,8 +236,7 @@ public class LongLeveledCompactionStrategyTest
         int columns = 10;
 
         // Adds enough data to trigger multiple sstable per level
-        for (int r = 0; r < rows; r++)
-        {
+        for (int r = 0; r < rows; r++) {
             DecoratedKey key = Util.dk(String.valueOf(r));
             UpdateBuilder builder = UpdateBuilder.create(store.metadata(), key);
             for (int c = 0; c < columns; c++)

@@ -347,6 +347,7 @@ public class SSTableImporter {
                 descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor,
                         ActiveRepairService.UNREPAIRED_SSTABLE,
                         null,
+                        false,
                         false);
             }
         }

@@ -42,8 +42,7 @@ import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.TimeUUID;
 
 @Ignore
-public class AbstractPendingRepairTest extends AbstractRepairTest
-{
+public class AbstractPendingRepairTest extends AbstractRepairTest {
     protected String ks;
     protected final String tbl = "tbl";
     protected TableMetadata cfm;
@@ -54,8 +53,7 @@ public class AbstractPendingRepairTest extends AbstractRepairTest
     private int nextSSTableKey = 0;
 
     @BeforeClass
-    public static void setupClass()
-    {
+    public static void setupClass() {
         SchemaLoader.prepareServer();
         ARS = ActiveRepairService.instance;
         LocalSessionAccessor.startup();
@@ -66,10 +64,10 @@ public class AbstractPendingRepairTest extends AbstractRepairTest
     }
 
     @Before
-    public void setup()
-    {
+    public void setup() {
         ks = "ks_" + System.currentTimeMillis();
-        cfm = CreateTableStatement.parse(String.format("CREATE TABLE %s.%s (k INT PRIMARY KEY, v INT)", ks, tbl), ks).build();
+        cfm = CreateTableStatement.parse(String.format("CREATE TABLE %s.%s (k INT PRIMARY KEY, v INT)", ks, tbl), ks)
+                .build();
         SchemaLoader.createKeyspace(ks, KeyspaceParams.simple(1), cfm);
         cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.id);
         csm = cfs.getCompactionStrategyManager();
@@ -80,10 +78,10 @@ public class AbstractPendingRepairTest extends AbstractRepairTest
     /**
      * creates and returns an sstable
      *
-     * @param orphan if true, the sstable will be removed from the unrepaired strategy
+     * @param orphan if true, the sstable will be removed from the unrepaired
+     *               strategy
      */
-    SSTableReader makeSSTable(boolean orphan)
-    {
+    SSTableReader makeSSTable(boolean orphan) {
         int pk = nextSSTableKey++;
         Set<SSTableReader> pre = cfs.getLiveSSTables();
         QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES(?, ?)", ks, tbl), pk, pk);
@@ -93,33 +91,30 @@ public class AbstractPendingRepairTest extends AbstractRepairTest
         diff.removeAll(pre);
         assert diff.size() == 1;
         SSTableReader sstable = diff.iterator().next();
-        if (orphan)
-        {
+        if (orphan) {
             csm.getUnrepairedUnsafe().allStrategies().forEach(acs -> acs.removeSSTable(sstable));
         }
         return sstable;
     }
 
-    public static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair, boolean isTransient)
-    {
-        try
-        {
-            sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, repairedAt, pendingRepair, isTransient);
+    public static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair,
+            boolean isTransient, boolean isReplicationTransferredToErasureCoding) {
+        try {
+            sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, repairedAt,
+                    pendingRepair, isTransient, isReplicationTransferredToErasureCoding);
             sstable.reloadSSTableMetadata();
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             throw new AssertionError(e);
         }
     }
 
-    public static void mutateRepaired(SSTableReader sstable, long repairedAt)
-    {
-        mutateRepaired(sstable, repairedAt, ActiveRepairService.NO_PENDING_REPAIR, false);
+    public static void mutateRepaired(SSTableReader sstable, long repairedAt) {
+        mutateRepaired(sstable, repairedAt, ActiveRepairService.NO_PENDING_REPAIR, false, false);
     }
 
-    public static void mutateRepaired(SSTableReader sstable, TimeUUID pendingRepair, boolean isTransient)
-    {
-        mutateRepaired(sstable, ActiveRepairService.UNREPAIRED_SSTABLE, pendingRepair, isTransient);
+    public static void mutateRepaired(SSTableReader sstable, TimeUUID pendingRepair, boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding) {
+        mutateRepaired(sstable, ActiveRepairService.UNREPAIRED_SSTABLE, pendingRepair, isTransient,
+                isReplicationTransferredToErasureCoding);
     }
 }

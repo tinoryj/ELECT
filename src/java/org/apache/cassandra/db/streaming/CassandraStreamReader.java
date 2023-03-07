@@ -63,8 +63,7 @@ import static org.apache.cassandra.net.MessagingService.current_version;
 /**
  * CassandraStreamReader reads from stream and writes to SSTable.
  */
-public class CassandraStreamReader implements IStreamReader
-{
+public class CassandraStreamReader implements IStreamReader {
     private static final Logger logger = LoggerFactory.getLogger(CassandraStreamReader.class);
     protected final TableId tableId;
     protected final long estimatedKeys;
@@ -78,10 +77,9 @@ public class CassandraStreamReader implements IStreamReader
     protected final SerializationHeader.Component header;
     protected final int fileSeqNum;
 
-    public CassandraStreamReader(StreamMessageHeader header, CassandraStreamHeader streamHeader, StreamSession session)
-    {
-        if (session.getPendingRepair() != null)
-        {
+    public CassandraStreamReader(StreamMessageHeader header, CassandraStreamHeader streamHeader,
+            StreamSession session) {
+        if (session.getPendingRepair() != null) {
             // we should only ever be streaming pending repair
             // sstables if the session has a pending repair id
             assert session.getPendingRepair().equals(header.pendingRepair);
@@ -102,12 +100,12 @@ public class CassandraStreamReader implements IStreamReader
     /**
      * @param inputPlus where this reads data from
      * @return SSTable transferred
-     * @throws IOException if reading the remote sstable fails. Will throw an RTE if local write fails.
+     * @throws IOException if reading the remote sstable fails. Will throw an RTE if
+     *                     local write fails.
      */
     @SuppressWarnings("resource") // input needs to remain open, streams on top of it can't be closed
     @Override
-    public SSTableMultiWriter read(DataInputPlus inputPlus) throws Throwable
-    {
+    public SSTableMultiWriter read(DataInputPlus inputPlus) throws Throwable {
         long totalSize = totalSize();
 
         ColumnFamilyStore cfs = ColumnFamilyStore.getIfExists(tableId);
@@ -115,73 +113,73 @@ public class CassandraStreamReader implements IStreamReader
             // schema was dropped during streaming
             throw new IllegalStateException("Table " + tableId + " was dropped during streaming");
 
-        logger.debug("[Stream #{}] Start receiving file #{} from {}, repairedAt = {}, size = {}, ks = '{}', table = '{}', pendingRepair = '{}'.",
-                     session.planId(), fileSeqNum, session.peer, repairedAt, totalSize, cfs.keyspace.getName(),
-                     cfs.getTableName(), pendingRepair);
+        logger.debug(
+                "[Stream #{}] Start receiving file #{} from {}, repairedAt = {}, size = {}, ks = '{}', table = '{}', pendingRepair = '{}'.",
+                session.planId(), fileSeqNum, session.peer, repairedAt, totalSize, cfs.keyspace.getName(),
+                cfs.getTableName(), pendingRepair);
 
         StreamDeserializer deserializer = null;
         SSTableMultiWriter writer = null;
-        try (StreamCompressionInputStream streamCompressionInputStream = new StreamCompressionInputStream(inputPlus, current_version))
-        {
+        try (StreamCompressionInputStream streamCompressionInputStream = new StreamCompressionInputStream(inputPlus,
+                current_version)) {
             TrackedDataInputPlus in = new TrackedDataInputPlus(streamCompressionInputStream);
             deserializer = new StreamDeserializer(cfs.metadata(), in, inputVersion, getHeader(cfs.metadata()));
             writer = createWriter(cfs, totalSize, repairedAt, pendingRepair, format);
-            while (in.getBytesRead() < totalSize)
-            {
+            while (in.getBytesRead() < totalSize) {
                 writePartition(deserializer, writer);
                 // TODO move this to BytesReadTracker
-                session.progress(writer.getFilename() + '-' + fileSeqNum, ProgressInfo.Direction.IN, in.getBytesRead(), totalSize);
+                session.progress(writer.getFilename() + '-' + fileSeqNum, ProgressInfo.Direction.IN, in.getBytesRead(),
+                        totalSize);
             }
             logger.debug("[Stream #{}] Finished receiving file #{} from {} readBytes = {}, totalSize = {}",
-                         session.planId(), fileSeqNum, session.peer, FBUtilities.prettyPrintMemory(in.getBytesRead()), FBUtilities.prettyPrintMemory(totalSize));
+                    session.planId(), fileSeqNum, session.peer, FBUtilities.prettyPrintMemory(in.getBytesRead()),
+                    FBUtilities.prettyPrintMemory(totalSize));
             return writer;
-        }
-        catch (Throwable e)
-        {
+        } catch (Throwable e) {
             Object partitionKey = deserializer != null ? deserializer.partitionKey() : "";
             logger.warn("[Stream {}] Error while reading partition {} from stream on ks='{}' and table='{}'.",
-                        session.planId(), partitionKey, cfs.keyspace.getName(), cfs.getTableName(), e);
+                    session.planId(), partitionKey, cfs.keyspace.getName(), cfs.getTableName(), e);
             if (writer != null)
                 e = writer.abort(e);
             throw e;
         }
     }
 
-    protected SerializationHeader getHeader(TableMetadata metadata) throws UnknownColumnException
-    {
-        return header != null? header.toHeader(metadata) : null; //pre-3.0 sstable have no SerializationHeader
+    protected SerializationHeader getHeader(TableMetadata metadata) throws UnknownColumnException {
+        return header != null ? header.toHeader(metadata) : null; // pre-3.0 sstable have no SerializationHeader
     }
+
     @SuppressWarnings("resource")
-    protected SSTableMultiWriter createWriter(ColumnFamilyStore cfs, long totalSize, long repairedAt, TimeUUID pendingRepair, SSTableFormat.Type format) throws IOException
-    {
+    protected SSTableMultiWriter createWriter(ColumnFamilyStore cfs, long totalSize, long repairedAt,
+            TimeUUID pendingRepair, SSTableFormat.Type format) throws IOException {
         Directories.DataDirectory localDir = cfs.getDirectories().getWriteableLocation(totalSize);
         if (localDir == null)
-            throw new IOException(String.format("Insufficient disk space to store %s", FBUtilities.prettyPrintMemory(totalSize)));
+            throw new IOException(
+                    String.format("Insufficient disk space to store %s", FBUtilities.prettyPrintMemory(totalSize)));
 
         StreamReceiver streamReceiver = session.getAggregator(tableId);
         Preconditions.checkState(streamReceiver instanceof CassandraStreamReceiver);
-        LifecycleNewTracker lifecycleNewTracker = CassandraStreamReceiver.fromReceiver(session.getAggregator(tableId)).createLifecycleNewTracker();
+        LifecycleNewTracker lifecycleNewTracker = CassandraStreamReceiver.fromReceiver(session.getAggregator(tableId))
+                .createLifecycleNewTracker();
 
-        RangeAwareSSTableWriter writer = new RangeAwareSSTableWriter(cfs, estimatedKeys, repairedAt, pendingRepair, false, format, sstableLevel, totalSize, lifecycleNewTracker, getHeader(cfs.metadata()));
+        RangeAwareSSTableWriter writer = new RangeAwareSSTableWriter(cfs, estimatedKeys, repairedAt, pendingRepair,
+                false, false, format, sstableLevel, totalSize, lifecycleNewTracker, getHeader(cfs.metadata()));
         return writer;
     }
 
-    protected long totalSize()
-    {
+    protected long totalSize() {
         long size = 0;
         for (SSTableReader.PartitionPositionBounds section : sections)
             size += section.upperPosition - section.lowerPosition;
         return size;
     }
 
-    protected void writePartition(StreamDeserializer deserializer, SSTableMultiWriter writer) throws IOException
-    {
+    protected void writePartition(StreamDeserializer deserializer, SSTableMultiWriter writer) throws IOException {
         writer.append(deserializer.newPartition());
         deserializer.checkForExceptions();
     }
 
-    public static class StreamDeserializer extends UnmodifiableIterator<Unfiltered> implements UnfilteredRowIterator
-    {
+    public static class StreamDeserializer extends UnmodifiableIterator<Unfiltered> implements UnfilteredRowIterator {
         private final TableMetadata metadata;
         private final DataInputPlus in;
         private final SerializationHeader header;
@@ -193,16 +191,16 @@ public class CassandraStreamReader implements IStreamReader
         private Row staticRow;
         private IOException exception;
 
-        public StreamDeserializer(TableMetadata metadata, DataInputPlus in, Version version, SerializationHeader header) throws IOException
-        {
+        public StreamDeserializer(TableMetadata metadata, DataInputPlus in, Version version, SerializationHeader header)
+                throws IOException {
             this.metadata = metadata;
             this.in = in;
-            this.helper = new DeserializationHelper(metadata, version.correspondingMessagingVersion(), DeserializationHelper.Flag.PRESERVE_SIZE);
+            this.helper = new DeserializationHelper(metadata, version.correspondingMessagingVersion(),
+                    DeserializationHelper.Flag.PRESERVE_SIZE);
             this.header = header;
         }
 
-        public StreamDeserializer newPartition() throws IOException
-        {
+        public StreamDeserializer newPartition() throws IOException {
             key = metadata.partitioner.decorateKey(ByteBufferUtil.readWithShortLength(in));
             partitionLevelDeletion = DeletionTime.serializer.deserialize(in);
             iterator = SSTableSimpleIterator.create(metadata, in, header, helper, partitionLevelDeletion);
@@ -210,83 +208,69 @@ public class CassandraStreamReader implements IStreamReader
             return this;
         }
 
-        public TableMetadata metadata()
-        {
+        public TableMetadata metadata() {
             return metadata;
         }
 
-        public RegularAndStaticColumns columns()
-        {
+        public RegularAndStaticColumns columns() {
             // We don't know which columns we'll get so assume it can be all of them
             return metadata.regularAndStaticColumns();
         }
 
-        public boolean isReverseOrder()
-        {
+        public boolean isReverseOrder() {
             return false;
         }
 
-        public DecoratedKey partitionKey()
-        {
+        public DecoratedKey partitionKey() {
             return key;
         }
 
-        public DeletionTime partitionLevelDeletion()
-        {
+        public DeletionTime partitionLevelDeletion() {
             return partitionLevelDeletion;
         }
 
-        public Row staticRow()
-        {
+        public Row staticRow() {
             return staticRow;
         }
 
-        public EncodingStats stats()
-        {
+        public EncodingStats stats() {
             return header.stats();
         }
 
-        public boolean hasNext()
-        {
-            try
-            {
+        public boolean hasNext() {
+            try {
                 return iterator.hasNext();
-            }
-            catch (IOError e)
-            {
-                if (e.getCause() != null && e.getCause() instanceof IOException)
-                {
-                    exception = (IOException)e.getCause();
+            } catch (IOError e) {
+                if (e.getCause() != null && e.getCause() instanceof IOException) {
+                    exception = (IOException) e.getCause();
                     return false;
                 }
                 throw e;
             }
         }
 
-        public Unfiltered next()
-        {
-            // Note that in practice we know that IOException will be thrown by hasNext(), because that's
-            // where the actual reading happens, so we don't bother catching RuntimeException here (contrarily
+        public Unfiltered next() {
+            // Note that in practice we know that IOException will be thrown by hasNext(),
+            // because that's
+            // where the actual reading happens, so we don't bother catching
+            // RuntimeException here (contrarily
             // to what we do in hasNext)
             Unfiltered unfiltered = iterator.next();
             return metadata.isCounter() && unfiltered.kind() == Unfiltered.Kind.ROW
-                   ? maybeMarkLocalToBeCleared((Row) unfiltered)
-                   : unfiltered;
+                    ? maybeMarkLocalToBeCleared((Row) unfiltered)
+                    : unfiltered;
         }
 
-        private Row maybeMarkLocalToBeCleared(Row row)
-        {
+        private Row maybeMarkLocalToBeCleared(Row row) {
             return metadata.isCounter() ? row.markCounterLocalToBeCleared() : row;
         }
 
-        public void checkForExceptions() throws IOException
-        {
+        public void checkForExceptions() throws IOException {
             if (exception != null)
                 throw exception;
         }
 
-        public void close()
-        {
+        public void close() {
         }
     }
 }

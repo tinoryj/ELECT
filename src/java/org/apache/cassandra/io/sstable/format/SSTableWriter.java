@@ -322,6 +322,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
                 repairedAt,
                 pendingRepair,
                 isTransient,
+                isReplicationTransferredToErasureCoding,
                 header);
     }
 

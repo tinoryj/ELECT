@@ -49,8 +49,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class SSTableWriterTestBase extends SchemaLoader
-{
+public class SSTableWriterTestBase extends SchemaLoader {
 
     protected static final String KEYSPACE = "SSTableRewriterTest";
     protected static final String CF = "Standard1";
@@ -62,39 +61,35 @@ public class SSTableWriterTestBase extends SchemaLoader
     private static int maxValueSize;
 
     @BeforeClass
-    public static void defineSchema() throws ConfigurationException
-    {
+    public static void defineSchema() throws ConfigurationException {
         DatabaseDescriptor.daemonInitialization();
 
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE,
-                                    KeyspaceParams.simple(1),
-                                    SchemaLoader.standardCFMD(KEYSPACE, CF),
-                                    SchemaLoader.standardCFMD(KEYSPACE, CF_SMALL_MAX_VALUE));
+                KeyspaceParams.simple(1),
+                SchemaLoader.standardCFMD(KEYSPACE, CF),
+                SchemaLoader.standardCFMD(KEYSPACE, CF_SMALL_MAX_VALUE));
 
         maxValueSize = DatabaseDescriptor.getMaxValueSize();
         DatabaseDescriptor.setMaxValueSize(1024 * 1024); // set max value size to 1MiB
     }
 
     @AfterClass
-    public static void revertConfiguration()
-    {
+    public static void revertConfiguration() {
         DatabaseDescriptor.setMaxValueSize(maxValueSize);
         DatabaseDescriptor.setDiskAccessMode(standardMode);
         DatabaseDescriptor.setIndexAccessMode(indexMode);
     }
 
     @After
-    public void truncateCF()
-    {
+    public void truncateCF() {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore store = keyspace.getColumnFamilyStore(CF);
         store.truncateBlocking();
         LifecycleTransaction.waitForDeletions();
     }
 
-    public static void truncate(ColumnFamilyStore cfs)
-    {
+    public static void truncate(ColumnFamilyStore cfs) {
         cfs.truncateBlocking();
         LifecycleTransaction.waitForDeletions();
         Uninterruptibles.sleepUninterruptibly(10L, TimeUnit.MILLISECONDS);
@@ -122,23 +117,18 @@ public class SSTableWriterTestBase extends SchemaLoader
      *
      * @param cfs - the column family store to validate
      */
-    public static void validateCFS(ColumnFamilyStore cfs)
-    {
+    public static void validateCFS(ColumnFamilyStore cfs) {
         Set<SSTableId> liveDescriptors = new HashSet<>();
         long spaceUsed = 0;
-        for (SSTableReader sstable : cfs.getLiveSSTables())
-        {
+        for (SSTableReader sstable : cfs.getLiveSSTables()) {
             assertFalse(sstable.isMarkedCompacted());
             assertEquals(1, sstable.selfRef().globalCount());
             liveDescriptors.add(sstable.descriptor.id);
             spaceUsed += sstable.bytesOnDisk();
         }
-        for (File dir : cfs.getDirectories().getCFDirectories())
-        {
-            for (File f : dir.tryList())
-            {
-                if (f.name().contains("Data"))
-                {
+        for (File dir : cfs.getDirectories().getCFDirectories()) {
+            for (File f : dir.tryList()) {
+                if (f.name().contains("Data")) {
                     Descriptor d = Descriptor.fromFilename(f.absolutePath());
                     assertTrue(d.toString(), liveDescriptors.contains(d.id));
                 }
@@ -148,23 +138,26 @@ public class SSTableWriterTestBase extends SchemaLoader
         assertEquals(spaceUsed, cfs.metric.totalDiskSpaceUsed.getCount());
         assertTrue(cfs.getTracker().getCompacting().isEmpty());
 
-        if(cfs.getLiveSSTables().size() > 0)
-            assertFalse(CompactionManager.instance.submitMaximal(cfs, cfs.gcBefore((int) (System.currentTimeMillis() / 1000)), false).isEmpty());
+        if (cfs.getLiveSSTables().size() > 0)
+            assertFalse(CompactionManager.instance
+                    .submitMaximal(cfs, cfs.gcBefore((int) (System.currentTimeMillis() / 1000)), false).isEmpty());
     }
 
-    public static SSTableWriter getWriter(ColumnFamilyStore cfs, File directory, LifecycleTransaction txn, long repairedAt, TimeUUID pendingRepair, boolean isTransient)
-    {
+    public static SSTableWriter getWriter(ColumnFamilyStore cfs, File directory, LifecycleTransaction txn,
+            long repairedAt, TimeUUID pendingRepair, boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding) {
         Descriptor desc = cfs.newSSTableDescriptor(directory);
-        return SSTableWriter.create(desc, 0, repairedAt, pendingRepair, isTransient, new SerializationHeader(true, cfs.metadata(), cfs.metadata().regularAndStaticColumns(), EncodingStats.NO_STATS), cfs.indexManager.listIndexes(), txn);
+        return SSTableWriter.create(desc, 0, repairedAt, pendingRepair, isTransient,
+                isReplicationTransferredToErasureCoding, new SerializationHeader(true, cfs.metadata(),
+                        cfs.metadata().regularAndStaticColumns(), EncodingStats.NO_STATS),
+                cfs.indexManager.listIndexes(), txn);
     }
 
-    public static SSTableWriter getWriter(ColumnFamilyStore cfs, File directory, LifecycleTransaction txn)
-    {
-        return getWriter(cfs, directory, txn, 0, null, false);
+    public static SSTableWriter getWriter(ColumnFamilyStore cfs, File directory, LifecycleTransaction txn) {
+        return getWriter(cfs, directory, txn, 0, null, false, false);
     }
 
-    public static ByteBuffer random(int i, int size)
-    {
+    public static ByteBuffer random(int i, int size) {
         byte[] bytes = new byte[size + 4];
         ThreadLocalRandom.current().nextBytes(bytes);
         ByteBuffer r = ByteBuffer.wrap(bytes);
@@ -172,13 +165,11 @@ public class SSTableWriterTestBase extends SchemaLoader
         return r;
     }
 
-    public static int assertFileCounts(String [] files)
-    {
+    public static int assertFileCounts(String[] files) {
         int tmplinkcount = 0;
         int tmpcount = 0;
         int datacount = 0;
-        for (String f : files)
-        {
+        for (String f : files) {
             if (f.endsWith("-CRC.db"))
                 continue;
             if (f.contains("tmplink-"))

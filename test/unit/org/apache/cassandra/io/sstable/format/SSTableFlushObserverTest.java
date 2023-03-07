@@ -59,11 +59,9 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class SSTableFlushObserverTest
-{
+public class SSTableFlushObserverTest {
     @BeforeClass
-    public static void initDD()
-    {
+    public static void initDD() {
         DatabaseDescriptor.daemonInitialization();
         CommitLog.instance.start();
     }
@@ -72,15 +70,13 @@ public class SSTableFlushObserverTest
     private static final String CF_NAME = "flush_observer";
 
     @Test
-    public void testFlushObserver()
-    {
-        TableMetadata cfm =
-            TableMetadata.builder(KS_NAME, CF_NAME)
-                         .addPartitionKeyColumn("id", UTF8Type.instance)
-                         .addRegularColumn("first_name", UTF8Type.instance)
-                         .addRegularColumn("age", Int32Type.instance)
-                         .addRegularColumn("height", LongType.instance)
-                         .build();
+    public void testFlushObserver() {
+        TableMetadata cfm = TableMetadata.builder(KS_NAME, CF_NAME)
+                .addPartitionKeyColumn("id", UTF8Type.instance)
+                .addRegularColumn("first_name", UTF8Type.instance)
+                .addRegularColumn("age", Int32Type.instance)
+                .addRegularColumn("height", LongType.instance)
+                .build();
 
         LifecycleTransaction transaction = LifecycleTransaction.offline(OperationType.COMPACTION);
         FlushObserver observer = new FlushObserver();
@@ -94,69 +90,66 @@ public class SSTableFlushObserverTest
 
         SSTableFormat.Type sstableFormat = SSTableFormat.Type.current();
         Descriptor descriptor = new Descriptor(sstableFormat.info.getLatestVersion(),
-                                               directory,
-                                               cfm.keyspace,
-                                               cfm.name,
-                                               new SequenceBasedSSTableId(0),
-                                               sstableFormat);
+                directory,
+                cfm.keyspace,
+                cfm.name,
+                new SequenceBasedSSTableId(0),
+                sstableFormat);
 
         BigTableWriter writer = new BigTableWriter(descriptor,
-                                                   10L, 0L, null, false, TableMetadataRef.forOfflineTools(cfm),
-                                                   new MetadataCollector(cfm.comparator).sstableLevel(0),
-                                                   new SerializationHeader(true, cfm, cfm.regularAndStaticColumns(), EncodingStats.NO_STATS),
-                                                   Collections.singletonList(observer),
-                                                   transaction);
+                10L, 0L, null, false, false, TableMetadataRef.forOfflineTools(cfm),
+                new MetadataCollector(cfm.comparator).sstableLevel(0),
+                new SerializationHeader(true, cfm, cfm.regularAndStaticColumns(), EncodingStats.NO_STATS),
+                Collections.singletonList(observer),
+                transaction);
 
         SSTableReader reader = null;
         Multimap<ByteBuffer, Cell<?>> expected = ArrayListMultimap.create();
 
-        try
-        {
+        try {
             final long now = System.currentTimeMillis();
 
             ByteBuffer key = UTF8Type.instance.fromString("key1");
-            expected.putAll(key, Arrays.asList(BufferCell.live(getColumn(cfm, "age"), now, Int32Type.instance.decompose(27)),
-                                               BufferCell.live(getColumn(cfm, "first_name"), now,UTF8Type.instance.fromString("jack")),
-                                               BufferCell.live(getColumn(cfm, "height"), now, LongType.instance.decompose(183L))));
+            expected.putAll(key,
+                    Arrays.asList(BufferCell.live(getColumn(cfm, "age"), now, Int32Type.instance.decompose(27)),
+                            BufferCell.live(getColumn(cfm, "first_name"), now, UTF8Type.instance.fromString("jack")),
+                            BufferCell.live(getColumn(cfm, "height"), now, LongType.instance.decompose(183L))));
 
-            writer.append(new RowIterator(cfm, key.duplicate(), Collections.singletonList(buildRow(expected.get(key)))));
+            writer.append(
+                    new RowIterator(cfm, key.duplicate(), Collections.singletonList(buildRow(expected.get(key)))));
 
             key = UTF8Type.instance.fromString("key2");
-            expected.putAll(key, Arrays.asList(BufferCell.live(getColumn(cfm, "age"), now, Int32Type.instance.decompose(30)),
-                                               BufferCell.live(getColumn(cfm, "first_name"), now,UTF8Type.instance.fromString("jim")),
-                                               BufferCell.live(getColumn(cfm, "height"), now, LongType.instance.decompose(180L))));
+            expected.putAll(key,
+                    Arrays.asList(BufferCell.live(getColumn(cfm, "age"), now, Int32Type.instance.decompose(30)),
+                            BufferCell.live(getColumn(cfm, "first_name"), now, UTF8Type.instance.fromString("jim")),
+                            BufferCell.live(getColumn(cfm, "height"), now, LongType.instance.decompose(180L))));
 
             writer.append(new RowIterator(cfm, key, Collections.singletonList(buildRow(expected.get(key)))));
 
             key = UTF8Type.instance.fromString("key3");
-            expected.putAll(key, Arrays.asList(BufferCell.live(getColumn(cfm, "age"), now, Int32Type.instance.decompose(30)),
-                                               BufferCell.live(getColumn(cfm, "first_name"), now,UTF8Type.instance.fromString("ken")),
-                                               BufferCell.live(getColumn(cfm, "height"), now, LongType.instance.decompose(178L))));
+            expected.putAll(key,
+                    Arrays.asList(BufferCell.live(getColumn(cfm, "age"), now, Int32Type.instance.decompose(30)),
+                            BufferCell.live(getColumn(cfm, "first_name"), now, UTF8Type.instance.fromString("ken")),
+                            BufferCell.live(getColumn(cfm, "height"), now, LongType.instance.decompose(178L))));
 
             writer.append(new RowIterator(cfm, key, Collections.singletonList(buildRow(expected.get(key)))));
 
             reader = writer.finish(true);
-        }
-        finally
-        {
+        } finally {
             FileUtils.closeQuietly(writer);
         }
 
         Assert.assertTrue(observer.isComplete);
         Assert.assertEquals(expected.size(), observer.rows.size());
 
-        for (Pair<ByteBuffer, Long> e : observer.rows.keySet())
-        {
+        for (Pair<ByteBuffer, Long> e : observer.rows.keySet()) {
             ByteBuffer key = e.left;
             Long indexPosition = e.right;
 
-            try (FileDataInput index = reader.ifile.createReader(indexPosition))
-            {
+            try (FileDataInput index = reader.ifile.createReader(indexPosition)) {
                 ByteBuffer indexKey = ByteBufferUtil.readWithShortLength(index);
                 Assert.assertEquals(0, UTF8Type.instance.compare(key, indexKey));
-            }
-            catch (IOException ex)
-            {
+            } catch (IOException ex) {
                 throw new FSReadError(ex, reader.getIndexFilename());
             }
 
@@ -164,70 +157,61 @@ public class SSTableFlushObserverTest
         }
     }
 
-    private static class RowIterator extends AbstractUnfilteredRowIterator
-    {
+    private static class RowIterator extends AbstractUnfilteredRowIterator {
         private final Iterator<Unfiltered> rows;
 
-        public RowIterator(TableMetadata cfm, ByteBuffer key, Collection<Unfiltered> content)
-        {
+        public RowIterator(TableMetadata cfm, ByteBuffer key, Collection<Unfiltered> content) {
             super(cfm,
-                  DatabaseDescriptor.getPartitioner().decorateKey(key),
-                  DeletionTime.LIVE,
-                  cfm.regularAndStaticColumns(),
-                  BTreeRow.emptyRow(Clustering.STATIC_CLUSTERING),
-                  false,
-                  EncodingStats.NO_STATS);
+                    DatabaseDescriptor.getPartitioner().decorateKey(key),
+                    DeletionTime.LIVE,
+                    cfm.regularAndStaticColumns(),
+                    BTreeRow.emptyRow(Clustering.STATIC_CLUSTERING),
+                    false,
+                    EncodingStats.NO_STATS);
 
             rows = content.iterator();
         }
 
         @Override
-        protected Unfiltered computeNext()
-        {
+        protected Unfiltered computeNext() {
             return rows.hasNext() ? rows.next() : endOfData();
         }
     }
 
-    private static class FlushObserver implements SSTableFlushObserver
-    {
+    private static class FlushObserver implements SSTableFlushObserver {
         private final Multimap<Pair<ByteBuffer, Long>, Cell<?>> rows = ArrayListMultimap.create();
         private Pair<ByteBuffer, Long> currentKey;
         private boolean isComplete;
 
         @Override
-        public void begin()
-        {}
+        public void begin() {
+        }
 
         @Override
-        public void startPartition(DecoratedKey key, long indexPosition)
-        {
+        public void startPartition(DecoratedKey key, long indexPosition) {
             currentKey = Pair.create(key.getKey(), indexPosition);
         }
 
         @Override
-        public void nextUnfilteredCluster(Unfiltered row)
-        {
+        public void nextUnfilteredCluster(Unfiltered row) {
             if (row.isRow())
                 ((Row) row).forEach((c) -> rows.put(currentKey, (Cell<?>) c));
         }
 
         @Override
-        public void complete()
-        {
+        public void complete() {
             isComplete = true;
         }
     }
 
-    private static Row buildRow(Collection<Cell<?>> cells)
-    {
+    private static Row buildRow(Collection<Cell<?>> cells) {
         Row.Builder rowBuilder = BTreeRow.sortedBuilder();
         rowBuilder.newRow(Clustering.EMPTY);
         cells.forEach(rowBuilder::addCell);
         return rowBuilder.build();
     }
 
-    private static ColumnMetadata getColumn(TableMetadata cfm, String name)
-    {
+    private static ColumnMetadata getColumn(TableMetadata cfm, String name) {
         return cfm.getColumn(UTF8Type.instance.fromString(name));
     }
 }

@@ -31,8 +31,7 @@ import org.apache.cassandra.utils.TimeUUID;
 /**
  * Interface for SSTable metadata serializer
  */
-public interface IMetadataSerializer
-{
+public interface IMetadataSerializer {
     /**
      * Serialize given metadata components
      *
@@ -42,7 +41,8 @@ public interface IMetadataSerializer
      * @param version
      * @throws IOException
      */
-    void serialize(Map<MetadataType, MetadataComponent> components, DataOutputPlus out, Version version) throws IOException;
+    void serialize(Map<MetadataType, MetadataComponent> components, DataOutputPlus out, Version version)
+            throws IOException;
 
     /**
      * Deserialize specified metadata components from given descriptor.
@@ -51,14 +51,16 @@ public interface IMetadataSerializer
      * @return Deserialized metadata components, in deserialized order.
      * @throws IOException
      */
-    Map<MetadataType, MetadataComponent> deserialize(Descriptor descriptor, EnumSet<MetadataType> types) throws IOException;
+    Map<MetadataType, MetadataComponent> deserialize(Descriptor descriptor, EnumSet<MetadataType> types)
+            throws IOException;
 
     /**
      * Deserialized only metadata component specified from given descriptor.
      *
      * @param descriptor SSTable descriptor
-     * @param type Metadata component type to deserialize
-     * @return Deserialized metadata component. Can be null if specified type does not exist.
+     * @param type       Metadata component type to deserialize
+     * @return Deserialized metadata component. Can be null if specified type does
+     *         not exist.
      * @throws IOException
      */
     MetadataComponent deserialize(Descriptor descriptor, MetadataType type) throws IOException;
@@ -66,24 +68,27 @@ public interface IMetadataSerializer
     /**
      * Mutate SSTable Metadata
      *
-     * NOTE: mutating stats metadata of a live sstable will race with entire-sstable-streaming, please use
+     * NOTE: mutating stats metadata of a live sstable will race with
+     * entire-sstable-streaming, please use
      * {@link SSTableReader#mutateLevelAndReload} instead on live sstable.
      *
-     * @param descriptor SSTable descriptor
+     * @param descriptor  SSTable descriptor
      * @param description on changed attributions
-     * @param transform function to mutate sstable metadata
+     * @param transform   function to mutate sstable metadata
      * @throws IOException
      */
-    public void mutate(Descriptor descriptor, String description, UnaryOperator<StatsMetadata> transform) throws IOException;
+    public void mutate(Descriptor descriptor, String description, UnaryOperator<StatsMetadata> transform)
+            throws IOException;
 
     /**
      * Mutate SSTable level
      *
-     * NOTE: mutating stats metadata of a live sstable will race with entire-sstable-streaming, please use
+     * NOTE: mutating stats metadata of a live sstable will race with
+     * entire-sstable-streaming, please use
      * {@link SSTableReader#mutateLevelAndReload} instead on live sstable.
      *
      * @param descriptor SSTable descriptor
-     * @param newLevel new SSTable level
+     * @param newLevel   new SSTable level
      * @throws IOException
      */
     void mutateLevel(Descriptor descriptor, int newLevel) throws IOException;
@@ -91,13 +96,17 @@ public interface IMetadataSerializer
     /**
      * Mutate the repairedAt time, pendingRepair ID, and transient status.
      *
-     * NOTE: mutating stats metadata of a live sstable will race with entire-sstable-streaming, please use
+     * NOTE: mutating stats metadata of a live sstable will race with
+     * entire-sstable-streaming, please use
      * {@link SSTableReader#mutateLevelAndReload} instead on live sstable.
      */
-    public void mutateRepairMetadata(Descriptor descriptor, long newRepairedAt, TimeUUID newPendingRepair, boolean isTransient) throws IOException;
+    public void mutateRepairMetadata(Descriptor descriptor, long newRepairedAt, TimeUUID newPendingRepair,
+            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException;
 
     /**
-     * Replace the sstable metadata file ({@code -Statistics.db}) with the given components.
+     * Replace the sstable metadata file ({@code -Statistics.db}) with the given
+     * components.
      */
-    void rewriteSSTableMetadata(Descriptor descriptor, Map<MetadataType, MetadataComponent> currentComponents) throws IOException;
+    void rewriteSSTableMetadata(Descriptor descriptor, Map<MetadataType, MetadataComponent> currentComponents)
+            throws IOException;
 }

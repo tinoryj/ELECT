@@ -40,47 +40,39 @@ import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.TimeUUID;
 
-public class CompactionStrategyHolder extends AbstractStrategyHolder
-{
+public class CompactionStrategyHolder extends AbstractStrategyHolder {
     private final List<AbstractCompactionStrategy> strategies = new ArrayList<>();
     private final boolean isRepaired;
 
-    public CompactionStrategyHolder(ColumnFamilyStore cfs, DestinationRouter router, boolean isRepaired)
-    {
+    public CompactionStrategyHolder(ColumnFamilyStore cfs, DestinationRouter router, boolean isRepaired) {
         super(cfs, router);
         this.isRepaired = isRepaired;
     }
 
     @Override
-    public void startup()
-    {
+    public void startup() {
         strategies.forEach(AbstractCompactionStrategy::startup);
     }
 
     @Override
-    public void shutdown()
-    {
+    public void shutdown() {
         strategies.forEach(AbstractCompactionStrategy::shutdown);
     }
 
     @Override
-    public void setStrategyInternal(CompactionParams params, int numTokenPartitions)
-    {
+    public void setStrategyInternal(CompactionParams params, int numTokenPartitions) {
         strategies.clear();
         for (int i = 0; i < numTokenPartitions; i++)
             strategies.add(cfs.createCompactionStrategyInstance(params));
     }
 
     @Override
-    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient)
-    {
-        if (!isPendingRepair)
-        {
+    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding) {
+        if (!isPendingRepair) {
             Preconditions.checkArgument(!isTransient, "isTransient can only be true for sstables pending repairs");
             return this.isRepaired == isRepaired;
-        }
-        else
-        {
+        } else {
             Preconditions.checkArgument(!isRepaired, "SSTables cannot be both repaired and pending repair");
             return false;
 
@@ -88,34 +80,30 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder
     }
 
     @Override
-    public AbstractCompactionStrategy getStrategyFor(SSTableReader sstable)
-    {
+    public AbstractCompactionStrategy getStrategyFor(SSTableReader sstable) {
         Preconditions.checkArgument(managesSSTable(sstable), "Attempting to get compaction strategy from wrong holder");
         return strategies.get(router.getIndexForSSTable(sstable));
     }
 
     @Override
-    public Iterable<AbstractCompactionStrategy> allStrategies()
-    {
+    public Iterable<AbstractCompactionStrategy> allStrategies() {
         return strategies;
     }
 
     @Override
-    public Collection<TaskSupplier> getBackgroundTaskSuppliers(int gcBefore)
-    {
+    public Collection<TaskSupplier> getBackgroundTaskSuppliers(int gcBefore) {
         List<TaskSupplier> suppliers = new ArrayList<>(strategies.size());
         for (AbstractCompactionStrategy strategy : strategies)
-            suppliers.add(new TaskSupplier(strategy.getEstimatedRemainingTasks(), () -> strategy.getNextBackgroundTask(gcBefore)));
+            suppliers.add(new TaskSupplier(strategy.getEstimatedRemainingTasks(),
+                    () -> strategy.getNextBackgroundTask(gcBefore)));
 
         return suppliers;
     }
 
     @Override
-    public Collection<AbstractCompactionTask> getMaximalTasks(int gcBefore, boolean splitOutput)
-    {
+    public Collection<AbstractCompactionTask> getMaximalTasks(int gcBefore, boolean splitOutput) {
         List<AbstractCompactionTask> tasks = new ArrayList<>(strategies.size());
-        for (AbstractCompactionStrategy strategy : strategies)
-        {
+        for (AbstractCompactionStrategy strategy : strategies) {
             Collection<AbstractCompactionTask> task = strategy.getMaximalTask(gcBefore, splitOutput);
             if (task != null)
                 tasks.addAll(task);
@@ -124,11 +112,9 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder
     }
 
     @Override
-    public Collection<AbstractCompactionTask> getUserDefinedTasks(GroupedSSTableContainer sstables, int gcBefore)
-    {
+    public Collection<AbstractCompactionTask> getUserDefinedTasks(GroupedSSTableContainer sstables, int gcBefore) {
         List<AbstractCompactionTask> tasks = new ArrayList<>(strategies.size());
-        for (int i = 0; i < strategies.size(); i++)
-        {
+        for (int i = 0; i < strategies.size(); i++) {
             if (sstables.isGroupEmpty(i))
                 continue;
 
@@ -138,34 +124,28 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder
     }
 
     @Override
-    public void addSSTables(GroupedSSTableContainer sstables)
-    {
+    public void addSSTables(GroupedSSTableContainer sstables) {
         Preconditions.checkArgument(sstables.numGroups() == strategies.size());
-        for (int i = 0; i < strategies.size(); i++)
-        {
+        for (int i = 0; i < strategies.size(); i++) {
             if (!sstables.isGroupEmpty(i))
                 strategies.get(i).addSSTables(sstables.getGroup(i));
         }
     }
 
     @Override
-    public void removeSSTables(GroupedSSTableContainer sstables)
-    {
+    public void removeSSTables(GroupedSSTableContainer sstables) {
         Preconditions.checkArgument(sstables.numGroups() == strategies.size());
-        for (int i = 0; i < strategies.size(); i++)
-        {
+        for (int i = 0; i < strategies.size(); i++) {
             if (!sstables.isGroupEmpty(i))
                 strategies.get(i).removeSSTables(sstables.getGroup(i));
         }
     }
 
     @Override
-    public void replaceSSTables(GroupedSSTableContainer removed, GroupedSSTableContainer added)
-    {
+    public void replaceSSTables(GroupedSSTableContainer removed, GroupedSSTableContainer added) {
         Preconditions.checkArgument(removed.numGroups() == strategies.size());
         Preconditions.checkArgument(added.numGroups() == strategies.size());
-        for (int i = 0; i < strategies.size(); i++)
-        {
+        for (int i = 0; i < strategies.size(); i++) {
             if (removed.isGroupEmpty(i) && added.isGroupEmpty(i))
                 continue;
 
@@ -176,18 +156,15 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder
         }
     }
 
-    public AbstractCompactionStrategy first()
-    {
+    public AbstractCompactionStrategy first() {
         return strategies.get(0);
     }
 
     @Override
     @SuppressWarnings("resource")
-    public List<ISSTableScanner> getScanners(GroupedSSTableContainer sstables, Collection<Range<Token>> ranges)
-    {
+    public List<ISSTableScanner> getScanners(GroupedSSTableContainer sstables, Collection<Range<Token>> ranges) {
         List<ISSTableScanner> scanners = new ArrayList<>(strategies.size());
-        for (int i = 0; i < strategies.size(); i++)
-        {
+        for (int i = 0; i < strategies.size(); i++) {
             if (sstables.isGroupEmpty(i))
                 continue;
 
@@ -196,15 +173,13 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder
         return scanners;
     }
 
-    Collection<Collection<SSTableReader>> groupForAnticompaction(Iterable<SSTableReader> sstables)
-    {
+    Collection<Collection<SSTableReader>> groupForAnticompaction(Iterable<SSTableReader> sstables) {
         Preconditions.checkState(!isRepaired);
         GroupedSSTableContainer group = createGroupedSSTableContainer();
         sstables.forEach(group::add);
 
         Collection<Collection<SSTableReader>> anticompactionGroups = new ArrayList<>();
-        for (int i = 0; i < strategies.size(); i++)
-        {
+        for (int i = 0; i < strategies.size(); i++) {
             if (group.isGroupEmpty(i))
                 continue;
 
@@ -216,49 +191,46 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder
 
     @Override
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor,
-                                                       long keyCount,
-                                                       long repairedAt,
-                                                       TimeUUID pendingRepair,
-                                                       boolean isTransient,
-                                                       MetadataCollector collector,
-                                                       SerializationHeader header,
-                                                       Collection<Index> indexes,
-                                                       LifecycleNewTracker lifecycleNewTracker)
-    {
-        if (isRepaired)
-        {
+            long keyCount,
+            long repairedAt,
+            TimeUUID pendingRepair,
+            boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding,
+            MetadataCollector collector,
+            SerializationHeader header,
+            Collection<Index> indexes,
+            LifecycleNewTracker lifecycleNewTracker) {
+        if (isRepaired) {
             Preconditions.checkArgument(repairedAt != ActiveRepairService.UNREPAIRED_SSTABLE,
-                                        "Repaired CompactionStrategyHolder can't create unrepaired sstable writers");
-        }
-        else
-        {
+                    "Repaired CompactionStrategyHolder can't create unrepaired sstable writers");
+        } else {
             Preconditions.checkArgument(repairedAt == ActiveRepairService.UNREPAIRED_SSTABLE,
-                                        "Unrepaired CompactionStrategyHolder can't create repaired sstable writers");
+                    "Unrepaired CompactionStrategyHolder can't create repaired sstable writers");
         }
         Preconditions.checkArgument(pendingRepair == null,
-                                    "CompactionStrategyHolder can't create sstable writer with pendingRepair id");
-        // to avoid creating a compaction strategy for the wrong pending repair manager, we get the index based on where the sstable is to be written
+                "CompactionStrategyHolder can't create sstable writer with pendingRepair id");
+        // to avoid creating a compaction strategy for the wrong pending repair manager,
+        // we get the index based on where the sstable is to be written
         AbstractCompactionStrategy strategy = strategies.get(router.getIndexForSSTableDirectory(descriptor));
         return strategy.createSSTableMultiWriter(descriptor,
-                                                 keyCount,
-                                                 repairedAt,
-                                                 pendingRepair,
-                                                 isTransient,
-                                                 collector,
-                                                 header,
-                                                 indexes,
-                                                 lifecycleNewTracker);
+                keyCount,
+                repairedAt,
+                pendingRepair,
+                isTransient,
+                isReplicationTransferredToErasureCoding,
+                collector,
+                header,
+                indexes,
+                lifecycleNewTracker);
     }
 
     @Override
-    public int getStrategyIndex(AbstractCompactionStrategy strategy)
-    {
+    public int getStrategyIndex(AbstractCompactionStrategy strategy) {
         return strategies.indexOf(strategy);
     }
 
     @Override
-    public boolean containsSSTable(SSTableReader sstable)
-    {
+    public boolean containsSSTable(SSTableReader sstable) {
         return Iterables.any(strategies, acs -> acs.getSSTables().contains(sstable));
     }
 }

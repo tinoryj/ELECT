@@ -54,11 +54,11 @@ import static org.apache.cassandra.db.repair.CassandraValidationIterator.getSSTa
 import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
 /**
- * Tests correct sstables are returned from CompactionManager.getSSTablesForValidation
+ * Tests correct sstables are returned from
+ * CompactionManager.getSSTablesForValidation
  * for consistent, legacy incremental, and full repairs
  */
-public class CompactionManagerGetSSTablesForValidationTest
-{
+public class CompactionManagerGetSSTablesForValidationTest {
     private String ks;
     private static final String tbl = "tbl";
     private ColumnFamilyStore cfs;
@@ -74,26 +74,23 @@ public class CompactionManagerGetSSTablesForValidationTest
     private RepairJobDesc desc;
 
     @BeforeClass
-    public static void setupClass() throws Exception
-    {
+    public static void setupClass() throws Exception {
         SchemaLoader.prepareServer();
         coordinator = InetAddressAndPort.getByName("10.0.0.1");
         MT = DatabaseDescriptor.getPartitioner().getMinimumToken();
     }
 
     @Before
-    public void setup() throws Exception
-    {
+    public void setup() throws Exception {
         ks = "ks_" + System.currentTimeMillis();
-        TableMetadata cfm = CreateTableStatement.parse(String.format("CREATE TABLE %s.%s (k INT PRIMARY KEY, v INT)", ks, tbl), ks).build();
+        TableMetadata cfm = CreateTableStatement
+                .parse(String.format("CREATE TABLE %s.%s (k INT PRIMARY KEY, v INT)", ks, tbl), ks).build();
         SchemaLoader.createKeyspace(ks, KeyspaceParams.simple(1), cfm);
         cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.id);
     }
 
-    private void makeSSTables()
-    {
-        for (int i=0; i<3; i++)
-        {
+    private void makeSSTables() {
+        for (int i = 0; i < 3; i++) {
             QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES(?, ?)", ks, tbl), i, i);
             Util.flush(cfs);
         }
@@ -101,31 +98,31 @@ public class CompactionManagerGetSSTablesForValidationTest
 
     }
 
-    private void registerRepair(boolean incremental) throws Exception
-    {
+    private void registerRepair(boolean incremental) throws Exception {
         sessionID = nextTimeUUID();
         Range<Token> range = new Range<>(MT, MT);
         ActiveRepairService.instance.registerParentRepairSession(sessionID,
-                                                                 coordinator,
-                                                                 Lists.newArrayList(cfs),
-                                                                 Sets.newHashSet(range),
-                                                                 incremental,
-                                                                 incremental ? System.currentTimeMillis() : ActiveRepairService.UNREPAIRED_SSTABLE,
-                                                                 true,
-                                                                 PreviewKind.NONE);
+                coordinator,
+                Lists.newArrayList(cfs),
+                Sets.newHashSet(range),
+                incremental,
+                incremental ? System.currentTimeMillis() : ActiveRepairService.UNREPAIRED_SSTABLE,
+                true,
+                PreviewKind.NONE);
         desc = new RepairJobDesc(sessionID, nextTimeUUID(), ks, tbl, singleton(range));
     }
 
-    private void modifySSTables() throws Exception
-    {
+    private void modifySSTables() throws Exception {
         Iterator<SSTableReader> iter = cfs.getLiveSSTables().iterator();
 
         repaired = iter.next();
-        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, System.currentTimeMillis(), null, false);
+        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor,
+                System.currentTimeMillis(), null, false, false);
         repaired.reloadSSTableMetadata();
 
         pendingRepair = iter.next();
-        pendingRepair.descriptor.getMetadataSerializer().mutateRepairMetadata(pendingRepair.descriptor, ActiveRepairService.UNREPAIRED_SSTABLE, sessionID, false);
+        pendingRepair.descriptor.getMetadataSerializer().mutateRepairMetadata(pendingRepair.descriptor,
+                ActiveRepairService.UNREPAIRED_SSTABLE, sessionID, false, false);
         pendingRepair.reloadSSTableMetadata();
 
         unrepaired = iter.next();
@@ -134,30 +131,32 @@ public class CompactionManagerGetSSTablesForValidationTest
     }
 
     @Test
-    public void consistentRepair() throws Exception
-    {
+    public void consistentRepair() throws Exception {
         makeSSTables();
         registerRepair(true);
         modifySSTables();
 
         // get sstables for repair
-        Validator validator = new Validator(new ValidationState(desc, coordinator), FBUtilities.nowInSeconds(), true, PreviewKind.NONE);
-        Set<SSTableReader> sstables = Sets.newHashSet(getSSTablesToValidate(cfs, validator.desc.ranges, validator.desc.parentSessionId, validator.isIncremental));
+        Validator validator = new Validator(new ValidationState(desc, coordinator), FBUtilities.nowInSeconds(), true,
+                PreviewKind.NONE);
+        Set<SSTableReader> sstables = Sets.newHashSet(getSSTablesToValidate(cfs, validator.desc.ranges,
+                validator.desc.parentSessionId, validator.isIncremental));
         Assert.assertNotNull(sstables);
         Assert.assertEquals(1, sstables.size());
         Assert.assertTrue(sstables.contains(pendingRepair));
     }
 
     @Test
-    public void legacyIncrementalRepair() throws Exception
-    {
+    public void legacyIncrementalRepair() throws Exception {
         makeSSTables();
         registerRepair(true);
         modifySSTables();
 
         // get sstables for repair
-        Validator validator = new Validator(new ValidationState(desc, coordinator), FBUtilities.nowInSeconds(), false, PreviewKind.NONE);
-        Set<SSTableReader> sstables = Sets.newHashSet(getSSTablesToValidate(cfs, validator.desc.ranges, validator.desc.parentSessionId, validator.isIncremental));
+        Validator validator = new Validator(new ValidationState(desc, coordinator), FBUtilities.nowInSeconds(), false,
+                PreviewKind.NONE);
+        Set<SSTableReader> sstables = Sets.newHashSet(getSSTablesToValidate(cfs, validator.desc.ranges,
+                validator.desc.parentSessionId, validator.isIncremental));
         Assert.assertNotNull(sstables);
         Assert.assertEquals(2, sstables.size());
         Assert.assertTrue(sstables.contains(pendingRepair));
@@ -165,15 +164,16 @@ public class CompactionManagerGetSSTablesForValidationTest
     }
 
     @Test
-    public void fullRepair() throws Exception
-    {
+    public void fullRepair() throws Exception {
         makeSSTables();
         registerRepair(false);
         modifySSTables();
 
         // get sstables for repair
-        Validator validator = new Validator(new ValidationState(desc, coordinator), FBUtilities.nowInSeconds(), false, PreviewKind.NONE);
-        Set<SSTableReader> sstables = Sets.newHashSet(getSSTablesToValidate(cfs, validator.desc.ranges, validator.desc.parentSessionId, validator.isIncremental));
+        Validator validator = new Validator(new ValidationState(desc, coordinator), FBUtilities.nowInSeconds(), false,
+                PreviewKind.NONE);
+        Set<SSTableReader> sstables = Sets.newHashSet(getSSTablesToValidate(cfs, validator.desc.ranges,
+                validator.desc.parentSessionId, validator.isIncremental));
         Assert.assertNotNull(sstables);
         Assert.assertEquals(3, sstables.size());
         Assert.assertTrue(sstables.contains(pendingRepair));

@@ -195,7 +195,8 @@ public class StatsMetadata extends MetadataComponent {
                 totalRows,
                 originatingHostId,
                 newPendingRepair,
-                newIsTransient, newIsReplicationTransferredToErasureCoding);
+                newIsTransient,
+                newIsReplicationTransferredToErasureCoding);
     }
 
     @Override

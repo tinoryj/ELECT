@@ -47,80 +47,70 @@ import org.apache.cassandra.utils.TimeUUID;
  *
  * not threadsafe, calls must be synchronized by caller
  */
-public abstract class AbstractStrategyHolder
-{
-    public static class TaskSupplier implements Comparable<TaskSupplier>
-    {
+public abstract class AbstractStrategyHolder {
+    public static class TaskSupplier implements Comparable<TaskSupplier> {
         private final int numRemaining;
         private final Supplier<AbstractCompactionTask> supplier;
 
-        TaskSupplier(int numRemaining, Supplier<AbstractCompactionTask> supplier)
-        {
+        TaskSupplier(int numRemaining, Supplier<AbstractCompactionTask> supplier) {
             this.numRemaining = numRemaining;
             this.supplier = supplier;
         }
 
-        public AbstractCompactionTask getTask()
-        {
+        public AbstractCompactionTask getTask() {
             return supplier.get();
         }
 
-        public int compareTo(TaskSupplier o)
-        {
+        public int compareTo(TaskSupplier o) {
             return o.numRemaining - numRemaining;
         }
     }
 
-    public static interface DestinationRouter
-    {
+    public static interface DestinationRouter {
         int getIndexForSSTable(SSTableReader sstable);
+
         int getIndexForSSTableDirectory(Descriptor descriptor);
     }
 
     /**
      * Maps sstables to their token partition bucket
      */
-    public static class GroupedSSTableContainer
-    {
+    public static class GroupedSSTableContainer {
         private final AbstractStrategyHolder holder;
         private final Set<SSTableReader>[] groups;
 
-        private GroupedSSTableContainer(AbstractStrategyHolder holder)
-        {
+        private GroupedSSTableContainer(AbstractStrategyHolder holder) {
             this.holder = holder;
             Preconditions.checkArgument(holder.numTokenPartitions > 0, "numTokenPartitions not set");
             groups = new Set[holder.numTokenPartitions];
         }
 
-        void add(SSTableReader sstable)
-        {
-            Preconditions.checkArgument(holder.managesSSTable(sstable), "this strategy holder doesn't manage %s", sstable);
+        void add(SSTableReader sstable) {
+            Preconditions.checkArgument(holder.managesSSTable(sstable), "this strategy holder doesn't manage %s",
+                    sstable);
             int idx = holder.router.getIndexForSSTable(sstable);
-            Preconditions.checkState(idx >= 0 && idx < holder.numTokenPartitions, "Invalid sstable index (%s) for %s", idx, sstable);
+            Preconditions.checkState(idx >= 0 && idx < holder.numTokenPartitions, "Invalid sstable index (%s) for %s",
+                    idx, sstable);
             if (groups[idx] == null)
                 groups[idx] = new HashSet<>();
             groups[idx].add(sstable);
         }
 
-        public int numGroups()
-        {
+        public int numGroups() {
             return groups.length;
         }
 
-        public Set<SSTableReader> getGroup(int i)
-        {
+        public Set<SSTableReader> getGroup(int i) {
             Preconditions.checkArgument(i >= 0 && i < groups.length);
             Set<SSTableReader> group = groups[i];
             return group != null ? group : Collections.emptySet();
         }
 
-        boolean isGroupEmpty(int i)
-        {
+        boolean isGroupEmpty(int i) {
             return getGroup(i).isEmpty();
         }
 
-        boolean isEmpty()
-        {
+        boolean isEmpty() {
             for (int i = 0; i < groups.length; i++)
                 if (!isGroupEmpty(i))
                     return false;
@@ -132,8 +122,7 @@ public abstract class AbstractStrategyHolder
     final DestinationRouter router;
     private int numTokenPartitions = -1;
 
-    AbstractStrategyHolder(ColumnFamilyStore cfs, DestinationRouter router)
-    {
+    AbstractStrategyHolder(ColumnFamilyStore cfs, DestinationRouter router) {
         this.cfs = cfs;
         this.router = router;
     }
@@ -142,8 +131,7 @@ public abstract class AbstractStrategyHolder
 
     public abstract void shutdown();
 
-    final void setStrategy(CompactionParams params, int numTokenPartitions)
-    {
+    final void setStrategy(CompactionParams params, int numTokenPartitions) {
         Preconditions.checkArgument(numTokenPartitions > 0, "at least one token partition required");
         shutdown();
         this.numTokenPartitions = numTokenPartitions;
@@ -153,16 +141,20 @@ public abstract class AbstractStrategyHolder
     protected abstract void setStrategyInternal(CompactionParams params, int numTokenPartitions);
 
     /**
-     * SSTables are grouped by their repaired and pending repair status. This method determines if this holder
-     * holds the sstable for the given repaired/grouped statuses. Holders should be mutually exclusive in the
-     * groups they deal with. IOW, if one holder returns true for a given isRepaired/isPendingRepair combo,
+     * SSTables are grouped by their repaired and pending repair status. This method
+     * determines if this holder
+     * holds the sstable for the given repaired/grouped statuses. Holders should be
+     * mutually exclusive in the
+     * groups they deal with. IOW, if one holder returns true for a given
+     * isRepaired/isPendingRepair combo,
      * none of the others should.
      */
-    public abstract boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient);
+    public abstract boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding);
 
-    public boolean managesSSTable(SSTableReader sstable)
-    {
-        return managesRepairedGroup(sstable.isRepaired(), sstable.isPendingRepair(), sstable.isTransient());
+    public boolean managesSSTable(SSTableReader sstable) {
+        return managesRepairedGroup(sstable.isRepaired(), sstable.isPendingRepair(), sstable.isTransient(),
+                sstable.isReplicationTransferredToErasureCoding());
     }
 
     public abstract AbstractCompactionStrategy getStrategyFor(SSTableReader sstable);
@@ -173,10 +165,10 @@ public abstract class AbstractStrategyHolder
 
     public abstract Collection<AbstractCompactionTask> getMaximalTasks(int gcBefore, boolean splitOutput);
 
-    public abstract Collection<AbstractCompactionTask> getUserDefinedTasks(GroupedSSTableContainer sstables, int gcBefore);
+    public abstract Collection<AbstractCompactionTask> getUserDefinedTasks(GroupedSSTableContainer sstables,
+            int gcBefore);
 
-    public GroupedSSTableContainer createGroupedSSTableContainer()
-    {
+    public GroupedSSTableContainer createGroupedSSTableContainer() {
         return new GroupedSSTableContainer(this);
     }
 
@@ -186,18 +178,19 @@ public abstract class AbstractStrategyHolder
 
     public abstract void replaceSSTables(GroupedSSTableContainer removed, GroupedSSTableContainer added);
 
-    public abstract List<ISSTableScanner> getScanners(GroupedSSTableContainer sstables, Collection<Range<Token>> ranges);
-
+    public abstract List<ISSTableScanner> getScanners(GroupedSSTableContainer sstables,
+            Collection<Range<Token>> ranges);
 
     public abstract SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor,
-                                                                long keyCount,
-                                                                long repairedAt,
-                                                                TimeUUID pendingRepair,
-                                                                boolean isTransient,
-                                                                MetadataCollector collector,
-                                                                SerializationHeader header,
-                                                                Collection<Index> indexes,
-                                                                LifecycleNewTracker lifecycleNewTracker);
+            long keyCount,
+            long repairedAt,
+            TimeUUID pendingRepair,
+            boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding,
+            MetadataCollector collector,
+            SerializationHeader header,
+            Collection<Index> indexes,
+            LifecycleNewTracker lifecycleNewTracker);
 
     /**
      * Return the directory index the given compaction strategy belongs to, or -1

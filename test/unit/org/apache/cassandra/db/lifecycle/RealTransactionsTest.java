@@ -53,29 +53,27 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * Tests to simulate real transactions such as compactions and flushing
- * using SSTableRewriter, ColumnFamilyStore, LifecycleTransaction, TransactionLogs, etc
+ * using SSTableRewriter, ColumnFamilyStore, LifecycleTransaction,
+ * TransactionLogs, etc
  */
-public class RealTransactionsTest extends SchemaLoader
-{
+public class RealTransactionsTest extends SchemaLoader {
     private static final String KEYSPACE = "TransactionLogsTest";
     private static final String REWRITE_FINISHED_CF = "RewriteFinished";
     private static final String REWRITE_ABORTED_CF = "RewriteAborted";
     private static final String FLUSH_CF = "Flush";
 
     @BeforeClass
-    public static void setUp()
-    {
+    public static void setUp() {
         SchemaLoader.prepareServer();
         SchemaLoader.createKeyspace(KEYSPACE,
-                                    KeyspaceParams.simple(1),
-                                    SchemaLoader.standardCFMD(KEYSPACE, REWRITE_FINISHED_CF),
-                                    SchemaLoader.standardCFMD(KEYSPACE, REWRITE_ABORTED_CF),
-                                    SchemaLoader.standardCFMD(KEYSPACE, FLUSH_CF));
+                KeyspaceParams.simple(1),
+                SchemaLoader.standardCFMD(KEYSPACE, REWRITE_FINISHED_CF),
+                SchemaLoader.standardCFMD(KEYSPACE, REWRITE_ABORTED_CF),
+                SchemaLoader.standardCFMD(KEYSPACE, FLUSH_CF));
     }
 
     @Test
-    public void testRewriteFinished() throws IOException
-    {
+    public void testRewriteFinished() throws IOException {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(REWRITE_FINISHED_CF);
 
@@ -90,8 +88,7 @@ public class RealTransactionsTest extends SchemaLoader
     }
 
     @Test
-    public void testRewriteAborted() throws IOException
-    {
+    public void testRewriteAborted() throws IOException {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(REWRITE_ABORTED_CF);
 
@@ -105,8 +102,7 @@ public class RealTransactionsTest extends SchemaLoader
     }
 
     @Test
-    public void testFlush() throws IOException
-    {
+    public void testFlush() throws IOException {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(FLUSH_CF);
 
@@ -116,8 +112,7 @@ public class RealTransactionsTest extends SchemaLoader
         assertFiles(dataFolder, new HashSet<>(ssTableReader.getAllFilePaths()));
     }
 
-    private SSTableReader getSSTable(ColumnFamilyStore cfs, int numPartitions) throws IOException
-    {
+    private SSTableReader getSSTable(ColumnFamilyStore cfs, int numPartitions) throws IOException {
         createSSTable(cfs, numPartitions);
 
         Set<SSTableReader> sstables = new HashSet<>(cfs.getLiveSSTables());
@@ -125,57 +120,53 @@ public class RealTransactionsTest extends SchemaLoader
         return sstables.iterator().next();
     }
 
-    private void createSSTable(ColumnFamilyStore cfs, int numPartitions) throws IOException
-    {
+    private void createSSTable(ColumnFamilyStore cfs, int numPartitions) throws IOException {
         cfs.truncateBlocking();
 
         String schema = "CREATE TABLE \"%s\".\"%s\" (key ascii, name ascii, val ascii, val1 ascii, PRIMARY KEY (key, name))";
         String query = "INSERT INTO \"%s\".\"%s\" (key, name, val) VALUES (?, ?, ?)";
 
         try (CQLSSTableWriter writer = CQLSSTableWriter.builder()
-                                                       .inDirectory(cfs.getDirectories().getDirectoryForNewSSTables())
-                                                       .forTable(String.format(schema, cfs.keyspace.getName(), cfs.name))
-                                                       .using(String.format(query, cfs.keyspace.getName(), cfs.name))
-                                                       .build())
-        {
-            for (int j = 0; j < numPartitions; j ++)
+                .inDirectory(cfs.getDirectories().getDirectoryForNewSSTables())
+                .forTable(String.format(schema, cfs.keyspace.getName(), cfs.name))
+                .using(String.format(query, cfs.keyspace.getName(), cfs.name))
+                .build()) {
+            for (int j = 0; j < numPartitions; j++)
                 writer.addRow(String.format("key%d", j), "col1", "0");
         }
 
         cfs.loadNewSSTables();
     }
 
-    private SSTableReader replaceSSTable(ColumnFamilyStore cfs, LifecycleTransaction txn, boolean fail)
-    {
+    private SSTableReader replaceSSTable(ColumnFamilyStore cfs, LifecycleTransaction txn, boolean fail) {
         List<SSTableReader> newsstables = null;
         int nowInSec = FBUtilities.nowInSeconds();
-        try (CompactionController controller = new CompactionController(cfs, txn.originals(), cfs.gcBefore(FBUtilities.nowInSeconds())))
-        {
+        try (CompactionController controller = new CompactionController(cfs, txn.originals(),
+                cfs.gcBefore(FBUtilities.nowInSeconds()))) {
             try (SSTableRewriter rewriter = SSTableRewriter.constructKeepingOriginals(txn, false, 1000);
-                 AbstractCompactionStrategy.ScannerList scanners = cfs.getCompactionStrategyManager().getScanners(txn.originals());
-                 CompactionIterator ci = new CompactionIterator(txn.opType(), scanners.scanners, controller, nowInSec, txn.opId())
-            )
-            {
+                    AbstractCompactionStrategy.ScannerList scanners = cfs.getCompactionStrategyManager()
+                            .getScanners(txn.originals());
+                    CompactionIterator ci = new CompactionIterator(txn.opType(), scanners.scanners, controller,
+                            nowInSec, txn.opId())) {
                 long lastCheckObsoletion = nanoTime();
                 File directory = txn.originals().iterator().next().descriptor.directory;
                 Descriptor desc = cfs.newSSTableDescriptor(directory);
                 TableMetadataRef metadata = Schema.instance.getTableMetadataRef(desc);
                 rewriter.switchWriter(SSTableWriter.create(metadata,
-                                                           desc,
-                                                           0,
-                                                           0,
-                                                           null,
-                                                           false,
-                                                           0,
-                                                           SerializationHeader.make(cfs.metadata(), txn.originals()),
-                                                           cfs.indexManager.listIndexes(),
-                                                           txn));
-                while (ci.hasNext())
-                {
+                        desc,
+                        0,
+                        0,
+                        null,
+                        false,
+                        false,
+                        0,
+                        SerializationHeader.make(cfs.metadata(), txn.originals()),
+                        cfs.indexManager.listIndexes(),
+                        txn));
+                while (ci.hasNext()) {
                     rewriter.append(ci.next());
 
-                    if (nanoTime() - lastCheckObsoletion > TimeUnit.MINUTES.toNanos(1L))
-                    {
+                    if (nanoTime() - lastCheckObsoletion > TimeUnit.MINUTES.toNanos(1L)) {
                         controller.maybeRefreshOverlaps();
                         lastCheckObsoletion = nanoTime();
                     }
@@ -190,8 +181,7 @@ public class RealTransactionsTest extends SchemaLoader
 
         assertTrue(fail || newsstables != null);
 
-        if (newsstables != null)
-        {
+        if (newsstables != null) {
             Assert.assertEquals(1, newsstables.size());
             return newsstables.iterator().next();
         }
@@ -199,11 +189,9 @@ public class RealTransactionsTest extends SchemaLoader
         return null;
     }
 
-    private void assertFiles(String dirPath, Set<String> expectedFiles)
-    {
+    private void assertFiles(String dirPath, Set<String> expectedFiles) {
         File dir = new File(dirPath);
-        for (File file : dir.tryList())
-        {
+        for (File file : dir.tryList()) {
             if (file.isDirectory())
                 continue;
 

@@ -1604,6 +1604,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return sstableMetadata.isTransient;
     }
 
+    public boolean isReplicationTransferredToErasureCoding() {
+        return sstableMetadata.isReplicationTransferredToErasureCoding;
+    }
+
     public boolean intersects(Collection<Range<Token>> ranges) {
         Bounds<Token> range = new Bounds<>(first.getToken(), last.getToken());
         return Iterables.any(ranges, r -> r.intersects(range));
@@ -1767,11 +1771,12 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
      * Mutate sstable repair metadata with a lock to avoid racing with
      * entire-sstable-streaming and then reload sstable metadata
      */
-    public void mutateRepairedAndReload(long newRepairedAt, TimeUUID newPendingRepair, boolean isTransient)
+    public void mutateRepairedAndReload(long newRepairedAt, TimeUUID newPendingRepair, boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding)
             throws IOException {
         synchronized (tidy.global) {
             descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, newRepairedAt, newPendingRepair,
-                    isTransient);
+                    isTransient, isReplicationTransferredToErasureCoding);
             reloadSSTableMetadata();
         }
     }
