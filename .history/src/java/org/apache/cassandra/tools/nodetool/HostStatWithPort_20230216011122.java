@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,8 +16,32 @@
  * limitations under the License.
  */
 
-package org.apache.cassandra.utils.erasurecode.net;
+package org.apache.cassandra.tools.nodetool;
 
-public interface SerializableECMessage {
-    
+import org.apache.cassandra.locator.InetAddressAndPort;
+
+public class HostStatWithPort extends HostStat
+{
+    public final InetAddressAndPort endpointWithPort;
+
+    public HostStatWithPort(String token, InetAddressAndPort endpoint, boolean resolveIp, Float owns)
+    {
+        super(token, endpoint.getAddress(), resolveIp, owns);
+        this.endpointWithPort = endpoint;
+    }
+
+    public String ipOrDns()
+    {
+        return ipOrDns(true);
+    }
+
+    public String ipOrDns(boolean withPort)
+    {
+        if (!withPort)
+            return super.ipOrDns();
+
+        return resolveIp ?
+               endpointWithPort.getAddress().getHostName() + ':' + endpointWithPort.getPort() :
+               endpointWithPort.getHostAddressAndPort();
+    }
 }

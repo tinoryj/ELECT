@@ -34,8 +34,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import org.apache.cassandra.db.IMutation;
 import org.apache.cassandra.locator.EndpointSnitchInfoMBean;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.net.MessageFlag;
+import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.net.Verb;
+import org.apache.cassandra.service.AbstractWriteResponseHandler;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tools.INodeProbeFactory;
 import org.apache.cassandra.tools.NodeProbe;
@@ -44,12 +50,18 @@ import org.apache.cassandra.tools.Output;
 import org.apache.cassandra.tools.NodeTool.NodeToolCmd;
 import org.apache.cassandra.tools.nodetool.SetHostStatWithPort;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.commons.logging.Log;
+import org.omg.CORBA.portable.ResponseHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.SortedMap;
 import org.tartarus.snowball.ext.porterStemmer;
 
 import java.util.Map.Entry;
 import com.google.common.base.Throwables;
+
+
 
 /*
  * Inter-node communication for selected SSTables during redundancy
@@ -62,21 +74,48 @@ public class ECNetSend {
     protected static Output output;
     private static INodeProbeFactory nodeProbeFactory;
     private static Map<String, String> tokensToEndpoints;
-    private static SortedMap<String, SortedMap<String, InetAddress>> dcs;
+    private static SortedMap<String, SortedMap<String, InetAddressAndPort>> dcs;
+    private static List<InetAddressAndPort> targetEndpoints = null;
+    
+    private static final Logger logger = LoggerFactory.getLogger(ECNetSend.class);
 
-    private static boolean isTokenPerNode = true;
 
-    /*
-     * Send selected sstables to a specific node
+    /**
+     * This method sends selected sstables to parity nodes for EC/
+     * 
+     * @param byteChunk selected sstables
+     * @param k number of parity nodes
+     * @param ks keyspace name of sstables
+     * @param table cf name of sstables
+     * @param key one of the key in sstables
+     * 
      */
-    public static void sendSelectedSSTables(ByteBuffer byteChunk, int k) {
+    /*
+     * TODO List
+     * 1. implement Verb.ERASURECODE_REQ
+     * 2. implement responsehandler
+     */
+    public static void sendSelectedSSTables(ECMessage ecMessage) {
 
-        // target node is in local datacenter
-        Collection<NodeInfo> localDC = null;
-        // no-local datacenter, grouped by dc
-        Map<String, Collection<NodeInfo>> dcGroups = null;
         // create a Message for byteChunk
-        Message<ByteBuffer> message = null;
+        Message<ECMessage> message = null;
+        // get target endpoints
+        getTargetEdpoints(ecMessage.k, ecMessage.keyspace, ecMessage.table, ecMessage.key);
+
+        if(targetEndpoints != null) {
+            logger.debug("target endpoints are : {}", targetEndpoints);
+            // setup message
+            message = Message.outWithFlag(Verb.ERASURECODE_REQ, ecMessage, MessageFlag.CALL_BACK_ON_FAILURE);
+
+            for (InetAddressAndPort ep : targetEndpoints) {
+                // isAlive?
+                // send to destination
+                MessagingService.instance().sendSSTContentWithoutCallback(message, ep);
+            }
+
+        } else {
+            logger.debug("targetEndpoints is null");
+        }
 
     }
 
@@ -84,19 +123,15 @@ public class ECNetSend {
      * Get target nodes, use the methods related to nodetool.java and status.java
      */
 
-    private static List<InetAddress> getTargetNodes(int k, int rf, String token) {
-        List<InetAddress> targetEndpoints;
-
+    private static void getTargetEdpoints(long k, String ks, String table, String key) {
         try (NodeProbe probe = connect()) {
-            targetEndpoints = execute(probe, k, rf, token);
+            targetEndpoints = execute(probe, k, ks, table, key);
             if (probe.isFailed())
                 throw new RuntimeException("nodetool failed, check server logs");
 
         } catch (Exception e) {
             throw new RuntimeException("Error while closing JMX connection", e);
         }
-
-        return targetEndpoints;
     }
 
     private static NodeProbe connect() {
@@ -113,16 +148,15 @@ public class ECNetSend {
         return nodeClient;
     }
 
-    protected static List<InetAddress> execute(NodeProbe probe, int k, int rf, String token)
+    protected static List<InetAddressAndPort> execute(NodeProbe probe, long k, String ks, String table, String key)
             throws UnknownHostException {
         tokensToEndpoints = probe.getTokenToEndpointMap(true);
         dcs = NodeTool.getEndpointByDcWithPort(probe, tokensToEndpoints);
         // More tokens than nodes (aka vnodes)?
-        if (dcs.size() < tokensToEndpoints.size())
-            isTokenPerNode = false;
+        // if (dcs.size() < tokensToEndpoints.size())
+        //     isTokenPerNode = false;
 
-        // get current dc, primary node token, replication factor, and parity nodes
-        // number
+      
         EndpointSnitchInfoMBean epSnitchInfo = probe.getEndpointSnitchInfoProxy();
         // InetAddress localIp = FBUtilities.getJustBroadcastAddress();
         String localdc = epSnitchInfo.getDatacenter();
@@ -131,19 +165,20 @@ public class ECNetSend {
          * Select target nodes, first get the node list sorted by token of local dc,
          * then get target nodes according to rf and parity nodes number.
          */
-        SortedMap<String, InetAddress> tokenToEndpointsSortedMap = dcs.get(localdc);
+        SortedMap<String, InetAddressAndPort> tokenToEndpointsSortedMap = dcs.get(localdc);
 
         // get replication node
-        String ks = "";
-        String table = "";
-        String key = "";
-        List<InetAddress> replicaEndpoints = probe.getEndpoints(key, table, key);
-        List<InetAddress> candidates = new ArrayList(tokenToEndpointsSortedMap.values());
-        candidates.removeAll(replicaEndpoints);
+        List<String> replicaEndpoints = probe.getEndpointsWithPort(key, table, key);
+        List<InetAddressAndPort> candidates = new ArrayList(tokenToEndpointsSortedMap.values());
+        //candidates.removeAll(replicaEndpoints);
+        
+        for(String ep : replicaEndpoints) {
+            candidates.remove(InetAddressAndPort.getByName(ep));
+        }
 
-        int randArr[] = new int[k];
-        int i = 0;
-        while (i < k) {
+        int randArr[] = new int[(int) k];
+        int t = 0;
+        while (t < k) {
             int rand = (new Random().nextInt(candidates.size()) + 1);
             boolean isRandExist = false;
             for (int j = 0; j < randArr.length; j++) {
@@ -153,13 +188,13 @@ public class ECNetSend {
                 }
             }
             if (isRandExist == false) {
-                randArr[i] = rand;
-                i++;
+                randArr[t] = rand;
+                t++;
             }
         }
 
-        List<InetAddress> results = new ArrayList<>();
-        for(int t=0;t<k;t++) {
+        List<InetAddressAndPort> results = new ArrayList<>();
+        for(int i=0;i<k;i++) {
             results.add(candidates.get(randArr[i]-1));
         }
         return results;

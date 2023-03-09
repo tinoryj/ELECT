@@ -140,6 +140,8 @@ import org.apache.cassandra.utils.MonotonicClock;
 import org.apache.cassandra.utils.NoSpamLogger;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
+import org.apache.cassandra.utils.erasurecode.net.ECMessage;
+import org.apache.cassandra.utils.erasurecode.net.ECNetSend;
 
 import static com.google.common.collect.Iterables.concat;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -849,6 +851,17 @@ public class StorageProxy implements StorageProxyMBean
     public static void mutate(List<? extends IMutation> mutations, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
     throws UnavailableException, OverloadedException, WriteTimeoutException, WriteFailureException
     {
+
+        /*
+         *  The following is ECMessage test code 
+         */
+        IMutation testMutation = mutations.get(0);
+        ECMessage message = new ECMessage(testMutation.toString(), 2,
+         testMutation.getKeyspaceName(),testMutation.key().toString(),testMutation.getTableIds().toString());
+        logger.debug("rymDebug: the test message is: {}", message);
+        ECNetSend.sendSelectedSSTables(message);
+
+        ////////////////////////////////////////////////////////////////////////////////
         Tracing.trace("Determining replicas for mutation");
         final String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getLocalDatacenter();
 

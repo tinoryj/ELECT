@@ -364,19 +364,6 @@ public class MessagingService extends MessagingServiceMBeanImpl
     }
 
     /**
-     * Send sstable content to a given endpoint. This method specifies a callback
-     * which is invoked with the actual response.
-     */
-    public void sendSSTContentWithoutCallback(Message message, InetAddressAndPort to)
-    {
-        // TODO: callback handler
-        // assert message.callBackOnFailure();
-        // callbacks.addWithExpiration(handler, message, null, null, isShuttingDown);
-        send(message, to, null);
-    }
-
-
-    /**
      * Send a message to a given endpoint. This method adheres to the fire and forget
      * style messaging.
      *
