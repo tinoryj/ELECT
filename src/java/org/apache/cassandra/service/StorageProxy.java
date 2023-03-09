@@ -859,7 +859,12 @@ public class StorageProxy implements StorageProxyMBean
         ECMessage message = new ECMessage(testMutation.toString(), 2,
          testMutation.getKeyspaceName(),testMutation.key().toString(),testMutation.getTableIds().toString());
         logger.debug("rymDebug: the test message is: {}", message);
-        ECNetSend.sendSelectedSSTables(message);
+        try {
+            ECNetSend.sendSelectedSSTables(message);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
         ////////////////////////////////////////////////////////////////////////////////
         Tracing.trace("Determining replicas for mutation");

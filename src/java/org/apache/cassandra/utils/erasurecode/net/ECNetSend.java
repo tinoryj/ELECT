@@ -118,18 +118,23 @@ public class ECNetSend {
     /*
      * Get target nodes, use the methods related to nodetool.java and status.java
      */
-    private static void getTargetEdpoints(ECMessage ecMessage) throws UnknownHostException {
+    private static void getTargetEdpoints(ECMessage ecMessage) {
         
         ImmutableSet<InetAddressAndPort> immutableEndpoints = Gossiper.instance.getEndpoints();
         List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
         List<InetAddressAndPort> endpoints = new ArrayList<>(immutableEndpoints);
 
-        
-        logger.debug("rymDebug: get All endpoints: {}, and replica related endpoints: {}", endpoints, naturalEndpoints);
+        logger.debug("rymDebug: get All endpoints: {}", endpoints);
+        logger.debug("and replica related endpoints: {}", naturalEndpoints);
 
         
         for(String ep : naturalEndpoints) {
-            endpoints.remove(InetAddressAndPort.getByName(ep));
+            try {
+                endpoints.remove(InetAddressAndPort.getByName(ep));
+            } catch (UnknownHostException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
         }
         logger.debug("rymDebug: candidates are {}", endpoints);
         
