@@ -120,11 +120,12 @@ public class ECNetSend {
      */
     private static void getTargetEdpoints(ECMessage ecMessage) {
         
+        logger.debug("rymDebug: this is getTargetEdpoints");
+        
         ImmutableSet<InetAddressAndPort> immutableEndpoints = Gossiper.instance.getEndpoints();
-        List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
         List<InetAddressAndPort> endpoints = new ArrayList<>(immutableEndpoints);
-
         logger.debug("rymDebug: get All endpoints: {}", endpoints);
+        List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
         logger.debug("and replica related endpoints: {}", naturalEndpoints);
 
         
