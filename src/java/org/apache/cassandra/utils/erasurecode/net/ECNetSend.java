@@ -28,8 +28,10 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.EndpointSnitchInfoMBean;
+import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessageFlag;
@@ -129,8 +131,12 @@ public class ECNetSend {
         List<InetAddressAndPort> endpoints = new ArrayList<>(immutableEndpoints);
         Set<InetAddressAndPort> ringMembers = Gossiper.instance.getLiveTokenOwners();
         logger.debug("rymDebug: get All endpoints: {}, ring members is: {}", endpoints, ringMembers);
-        // List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
-        // logger.debug("and replica related endpoints: {}", naturalEndpoints);
+        List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
+        logger.debug("and replica related endpoints: {}", naturalEndpoints);
+        
+        
+        
+        
 
         
         for(InetAddressAndPort ep : ringMembers) {
