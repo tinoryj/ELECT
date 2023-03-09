@@ -67,7 +67,7 @@ target/
 .DS_Store
 Thumbs.db
 .ccm/
-
+.history/
 **/.ant-targets-build.xml
 .ant_targets
 conf/cassandra.yaml
