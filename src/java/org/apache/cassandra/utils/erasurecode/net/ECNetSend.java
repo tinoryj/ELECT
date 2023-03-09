@@ -78,6 +78,7 @@ public class ECNetSend {
      * @param ks keyspace name of sstables
      * @param table cf name of sstables
      * @param key one of the key in sstables
+     * @throws UnknownHostException
      * 
      */
     /*
@@ -85,7 +86,7 @@ public class ECNetSend {
      * 1. implement Verb.ERASURECODE_REQ
      * 2. implement responsehandler
      */
-    public static void sendSelectedSSTables(ECMessage ecMessage) {
+    public static void sendSelectedSSTables(ECMessage ecMessage) throws UnknownHostException {
         logger.debug("rymDebug: this is sendSelectedSSTables");
 
         // create a Message for byteChunk
@@ -93,9 +94,9 @@ public class ECNetSend {
         // get target endpoints
         // getTargetEdpoints(ecMessage.k, ecMessage.keyspace, ecMessage.table, ecMessage.key);
         // targetEndpoints.add(InetAddressAndPort.getByName("172.31.7.104"));
-        ImmutableSet<InetAddressAndPort> endpoints = Gossiper.instance.getEndpoints();
         
-        logger.debug("rymDebug: Alreadyget endpoints: {}", endpoints);
+        getTargetEdpoints(ecMessage);
+        
 
         if(targetEndpoints != null) {
             logger.debug("target endpoints are : {}", targetEndpoints);
@@ -117,35 +118,72 @@ public class ECNetSend {
     /*
      * Get target nodes, use the methods related to nodetool.java and status.java
      */
+    private static void getTargetEdpoints(ECMessage ecMessage) throws UnknownHostException {
+        
+        ImmutableSet<InetAddressAndPort> immutableEndpoints = Gossiper.instance.getEndpoints();
+        List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
+        List<InetAddressAndPort> endpoints = new ArrayList<>(immutableEndpoints);
 
-    private static void getTargetEdpoints(long k, String ks, String table, String key) {
-        logger.debug("This is getTargetEndpoints!");
-        try (NodeProbe probe = connect()) {
-            logger.debug("Already get a probe client!");
-            targetEndpoints = execute(probe, k, ks, table, key);
-            if (probe.isFailed())
-                throw new RuntimeException("nodetool failed, check server logs");
+        
+        logger.debug("rymDebug: get All endpoints: {}, and replica related endpoints: {}", endpoints, naturalEndpoints);
 
-        } catch (Exception e) {
-            throw new RuntimeException("Error while closing JMX connection", e);
+        
+        for(String ep : naturalEndpoints) {
+            endpoints.remove(InetAddressAndPort.getByName(ep));
+        }
+        logger.debug("rymDebug: candidates are {}", endpoints);
+        
+        int k = (int) ecMessage.k;
+        int randArr[] = new int[k];
+        int t = 0;
+        while (t < k) {
+            int rand = (new Random().nextInt(endpoints.size()) + 1);
+            boolean isRandExist = false;
+            for (int j = 0; j < randArr.length; j++) {
+                if (randArr[j] == rand) {
+                    isRandExist = true;
+                    break;
+                }
+            }
+            if (isRandExist == false) {
+                randArr[t] = rand;
+                t++;
+            }
+        }
+
+        for(int i=0;i<k;i++) {
+            targetEndpoints.add(endpoints.get(randArr[i]-1));
         }
     }
 
-    private static NodeProbe connect() {
-        logger.debug("rymDebug: start connect()");
-        NodeProbe nodeClient = null;
-        try {
-            nodeClient = nodeProbeFactory.create(host, parseInt(port));
-            nodeClient.setOutput(output);
-        } catch (IOException | SecurityException e) {
-            Throwable rootCause = Throwables.getRootCause(e);
-            output.err.println(format("nodetool: Failed to connect to '%s:%s' - %s: '%s'.", host, port,
-                    rootCause.getClass().getSimpleName(), rootCause.getMessage()));
-            System.exit(1);
-        }
-        logger.debug("rymDebug: successfully connected!");
-        return nodeClient;
-    }
+    // private static void getTargetEdpoints(long k, String ks, String table, String key) {
+    //     logger.debug("This is getTargetEndpoints!");
+    //     try (NodeProbe probe = connect()) {
+    //         logger.debug("Already get a probe client!");
+    //         targetEndpoints = execute(probe, k, ks, table, key);
+    //         if (probe.isFailed())
+    //             throw new RuntimeException("nodetool failed, check server logs");
+
+    //     } catch (Exception e) {
+    //         throw new RuntimeException("Error while closing JMX connection", e);
+    //     }
+    // }
+
+    // private static NodeProbe connect() {
+    //     logger.debug("rymDebug: start connect()");
+    //     NodeProbe nodeClient = null;
+    //     try {
+    //         nodeClient = nodeProbeFactory.create(host, parseInt(port));
+    //         nodeClient.setOutput(output);
+    //     } catch (IOException | SecurityException e) {
+    //         Throwable rootCause = Throwables.getRootCause(e);
+    //         output.err.println(format("nodetool: Failed to connect to '%s:%s' - %s: '%s'.", host, port,
+    //                 rootCause.getClass().getSimpleName(), rootCause.getMessage()));
+    //         System.exit(1);
+    //     }
+    //     logger.debug("rymDebug: successfully connected!");
+    //     return nodeClient;
+    // }
 
     protected static List<InetAddressAndPort> execute(NodeProbe probe, long k, String ks, String table, String key)
             throws UnknownHostException {
