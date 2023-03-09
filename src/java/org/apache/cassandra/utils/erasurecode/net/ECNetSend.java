@@ -120,7 +120,8 @@ public class ECNetSend {
      */
     private static void getTargetEdpoints(ECMessage ecMessage) {
         
-        logger.debug("rymDebug: this is getTargetEdpoints");
+        logger.debug("rymDebug: this is getTargetEdpoints, keyspace is: {}, table name is: {}, key is {}",
+        ecMessage.keyspace, ecMessage.table, ecMessage.key);
         
         ImmutableSet<InetAddressAndPort> immutableEndpoints = Gossiper.instance.getEndpoints();
         List<InetAddressAndPort> endpoints = new ArrayList<>(immutableEndpoints);
@@ -160,107 +161,6 @@ public class ECNetSend {
         for(int i=0;i<k;i++) {
             targetEndpoints.add(endpoints.get(randArr[i]-1));
         }
-    }
-
-    // private static void getTargetEdpoints(long k, String ks, String table, String key) {
-    //     logger.debug("This is getTargetEndpoints!");
-    //     try (NodeProbe probe = connect()) {
-    //         logger.debug("Already get a probe client!");
-    //         targetEndpoints = execute(probe, k, ks, table, key);
-    //         if (probe.isFailed())
-    //             throw new RuntimeException("nodetool failed, check server logs");
-
-    //     } catch (Exception e) {
-    //         throw new RuntimeException("Error while closing JMX connection", e);
-    //     }
-    // }
-
-    // private static NodeProbe connect() {
-    //     logger.debug("rymDebug: start connect()");
-    //     NodeProbe nodeClient = null;
-    //     try {
-    //         nodeClient = nodeProbeFactory.create(host, parseInt(port));
-    //         nodeClient.setOutput(output);
-    //     } catch (IOException | SecurityException e) {
-    //         Throwable rootCause = Throwables.getRootCause(e);
-    //         output.err.println(format("nodetool: Failed to connect to '%s:%s' - %s: '%s'.", host, port,
-    //                 rootCause.getClass().getSimpleName(), rootCause.getMessage()));
-    //         System.exit(1);
-    //     }
-    //     logger.debug("rymDebug: successfully connected!");
-    //     return nodeClient;
-    // }
-
-    protected static List<InetAddressAndPort> execute(NodeProbe probe, long k, String ks, String table, String key)
-            throws UnknownHostException {
-        logger.debug("rymDebug: this is execute");
-        tokensToEndpoints = probe.getTokenToEndpointMap(true);
-        dcs = NodeTool.getEndpointByDcWithPort(probe, tokensToEndpoints);
-        // More tokens than nodes (aka vnodes)?
-        // if (dcs.size() < tokensToEndpoints.size())
-        //     isTokenPerNode = false;
-        logger.debug("rymDebug: get tokensToEndpointsMap:{} and dcs: {}", tokensToEndpoints, dcs);
-      
-        EndpointSnitchInfoMBean epSnitchInfo = probe.getEndpointSnitchInfoProxy();
-        // InetAddress localIp = FBUtilities.getJustBroadcastAddress();
-        String localdc = epSnitchInfo.getDatacenter();
-
-        /*
-         * Select target nodes, first get the node list sorted by token of local dc,
-         * then get target nodes according to rf and parity nodes number.
-         */
-        SortedMap<String, InetAddressAndPort> tokenToEndpointsSortedMap = dcs.get(localdc);
-
-        // get replication node
-        List<String> replicaEndpoints = probe.getEndpointsWithPort(key, table, key);
-        List<InetAddressAndPort> candidates = new ArrayList(tokenToEndpointsSortedMap.values());
-        //candidates.removeAll(replicaEndpoints);
-        
-        for(String ep : replicaEndpoints) {
-            candidates.remove(InetAddressAndPort.getByName(ep));
-        }
-        logger.debug("rymDebug: candidates are {}", candidates);
-
-        int randArr[] = new int[(int) k];
-        int t = 0;
-        while (t < k) {
-            int rand = (new Random().nextInt(candidates.size()) + 1);
-            boolean isRandExist = false;
-            for (int j = 0; j < randArr.length; j++) {
-                if (randArr[j] == rand) {
-                    isRandExist = true;
-                    break;
-                }
-            }
-            if (isRandExist == false) {
-                randArr[t] = rand;
-                t++;
-            }
-        }
-
-        List<InetAddressAndPort> results = new ArrayList<>();
-        for(int i=0;i<k;i++) {
-            results.add(candidates.get(randArr[i]-1));
-        }
-        return results;
-
-        // int sz = tokenToEndpointsSortedMap.size();
-        // for (Entry<String, String> tokenToEndpoint :
-        // tokenToEndpointsSortedMap.entrySet()) {
-        // if(tokenToEndpoint.getKey() != token)
-        // cnt++;
-        // else
-        // break;
-        // }
-
-        // if(cnt+rf<sz && cnt+sz+k<=sz) {
-        // // select nodes from [cnt+rf-1, cnt+rf+k-1]
-
-        // } else if (cnt+rf<sz && cnt+sz+k>sz) {
-        // // select nodes from [cnt+rf-1, sz-1] and [0, k+rf-sz-1]
-        // } else {
-        // // select nodes from [0, ]
-        // }
     }
 
 }
