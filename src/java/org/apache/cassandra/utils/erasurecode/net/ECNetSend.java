@@ -120,7 +120,7 @@ public class ECNetSend {
     /*
      * Get target nodes, use the methods related to nodetool.java and status.java
      */
-    private static void getTargetEdpoints(ECMessage ecMessage) {
+    private static void getTargetEdpoints(ECMessage ecMessage) throws UnknownHostException {
         
         logger.debug("rymDebug: this is getTargetEdpoints, keyspace is: {}, table name is: {}, key is {}",
         ecMessage.keyspace, ecMessage.table, ecMessage.key);
@@ -129,17 +129,12 @@ public class ECNetSend {
         List<InetAddressAndPort> endpoints = new ArrayList<>(immutableEndpoints);
         Set<InetAddressAndPort> ringMembers = Gossiper.instance.getLiveTokenOwners();
         logger.debug("rymDebug: get All endpoints: {}, ring members is: {}", endpoints, ringMembers);
-        List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
-        logger.debug("and replica related endpoints: {}", naturalEndpoints);
+        // List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
+        // logger.debug("and replica related endpoints: {}", naturalEndpoints);
 
         
-        for(String ep : naturalEndpoints) {
-            try {
-                endpoints.remove(InetAddressAndPort.getByName(ep));
-            } catch (UnknownHostException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+        for(InetAddressAndPort ep : ringMembers) {
+            endpoints.remove(ep);
         }
         logger.debug("rymDebug: candidates are {}", endpoints);
         
