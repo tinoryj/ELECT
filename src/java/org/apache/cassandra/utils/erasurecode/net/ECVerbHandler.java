@@ -26,11 +26,15 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.ParamType;
 import org.apache.cassandra.tracing.Tracing;
-import org.apache.log4j.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ECVerbHandler implements IVerbHandler<ECMessage>{
 
     public static final ECVerbHandler instance = new ECVerbHandler();
+    private static final Logger logger = LoggerFactory.getLogger(ECNetSend.class);
+
 
     private void respond(Message<?> respondTo, InetAddressAndPort respondToAddress)
     {
@@ -47,6 +51,10 @@ public class ECVerbHandler implements IVerbHandler<ECMessage>{
     public void doVerb(Message<ECMessage> message) throws IOException {
         String byteChunk = message.payload.byteChunk;
         long   k = message.payload.k;
+
+        logger.debug("rymDebug: get new message!!! sstContent is {}, parameter k is {}", byteChunk, k);
+
+        
         
 
         // check if there were any forwarding headers in this message
