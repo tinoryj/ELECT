@@ -119,20 +119,20 @@ public class ECNetSend {
         instance.getTargetEdpoints(ecMessage);
         
 
-        // if(targetEndpoints != null) {
-        //     logger.debug("target endpoints are : {}", targetEndpoints);
-        //     // setup message
-        //     message = Message.outWithFlag(Verb.ERASURECODE_REQ, ecMessage, MessageFlag.CALL_BACK_ON_FAILURE);
+        if(targetEndpoints != null) {
+            logger.debug("target endpoints are : {}", targetEndpoints);
+            // setup message
+            // message = Message.outWithFlag(Verb.ERASURECODE_REQ, ecMessage, MessageFlag.CALL_BACK_ON_FAILURE);
 
-        //     for (InetAddressAndPort ep : targetEndpoints) {
-        //         // isAlive?
-        //         // send to destination
-        //         MessagingService.instance().sendSSTContentWithoutCallback(message, ep);
-        //     }
+            // for (InetAddressAndPort ep : targetEndpoints) {
+            //     // isAlive?
+            //     // send to destination
+            //     MessagingService.instance().sendSSTContentWithoutCallback(message, ep);
+            // }
 
-        // } else {
-        //     logger.debug("targetEndpoints is null");
-        // }
+        } else {
+            logger.debug("targetEndpoints is null");
+        }
 
     }
 
