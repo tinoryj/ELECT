@@ -164,6 +164,7 @@ public class ECNetSend {
             throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
 
         TableMetadata metadata = ksMetaData.getTableOrViewNullable(table);
+
         logger.debug("rymDebug: This is partitionKeyToBytes.metadata: {}", metadata);
 
         if (metadata == null)
