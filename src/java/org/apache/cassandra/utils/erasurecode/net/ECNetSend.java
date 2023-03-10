@@ -194,28 +194,29 @@ public class ECNetSend {
             endpoints.remove(InetAddressAndPort.getByName(ep));
         }
         logger.debug("rymDebug: candidates are {}", endpoints);
+        targetEndpoints = endpoints;
         
-        int k = (int) ecMessage.k;
-        int randArr[] = new int[k];
-        int t = 0;
-        while (t < k) {
-            int rand = (new Random().nextInt(endpoints.size()) + 1);
-            boolean isRandExist = false;
-            for (int j = 0; j < randArr.length; j++) {
-                if (randArr[j] == rand) {
-                    isRandExist = true;
-                    break;
-                }
-            }
-            if (isRandExist == false) {
-                randArr[t] = rand;
-                t++;
-            }
-        }
+        // int k = (int) ecMessage.k;
+        // int randArr[] = new int[k];
+        // int t = 0;
+        // while (t < k) {
+        //     int rand = (new Random().nextInt(endpoints.size()) + 1);
+        //     boolean isRandExist = false;
+        //     for (int j = 0; j < randArr.length; j++) {
+        //         if (randArr[j] == rand) {
+        //             isRandExist = true;
+        //             break;
+        //         }
+        //     }
+        //     if (isRandExist == false) {
+        //         randArr[t] = rand;
+        //         t++;
+        //     }
+        // }
 
-        for(int i=0;i<k;i++) {
-            targetEndpoints.add(endpoints.get(randArr[i]-1));
-        }
+        // for(int i=0;i<k;i++) {
+        //     targetEndpoints.add(endpoints.get(randArr[i]-1));
+        // }
     }
 
 
