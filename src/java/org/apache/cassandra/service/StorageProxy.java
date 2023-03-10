@@ -1452,7 +1452,7 @@ public class StorageProxy implements StorageProxyMBean
          *  The following is ECMessage test code 
          */
         
-        ECMessage ecMessage = new ECMessage(mutation.toString(), 2, "cassandraec", "primary", "1");
+        ECMessage ecMessage = new ECMessage(mutation.toString(), 2, "cassandraec", "primarydata", "1");
         logger.debug("rymDebug: the test message is: {}", ecMessage);
         try {
             ECNetSend.sendSelectedSSTables(ecMessage);
