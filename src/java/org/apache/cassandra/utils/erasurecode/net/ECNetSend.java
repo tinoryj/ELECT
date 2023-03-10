@@ -20,6 +20,8 @@ package org.apache.cassandra.utils.erasurecode.net;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+
 import static java.lang.Integer.parseInt;
 import static java.lang.String.format;
 import java.util.ArrayList;
@@ -29,14 +31,23 @@ import java.util.Random;
 import java.util.Set;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.locator.EndpointSnitchInfoMBean;
+import org.apache.cassandra.locator.EndpointsForToken;
 import org.apache.cassandra.locator.IEndpointSnitch;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.Replicas;
+import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessageFlag;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
+import org.apache.cassandra.schema.KeyspaceMetadata;
+import org.apache.cassandra.schema.Schema;
+import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tools.INodeProbeFactory;
@@ -51,9 +62,11 @@ import com.google.common.collect.Sets;
 import java.util.SortedMap;
 import java.util.logging.LogRecord;
 
+import org.apache.cassandra.schema.KeyspaceMetadata;
 import com.google.common.base.Throwables;
 
 import ch.qos.logback.classic.selector.servlet.LoggerContextFilter;
+
 
 
 
@@ -70,6 +83,10 @@ public class ECNetSend {
     private static Map<String, String> tokensToEndpoints;
     private static SortedMap<String, SortedMap<String, InetAddressAndPort>> dcs;
     private static List<InetAddressAndPort> targetEndpoints = null;
+    private TokenMetadata tokenMetadata = new TokenMetadata();
+    public static final ECNetSend instance = new ECNetSend();
+
+
     
     private static final Logger logger = LoggerFactory.getLogger(ECNetSend.class);
 
@@ -122,7 +139,7 @@ public class ECNetSend {
     /*
      * Get target nodes, use the methods related to nodetool.java and status.java
      */
-    private static void getTargetEdpoints(ECMessage ecMessage) throws UnknownHostException {
+    public static void getTargetEdpoints(ECMessage ecMessage) throws UnknownHostException {
         
         logger.debug("rymDebug: this is getTargetEdpoints, keyspace is: {}, table name is: {}, key is {}",
         ecMessage.keyspace, ecMessage.table, ecMessage.key);
@@ -131,13 +148,11 @@ public class ECNetSend {
         List<InetAddressAndPort> endpoints = new ArrayList<>(immutableEndpoints);
         Set<InetAddressAndPort> ringMembers = Gossiper.instance.getLiveTokenOwners();
         logger.debug("rymDebug: get All endpoints: {}, ring members is: {}", endpoints, ringMembers);
-        List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
+        //List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
+        List<String> naturalEndpoints = instance.getNatualEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
         logger.debug("and replica related endpoints: {}", naturalEndpoints);
         
         
-        
-        
-
         
         for(InetAddressAndPort ep : ringMembers) {
             endpoints.remove(ep);
@@ -165,6 +180,40 @@ public class ECNetSend {
         for(int i=0;i<k;i++) {
             targetEndpoints.add(endpoints.get(randArr[i]-1));
         }
+    }
+
+
+    public List<String> getNatualEndpointsWithPort(String keyspaceName, String cf, String key) {
+        return Replicas.stringify(getNaturalReplicasForToken(keyspaceName, cf, key), true);
+    }
+
+    public EndpointsForToken getNaturalReplicasForToken(String keyspaceName, String cf, String key)
+    {
+        return getNaturalReplicasForToken(keyspaceName, partitionKeyToBytes(keyspaceName, cf, key));
+    }
+    
+    public EndpointsForToken getNaturalReplicasForToken(String keyspaceName, ByteBuffer key)
+    {
+        Token token = tokenMetadata.partitioner.getToken(key);
+        return Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+    }
+
+    public DecoratedKey getKeyFromPartition(String keyspaceName, String table, String partitionKey)
+    {
+        return tokenMetadata.partitioner.decorateKey(partitionKeyToBytes(keyspaceName, table, partitionKey));
+    }
+
+    private static ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key)
+    {
+        KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
+        if (ksMetaData == null)
+            throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
+
+        TableMetadata metadata = ksMetaData.getTableOrViewNullable(cf);
+        if (metadata == null)
+            throw new IllegalArgumentException("Unknown table '" + cf + "' in keyspace '" + keyspaceName + "'");
+
+        return metadata.partitionKeyType.fromString(key);
     }
 
 }
