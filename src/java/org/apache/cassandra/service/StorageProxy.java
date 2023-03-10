@@ -851,22 +851,6 @@ public class StorageProxy implements StorageProxyMBean
     public static void mutate(List<? extends IMutation> mutations, ConsistencyLevel consistencyLevel, long queryStartNanoTime)
     throws UnavailableException, OverloadedException, WriteTimeoutException, WriteFailureException
     {
-
-        /*
-         *  The following is ECMessage test code 
-         */
-        IMutation testMutation = mutations.get(0);
-        ECMessage message = new ECMessage(testMutation.toString(), 2,
-         testMutation.getKeyspaceName(),testMutation.key().toString(),testMutation.getTableIds().toString());
-        logger.debug("rymDebug: the test message is: {}", message);
-        try {
-            ECNetSend.sendSelectedSSTables(message);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-
-        ////////////////////////////////////////////////////////////////////////////////
         Tracing.trace("Determining replicas for mutation");
         final String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getLocalDatacenter();
 
@@ -1462,6 +1446,24 @@ public class StorageProxy implements StorageProxyMBean
                                             Stage stage)
     throws OverloadedException
     {
+
+
+        /*
+         *  The following is ECMessage test code 
+         */
+        
+        ECMessage ecMessage = new ECMessage(mutation.toString(), 2, "cassandraec", "primary", "1");
+        logger.debug("rymDebug: the test message is: {}", ecMessage);
+        try {
+            ECNetSend.sendSelectedSSTables(ecMessage);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
+
+
         // this dc replicas:
         Collection<Replica> localDc = null;
         // extra-datacenter replicas, grouped by dc
