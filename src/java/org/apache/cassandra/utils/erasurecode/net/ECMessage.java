@@ -35,7 +35,7 @@ public final class ECMessage {
     final String    key;
     final String    table;
 
-    public ECMessage(String byteChunk, long k, String keyspace, String key, String table) {
+    public ECMessage(String byteChunk, long k, String keyspace, String table, String key) {
         this.byteChunk = byteChunk;
         this.k = k;
         this.keyspace = keyspace;
