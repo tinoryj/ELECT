@@ -40,8 +40,9 @@ import org.apache.cassandra.schema.Tables.TablesDiff;
 import org.apache.cassandra.schema.Types.TypesDiff;
 import org.apache.cassandra.schema.Views.ViewsDiff;
 import org.apache.cassandra.service.StorageService;
-import org.slf4j.Logger;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import static java.lang.String.format;
 
 import static com.google.common.collect.Iterables.any;
