@@ -148,49 +148,49 @@ public class ECNetSend {
         List<InetAddressAndPort> endpoints = new ArrayList<>(immutableEndpoints);
         Set<InetAddressAndPort> ringMembers = Gossiper.instance.getLiveTokenOwners();
         logger.debug("rymDebug: get All endpoints: {}, ring members is: {}", endpoints, ringMembers);
-        List<String> storageServiceNaturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
-        logger.debug("rymDebug: getTargetEdpoints.storageServiceNaturalEndpoints is {}", storageServiceNaturalEndpoints);
+        List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
+        logger.debug("rymDebug: getTargetEdpoints.naturalEndpoints is {}", naturalEndpoints);
         //List<String> naturalEndpoints = getNatualEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
 
-        //////////////////////////////////////
-        String keyspaceName = ecMessage.keyspace;
-        String table = ecMessage.table;
-        String key = ecMessage.key;
+        // //////////////////////////////////////
+        // String keyspaceName = ecMessage.keyspace;
+        // String table = ecMessage.table;
+        // String key = ecMessage.key;
 
-        logger.debug("rymDebug: This is partitionKeyToBytes.keyspaceName: {}, cf: {}, key: {}", keyspaceName, table, key);
-        KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
-        logger.debug("rymDebug: This is partitionKeyToBytes.ksMetaData: {}", ksMetaData);
+        // logger.debug("rymDebug: This is partitionKeyToBytes.keyspaceName: {}, cf: {}, key: {}", keyspaceName, table, key);
+        // KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
+        // logger.debug("rymDebug: This is partitionKeyToBytes.ksMetaData: {}", ksMetaData);
 
-        if (ksMetaData == null)
-            throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
+        // if (ksMetaData == null)
+        //     throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
 
-        TableMetadata metadata = ksMetaData.getTableOrViewNullable(table);
+        // TableMetadata metadata = ksMetaData.getTableOrViewNullable(table);
 
-        logger.debug("rymDebug: This is partitionKeyToBytes.metadata: {}", metadata);
+        // logger.debug("rymDebug: This is partitionKeyToBytes.metadata: {}", metadata);
 
-        if (metadata == null)
-            throw new IllegalArgumentException("Unknown table '" + table + "' in keyspace '" + keyspaceName + "'");
+        // if (metadata == null)
+        //     throw new IllegalArgumentException("Unknown table '" + table + "' in keyspace '" + keyspaceName + "'");
         
-        ByteBuffer partitionKey = metadata.partitionKeyType.fromString(key);
+        // ByteBuffer partitionKey = metadata.partitionKeyType.fromString(key);
 
-        logger.debug("rymDebug: This is getNaturalReplicasForToken");
+        // logger.debug("rymDebug: This is getNaturalReplicasForToken");
 
-        Token token = tokenMetadata.partitioner.getToken(partitionKey);
-        logger.debug("rymDebug: This is getNaturalReplicasForToken.token: {}", token);
+        // Token token = tokenMetadata.partitioner.getToken(partitionKey);
+        // logger.debug("rymDebug: This is getNaturalReplicasForToken.token: {}", token);
 
-        EndpointsForToken endpointsForToken =  Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+        // EndpointsForToken endpointsForToken =  Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
 
-        logger.debug("rymDebug:  endpointsForToken: {}", endpointsForToken);
-        List<String> naturalEndpoints = Replicas.stringify(endpointsForToken, true);
-        logger.debug("rymDebug: and replica related endpoints: {}", naturalEndpoints);
+        // logger.debug("rymDebug:  endpointsForToken: {}", endpointsForToken);
+        // List<String> naturalEndpoints = Replicas.stringify(endpointsForToken, true);
+        // logger.debug("rymDebug: and replica related endpoints: {}", naturalEndpoints);
 
 
 
-        /////////////////////////////////////////
+        // /////////////////////////////////////////
         
         
         
-        for(InetAddressAndPort ep : ringMembers) {
+        for(InetAddressAndPort ep : naturalEndpoints) {
             endpoints.remove(ep);
         }
         logger.debug("rymDebug: candidates are {}", endpoints);
