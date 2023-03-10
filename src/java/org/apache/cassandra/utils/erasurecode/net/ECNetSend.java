@@ -148,7 +148,7 @@ public class ECNetSend {
         List<InetAddressAndPort> endpoints = new ArrayList<>(immutableEndpoints);
         Set<InetAddressAndPort> ringMembers = Gossiper.instance.getLiveTokenOwners();
         logger.debug("rymDebug: get All endpoints: {}, ring members is: {}", endpoints, ringMembers);
-        //List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
+        // List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
         //List<String> naturalEndpoints = getNatualEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
 
         //////////////////////////////////////

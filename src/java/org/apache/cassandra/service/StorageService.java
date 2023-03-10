@@ -4725,10 +4725,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private static ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key)
     {
         KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
+        
+        logger.debug("rymDebug: This is partitionKeyToBytes.ksMetaData: {}", ksMetaData);
         if (ksMetaData == null)
             throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
 
         TableMetadata metadata = ksMetaData.getTableOrViewNullable(cf);
+        
+        logger.debug("rymDebug: This is partitionKeyToBytes.metadata: {}", metadata);
         if (metadata == null)
             throw new IllegalArgumentException("Unknown table '" + cf + "' in keyspace '" + keyspaceName + "'");
 
