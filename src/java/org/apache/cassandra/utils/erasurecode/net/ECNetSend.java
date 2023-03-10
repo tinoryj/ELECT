@@ -155,8 +155,8 @@ public class ECNetSend {
         String keyspaceName = ecMessage.keyspace;
         String table = ecMessage.table;
         String key = ecMessage.key;
-        logger.debug("rymDebug: This is partitionKeyToBytes");
 
+        logger.debug("rymDebug: This is partitionKeyToBytes.keyspaceName: {}, cf: {}, key: {}", keyspaceName, table, key);
         KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
         logger.debug("rymDebug: This is partitionKeyToBytes.ksMetaData: {}", ksMetaData);
 

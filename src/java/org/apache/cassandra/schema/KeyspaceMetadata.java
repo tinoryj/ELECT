@@ -41,8 +41,6 @@ import org.apache.cassandra.schema.Types.TypesDiff;
 import org.apache.cassandra.schema.Views.ViewsDiff;
 import org.apache.cassandra.service.StorageService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import static java.lang.String.format;
 
 import static com.google.common.collect.Iterables.any;
@@ -64,7 +62,6 @@ public final class KeyspaceMetadata implements SchemaElement
     public final Types types;
     public final Functions functions;
     
-    private static final Logger logger = LoggerFactory.getLogger(KeyspaceMetadata.class);
 
     private KeyspaceMetadata(String name, Kind kind, KeyspaceParams params, Tables tables, Views views, Types types, Functions functions)
     {
@@ -156,8 +153,6 @@ public final class KeyspaceMetadata implements SchemaElement
     public TableMetadata getTableOrViewNullable(String tableOrViewName)
     {
         ViewMetadata view = views.getNullable(tableOrViewName);
-        logger.debug("rymDebug: this is getTableOrViewNullable.vew: {} and tableOrViewName: {}", view, tableOrViewName);
-        logger.debug("rymDebug: this istables: {}", tables);
         return view == null
              ? tables.getNullable(tableOrViewName)
              : view.metadata;

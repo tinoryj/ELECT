@@ -4724,6 +4724,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private static ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key)
     {
+        logger.debug("rymDebug: This is partitionKeyToBytes.keyspaceName: {}, cf: {}, key: {}", keyspaceName, cf, key);
         KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
         
         logger.debug("rymDebug: This is partitionKeyToBytes.ksMetaData: {}", ksMetaData);
