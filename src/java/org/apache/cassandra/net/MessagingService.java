@@ -369,6 +369,7 @@ public class MessagingService extends MessagingServiceMBeanImpl
      */
     public void sendSSTContentWithoutCallback(Message message, InetAddressAndPort to)
     {
+        logger.debug("rymDebug: This is sendSSTContentWithoutCallback");
         // TODO: callback handler
         // assert message.callBackOnFailure();
         // callbacks.addWithExpiration(handler, message, null, null, isShuttingDown);
@@ -407,6 +408,7 @@ public class MessagingService extends MessagingServiceMBeanImpl
 
     public void send(Message message, InetAddressAndPort to, ConnectionType specifyConnection)
     {
+        logger.debug("rymDebug: This is send message.");
         if (logger.isTraceEnabled())
         {
             logger.trace("{} sending {} to {}@{}", FBUtilities.getBroadcastAddressAndPort(), message.verb(), message.id(), to);

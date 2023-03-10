@@ -123,6 +123,7 @@ public class ECNetSend {
             logger.debug("target endpoints are : {}", targetEndpoints);
             // setup message
             message = Message.outWithFlag(Verb.ERASURECODE_REQ, ecMessage, MessageFlag.CALL_BACK_ON_FAILURE);
+            logger.debug("rymDebug: This is dumped message: {}", message);
 
             for (InetAddressAndPort ep : targetEndpoints) {
                 // isAlive?
