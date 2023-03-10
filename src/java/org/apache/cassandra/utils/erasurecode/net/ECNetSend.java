@@ -190,8 +190,8 @@ public class ECNetSend {
         
         
         
-        for(InetAddressAndPort ep : naturalEndpoints) {
-            endpoints.remove(ep);
+        for(String ep : naturalEndpoints) {
+            endpoints.remove(InetAddressAndPort.getByName(ep));
         }
         logger.debug("rymDebug: candidates are {}", endpoints);
         
