@@ -408,7 +408,6 @@ public class MessagingService extends MessagingServiceMBeanImpl
 
     public void send(Message message, InetAddressAndPort to, ConnectionType specifyConnection)
     {
-        logger.debug("rymDebug: This is send message.");
         if (logger.isTraceEnabled())
         {
             logger.trace("{} sending {} to {}@{}", FBUtilities.getBroadcastAddressAndPort(), message.verb(), message.id(), to);

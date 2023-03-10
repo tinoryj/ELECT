@@ -54,9 +54,6 @@ public class ECVerbHandler implements IVerbHandler<ECMessage>{
 
         logger.debug("rymDebug: get new message!!! sstContent is {}, parameter k is {}", byteChunk, k);
 
-        
-        
-
         // check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();
         if(forwardTo != null)
