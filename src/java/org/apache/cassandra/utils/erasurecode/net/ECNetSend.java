@@ -149,8 +149,42 @@ public class ECNetSend {
         Set<InetAddressAndPort> ringMembers = Gossiper.instance.getLiveTokenOwners();
         logger.debug("rymDebug: get All endpoints: {}, ring members is: {}", endpoints, ringMembers);
         //List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
-        List<String> naturalEndpoints = getNatualEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
+        //List<String> naturalEndpoints = getNatualEndpointsWithPort(ecMessage.keyspace, ecMessage.table, ecMessage.key);
+
+        //////////////////////////////////////
+        String keyspaceName = ecMessage.keyspace;
+        String table = ecMessage.table;
+        String key = ecMessage.key;
+        logger.debug("rymDebug: This is partitionKeyToBytes");
+
+        KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
+        logger.debug("rymDebug: This is partitionKeyToBytes.ksMetaData: {}", ksMetaData);
+
+        if (ksMetaData == null)
+            throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
+
+        TableMetadata metadata = ksMetaData.getTableOrViewNullable(table);
+        logger.debug("rymDebug: This is partitionKeyToBytes.metadata: {}", metadata);
+
+        if (metadata == null)
+            throw new IllegalArgumentException("Unknown table '" + table + "' in keyspace '" + keyspaceName + "'");
+        
+        ByteBuffer partitionKey = metadata.partitionKeyType.fromString(key);
+
+        logger.debug("rymDebug: This is getNaturalReplicasForToken");
+
+        Token token = tokenMetadata.partitioner.getToken(partitionKey);
+        logger.debug("rymDebug: This is getNaturalReplicasForToken.token: {}", token);
+
+        EndpointsForToken endpointsForToken =  Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+
+        logger.debug("rymDebug:  endpointsForToken: {}", endpointsForToken);
+        List<String> naturalEndpoints = Replicas.stringify(endpointsForToken, true);
         logger.debug("rymDebug: and replica related endpoints: {}", naturalEndpoints);
+
+
+
+        /////////////////////////////////////////
         
         
         
@@ -183,53 +217,53 @@ public class ECNetSend {
     }
 
 
-    public List<String> getNatualEndpointsWithPort(String keyspaceName, String cf, String key) {
-        logger.debug("rymDebug: This is getNatualEndpointsWithPort");
+    // public List<String> getNatualEndpointsWithPort(String keyspaceName, String cf, String key) {
+    //     logger.debug("rymDebug: This is getNatualEndpointsWithPort");
 
-        return Replicas.stringify(getNaturalReplicasForToken(keyspaceName, cf, key), true);
-    }
+    //     return Replicas.stringify(getNaturalReplicasForToken(keyspaceName, cf, key), true);
+    // }
 
-    public EndpointsForToken getNaturalReplicasForToken(String keyspaceName, String cf, String key)
-    {
-        logger.debug("rymDebug: This is getNaturalReplicasForToken");
+    // public EndpointsForToken getNaturalReplicasForToken(String keyspaceName, String cf, String key)
+    // {
+    //     logger.debug("rymDebug: This is getNaturalReplicasForToken");
 
-        return getNaturalReplicasForToken(keyspaceName, partitionKeyToBytes(keyspaceName, cf, key));
-    }
+    //     return getNaturalReplicasForToken(keyspaceName, partitionKeyToBytes(keyspaceName, cf, key));
+    // }
     
-    public EndpointsForToken getNaturalReplicasForToken(String keyspaceName, ByteBuffer key)
-    {
-        logger.debug("rymDebug: This is getNaturalReplicasForToken");
+    // public EndpointsForToken getNaturalReplicasForToken(String keyspaceName, ByteBuffer key)
+    // {
+    //     logger.debug("rymDebug: This is getNaturalReplicasForToken");
 
-        Token token = tokenMetadata.partitioner.getToken(key);
-        logger.debug("rymDebug: This is getNaturalReplicasForToken.token: {}", token);
+    //     Token token = tokenMetadata.partitioner.getToken(key);
+    //     logger.debug("rymDebug: This is getNaturalReplicasForToken.token: {}", token);
 
-        return Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
-    }
+    //     return Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+    // }
 
-    public DecoratedKey getKeyFromPartition(String keyspaceName, String table, String partitionKey)
-    {
-        logger.debug("rymDebug: This is getKeyFromPartition");
+    // public DecoratedKey getKeyFromPartition(String keyspaceName, String table, String partitionKey)
+    // {
+    //     logger.debug("rymDebug: This is getKeyFromPartition");
 
-        return tokenMetadata.partitioner.decorateKey(partitionKeyToBytes(keyspaceName, table, partitionKey));
-    }
+    //     return tokenMetadata.partitioner.decorateKey(partitionKeyToBytes(keyspaceName, table, partitionKey));
+    // }
 
-    private static ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key)
-    {
-        logger.debug("rymDebug: This is partitionKeyToBytes");
+    // private static ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key)
+    // {
+    //     logger.debug("rymDebug: This is partitionKeyToBytes");
 
-        KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
-        logger.debug("rymDebug: This is partitionKeyToBytes.ksMetaData: {}", ksMetaData);
+    //     KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
+    //     logger.debug("rymDebug: This is partitionKeyToBytes.ksMetaData: {}", ksMetaData);
 
-        if (ksMetaData == null)
-            throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
+    //     if (ksMetaData == null)
+    //         throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
 
-        TableMetadata metadata = ksMetaData.getTableOrViewNullable(cf);
-        logger.debug("rymDebug: This is partitionKeyToBytes.metadata: {}", metadata);
+    //     TableMetadata metadata = ksMetaData.getTableOrViewNullable(cf);
+    //     logger.debug("rymDebug: This is partitionKeyToBytes.metadata: {}", metadata);
 
-        if (metadata == null)
-            throw new IllegalArgumentException("Unknown table '" + cf + "' in keyspace '" + keyspaceName + "'");
+    //     if (metadata == null)
+    //         throw new IllegalArgumentException("Unknown table '" + cf + "' in keyspace '" + keyspaceName + "'");
 
-        return metadata.partitionKeyType.fromString(key);
-    }
+    //     return metadata.partitionKeyType.fromString(key);
+    // }
 
 }
