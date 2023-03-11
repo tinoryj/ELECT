@@ -40,11 +40,6 @@ import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tools.Output;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.common.collect.ImmutableSet;
-
-
-
-
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 
 public final class ECMessage {
@@ -63,15 +58,10 @@ public final class ECMessage {
         this.key = key;
         this.table = table;
     }
-    
-
 
     protected static Output output;
-    private static InetAddressAndPort targetEndpoint = null;
-    //public static final ECNetSend instance = new ECNetSend();
-    
-    private static final Logger logger = LoggerFactory.getLogger(ECNetSend.class);
-
+    private static InetAddressAndPort targetEndpoint = null;    
+    private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
     /**
      * This method sends selected sstables to parity nodes for EC/
@@ -82,9 +72,6 @@ public final class ECMessage {
      * @param table cf name of sstables
      * @param key one of the key in sstables
      * @throws UnknownHostException
-     * 
-     */
-    /*
      * TODO List
      * 1. implement Verb.ERASURECODE_REQ
      * 2. implement responsehandler
@@ -132,8 +119,6 @@ public final class ECMessage {
         int rand = (new Random().nextInt(endpoints.size()));
         targetEndpoint = endpoints.get(rand);
     }
-
-
 
 
     public static final class Serializer implements IVersionedSerializer<ECMessage> {

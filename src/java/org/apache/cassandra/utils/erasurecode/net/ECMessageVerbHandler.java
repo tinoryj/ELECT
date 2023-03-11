@@ -30,10 +30,10 @@ import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ECVerbHandler implements IVerbHandler<ECMessage>{
+public class ECMessageVerbHandler implements IVerbHandler<ECMessage>{
 
-    public static final ECVerbHandler instance = new ECVerbHandler();
-    private static final Logger logger = LoggerFactory.getLogger(ECNetSend.class);
+    public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
+    private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
 
     private void respond(Message<?> respondTo, InetAddressAndPort respondToAddress)
