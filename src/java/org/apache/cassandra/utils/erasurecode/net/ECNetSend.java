@@ -49,10 +49,8 @@ import com.google.common.collect.ImmutableSet;
 
 public class ECNetSend {
     protected static Output output;
-    private static List<InetAddressAndPort> targetEndpoints = null;
+    private static InetAddressAndPort targetEndpoint = null;
     //public static final ECNetSend instance = new ECNetSend();
-
-
     
     private static final Logger logger = LoggerFactory.getLogger(ECNetSend.class);
 
@@ -81,22 +79,15 @@ public class ECNetSend {
         // get target endpoints
         getTargetEdpoints(ecMessage);
         
-        if(targetEndpoints != null) {
-            logger.debug("target endpoints are : {}", targetEndpoints);
+        if(targetEndpoint != null) {
+            logger.debug("target endpoints are : {}", targetEndpoint);
             // setup message
             message = Message.outWithFlag(Verb.ERASURECODE_REQ, ecMessage, MessageFlag.CALL_BACK_ON_FAILURE);
             logger.debug("rymDebug: This is dumped message: {}", message);
-
-            for (InetAddressAndPort ep : targetEndpoints) {
-                // isAlive?
-                // send to destination
-                MessagingService.instance().sendSSTContentWithoutCallback(message, ep);
-            }
-
+            MessagingService.instance().sendSSTContentWithoutCallback(message, targetEndpoint);
         } else {
             logger.debug("targetEndpoints is null");
         }
-
     }
 
     /*
@@ -118,7 +109,11 @@ public class ECNetSend {
             endpoints.remove(InetAddressAndPort.getByName(ep));
         }
         logger.debug("rymDebug: candidates are {}", endpoints);
-        targetEndpoints = endpoints;
+
+        // randomly select an endpoint
+        int rand = (new Random().nextInt(endpoints.size()));
+        targetEndpoint = endpoints.get(rand);
+
         
         // int k = (int) ecMessage.k;
         // int randArr[] = new int[k];

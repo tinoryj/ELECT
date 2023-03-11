@@ -124,6 +124,13 @@ public enum Verb
     BATCH_REMOVE_REQ       (6,   P3, writeTimeout,    MUTATION,          () -> TimeUUID.Serializer.instance,         () -> BatchRemoveVerbHandler.instance,     BATCH_REMOVE_RSP    ),
     ERASURECODE_RSP        (201, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
     ERASURECODE_REQ        (202, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECVerbHandler.instance,              ERASURECODE_RSP     ),
+    ECCOMPACTION_RSP       (203, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
+    ECCOMPACTION_REQ       (204, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECVerbHandler.instance,              ECCOMPACTION_RSP    ),
+    ECDELETEREPLICA_RSP    (205, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
+    ECDELETEREPLICA_REQ    (206, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECVerbHandler.instance,              ECDELETEREPLICA_RSP ),
+    ECREADY_RSP            (207, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
+    ECREADY_REQ            (208, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECVerbHandler.instance,              ECREADY_RSP         ),
+   
 
     PAXOS_PREPARE_RSP      (93,  P2, writeTimeout,    REQUEST_RESPONSE,  () -> PrepareResponse.serializer,           () -> ResponseVerbHandler.instance                             ),
     PAXOS_PREPARE_REQ      (33,  P2, writeTimeout,    MUTATION,          () -> Commit.serializer,                    () -> PrepareVerbHandler.instance,         PAXOS_PREPARE_RSP   ),
