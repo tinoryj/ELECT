@@ -124,15 +124,15 @@ public enum Verb
     BATCH_REMOVE_RSP       (66,  P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
     BATCH_REMOVE_REQ       (6,   P3, writeTimeout,    MUTATION,          () -> TimeUUID.Serializer.instance,         () -> BatchRemoveVerbHandler.instance,     BATCH_REMOVE_RSP    ),
     ERASURECODE_RSP        (201, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
-    ERASURECODE_REQ        (202, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,              ERASURECODE_RSP     ),
+    ERASURECODE_REQ        (202, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,       ERASURECODE_RSP     ),
     ECCOMPACTION_RSP       (203, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
-    ECCOMPACTION_REQ       (204, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,              ECCOMPACTION_RSP    ),
+    ECCOMPACTION_REQ       (204, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,       ECCOMPACTION_RSP    ),
     ECDELETEREPLICA_RSP    (205, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
-    ECDELETEREPLICA_REQ    (206, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,              ECDELETEREPLICA_RSP ),
+    ECDELETEREPLICA_REQ    (206, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,       ECDELETEREPLICA_RSP ),
     ECREADY_RSP            (207, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
-    ECREADY_REQ            (208, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,              ECREADY_RSP         ),
+    ECREADY_REQ            (208, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,       ECREADY_RSP         ),
     ECPARITYNODE_RSP       (207, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
-    ECPARITYNODE_REQ       (208, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,              ECREADY_RSP         ),
+    ECPARITYNODE_REQ       (208, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,       ECPARITYNODE_RSP    ),
 
    
 

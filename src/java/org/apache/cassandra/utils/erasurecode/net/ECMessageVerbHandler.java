@@ -47,6 +47,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage>{
         Tracing.trace("Payload application resulted in ECTimeout, not replying");
     }
 
+    /*
+     * TODO list:
+     * 1. Collect k SST contents;
+     * 2. Compute erasure coding locally;
+     * 3. Send code to another parity nodes
+     */
     @Override
     public void doVerb(Message<ECMessage> message) throws IOException {
         String byteChunk = message.payload.byteChunk;

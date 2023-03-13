@@ -23,7 +23,9 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 
 public class ECReadyVerbHandler implements IVerbHandler<ECReady>{
-
+    /*
+     * TODO：Secondary nodes delete replicas, and send a message to primary nodes to improve read performance.
+     */
     @Override
     public void doVerb(Message<ECReady> message) throws IOException {
         // TODO Auto-generated method stub

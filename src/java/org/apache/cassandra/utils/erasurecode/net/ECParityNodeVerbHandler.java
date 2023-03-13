@@ -24,6 +24,10 @@ import org.apache.cassandra.net.Message;
 
 public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode>{
 
+    /*
+     * TODO List:
+     * 1. Receive erasure code from a parity node, and send a delete message to secondary nodes
+     */
     @Override
     public void doVerb(Message<ECParityNode> message) throws IOException {
         // TODO Auto-generated method stub

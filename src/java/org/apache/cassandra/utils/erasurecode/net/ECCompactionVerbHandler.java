@@ -23,7 +23,9 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 
 public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction>{
-
+    /*
+     * Secondary nodes receive compaction signal from primary nodes and trigger compaction
+     */
     @Override
     public void doVerb(Message<ECCompaction> message) throws IOException {
         // TODO Auto-generated method stub
