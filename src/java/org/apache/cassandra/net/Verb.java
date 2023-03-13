@@ -131,8 +131,8 @@ public enum Verb
     ECDELETEREPLICA_REQ    (206, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,       ECDELETEREPLICA_RSP ),
     ECREADY_RSP            (207, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
     ECREADY_REQ            (208, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,       ECREADY_RSP         ),
-    ECPARITYNODE_RSP       (207, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
-    ECPARITYNODE_REQ       (208, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,       ECPARITYNODE_RSP    ),
+    ECPARITYNODE_RSP       (209, P1, writeTimeout,    REQUEST_RESPONSE,  () -> NoPayload.serializer,                 () -> ResponseVerbHandler.instance                             ),
+    ECPARITYNODE_REQ       (210, P3, writeTimeout,    ERASURECODE,       () -> ECMessage.serializer,                 () -> ECMessageVerbHandler.instance,       ECPARITYNODE_RSP    ),
 
    
 
