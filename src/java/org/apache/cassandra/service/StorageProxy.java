@@ -141,7 +141,6 @@ import org.apache.cassandra.utils.NoSpamLogger;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 import org.apache.cassandra.utils.erasurecode.net.ECMessage;
-import org.apache.cassandra.utils.erasurecode.net.ECNetSend;
 
 import static com.google.common.collect.Iterables.concat;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
