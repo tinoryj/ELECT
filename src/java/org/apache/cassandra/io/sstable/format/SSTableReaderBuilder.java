@@ -49,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.cassandra.io.sstable.format.SSTableReader.OpenReason.NORMAL;
 import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 import static org.apache.cassandra.utils.Clock.Global.nanoTime;
+import org.apache.commons.codec.digest.DigestUtils;
 
 public abstract class SSTableReaderBuilder {
     private static final Logger logger = LoggerFactory.getLogger(SSTableReaderBuilder.class);
@@ -64,6 +65,7 @@ public abstract class SSTableReaderBuilder {
     protected final SerializationHeader header;
 
     protected IndexSummary summary;
+    protected String hashID;
     protected DecoratedKey first;
     protected DecoratedKey last;
     protected IFilter bf;
@@ -110,6 +112,11 @@ public abstract class SSTableReaderBuilder {
         return this;
     }
 
+    public SSTableReaderBuilder hashID(String hashID) {
+        this.hashID = hashID;
+        return this;
+    }
+
     /**
      * Load index summary, first key and last key from Summary.db file if it exists.
      *
@@ -142,6 +149,32 @@ public abstract class SSTableReaderBuilder {
             FileUtils.closeQuietly(iStream);
             // delete it and fall back to creating a new summary
             FileUtils.deleteWithConfirm(summariesFile);
+        } finally {
+            FileUtils.closeQuietly(iStream);
+        }
+    }
+
+    void loadHashID() {
+        File hashIDFile = new File(descriptor.filenameFor(Component.IDENTIFICATION));
+        if (!hashIDFile.exists()) {
+            if (logger.isDebugEnabled())
+                logger.debug("SSTable HashID File {} does not exist", hashIDFile.absolutePath());
+            return;
+        }
+
+        DataInputStream iStream = null;
+        try {
+            iStream = new DataInputStream(Files.newInputStream(hashIDFile.toPath()));
+            byte[] onDiskHashIDBuffer = new byte[32];
+            iStream.readFully(onDiskHashIDBuffer);
+        } catch (IOException e) {
+            if (summary != null)
+                summary.close();
+            logger.trace("Cannot deserialize SSTable Summary File {}: {}", hashIDFile.path(), e.getMessage());
+            // corrupted; delete it and fall back to creating a new summary
+            FileUtils.closeQuietly(iStream);
+            // delete it and fall back to creating a new summary
+            FileUtils.deleteWithConfirm(hashIDFile);
         } finally {
             FileUtils.closeQuietly(iStream);
         }
@@ -214,6 +247,21 @@ public abstract class SSTableReaderBuilder {
             first = SSTable.getMinimalKey(first);
             last = SSTable.getMinimalKey(last);
         }
+    }
+
+    /**
+     * Build Identification label (sha256 hash) for detect same sstable on different
+     * nodes.
+     */
+    void buildSSTableIdentificationHash(
+            Set<Component> components,
+            StatsMetadata statsMetadata) throws IOException {
+        if (!components.contains(Component.IDENTIFICATION)) {
+            if (logger.isDebugEnabled())
+                logger.error("Could not found Identification component for {}", descriptor);
+            return;
+        }
+
     }
 
     /**
@@ -486,7 +534,8 @@ public abstract class SSTableReaderBuilder {
 
                     throw t;
                 }
-            } else {
+            } else if (!(new File(descriptor.filenameFor(Component.EC_METADATA)).exists())) {
+                // No data file, this sst may be changed to ec metadata
                 try (FileHandle.Builder ibuilder = new FileHandle.Builder(
                         descriptor.filenameFor(Component.PRIMARY_INDEX))
                         .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
@@ -524,6 +573,9 @@ public abstract class SSTableReaderBuilder {
 
                     throw t;
                 }
+            } else {
+                logger.error("Load SSTable error, this SSTable ({}) not contains EC metadata or Data",
+                        descriptor.filenameFor(Component.SUMMARY));
             }
 
         }

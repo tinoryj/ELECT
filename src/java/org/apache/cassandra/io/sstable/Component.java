@@ -64,6 +64,8 @@ public class Component {
         SECONDARY_INDEX("SI_.*.db"),
         // EC metadata file for current SSTable after redundancy transition
         EC_METADATA("EC.db"),
+        // Hash based Identification file for current SSTable
+        IDENTIFICATION("Hash.db"),
         // custom component, used by e.g. custom compaction strategy
         CUSTOM(null);
 
@@ -93,6 +95,7 @@ public class Component {
     public final static Component CRC = new Component(Type.CRC);
     public final static Component SUMMARY = new Component(Type.SUMMARY);
     public final static Component EC_METADATA = new Component(Type.EC_METADATA);
+    public final static Component IDENTIFICATION = new Component(Type.IDENTIFICATION);
     public final static Component TOC = new Component(Type.TOC);
 
     public final Type type;
@@ -150,6 +153,8 @@ public class Component {
                 return Component.SUMMARY;
             case EC_METADATA:
                 return Component.EC_METADATA;
+            case IDENTIFICATION:
+                return Component.IDENTIFICATION;
             case TOC:
                 return Component.TOC;
             case SECONDARY_INDEX:

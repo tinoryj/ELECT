@@ -415,7 +415,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             TableMetadataRef metadata) {
         // Minimum components without which we can't do anything
         assert components.contains(Component.DATA) || components.contains(Component.EC_METADATA)
-                : "Data component is missing for sstable " + descriptor;
+                : "Data or EC metadata component is missing for sstable " + descriptor;
         assert components.contains(Component.PRIMARY_INDEX)
                 : "Primary index component is missing for sstable " + descriptor;
         verifyCompressionInfoExistenceIfApplicable(descriptor, components);
@@ -474,7 +474,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             boolean isOffline) {
         // Minimum components without which we can't do anything
         assert components.contains(Component.DATA) || components.contains(Component.EC_METADATA)
-                : "Data component is missing for sstable " + descriptor;
+                : "Data or EC metadata component is missing for sstable " + descriptor;
         assert !validate || components.contains(Component.PRIMARY_INDEX)
                 : "Primary index component is missing for sstable " + descriptor;
 
