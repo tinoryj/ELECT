@@ -161,7 +161,10 @@ public class Config
     public volatile DurationSpec.LongMillisecondsBound slow_query_log_timeout = new DurationSpec.LongMillisecondsBound("500ms");
 
     public volatile double phi_convict_threshold = 8.0;
-
+    
+    public int parity_nodes = 2;
+    
+    public int concurrent_ec = 32;
     public int concurrent_reads = 32;
     public int concurrent_writes = 32;
     public int concurrent_counter_writes = 32;

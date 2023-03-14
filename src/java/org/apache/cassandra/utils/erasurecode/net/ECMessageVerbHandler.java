@@ -18,6 +18,9 @@
 package org.apache.cassandra.utils.erasurecode.net;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.ForwardingInfo;
@@ -26,7 +29,6 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.ParamType;
 import org.apache.cassandra.tracing.Tracing;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +36,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage>{
 
     public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
+    private static LinkedBlockingQueue<String> recvQueue = new LinkedBlockingQueue<>();
 
 
     private void respond(Message<?> respondTo, InetAddressAndPort respondToAddress)
@@ -66,7 +69,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage>{
             forwardToLocalNodes(message, forwardTo);
         
         //InetAddressAndPort respondToAddress = message.respondTo();
-        // TODO: receive data and do something
+        // ToDo: collect k SST contents;
+
+
+
         Tracing.trace("recieved byteChunk is: {}, k is: {}, sourceEdpoint is: {}, header is: {}",
                         byteChunk, k, message.from(), message.header);
     }

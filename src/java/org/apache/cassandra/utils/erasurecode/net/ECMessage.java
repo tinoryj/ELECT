@@ -30,6 +30,8 @@ import java.util.Set;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Message;
@@ -46,17 +48,19 @@ public final class ECMessage {
 
     public static final Serializer serializer = new Serializer();
     final String    byteChunk;
-    final long      k;
+    final int       k;
     final String    keyspace;
     final String    key;
     final String    table;
+    final int       rf;
 
-    public ECMessage(String byteChunk, long k, String keyspace, String table, String key) {
+    public ECMessage(String byteChunk, String keyspace, String table, String key) {
         this.byteChunk = byteChunk;
-        this.k = k;
         this.keyspace = keyspace;
-        this.key = key;
         this.table = table;
+        this.key = key;
+        this.k = DatabaseDescriptor.getParityNodes();
+        this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
     }
 
     protected static Output output;
@@ -133,8 +137,7 @@ public final class ECMessage {
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
             String byteChunk = in.readUTF();
-            long   k = in.readLong();
-            return new ECMessage(byteChunk, k, null, null, null);
+            return new ECMessage(byteChunk, null, null, null);
         }
 
         @Override
