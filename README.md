@@ -27,13 +27,34 @@
 # Build with java 11
 ant clean
 ant -Duse.jdk11=true
+# Set Java Home for isa-l library 
+export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
 ```
 
-Set proxy for ant in build.xml after line 29
+## Test 
 
+```shell 
+ant -Duse.jdk11=true testsome -Dtest.name=<TestClassName> -Dtest.methods=<testMethodName>
+# For example 
+ant -Duse.jdk11=true testsome -Dtest.name=ErasureCodeTest
 ```
-<setproxy proxyhost="proxy.cse.cuhk.edu.hk"
-proxyport="8000"/>
+
+## Sync Messages
+
+1. Erasure coding:
+
+* Delete old files: src/native/, src/java/org/apache/cassandra/utils/erasurecode/.
+* Add new files: src/native/, src/java/org/apache/cassandra/io/erasurecode/, test/long/org/apache/cassandra/io/erasure/, src/java/org/apache/cassandra/exceptions/ErasureCodeException.java.
+* Replace files: src/java/org/apache/cassandra/exceptions/ExceptionCode.java
+
+Build ec library first: 
+
+```shell
+sudo apt install libisal-dev
+cd src/native/src/org/apache/cassandra/io/erasurecode/
+chmod +x genlib.sh 
+./genlib.sh
 ```
 
 ## Plan

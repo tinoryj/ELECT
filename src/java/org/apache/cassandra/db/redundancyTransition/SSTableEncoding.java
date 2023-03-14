@@ -34,14 +34,13 @@ import org.apache.cassandra.dht.*;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.big.*;
-import org.apache.cassandra.utils.erasurecode.*;
+import org.apache.cassandra.io.erasurecode.*;
 
 public abstract class SSTableEncoding {
 
     private int ecBlock_n = 4;
     private int ecBlock_k = 3;
     private int ecBlock_m = ecBlock_n - ecBlock_k;
-    ErasureCodeNative eracureCodingObj_;
 
     SSTableEncoding(int n, int k) {
         ecBlock_n = n;
