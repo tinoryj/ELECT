@@ -74,7 +74,7 @@ public final class ECMessage {
 
 
 
-    public ECMessage(String sstContent, String keyspace, String table, String key) {
+    public ECMessage(String sstContent, String keyspace, String table, String key, String repEpString, String parityEpString) {
         this.sstContent = sstContent;
         this.keyspace = keyspace;
         this.table = table;
@@ -85,8 +85,8 @@ public final class ECMessage {
         
         this.replicationEndpoints =  new ArrayList<InetAddressAndPort>();
         this.parityNodes =  new ArrayList<InetAddressAndPort>();
-        this.repEpsString = "";
-        this.parityNodesString = "";
+        this.repEpsString = repEpString;
+        this.parityNodesString = parityEpString;
     }
 
     protected static Output output;
@@ -193,7 +193,7 @@ public final class ECMessage {
             logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {},repEpString is {},parityNodes are: {}"
             , sstContent,ks, table, key,repEpsString,parityNodesString);
             
-            return new ECMessage(sstContent, ks, table, key);
+            return new ECMessage(sstContent, ks, table, key, repEpsString, parityNodesString);
         }
 
         @Override
