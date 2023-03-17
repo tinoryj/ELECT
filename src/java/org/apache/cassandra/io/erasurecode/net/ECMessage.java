@@ -41,8 +41,11 @@ import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tools.Output;
 import org.apache.cassandra.utils.FBUtilities;
+import org.checkerframework.dataflow.qual.TerminatesExecution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.tartarus.snowball.TestApp;
+
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 
 public final class ECMessage {
@@ -65,8 +68,10 @@ public final class ECMessage {
     
     
     private static int GLOBAL_COUNTER = 0;
-    private String repEpsString = "";
-    private String parityNodesString = "";
+    private String repEpsString;
+    private String parityNodesString;
+
+
 
 
     public ECMessage(String sstContent, String keyspace, String table, String key) {
@@ -80,6 +85,8 @@ public final class ECMessage {
         
         this.replicationEndpoints = null;
         this.parityNodes = null;
+        this.repEpsString = "";
+        this.parityNodesString = "";
     }
 
     protected static Output output;
@@ -187,10 +194,10 @@ public final class ECMessage {
             List<InetAddressAndPort> replicationEndpoints = new ArrayList<InetAddressAndPort>();
             List<InetAddressAndPort> parityNodes = new ArrayList<InetAddressAndPort>();
             for (String ep : repEpsString.split(",")) {
-                replicationEndpoints.add(InetAddressAndPort.getByName(ep));
+                replicationEndpoints.add(InetAddressAndPort.getByName(ep.substring(1)));
             }
             for (String ep : parityNodesString.split(",")) {
-                parityNodes.add(InetAddressAndPort.getByName(ep));
+                parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
             }
             logger.debug("rymDebug:deserializer replicationEndpoints are {}, parityNodes are: {}", replicationEndpoints, parityNodes);
             
