@@ -26,18 +26,23 @@ import org.apache.cassandra.locator.InetAddressAndPort;
 public class ECMetadata {
 
     private static String stripeId;
-    private static Map<String, String> sstableToHashMap;
-    private static Map<String, String> parityToHashMap;
+    private static List<String> sstContentHashList;
+    private static List<String> sstParityHashList;
+
     private static List<InetAddressAndPort> primaryNodes;
     private static List<InetAddressAndPort> secondaryNodes;
+    private static List<InetAddressAndPort> tertiaryNodes;
+    private static ECMessage[] messages;
+    public static final ECMetadata instance = new ECMetadata();
 
-    public ECMetadata(String stripeId, Map<String, String> sstableToHashMap, Map<String, String> parityToHashMap,
-            List<InetAddressAndPort> primaryNodes) {
-        this.stripeId = stripeId;
-        this.sstableToHashMap = sstableToHashMap;
-        this.parityToHashMap = parityToHashMap;
-        this.primaryNodes = null;
-        this.secondaryNodes = null;
+    public ECMetadata() {
+        
+    }
+
+    ECMetadata generateMetadata(ECMessage[] messages) {
+        this.messages = messages;
+
+        return this;
     }
 
 }

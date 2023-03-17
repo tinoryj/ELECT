@@ -40,6 +40,7 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tools.Output;
+import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static org.apache.cassandra.db.TypeSizes.sizeof;
@@ -47,30 +48,37 @@ import static org.apache.cassandra.db.TypeSizes.sizeof;
 public final class ECMessage {
 
     public static final Serializer serializer = new Serializer();
-    final String byteChunk;
-    final int k;
+    final String sstContent;
     final String keyspace;
     final String key;
     final String table;
+    final int k;
     final int rf;
+    final int m;
+    final InetAddressAndPort primaryNode;
+    List<InetAddressAndPort> secondaryNodes = null;
+    List<InetAddressAndPort> parityNodes = null;
+    private static int GLOBAL_COUNTER = 0;
+    
 
-    public ECMessage(String byteChunk, String keyspace, String table, String key) {
-        this.byteChunk = byteChunk;
+    public ECMessage(String sstContent, String keyspace, String table, String key) {
+        this.sstContent = sstContent;
         this.keyspace = keyspace;
         this.table = table;
         this.key = key;
         this.k = DatabaseDescriptor.getParityNodes();
+        this.m = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
+        this.primaryNode = FBUtilities.getBroadcastAddressAndPort();
     }
 
     protected static Output output;
-    private static InetAddressAndPort targetEndpoint = null;
     private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
     /**
      * This method sends selected sstables to parity nodes for EC/
      * 
-     * @param byteChunk selected sstables
+     * @param sstContent selected sstables
      * @param k         number of parity nodes
      * @param ks        keyspace name of sstables
      * @param table     cf name of sstables
@@ -83,17 +91,18 @@ public final class ECMessage {
     public void sendSelectedSSTables() throws UnknownHostException {
         logger.debug("rymDebug: this is sendSelectedSSTables");
 
-        // create a Message for byteChunk
+        // create a Message for sstContent
         Message<ECMessage> message = null;
+        GLOBAL_COUNTER++;
         // get target endpoints
         getTargetEdpoints(this);
 
-        if (targetEndpoint != null) {
-            logger.debug("target endpoints are : {}", targetEndpoint);
+        if (this.parityNodes != null) {
+            logger.debug("target endpoints are : {}", this.parityNodes);
             // setup message
             message = Message.outWithFlag(Verb.ERASURECODE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
             logger.debug("rymDebug: This is dumped message: {}", message);
-            MessagingService.instance().sendSSTContentWithoutCallback(message, targetEndpoint);
+            MessagingService.instance().sendSSTContentWithoutCallback(message, this.parityNodes.get(0));
         } else {
             logger.debug("targetEndpoints is null");
         }
@@ -102,27 +111,34 @@ public final class ECMessage {
     /*
      * Get target nodes, use the methods related to nodetool.java and status.java
      */
-    public static void getTargetEdpoints(ECMessage ecMessage) throws UnknownHostException {
+    protected static void getTargetEdpoints(ECMessage ecMessage) throws UnknownHostException {
 
         logger.debug("rymDebug: this is getTargetEdpoints, keyspace is: {}, table name is: {}, key is {}",
                 ecMessage.keyspace, ecMessage.table, ecMessage.key);
-
-        Set<InetAddressAndPort> liveEndpoints = Gossiper.instance.getLiveMembers();
-        List<InetAddressAndPort> endpoints = new ArrayList<>(liveEndpoints);
-        Set<InetAddressAndPort> ringMembers = Gossiper.instance.getLiveTokenOwners();
-        logger.debug("rymDebug: get All endpoints: {}, ring members is: {}", endpoints, ringMembers);
-        List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
+        // get all live nodes
+        List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
+        // get replication nodes for given keyspace and table
+        List<String> replicationEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
                 ecMessage.table, ecMessage.key);
-        logger.debug("rymDebug: getTargetEdpoints.naturalEndpoints is {}", naturalEndpoints);
+        logger.debug("rymDebug: getTargetEdpoints.replicationEndpoints is {}", replicationEndpoints);
+        
 
-        for (String ep : naturalEndpoints) {
-            endpoints.remove(InetAddressAndPort.getByName(ep));
+        for (String rep : replicationEndpoints) {
+            InetAddressAndPort ep = InetAddressAndPort.getByName(rep);
+            if(!ep.equals(ecMessage.primaryNode)) {
+                ecMessage.secondaryNodes.add(ep);
+            }
         }
-        logger.debug("rymDebug: candidates are {}", endpoints);
-
-        // randomly select an endpoint
-        int rand = (new Random().nextInt(endpoints.size()));
-        targetEndpoint = endpoints.get(rand);
+        
+        logger.debug("rymDebug: candidates are {}", liveEndpoints);
+        
+        // select parity nodes from live nodes, suppose all nodes work healthy
+        int n = liveEndpoints.size();
+        int primaryNodeIndex = liveEndpoints.indexOf(ecMessage.primaryNode);
+        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.k +1))%n);
+        for (int i = startIndex; i < ecMessage.m+startIndex; i++) {
+            ecMessage.parityNodes.add(liveEndpoints.get(i%n));
+        }
     }
 
     public static final class Serializer implements IVersionedSerializer<ECMessage> {
@@ -130,19 +146,20 @@ public final class ECMessage {
         @Override
         public void serialize(ECMessage ecMessage, DataOutputPlus out, int version) throws IOException {
             // TODO: something may need to ensure, could be test
-            out.writeUTF(ecMessage.byteChunk);
+            out.writeUTF(ecMessage.sstContent);
             out.writeLong(ecMessage.k);
         }
 
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
-            String byteChunk = in.readUTF();
-            return new ECMessage(byteChunk, null, null, null);
+            String sstContent = in.readUTF();
+            return new ECMessage(sstContent, null, null, null);
         }
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
-            long size = sizeof(ecMessage.byteChunk) + sizeof(ecMessage.k);
+            long size = sizeof(ecMessage.sstContent) + sizeof(ecMessage.k) + sizeof(ecMessage.rf) + sizeof(ecMessage.m) + 
+            sizeof(ecMessage.keyspace) + sizeof(ecMessage.table) + sizeof(ecMessage.key);
             // + sizeof(ecMessage.keyspace) + sizeof(ecMessage.key) +
             // sizeof(ecMessage.table);
 
