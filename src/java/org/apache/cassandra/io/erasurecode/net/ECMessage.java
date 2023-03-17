@@ -55,7 +55,7 @@ public final class ECMessage {
     public final int k;
     public final int rf;
     public final int m;
-    public String relatedNodes = "";
+    public String relatedNodes;
     
     public List<InetAddressAndPort> replicationEndpoints = new ArrayList<InetAddressAndPort>();
     public List<InetAddressAndPort> parityNodes = new ArrayList<InetAddressAndPort>();
@@ -75,6 +75,7 @@ public final class ECMessage {
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
         this.replicationEndpoints = null;
         this.parityNodes = null;
+        this.relatedNodes = "";
     }
 
     protected static Output output;
@@ -106,12 +107,12 @@ public final class ECMessage {
         
         // naturalEndpoints to string
         for (InetAddressAndPort endpoint : this.replicationEndpoints) {
-            relatedNodes+=endpoint.toString() + ",";
+            this.relatedNodes+=endpoint.toString() + ",";
         }
-        relatedNodes +="#";
+        this.relatedNodes +="#";
         // parityNodes to string
         for (InetAddressAndPort endpoint : this.parityNodes) {
-            relatedNodes+=endpoint.toString() + ",";
+            this.relatedNodes+=endpoint.toString() + ",";
         }
 
         logger.debug("rymDebug: replicationEndpoints are: {}", this.replicationEndpoints);
