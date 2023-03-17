@@ -1904,6 +1904,20 @@ public class DatabaseDescriptor
         conf.phi_convict_threshold = phiConvictThreshold;
     }
 
+    public static int getEcDataNodes() 
+    {
+        return conf.parity_nodes;
+    }
+
+    public static void setEcDataNodes(int ecDataNodes)
+    {
+        if (ecDataNodes < 0)
+        {
+            throw new IllegalArgumentException("Parity nodes must be non-negative");
+        }
+        conf.parity_nodes = ecDataNodes;
+    }
+
     public static int getParityNodes() 
     {
         return conf.parity_nodes;

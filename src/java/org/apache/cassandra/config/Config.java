@@ -162,6 +162,7 @@ public class Config
 
     public volatile double phi_convict_threshold = 8.0;
     
+    public int ec_data_nodes = 3;
     public int parity_nodes = 2;
     
     public int concurrent_ec = 32;

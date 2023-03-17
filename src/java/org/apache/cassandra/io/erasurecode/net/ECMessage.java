@@ -66,7 +66,7 @@ public final class ECMessage {
         this.keyspace = keyspace;
         this.table = table;
         this.key = key;
-        this.k = DatabaseDescriptor.getParityNodes();
+        this.k = DatabaseDescriptor.getEcDataNodes();
         this.m = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
         this.primaryNode = FBUtilities.getBroadcastAddressAndPort();
