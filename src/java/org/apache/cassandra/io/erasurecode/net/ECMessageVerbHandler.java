@@ -69,8 +69,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         String sstContent = message.payload.sstContent;
         long k = message.payload.k;
 
-        logger.debug("rymDebug: get new message!!! sstContent is {}, k is {}, m is {}, related nodes  are: {}",
-         sstContent, k, message.payload.m, message.payload.relatedNodes);
+        logger.debug("rymDebug: get new message!!! message.payload is {}", message.payload);
 
         // check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();

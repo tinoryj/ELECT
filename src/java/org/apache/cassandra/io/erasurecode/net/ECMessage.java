@@ -207,8 +207,6 @@ public final class ECMessage {
         public long serializedSize(ECMessage ecMessage, int version) {
             long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.keyspace) + sizeof(ecMessage.table) +
              sizeof(ecMessage.key)+ sizeof(ecMessage.relatedNodes);
-            // + sizeof(ecMessage.keyspace) + sizeof(ecMessage.key) +
-            // sizeof(ecMessage.table);
 
             return size;
 

@@ -788,14 +788,10 @@ public class OutboundConnection
                     try
                     {
                         int messageSize = next.serializedSize(messagingVersion);
-                        if(next.verb()==Verb.ERASURECODE_REQ)
-                            logger.debug("rymDebug: internodeMaxMessageSize is: {}, messageSize is {}",DatabaseDescriptor.getInternodeMaxMessageSizeInBytes(), messageSize);
 
                         // actual message size for this version is larger than permitted maximum
                         if (messageSize > DatabaseDescriptor.getInternodeMaxMessageSizeInBytes())
                             throw new Message.OversizedMessageException(messageSize);
-                        if(next.verb()==Verb.ERASURECODE_REQ)
-                            logger.debug("rymDebug: test again");
 
                         if (messageSize > sending.remaining())
                         {
@@ -806,9 +802,7 @@ public class OutboundConnection
                             //     size was calculated for the wrong messaging version when enqueued.
                             //     In this case we want to write it anyway, so simply allocate a large enough buffer.
                             
-                            if(next.verb()==Verb.ERASURECODE_REQ)
-                                logger.debug("rymDebug: now we are the message size is {}, sending.remaining() is {},sendingBytes is {}",
-                                 messageSize, sending.remaining(),sendingBytes);
+
                             if (sendingBytes > 0)
                                 break;
 
@@ -818,14 +812,8 @@ public class OutboundConnection
                             //noinspection IOResourceOpenedButNotSafelyClosed
                             out = new DataOutputBufferFixed(sending.buffer);
                         }
-                        if(next.verb()==Verb.ERASURECODE_REQ)
-                            logger.debug("rymDebug: test again1");
                         Tracing.instance.traceOutgoingMessage(next, messageSize, settings.connectTo);
-                        if(next.verb()==Verb.ERASURECODE_REQ)
-                            logger.debug("rymDebug: test again2");
                         Message.serializer.serialize(next, out, messagingVersion);
-                        if(next.verb()==Verb.ERASURECODE_REQ)
-                            logger.debug("rymDebug: sending.length is: {}, sendingBytes+messageSize is: {}", sending.length(), sendingBytes+messageSize);
 
                         if (sending.length() != sendingBytes + messageSize)
                             throw new InvalidSerializedSizeException(next.verb(), messageSize, sending.length() - sendingBytes);
@@ -836,7 +824,6 @@ public class OutboundConnection
                     }
                     catch (Throwable t)
                     {
-                        logger.debug("rymDebug: see what kind of throws: {}",t);
                         onFailedSerialize(next, messagingVersion, 0, t);
 
                         assert sending != null;

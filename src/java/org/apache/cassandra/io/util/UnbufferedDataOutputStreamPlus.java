@@ -275,13 +275,11 @@ public abstract class UnbufferedDataOutputStreamPlus extends DataOutputStreamPlu
                 utfCount += maxSize = 3;
         }
 
-        logger.debug("rymDebug: str is: {}, UTF count is {}: ",str,  utfCount);
 
         if (utfCount > 65535)
             throw new UTFDataFormatException(); //$NON-NLS-1$
 
         byte[] utfBytes = retrieveTemporaryBuffer(utfCount + 2);
-        logger.debug("rymDebug: utfBytes is: {}", utfBytes.length); //$NON-NLS
 
         int bufferLength = utfBytes.length;
         if (utfCount == length)
