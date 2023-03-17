@@ -61,16 +61,10 @@ public final class ECMessage {
     
     public List<InetAddressAndPort> replicationEndpoints;
     public List<InetAddressAndPort> parityNodes;
-
-    // private static List<InetAddressAndPort> naturalEndpoints = new ArrayList<InetAddressAndPort>();
-    // private static List<InetAddressAndPort> allParityNodes = new ArrayList<InetAddressAndPort>();
-    
-    
     
     private static int GLOBAL_COUNTER = 0;
     public String repEpsString;
     public String parityNodesString;
-
 
 
 
@@ -175,8 +169,6 @@ public final class ECMessage {
             out.writeUTF(ecMessage.keyspace);
             out.writeUTF(ecMessage.key);
             out.writeUTF(ecMessage.table);
-            
-
             out.writeUTF(ecMessage.repEpsString);
             out.writeUTF(ecMessage.parityNodesString);
         }
