@@ -698,6 +698,7 @@ public class Message<T>
 
         public <T> void serialize(Message<T> message, DataOutputPlus out, int version) throws IOException
         {
+            logger.debug("rymDebug: current version: {}, VERSION_40 is {}", version, VERSION_40);
             if (version >= VERSION_40)
                 serializePost40(message, out, version);
             else
