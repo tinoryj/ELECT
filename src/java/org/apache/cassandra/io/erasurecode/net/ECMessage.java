@@ -205,7 +205,8 @@ public final class ECMessage {
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
-            long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.keyspace) + sizeof(ecMessage.table) + sizeof(ecMessage.key);
+            long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.keyspace) + sizeof(ecMessage.table) +
+             sizeof(ecMessage.key)+ sizeof(ecMessage.relatedNodes);
             // + sizeof(ecMessage.keyspace) + sizeof(ecMessage.key) +
             // sizeof(ecMessage.table);
 
