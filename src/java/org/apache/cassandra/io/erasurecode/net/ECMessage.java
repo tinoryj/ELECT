@@ -47,16 +47,16 @@ import static org.apache.cassandra.db.TypeSizes.sizeof;
 
 public final class ECMessage {
 
-    public static final Serializer serializer = new Serializer();
-    final String sstContent;
-    final String keyspace;
-    final String key;
-    final String table;
-    final int k;
-    final int rf;
-    final int m;
-    List<InetAddressAndPort> replicationEndpoints = null;
-    List<InetAddressAndPort> parityNodes = null;
+    public final Serializer serializer = new Serializer();
+    public final String sstContent;
+    public final String keyspace;
+    public final String key;
+    public final String table;
+    public final int k;
+    public final int rf;
+    public final int m;
+    public List<InetAddressAndPort> replicationEndpoints;
+    public List<InetAddressAndPort> parityNodes;
     private static int GLOBAL_COUNTER = 0;
     
 
@@ -68,6 +68,8 @@ public final class ECMessage {
         this.k = DatabaseDescriptor.getEcDataNodes();
         this.m = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
+        this.replicationEndpoints = null;
+        this.parityNodes = null;
     }
 
     protected static Output output;
@@ -124,7 +126,6 @@ public final class ECMessage {
         for (String rep : replicationEndpoints) {
             InetAddressAndPort ep = InetAddressAndPort.getByName(rep);
             ecMessage.replicationEndpoints.add(ep);
-            
         }
         logger.debug("rymDebug: ecMessage.n is {}", ecMessage.replicationEndpoints);
         
