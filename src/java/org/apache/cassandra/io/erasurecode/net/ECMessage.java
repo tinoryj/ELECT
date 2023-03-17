@@ -57,10 +57,10 @@ public final class ECMessage {
     public final int m;
     public List<InetAddressAndPort> replicationEndpoints = new ArrayList<InetAddressAndPort>();
     public List<InetAddressAndPort> parityNodes = new ArrayList<InetAddressAndPort>();
-    private static int GLOBAL_COUNTER = 0;
-    private static List<InetAddressAndPort> naturalEndpoints = new ArrayList<InetAddressAndPort>();
-    private static List<InetAddressAndPort> allParityNodes = new ArrayList<InetAddressAndPort>();
+    // private static List<InetAddressAndPort> naturalEndpoints = new ArrayList<InetAddressAndPort>();
+    // private static List<InetAddressAndPort> allParityNodes = new ArrayList<InetAddressAndPort>();
     
+    private static int GLOBAL_COUNTER = 0;
 
     public ECMessage(String sstContent, String keyspace, String table, String key) {
         this.sstContent = sstContent;
@@ -97,9 +97,9 @@ public final class ECMessage {
         Message<ECMessage> message = null;
         GLOBAL_COUNTER++;
         // get target endpoints
-        getTargetEdpoints(this);
-        this.replicationEndpoints = naturalEndpoints;
-        this.parityNodes = allParityNodes;
+        getTargetEdpoints(this, this.replicationEndpoints,this.parityNodes);
+        //this.replicationEndpoints = naturalEndpoints;
+        //this.parityNodes = allParityNodes;
 
         if (this.parityNodes != null) {
             logger.debug("target endpoints are : {}", this.parityNodes);
@@ -131,7 +131,7 @@ public final class ECMessage {
     /*
      * Get target nodes, use the methods related to nodetool.java and status.java
      */
-    protected static void getTargetEdpoints(ECMessage ecMessage) throws UnknownHostException {
+    protected static void getTargetEdpoints(ECMessage ecMessage, List<InetAddressAndPort> naturalEndpoints,List<InetAddressAndPort> allParityNodes) throws UnknownHostException {
 
         logger.debug("rymDebug: this is getTargetEdpoints, keyspace is: {}, table name is: {}, key is {}",
                 ecMessage.keyspace, ecMessage.table, ecMessage.key);
@@ -166,20 +166,25 @@ public final class ECMessage {
         @Override
         public void serialize(ECMessage ecMessage, DataOutputPlus out, int version) throws IOException {
             // TODO: something may need to ensure, could be test
-            out.writeUTF(ecMessage.sstContent);
-            out.writeLong(ecMessage.k);
+            out.writeBytes(ecMessage.sstContent);
+            out.writeUTF(ecMessage.keyspace);
+            out.writeUTF(ecMessage.key);
+            out.writeUTF(ecMessage.table);
         }
 
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
             String sstContent = in.readUTF();
-            return new ECMessage(sstContent, null, null, null);
+            String ks = in.readUTF();
+            String table = in.readUTF();
+            String key = in.readUTF();
+            
+            return new ECMessage(sstContent, ks, table, key);
         }
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
-            long size = sizeof(ecMessage.sstContent) + sizeof(ecMessage.k) + sizeof(ecMessage.rf) + sizeof(ecMessage.m) + 
-            sizeof(ecMessage.keyspace) + sizeof(ecMessage.table) + sizeof(ecMessage.key);
+            long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.keyspace) + sizeof(ecMessage.table) + sizeof(ecMessage.key);
             // + sizeof(ecMessage.keyspace) + sizeof(ecMessage.key) +
             // sizeof(ecMessage.table);
 

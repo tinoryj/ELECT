@@ -1906,7 +1906,7 @@ public class DatabaseDescriptor
 
     public static int getEcDataNodes() 
     {
-        return conf.parity_nodes;
+        return conf.ec_data_nodes;
     }
 
     public static void setEcDataNodes(int ecDataNodes)
