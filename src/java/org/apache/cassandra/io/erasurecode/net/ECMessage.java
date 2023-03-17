@@ -194,7 +194,7 @@ public final class ECMessage {
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
             long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.keyspace) + sizeof(ecMessage.table) +
-             sizeof(ecMessage.key)+sizeof(ecMessage.replicationEndpoints.toString());
+             sizeof(ecMessage.key);
             int sizeOfAnIpWithPort = sizeof(ecMessage.parityNodes.get(0).toString()+",");
             size += sizeOfAnIpWithPort*(ecMessage.parityNodes.size()+ecMessage.replicationEndpoints.size());
             return size;
