@@ -125,9 +125,10 @@ public final class ECMessage {
         
         for (String rep : replicationEndpoints) {
             InetAddressAndPort ep = InetAddressAndPort.getByName(rep);
+            logger.debug("rymDebug: add an replication node： {}", ep);
             ecMessage.replicationEndpoints.add(ep);
         }
-        logger.debug("rymDebug: ecMessage.n is {}", ecMessage.replicationEndpoints);
+        logger.debug("rymDebug: ecMessage.replicationEndpoints is {}", ecMessage.replicationEndpoints);
         
         
         // select parity nodes from live nodes, suppose all nodes work healthy
