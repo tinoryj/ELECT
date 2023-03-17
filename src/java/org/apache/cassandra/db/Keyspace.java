@@ -562,7 +562,6 @@ public class Keyspace
         ByteBuffer key = mutation.key().getKey();
         List<String> ep = StorageService.instance.getNaturalEndpointsWithPort(keyspaceName, key);
         TableId replicaUUID = null;
-        logger.debug("## keyspaceName is: {}, tableName is: {}, endpoints are: {}", keyspaceName, mutation.getTableIds(), ep);
 
         if(StorageService.instance.localIP.equals(ep.get(0))){ 
             replicaUUID = globalNodeIDtoCFIDMap.get(0); 
