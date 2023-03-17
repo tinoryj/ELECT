@@ -65,6 +65,9 @@ public final class ECMessage {
     
     
     private static int GLOBAL_COUNTER = 0;
+    private static String repEpsString = "";
+    private static String parityNodesString = "";
+
 
     public ECMessage(String sstContent, String keyspace, String table, String key) {
         this.sstContent = sstContent;
@@ -143,6 +146,15 @@ public final class ECMessage {
             allParityNodes.add(liveEndpoints.get(i%n));
         }
         logger.debug("rymDebug: ecMessage.parityNodes is {}", allParityNodes);
+
+
+        for (InetAddressAndPort ep : naturalEndpoints) {
+            repEpsString += ep.toString() + ",";
+        }
+        
+        for (InetAddressAndPort ep : allParityNodes) {
+            parityNodesString += ep.toString() + ",";
+        }
     }
 
     public static final class Serializer implements IVersionedSerializer<ECMessage> {
@@ -156,15 +168,7 @@ public final class ECMessage {
             out.writeUTF(ecMessage.table);
             
 
-            String repEpsString = "";
-            for (InetAddressAndPort ep : ecMessage.replicationEndpoints) {
-                repEpsString += ep.toString() + ",";
-            }
             out.writeUTF(repEpsString);
-            String parityNodesString = "";
-            for (InetAddressAndPort ep : ecMessage.parityNodes) {
-                parityNodesString += ep.toString() + ",";
-            }
             out.writeUTF(parityNodesString);
         }
 
@@ -194,9 +198,7 @@ public final class ECMessage {
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
             long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.keyspace) + sizeof(ecMessage.table) +
-             sizeof(ecMessage.key);
-            int sizeOfAnIpWithPort = sizeof(ecMessage.parityNodes.get(0).toString()+",");
-            size += sizeOfAnIpWithPort*(ecMessage.parityNodes.size()+ecMessage.replicationEndpoints.size());
+             sizeof(ecMessage.key)+sizeof(parityNodesString)+sizeof(repEpsString);
             return size;
 
         }
