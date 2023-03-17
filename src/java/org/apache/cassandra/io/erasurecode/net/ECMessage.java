@@ -47,7 +47,7 @@ import static org.apache.cassandra.db.TypeSizes.sizeof;
 
 public final class ECMessage {
 
-    public final Serializer serializer = new Serializer();
+    public static final Serializer serializer = new Serializer();
     public final String sstContent;
     public final String keyspace;
     public final String key;
@@ -62,7 +62,7 @@ public final class ECMessage {
     
     private static int GLOBAL_COUNTER = 0;
 
-    public ECMessage(String sstContent, String keyspace, String table, String key) {
+    public ECMessage(String sstContent, String keyspace, String table, String key, List<InetAddressAndPort> replicationEndpoints, List<InetAddressAndPort> parityNodes) {
         this.sstContent = sstContent;
         this.keyspace = keyspace;
         this.table = table;
@@ -70,12 +70,12 @@ public final class ECMessage {
         this.k = DatabaseDescriptor.getEcDataNodes();
         this.m = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
-        this.replicationEndpoints = null;
-        this.parityNodes = null;
+        this.replicationEndpoints = replicationEndpoints;
+        this.parityNodes = parityNodes;
     }
 
     protected static Output output;
-    private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
+    public static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
     /**
      * This method sends selected sstables to parity nodes for EC/
@@ -179,7 +179,7 @@ public final class ECMessage {
             String table = in.readUTF();
             String key = in.readUTF();
             
-            return new ECMessage(sstContent, ks, table, key);
+            return new ECMessage(sstContent, ks, table, key, null, null);
         }
 
         @Override
