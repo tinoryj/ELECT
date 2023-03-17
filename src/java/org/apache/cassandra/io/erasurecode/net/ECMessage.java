@@ -166,7 +166,7 @@ public final class ECMessage {
         @Override
         public void serialize(ECMessage ecMessage, DataOutputPlus out, int version) throws IOException {
             // TODO: something may need to ensure, could be test
-            out.writeBytes(ecMessage.sstContent);
+            out.writeUTF(ecMessage.sstContent);
             out.writeUTF(ecMessage.keyspace);
             out.writeUTF(ecMessage.key);
             out.writeUTF(ecMessage.table);
