@@ -55,8 +55,8 @@ public final class ECMessage {
     public final int k;
     public final int rf;
     public final int m;
-    public List<InetAddressAndPort> replicationEndpoints;
-    public List<InetAddressAndPort> parityNodes;
+    public static List<InetAddressAndPort> replicationEndpoints;
+    public static List<InetAddressAndPort> parityNodes;
     private static int GLOBAL_COUNTER = 0;
     
 
@@ -108,6 +108,22 @@ public final class ECMessage {
         }
     }
 
+    public List<InetAddressAndPort> getReplicationEndpoints() {
+        return replicationEndpoints;
+    }
+
+    public void setReplicationEndpoints(List<InetAddressAndPort> replicationEndpoints) {
+        this.replicationEndpoints = replicationEndpoints;
+    }
+
+    public List<InetAddressAndPort> getParityNodes() {
+        return parityNodes;
+    }
+
+    public void setParityNodes(List<InetAddressAndPort> parityNodes) {
+        this.parityNodes = parityNodes;
+    }
+
     /*
      * Get target nodes, use the methods related to nodetool.java and status.java
      */
@@ -119,26 +135,26 @@ public final class ECMessage {
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
         logger.debug("rymDebug: All living nodes are {}", liveEndpoints);
         // get replication nodes for given keyspace and table
-        List<String> replicationEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
+        List<String> naturalEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
                 ecMessage.table, ecMessage.key);
-        logger.debug("rymDebug: getTargetEdpoints.replicationEndpoints is {}", replicationEndpoints);
+        logger.debug("rymDebug: getTargetEdpoints.replicationEndpoints is {}", naturalEndpoints);
         
-        for (String rep : replicationEndpoints) {
-            InetAddressAndPort ep = InetAddressAndPort.getByName(rep);
+        for (String nep : naturalEndpoints) {
+            InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
             logger.debug("rymDebug: add an replication node： {}", ep);
-            ecMessage.replicationEndpoints.add(ep);
+            replicationEndpoints.add(ep);
         }
-        logger.debug("rymDebug: ecMessage.replicationEndpoints is {}", ecMessage.replicationEndpoints);
+        logger.debug("rymDebug: ecMessage.replicationEndpoints is {}", replicationEndpoints);
         
         
         // select parity nodes from live nodes, suppose all nodes work healthy
         int n = liveEndpoints.size();
-        int primaryNodeIndex = liveEndpoints.indexOf(ecMessage.replicationEndpoints.get(0));
+        int primaryNodeIndex = liveEndpoints.indexOf(replicationEndpoints.get(0));
         int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.k +1))%n);
         for (int i = startIndex; i < ecMessage.m+startIndex; i++) {
-            ecMessage.parityNodes.add(liveEndpoints.get(i%n));
+            parityNodes.add(liveEndpoints.get(i%n));
         }
-        logger.debug("rymDebug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
+        logger.debug("rymDebug: ecMessage.parityNodes is {}", parityNodes);
     }
 
     public static final class Serializer implements IVersionedSerializer<ECMessage> {
