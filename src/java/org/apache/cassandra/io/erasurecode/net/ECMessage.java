@@ -59,17 +59,17 @@ public final class ECMessage {
     public final int rf;
     public final int m;
     
-    public List<InetAddressAndPort> replicationEndpoints = new ArrayList<InetAddressAndPort>();
-    public List<InetAddressAndPort> parityNodes = new ArrayList<InetAddressAndPort>();
+    public List<InetAddressAndPort> replicationEndpoints;
+    public List<InetAddressAndPort> parityNodes;
 
-    private static List<InetAddressAndPort> naturalEndpoints = new ArrayList<InetAddressAndPort>();
-    private static List<InetAddressAndPort> allParityNodes = new ArrayList<InetAddressAndPort>();
+    // private static List<InetAddressAndPort> naturalEndpoints = new ArrayList<InetAddressAndPort>();
+    // private static List<InetAddressAndPort> allParityNodes = new ArrayList<InetAddressAndPort>();
     
     
     
     private static int GLOBAL_COUNTER = 0;
-    private String repEpsString;
-    private String parityNodesString;
+    public String repEpsString;
+    public String parityNodesString;
 
 
 
@@ -83,8 +83,8 @@ public final class ECMessage {
         this.m = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
         
-        this.replicationEndpoints = null;
-        this.parityNodes = null;
+        this.replicationEndpoints =  new ArrayList<InetAddressAndPort>();
+        this.parityNodes =  new ArrayList<InetAddressAndPort>();
         this.repEpsString = "";
         this.parityNodesString = "";
     }
@@ -113,13 +113,13 @@ public final class ECMessage {
         GLOBAL_COUNTER++;
 
         getTargetEdpoints(this);
-        this.replicationEndpoints = naturalEndpoints;
-        this.parityNodes = allParityNodes;
-        for (InetAddressAndPort ep : naturalEndpoints) {
+        // this.replicationEndpoints = naturalEndpoints;
+        // this.parityNodes = allParityNodes;
+        for (InetAddressAndPort ep : this.replicationEndpoints) {
             this.repEpsString += ep.toString() + ",";
         }
         
-        for (InetAddressAndPort ep : allParityNodes) {
+        for (InetAddressAndPort ep : this.parityNodes) {
             this.parityNodesString += ep.toString() + ",";
         }
 
@@ -144,22 +144,23 @@ public final class ECMessage {
         // get replication nodes for given keyspace and table
         List<String> neps = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
                 ecMessage.table, ecMessage.key);
-        logger.debug("rymDebug: getTargetEdpoints.replicationEndpoints is {}", naturalEndpoints);
+        logger.debug("rymDebug: getTargetEdpoints.replicationEndpoints is {}", neps);
         
         for (String nep : neps) {
             InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
-            naturalEndpoints.add(ep);
+            ecMessage.replicationEndpoints.add(ep);
         }
-        
-        
+        logger.debug("rymDebug: ecMessage.replicationEndpoints is {}", ecMessage.replicationEndpoints);    
+
         // select parity nodes from live nodes, suppose all nodes work healthy
         int n = liveEndpoints.size();
-        int primaryNodeIndex = liveEndpoints.indexOf(naturalEndpoints.get(0));
+        InetAddressAndPort primaryNode = ecMessage.replicationEndpoints.get(0);
+        int primaryNodeIndex = liveEndpoints.indexOf(primaryNode);
         int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.k +1))%n);
         for (int i = startIndex; i < ecMessage.m+startIndex; i++) {
-            allParityNodes.add(liveEndpoints.get(i%n));
+            ecMessage.parityNodes.add(liveEndpoints.get(i%n));
         }
-        logger.debug("rymDebug: ecMessage.parityNodes is {}", allParityNodes);
+        logger.debug("rymDebug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
 
 
         
@@ -191,15 +192,6 @@ public final class ECMessage {
 
             logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {},repEpString is {},parityNodes are: {}"
             , sstContent,ks, table, key,repEpsString,parityNodesString);
-            List<InetAddressAndPort> replicationEndpoints = new ArrayList<InetAddressAndPort>();
-            List<InetAddressAndPort> parityNodes = new ArrayList<InetAddressAndPort>();
-            for (String ep : repEpsString.split(",")) {
-                replicationEndpoints.add(InetAddressAndPort.getByName(ep.substring(1)));
-            }
-            for (String ep : parityNodesString.split(",")) {
-                parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
-            }
-            logger.debug("rymDebug:deserializer replicationEndpoints are {}, parityNodes are: {}", replicationEndpoints, parityNodes);
             
             return new ECMessage(sstContent, ks, table, key);
         }
