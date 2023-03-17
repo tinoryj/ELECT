@@ -281,6 +281,7 @@ public abstract class UnbufferedDataOutputStreamPlus extends DataOutputStreamPlu
             throw new UTFDataFormatException(); //$NON-NLS-1$
 
         byte[] utfBytes = retrieveTemporaryBuffer(utfCount + 2);
+        logger.debug("rymDebug: utfBytes is: {}", utfBytes.length); //$NON-NLS
 
         int bufferLength = utfBytes.length;
         if (utfCount == length)

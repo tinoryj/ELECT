@@ -115,7 +115,7 @@ public final class ECMessage {
             this.relatedNodes+=endpoint.toString() + ",";
         }
 
-        logger.debug("rymDebug: replicationEndpoints are: {}", this.replicationEndpoints);
+        logger.debug("rymDebug: replicationEndpoints are: {}, relatednodes are:{}", this.replicationEndpoints, this.relatedNodes);
 
         
 
