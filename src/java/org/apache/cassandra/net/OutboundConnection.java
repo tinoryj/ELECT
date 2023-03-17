@@ -788,6 +788,8 @@ public class OutboundConnection
                     try
                     {
                         int messageSize = next.serializedSize(messagingVersion);
+                        
+                        logger.debug("rymDebug: internodeMaxMessageSize is: {}, messageSize is {}",DatabaseDescriptor.getInternodeMaxMessageSizeInBytes(), messageSize);
 
                         // actual message size for this version is larger than permitted maximum
                         if (messageSize > DatabaseDescriptor.getInternodeMaxMessageSizeInBytes())
@@ -814,6 +816,8 @@ public class OutboundConnection
 
                         Tracing.instance.traceOutgoingMessage(next, messageSize, settings.connectTo);
                         Message.serializer.serialize(next, out, messagingVersion);
+
+                        logger.debug("rymDebug: sending.length is: {}, sendingBytes+messageSize is: {}", sending.length(), sendingBytes+messageSize);
 
                         if (sending.length() != sendingBytes + messageSize)
                             throw new InvalidSerializedSizeException(next.verb(), messageSize, sending.length() - sendingBytes);
