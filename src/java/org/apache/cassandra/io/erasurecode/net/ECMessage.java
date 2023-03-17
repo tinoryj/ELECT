@@ -130,6 +130,7 @@ public final class ECMessage {
                 ecMessage.secondaryNodes.add(ep);
             }
         }
+        logger.debug("rymDebug: ecMessage.secondaryNodes is {}", ecMessage.secondaryNodes);
         
         
         // select parity nodes from live nodes, suppose all nodes work healthy
@@ -139,6 +140,7 @@ public final class ECMessage {
         for (int i = startIndex; i < ecMessage.m+startIndex; i++) {
             ecMessage.parityNodes.add(liveEndpoints.get(i%n));
         }
+        logger.debug("rymDebug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
     }
 
     public static final class Serializer implements IVersionedSerializer<ECMessage> {
