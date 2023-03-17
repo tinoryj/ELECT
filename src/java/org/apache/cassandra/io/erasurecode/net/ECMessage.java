@@ -55,8 +55,8 @@ public final class ECMessage {
     public final int k;
     public final int rf;
     public final int m;
-    public static List<InetAddressAndPort> replicationEndpoints;
-    public static List<InetAddressAndPort> parityNodes;
+    public List<InetAddressAndPort> replicationEndpoints = new ArrayList<InetAddressAndPort>();
+    public List<InetAddressAndPort> parityNodes = new ArrayList<InetAddressAndPort>();
     private static int GLOBAL_COUNTER = 0;
     
 
@@ -142,19 +142,19 @@ public final class ECMessage {
         for (String nep : naturalEndpoints) {
             InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
             logger.debug("rymDebug: add an replication node： {}", ep);
-            replicationEndpoints.add(ep);
+            ecMessage.replicationEndpoints.add(ep);
         }
-        logger.debug("rymDebug: ecMessage.replicationEndpoints is {}", replicationEndpoints);
+        logger.debug("rymDebug: ecMessage.replicationEndpoints is {}", ecMessage.replicationEndpoints);
         
         
         // select parity nodes from live nodes, suppose all nodes work healthy
         int n = liveEndpoints.size();
-        int primaryNodeIndex = liveEndpoints.indexOf(replicationEndpoints.get(0));
+        int primaryNodeIndex = liveEndpoints.indexOf(ecMessage.replicationEndpoints.get(0));
         int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.k +1))%n);
         for (int i = startIndex; i < ecMessage.m+startIndex; i++) {
-            parityNodes.add(liveEndpoints.get(i%n));
+            ecMessage.parityNodes.add(liveEndpoints.get(i%n));
         }
-        logger.debug("rymDebug: ecMessage.parityNodes is {}", parityNodes);
+        logger.debug("rymDebug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
     }
 
     public static final class Serializer implements IVersionedSerializer<ECMessage> {
