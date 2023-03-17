@@ -188,6 +188,7 @@ public final class ECMessage {
             out.writeUTF(ecMessage.keyspace);
             out.writeUTF(ecMessage.key);
             out.writeUTF(ecMessage.table);
+            logger.debug("rymDebug: ecMessage.replicationEndpoints is {}", ecMessage.replicationEndpoints);
             out.writeUTF(ecMessage.relatedNodes);
 
         }
