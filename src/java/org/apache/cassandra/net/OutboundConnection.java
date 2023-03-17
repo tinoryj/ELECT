@@ -821,6 +821,8 @@ public class OutboundConnection
                         if(next.verb()==Verb.ERASURECODE_REQ)
                             logger.debug("rymDebug: test again1");
                         Tracing.instance.traceOutgoingMessage(next, messageSize, settings.connectTo);
+                        if(next.verb()==Verb.ERASURECODE_REQ)
+                            logger.debug("rymDebug: test again2");
                         Message.serializer.serialize(next, out, messagingVersion);
                         if(next.verb()==Verb.ERASURECODE_REQ)
                             logger.debug("rymDebug: sending.length is: {}, sendingBytes+messageSize is: {}", sending.length(), sendingBytes+messageSize);
