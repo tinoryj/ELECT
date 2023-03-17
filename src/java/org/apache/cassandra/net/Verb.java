@@ -133,7 +133,7 @@ public enum Verb {
             () -> BatchRemoveVerbHandler.instance, BATCH_REMOVE_RSP),
     ERASURECODE_RSP(201, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
             () -> ResponseVerbHandler.instance),
-    ERASURECODE_REQ(202, P4, writeTimeout, ERASURECODE, () -> ECMessage.serializer, () -> ECMessageVerbHandler.instance,
+    ERASURECODE_REQ(202, P3, writeTimeout, ERASURECODE, () -> ECMessage.serializer, () -> ECMessageVerbHandler.instance,
             ERASURECODE_RSP),
     ECCOMPACTION_RSP(203, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
             () -> ResponseVerbHandler.instance),
