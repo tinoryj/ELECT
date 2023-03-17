@@ -117,6 +117,7 @@ public final class ECMessage {
                 ecMessage.keyspace, ecMessage.table, ecMessage.key);
         // get all live nodes
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
+        logger.debug("rymDebug: All living nodes are {}", liveEndpoints);
         // get replication nodes for given keyspace and table
         List<String> replicationEndpoints = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
                 ecMessage.table, ecMessage.key);
@@ -130,7 +131,6 @@ public final class ECMessage {
             }
         }
         
-        logger.debug("rymDebug: candidates are {}", liveEndpoints);
         
         // select parity nodes from live nodes, suppose all nodes work healthy
         int n = liveEndpoints.size();
