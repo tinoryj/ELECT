@@ -123,7 +123,7 @@ public final class ECMessage {
                 ecMessage.table, ecMessage.key);
         logger.debug("rymDebug: getTargetEdpoints.replicationEndpoints is {}", replicationEndpoints);
         
-
+        logger.debug("rymDebug: primaryNode is {}, secondaryNodes are:{}", ecMessage.primaryNode, ecMessage.secondaryNodes);
         for (String rep : replicationEndpoints) {
             InetAddressAndPort ep = InetAddressAndPort.getByName(rep);
             if(!ep.equals(ecMessage.primaryNode)) {
