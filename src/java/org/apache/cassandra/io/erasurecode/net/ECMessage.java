@@ -154,8 +154,18 @@ public final class ECMessage {
             out.writeUTF(ecMessage.keyspace);
             out.writeUTF(ecMessage.key);
             out.writeUTF(ecMessage.table);
-            out.writeUTF(ecMessage.replicationEndpoints.toString());
-            out.writeUTF(ecMessage.parityNodes.toString());
+            
+
+            String repEpsString = "";
+            for (InetAddressAndPort ep : ecMessage.replicationEndpoints) {
+                repEpsString += ep.toString() + ",";
+            }
+            out.writeUTF(repEpsString);
+            String parityNodesString = "";
+            for (InetAddressAndPort ep : ecMessage.parityNodes) {
+                parityNodesString += ep.toString() + ",";
+            }
+            out.writeUTF(parityNodesString);
         }
 
         @Override
@@ -164,10 +174,18 @@ public final class ECMessage {
             String ks = in.readUTF();
             String table = in.readUTF();
             String key = in.readUTF();
-            String replicationEndpoints = in.readUTF();
-            String parityNodes = in.readUTF();
+            String repEpsString = in.readUTF();
+            String parityNodesString = in.readUTF();
 
             logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {}", sstContent,ks, table, key);
+            List<InetAddressAndPort> replicationEndpoints = new ArrayList<InetAddressAndPort>();
+            List<InetAddressAndPort> parityNodes = new ArrayList<InetAddressAndPort>();
+            for (String ep : repEpsString.split(",")) {
+                replicationEndpoints.add(InetAddressAndPort.getByName(ep));
+            }
+            for (String ep : parityNodesString.split(",")) {
+                parityNodes.add(InetAddressAndPort.getByName(ep));
+            }
             logger.debug("rymDebug:deserializer replicationEndpoints are {}, parityNodes are: {}", replicationEndpoints, parityNodes);
             
             return new ECMessage(sstContent, ks, table, key);
