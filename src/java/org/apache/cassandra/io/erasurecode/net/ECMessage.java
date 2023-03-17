@@ -66,7 +66,7 @@ public final class ECMessage {
     
     private static int GLOBAL_COUNTER = 0;
 
-    public ECMessage(String sstContent, String keyspace, String table, String key, String relatedNodes) {
+    public ECMessage(String sstContent, String keyspace, String table, String key) {
         this.sstContent = sstContent;
         this.keyspace = keyspace;
         this.table = table;
@@ -75,15 +75,8 @@ public final class ECMessage {
         this.m = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
         
-        // get target endpoints
-        try {
-            getTargetEdpoints(this);
-        } catch (UnknownHostException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        this.replicationEndpoints = naturalEndpoints;
-        this.parityNodes = allParityNodes;
+        this.replicationEndpoints = null;
+        this.parityNodes = null;
     }
 
     protected static Output output;
@@ -108,6 +101,10 @@ public final class ECMessage {
         // create a Message for sstContent
         Message<ECMessage> message = null;
         GLOBAL_COUNTER++;
+
+        getTargetEdpoints(this);
+        this.replicationEndpoints = naturalEndpoints;
+        this.parityNodes = allParityNodes;
 
         if (this.parityNodes != null) {
             logger.debug("target endpoints are : {}", this.parityNodes);
@@ -146,7 +143,6 @@ public final class ECMessage {
             allParityNodes.add(liveEndpoints.get(i%n));
         }
         logger.debug("rymDebug: ecMessage.parityNodes is {}", allParityNodes);
-
     }
 
     public static final class Serializer implements IVersionedSerializer<ECMessage> {
@@ -158,8 +154,8 @@ public final class ECMessage {
             out.writeUTF(ecMessage.keyspace);
             out.writeUTF(ecMessage.key);
             out.writeUTF(ecMessage.table);
-            logger.debug("rymDebug: ecMessage.replicationEndpoints is {}", ecMessage.replicationEndpoints);
-
+            out.writeUTF(ecMessage.replicationEndpoints.toString());
+            out.writeUTF(ecMessage.parityNodes.toString());
         }
 
         @Override
@@ -168,16 +164,22 @@ public final class ECMessage {
             String ks = in.readUTF();
             String table = in.readUTF();
             String key = in.readUTF();
-            String relatedNodes = in.readUTF();
+
+            logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {}", sstContent,ks, table, key);
+            logger.debug("rymDebug:deserializer readline is {}", in.readLine());
+
+            List<InetAddressAndPort> replicationEndpoints = null;
             
-            return new ECMessage(sstContent, ks, table, key, relatedNodes);
+            return new ECMessage(sstContent, ks, table, key);
         }
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
             long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.keyspace) + sizeof(ecMessage.table) +
-             sizeof(ecMessage.key);
+             sizeof(ecMessage.key)+sizeof(ecMessage.replicationEndpoints.toString())+sizeof(ecMessage.parityNodes.toString());
+
             return size;
+
         }
 
     }
