@@ -55,14 +55,17 @@ public final class ECMessage {
     public final int k;
     public final int rf;
     public final int m;
+    public String relatedNodes = "";
+    
     public List<InetAddressAndPort> replicationEndpoints = new ArrayList<InetAddressAndPort>();
     public List<InetAddressAndPort> parityNodes = new ArrayList<InetAddressAndPort>();
     private static List<InetAddressAndPort> naturalEndpoints = new ArrayList<InetAddressAndPort>();
     private static List<InetAddressAndPort> allParityNodes = new ArrayList<InetAddressAndPort>();
     
+    
     private static int GLOBAL_COUNTER = 0;
 
-    public ECMessage(String sstContent, String keyspace, String table, String key, List<InetAddressAndPort> replicationEndpoints, List<InetAddressAndPort> parityNodes) {
+    public ECMessage(String sstContent, String keyspace, String table, String key, String relatedNodes) {
         this.sstContent = sstContent;
         this.keyspace = keyspace;
         this.table = table;
@@ -70,8 +73,8 @@ public final class ECMessage {
         this.k = DatabaseDescriptor.getEcDataNodes();
         this.m = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
-        this.replicationEndpoints = replicationEndpoints;
-        this.parityNodes = parityNodes;
+        this.replicationEndpoints = null;
+        this.parityNodes = null;
     }
 
     protected static Output output;
@@ -100,6 +103,20 @@ public final class ECMessage {
         getTargetEdpoints(this);
         this.replicationEndpoints = naturalEndpoints;
         this.parityNodes = allParityNodes;
+        
+        // naturalEndpoints to string
+        for (InetAddressAndPort endpoint : this.replicationEndpoints) {
+            relatedNodes+=endpoint.toString() + ",";
+        }
+        relatedNodes +="#";
+        // parityNodes to string
+        for (InetAddressAndPort endpoint : this.parityNodes) {
+            relatedNodes+=endpoint.toString() + ",";
+        }
+
+        logger.debug("rymDebug: replicationEndpoints are: {}", this.replicationEndpoints);
+
+        
 
         if (this.parityNodes != null) {
             logger.debug("target endpoints are : {}", this.parityNodes);
@@ -170,6 +187,8 @@ public final class ECMessage {
             out.writeUTF(ecMessage.keyspace);
             out.writeUTF(ecMessage.key);
             out.writeUTF(ecMessage.table);
+            out.writeUTF(ecMessage.relatedNodes);
+
         }
 
         @Override
@@ -178,8 +197,9 @@ public final class ECMessage {
             String ks = in.readUTF();
             String table = in.readUTF();
             String key = in.readUTF();
+            String relatedNodes = in.readUTF();
             
-            return new ECMessage(sstContent, ks, table, key, null, null);
+            return new ECMessage(sstContent, ks, table, key, relatedNodes);
         }
 
         @Override
