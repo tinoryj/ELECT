@@ -55,8 +55,7 @@ public final class ECMessage {
     final int k;
     final int rf;
     final int m;
-    final InetAddressAndPort primaryNode;
-    List<InetAddressAndPort> secondaryNodes = null;
+    List<InetAddressAndPort> replicationEndpoints = null;
     List<InetAddressAndPort> parityNodes = null;
     private static int GLOBAL_COUNTER = 0;
     
@@ -69,7 +68,6 @@ public final class ECMessage {
         this.k = DatabaseDescriptor.getEcDataNodes();
         this.m = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
-        this.primaryNode = FBUtilities.getBroadcastAddressAndPort();
     }
 
     protected static Output output;
@@ -123,20 +121,17 @@ public final class ECMessage {
                 ecMessage.table, ecMessage.key);
         logger.debug("rymDebug: getTargetEdpoints.replicationEndpoints is {}", replicationEndpoints);
         
-        logger.debug("rymDebug: primaryNode is {}, secondaryNodes are:{}", ecMessage.primaryNode, ecMessage.secondaryNodes);
         for (String rep : replicationEndpoints) {
             InetAddressAndPort ep = InetAddressAndPort.getByName(rep);
-            if(!ep.equals(ecMessage.primaryNode)) {
-                logger.debug("rymDebug: add a node to secondaryNodes: {}", ep);
-                ecMessage.secondaryNodes.add(ep);
-            }
+            ecMessage.replicationEndpoints.add(ep);
+            
         }
-        logger.debug("rymDebug: ecMessage.secondaryNodes is {}", ecMessage.secondaryNodes);
+        logger.debug("rymDebug: ecMessage.n is {}", ecMessage.replicationEndpoints);
         
         
         // select parity nodes from live nodes, suppose all nodes work healthy
         int n = liveEndpoints.size();
-        int primaryNodeIndex = liveEndpoints.indexOf(ecMessage.primaryNode);
+        int primaryNodeIndex = liveEndpoints.indexOf(ecMessage.replicationEndpoints.get(0));
         int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.k +1))%n);
         for (int i = startIndex; i < ecMessage.m+startIndex; i++) {
             ecMessage.parityNodes.add(liveEndpoints.get(i%n));
