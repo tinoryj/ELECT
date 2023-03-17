@@ -164,11 +164,11 @@ public final class ECMessage {
             String ks = in.readUTF();
             String table = in.readUTF();
             String key = in.readUTF();
+            String replicationEndpoints = in.readUTF();
+            String parityNodes = in.readUTF();
 
             logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {}", sstContent,ks, table, key);
-            logger.debug("rymDebug:deserializer readline is {}", in.readLine());
-
-            List<InetAddressAndPort> replicationEndpoints = null;
+            logger.debug("rymDebug:deserializer replicationEndpoints are {}, parityNodes are: {}", replicationEndpoints, parityNodes);
             
             return new ECMessage(sstContent, ks, table, key);
         }
