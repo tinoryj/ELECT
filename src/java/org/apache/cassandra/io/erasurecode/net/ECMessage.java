@@ -127,6 +127,7 @@ public final class ECMessage {
         for (String rep : replicationEndpoints) {
             InetAddressAndPort ep = InetAddressAndPort.getByName(rep);
             if(!ep.equals(ecMessage.primaryNode)) {
+                logger.debug("rymDebug: add a node to secondaryNodes: {}", ep);
                 ecMessage.secondaryNodes.add(ep);
             }
         }
