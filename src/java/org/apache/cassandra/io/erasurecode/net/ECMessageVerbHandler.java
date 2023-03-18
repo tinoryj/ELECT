@@ -21,10 +21,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.Random;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
@@ -37,7 +39,6 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.ParamType;
 import org.apache.cassandra.tracing.Tracing;
-import org.checkerframework.checker.units.qual.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,9 +46,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
     public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
-    private static final int MAX_RECV_QUEUE_SIZE = 100;
-    private static LinkedBlockingQueue<ECMessage> recvQueue = new LinkedBlockingQueue<>(MAX_RECV_QUEUE_SIZE);
     private static final String parityCodeDir = System.getProperty("user.dir")+"/data/";
+
+    private static SortedMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new TreeMap<InetAddressAndPort, Queue<ECMessage>>();
 
     private void respond(Message<?> respondTo, InetAddressAndPort respondToAddress) {
         Tracing.trace("Enqueuing response to {}", respondToAddress);
@@ -84,22 +85,31 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         if (forwardTo != null)
             forwardToLocalNodes(message, forwardTo);
 
-        // InetAddressAndPort respondToAddress = message.respondTo();
-        // ToDo: collect k SST contents;
-        try {
-            recvQueue.put(message.payload);
-            logger.debug("recieved sstContent is: {}, k is: {}, sourceEdpoint is: {}", sstContent, k, message.from());
-            if (recvQueue.size() >= message.payload.rf) {
-                ECMessage tmpArray[] = new ECMessage[message.payload.rf];
-                for (int i = 0; i < message.payload.rf; i++) {
-                    tmpArray[i] = recvQueue.take();
-                }
-                // compute erasure coding locally;
-                Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeRunnable(tmpArray));
-            }
+        // Once we have k different sstContent, do erasure coding locally
+        if(!recvQueues.containsKey(message.from())) {
+            Queue<ECMessage> recvQueue = new LinkedList<ECMessage>();
+            recvQueue.add(message.payload);
+            recvQueues.put(message.from(), recvQueue);
+        }
+        else {
+            recvQueues.get(message.from()).add(message.payload);
+        }
 
-        } catch (InterruptedException  e) {
-            e.printStackTrace();
+        if(recvQueues.size()>=message.payload.k) {
+            ECMessage tmpArray[] = new ECMessage[message.payload.k];
+            //traverse the recvQueues
+            int i = 0;
+            for (InetAddressAndPort msg : recvQueues.keySet()) {
+                tmpArray[i] = recvQueues.get(msg).poll();
+                if(recvQueues.get(msg).size() == 0) {
+                    recvQueues.remove(msg);
+                }
+                if (i == message.payload.k - 1) 
+                    break;
+                i++;
+            }
+            // compute erasure coding locally;
+            Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeRunnable(tmpArray));
         }
 
         Tracing.trace("recieved sstContent is: {}, k is: {}, sourceEdpoint is: {}, header is: {}",
@@ -167,68 +177,33 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 logger.error("rymError: Perform erasure code error", e);
             }
 
+            
+            // generate parity hash code
+            List<String> parityHashCode = new ArrayList<String>();
+            for(ByteBuffer parityCode : parity) {
+                parityHashCode.add(String.valueOf(parityCode.hashCode()));
+            }
+
             // record first parity code to current node
-            int parityHashCode = parity[0].hashCode();
-            String parityCode = parity[0].toString();
             try {
-                File parityCodeFile = new File(parityCodeDir + String.valueOf(parityHashCode));
+                File parityCodeFile = new File(parityCodeDir + parityHashCode.get(0));
                 if (!parityCodeFile.exists()) {
                     parityCodeFile.createNewFile();
                 }
                 FileWriter fileWritter = new FileWriter(parityCodeFile.getName(),true);
-                fileWritter.write(parityCode);
+                fileWritter.write(parity[0].toString());
                 fileWritter.close();
             } catch (IOException e) {
                 logger.error("rymError: Perform erasure code error", e);
             }
 
+
             // sync encoded data to parity nodes, need callbacks
-            
+            ECParityNode.instance.distributeEcDataToParityNodes(parity, messages[0].parityNodes, parityHashCode);
 
-
-
-
-            // Transform to ECMetadata
-            ECMetadata ecMetadata = ECMetadata.instance.generateMetadata(messages);
-
-
-
-
-            // distribute ec metadata to all related nodes
-            distributeEcMetadata(ecMetadata);
-
-
-
-
+            // Transform to ECMetadata and dispatch to related nodes
+            ECMetadata.instance.generateMetadata(messages, parity, parityHashCode);
         }
-
-        public void distributeEcDataToParityNodes(ByteBuffer[] parity) {
-            
-        }
-
-        // public void sendSelectedSSTables() throws UnknownHostException {
-        //     logger.debug("rymDebug: this is sendSelectedSSTables");
-    
-        //     // create a Message for sstContent
-        //     Message<ECMessage> message = null;
-        //     // get target endpoints
-        //     getTargetEdpoints(this);
-    
-        //     if (targetEndpoint != null) {
-        //         logger.debug("target endpoints are : {}", targetEndpoint);
-        //         // setup message
-        //         message = Message.outWithFlag(Verb.ERASURECODE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
-        //         logger.debug("rymDebug: This is dumped message: {}", message);
-        //         MessagingService.instance().sendSSTContentWithoutCallback(message, targetEndpoint);
-        //     } else {
-        //         logger.debug("targetEndpoints is null");
-        //     }
-        // }
-
-        private void distributeEcMetadata(ECMetadata ecMetadata) {
-
-        }
-
 
     }
 

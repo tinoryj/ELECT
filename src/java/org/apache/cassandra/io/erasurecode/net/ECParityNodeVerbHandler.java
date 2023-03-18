@@ -22,17 +22,38 @@ import java.io.IOException;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 
+import java.io.File;
+import java.io.FileWriter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
+
+
+    public static final ECParityNodeVerbHandler instance = new ECParityNodeVerbHandler();
+
+    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/";
+    private static final Logger logger = LoggerFactory.getLogger(ECParityNodeVerbHandler.class);
 
     /*
      * TODO List:
-     * 1. Receive erasure code from a parity node, and send a delete message to
-     * secondary nodes
+     * 1. Receive erasure code from a parity node, and record it.
      */
     @Override
     public void doVerb(Message<ECParityNode> message) throws IOException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'doVerb'");
+        try {
+                File parityCodeFile = new File(parityCodeDir + String.valueOf(message.payload.hashCode));
+                if (!parityCodeFile.exists()) {
+                    parityCodeFile.createNewFile();
+                }
+                FileWriter fileWritter = new FileWriter(parityCodeFile.getName(),true);
+                fileWritter.write(message.payload.parityCode.toString());
+                fileWritter.close();
+            } 
+        catch (IOException e) {
+                logger.error("rymError: Perform erasure code error", e);
+            }
     }
 
 }

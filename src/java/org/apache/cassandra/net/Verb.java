@@ -58,6 +58,10 @@ import org.apache.cassandra.io.IVersionedAsymmetricSerializer;
 import org.apache.cassandra.io.erasurecode.net.ECCompactionVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMessageVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECParityNode;
+import org.apache.cassandra.io.erasurecode.net.ECParityNodeVerbHandler;
 import org.apache.cassandra.repair.RepairMessageVerbHandler;
 import org.apache.cassandra.repair.messages.CleanupMessage;
 import org.apache.cassandra.repair.messages.FailSession;
@@ -149,8 +153,12 @@ public enum Verb {
             ECREADY_RSP),
     ECPARITYNODE_RSP(209, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
             () -> ResponseVerbHandler.instance),
-    ECPARITYNODE_REQ(210, P3, writeTimeout, ERASURECODE, () -> ECMessage.serializer,
-            () -> ECMessageVerbHandler.instance, ECPARITYNODE_RSP),
+    ECPARITYNODE_REQ(210, P3, writeTimeout, ERASURECODE, () -> ECParityNode.serializer,
+            () -> ECParityNodeVerbHandler.instance, ECPARITYNODE_RSP),
+    ECMETADATA_RSP(211, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
+            () -> ResponseVerbHandler.instance),
+    ECMETADATA_REQ(212, P3, writeTimeout, ERASURECODE, () -> ECMetadata.serializer,
+            () -> ECMetadataVerbHandler.instance, ECMETADATA_RSP),
 
     PAXOS_PREPARE_RSP(93, P2, writeTimeout, REQUEST_RESPONSE, () -> PrepareResponse.serializer,
             () -> ResponseVerbHandler.instance),
