@@ -472,9 +472,8 @@ public class CompactionManager implements CompactionManagerMBean {
                 return false;
 
             // Skip if SSTable creation time is past given timestamp
-            if (sstable.getCreationTimeFor(Component.DATA) > skipIfOlderThanTimestamp) {
-                return false;
-            } else if (sstable.getCreationTimeFor(Component.EC_METADATA) > skipIfOlderThanTimestamp) {
+            if (sstable.getCreationTimeFor(Component.DATA) > skipIfOlderThanTimestamp || sstable
+                    .getCreationTimeFor(Component.EC_METADATA) > skipIfOlderThanTimestamp) {
                 return false;
             }
 

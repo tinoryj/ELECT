@@ -280,7 +280,8 @@ public class SSTableImporter {
     private void removeCopiedSSTables(Set<MovedSSTable> movedSSTables) {
         logger.debug("Removing copied SSTables which were left in data directories after failed SSTable import.");
         for (MovedSSTable movedSSTable : movedSSTables) {
-            if (new File(movedSSTable.newDescriptor.filenameFor(Component.DATA)).exists()) {
+            if (new File(movedSSTable.newDescriptor.filenameFor(Component.DATA)).exists() || new File(
+                    movedSSTable.newDescriptor.filenameFor(Component.EC_METADATA)).exists()) {
                 // no logging here as for moveSSTablesBack case above as logging is done in
                 // delete method
                 SSTableWriter.delete(movedSSTable.newDescriptor, movedSSTable.components);

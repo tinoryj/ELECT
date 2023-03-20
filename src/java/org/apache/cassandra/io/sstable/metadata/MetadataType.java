@@ -22,21 +22,21 @@ import org.apache.cassandra.db.SerializationHeader;
 /**
  * Defines Metadata component type.
  */
-public enum MetadataType
-{
+public enum MetadataType {
     /** Metadata only used for SSTable validation */
     VALIDATION(ValidationMetadata.serializer),
     /** Metadata only used at compaction */
     COMPACTION(CompactionMetadata.serializer),
     /** Metadata always keep in memory */
     STATS(StatsMetadata.serializer),
+    /** Metadata (hash ID) always keep in memory */
+    HASHID(HashIDMetadata.serializer),
     /** Serialization header */
-    HEADER((IMetadataComponentSerializer)SerializationHeader.serializer);
+    HEADER((IMetadataComponentSerializer) SerializationHeader.serializer);
 
     public final IMetadataComponentSerializer<MetadataComponent> serializer;
 
-    private MetadataType(IMetadataComponentSerializer<MetadataComponent> serializer)
-    {
+    private MetadataType(IMetadataComponentSerializer<MetadataComponent> serializer) {
         this.serializer = serializer;
     }
 }

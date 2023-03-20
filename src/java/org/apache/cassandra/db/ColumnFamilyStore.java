@@ -764,7 +764,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 // everything appears to be in order... moving on.
                 continue;
 
-            // missing the DATA file! all components are orphaned
+            // missing the DATA/EC_METADATA file! all components are orphaned
             logger.warn("Removing orphans for {}: {}", desc, components);
             for (Component component : components) {
                 File file = new File(desc.filenameFor(component));

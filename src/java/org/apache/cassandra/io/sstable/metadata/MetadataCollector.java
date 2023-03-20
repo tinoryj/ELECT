@@ -278,6 +278,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 isReplicationTransferredToErasureCoding));
         components.put(MetadataType.COMPACTION, new CompactionMetadata(cardinality));
         components.put(MetadataType.HEADER, header.toComponent());
+        components.put(MetadataType.HASHID, new HashIDMetadata(partitioner));
         return components;
     }
 
