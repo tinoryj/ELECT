@@ -113,7 +113,7 @@ chmod +x genlib.sh
 
    3. SSTable name format: <version> - <generation> - <implementation> - <component> - <ID> - <level>.db
       * cfs -> 0++
-      * SSTableReader -> getSSTLevel()
+      * SSTableReader -> getSSTableLevel()
    4. Compaction: OneSSTableOperation() function-> execute()
 
 ## Note to Java
