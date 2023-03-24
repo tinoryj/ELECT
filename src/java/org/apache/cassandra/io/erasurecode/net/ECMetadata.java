@@ -62,6 +62,7 @@ public class ECMetadata {
     }
 
     public void generateMetadata(ECMessage[] messages, ByteBuffer[] parityCode, List<String> parityHashes) {
+        logger.debug("rymDebug: this generateMetadata method");
         // get stripe id, sst content hashes and primary nodes
         String connectedSSTHash = "";
         for(ECMessage msg : messages) {
@@ -94,6 +95,7 @@ public class ECMetadata {
     }
 
     public void distributeEcMetadata(ECMetadata ecMetadata) {
+        logger.debug("rymDebug: this distributeEcMetadata method");
         Message<ECMetadata> message = Message.outWithFlag(Verb.ERASURECODE_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
         for (InetAddressAndPort node : ecMetadata.relatedNodes) {
             MessagingService.instance().send(message, node);

@@ -167,7 +167,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             for (int i = 0; i < messages.length; i++) {
                 data[i] = ByteBuffer.allocateDirect(codeLength);
                 data[i].put(messages[i].sstContent.getBytes());
-                logger.debug("rymDebug: message[{}].sstconetent {}", i, messages[i].sstContent);
+                logger.debug("rymDebug: message[{}].sstconetent {}, data[{}] is: {}",
+                 i, messages[i].sstContent,i, data[i]);
                 data[i].rewind();
             }
 
