@@ -30,6 +30,7 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessageFlag;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
+import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
@@ -40,14 +41,16 @@ import static org.apache.cassandra.db.TypeSizes.sizeof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.datastax.driver.core.ParseUtils;
+
 public class ECMetadata {
 
-    private String stripeId;
-    private List<String> sstContentHashList;
-    private List<String> parityCodeHashList;
+    public String stripeId;
+    public List<String> sstContentHashList;
+    public List<String> parityCodeHashList;
 
-    private List<InetAddressAndPort> primaryNodes;
-    private Set<InetAddressAndPort> relatedNodes; // e.g. secondary nodes or parity nodes
+    public List<InetAddressAndPort> primaryNodes;
+    public Set<InetAddressAndPort> relatedNodes; // e.g. secondary nodes or parity nodes
     public static final ECMetadata instance = new ECMetadata("",new ArrayList<String>(),new ArrayList<String>(),
      new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>());
     
@@ -121,13 +124,31 @@ public class ECMetadata {
         public ECMetadata deserialize(DataInputPlus in, int version) throws IOException {
             // TODO: Correct data types, and revise the Constructor
             String stripeId = in.readUTF();
-            String sstContentHashList = in.readUTF();
-            String parityCodeHashList = in.readUTF();
-            String primaryNodes = in.readUTF();
-            String relatedNodes = in.readUTF();
+            String sstContentHashListString = in.readUTF();
+            String parityCodeHashListString = in.readUTF();
+            String primaryNodesString = in.readUTF();
+            String relatedNodesString = in.readUTF();
+
+            List<String> sstContentHashList = new ArrayList<String>();
+            List<String> parityCodeHashList = new ArrayList<String>();
+            List<InetAddressAndPort> primaryNodes = new ArrayList<InetAddressAndPort>();
+            Set<InetAddressAndPort> relatedNodes = new HashSet<InetAddressAndPort>();
+
+            for(String s : sstContentHashListString.split(",")) {
+                sstContentHashList.add(s);
+            }
+            for(String s : parityCodeHashListString.split(",")) {
+                parityCodeHashList.add(s);
+            }
+            for(String s : primaryNodesString.split(",")) {
+                primaryNodes.add(InetAddressAndPort.getByName(s.substring(1)));
+            }
+            for(String s : relatedNodesString.split(",")) {
+                relatedNodes.add(InetAddressAndPort.getByName(s.substring(1)));
+            }
 
 
-            return new ECMetadata(stripeId,null,null,null,null);
+            return new ECMetadata(stripeId,sstContentHashList, parityCodeHashList, primaryNodes, relatedNodes);
         }
 
         @Override
@@ -141,6 +162,16 @@ public class ECMetadata {
 
     // public static void main(String[] args) {
     //     List<String> sstContentHashList = new ArrayList<String>();
+    //     sstContentHashList.add("1111111");
+    //     sstContentHashList.add("2222222");
+    //     sstContentHashList.add("3333333");
+    //     List<InetAddressAndPort> parityCodeHashList = new ArrayList<InetAddressAndPort>();
+    //     parityCodeHashList.add(FBUtilities.getLocalAddressAndPort());
+    //     parityCodeHashList.add(FBUtilities.getLocalAddressAndPort());
+    //     parityCodeHashList.add(FBUtilities.getBroadcastAddressAndPort());
+
+    //     logger.debug("rymDebug: sstcontent hash list: {}, parityCodeHashList is {}", 
+    //     sstContentHashList.toString(),parityCodeHashList.toString());
     // }
 
 }
