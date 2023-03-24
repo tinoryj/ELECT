@@ -85,14 +85,15 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         if (forwardTo != null)
             forwardToLocalNodes(message, forwardTo);
 
+        InetAddressAndPort primaryNode = message.payload.replicationEndpoints.get(0);
         // Once we have k different sstContent, do erasure coding locally
-        if(!recvQueues.containsKey(message.from())) {
+        if(!recvQueues.containsKey(primaryNode)) {
             Queue<ECMessage> recvQueue = new LinkedList<ECMessage>();
             recvQueue.add(message.payload);
-            recvQueues.put(message.from(), recvQueue);
+            recvQueues.put(primaryNode, recvQueue);
         }
         else {
-            recvQueues.get(message.from()).add(message.payload);
+            recvQueues.get(primaryNode).add(message.payload);
         }
 
         if(recvQueues.size()>=message.payload.k) {

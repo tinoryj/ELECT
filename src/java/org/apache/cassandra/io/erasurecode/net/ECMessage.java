@@ -121,7 +121,6 @@ public final class ECMessage {
         if (this.parityNodes != null) {
             logger.debug("target endpoints are : {}", this.parityNodes);
             message = Message.outWithFlag(Verb.ERASURECODE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
-            logger.debug("rymDebug: This is dumped message: {}", message);
             MessagingService.instance().sendSSTContentWithoutCallback(message, this.parityNodes.get(0));
         } else {
             logger.debug("targetEndpoints is null");
