@@ -154,7 +154,7 @@ public final class ECMessage {
         InetAddressAndPort primaryNode = ecMessage.replicationEndpoints.get(0);
         int primaryNodeIndex = liveEndpoints.indexOf(primaryNode);
         int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.k +1))%n);
-        for (int i = startIndex; i <= ecMessage.m+startIndex; i++) {
+        for (int i = startIndex; i < ecMessage.m+startIndex; i++) {
             ecMessage.parityNodes.add(liveEndpoints.get(i%n));
         }
         logger.debug("rymDebug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
