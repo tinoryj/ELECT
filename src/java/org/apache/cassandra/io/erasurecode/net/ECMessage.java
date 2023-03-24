@@ -153,7 +153,7 @@ public final class ECMessage {
         int n = liveEndpoints.size();
         InetAddressAndPort primaryNode = ecMessage.replicationEndpoints.get(0);
         int primaryNodeIndex = liveEndpoints.indexOf(primaryNode);
-        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.k+1))%n);
+        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.k))%n);
         for (int i = startIndex; i < ecMessage.m+startIndex; i++) {
             int index = i%n;
             if(index==primaryNodeIndex) {
@@ -161,7 +161,7 @@ public final class ECMessage {
                 i++;
             }
             ecMessage.parityNodes.add(liveEndpoints.get(index));
-            if(ecMessage.parityNodes.size()<ecMessage.m&&i==(ecMessage.m+startIndex)) {
+            if(i==(ecMessage.m+startIndex)&&ecMessage.parityNodes.size()<ecMessage.m) {
                 startIndex++;
             }
         }
