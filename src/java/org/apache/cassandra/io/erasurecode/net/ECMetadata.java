@@ -141,10 +141,10 @@ public class ECMetadata {
                 parityCodeHashList.add(s);
             }
             for(String s : primaryNodesString.split(",")) {
-                primaryNodes.add(InetAddressAndPort.getByName(s.substring(1)));
+                primaryNodes.add(InetAddressAndPort.getByName(s.substring(2)));
             }
             for(String s : relatedNodesString.split(",")) {
-                relatedNodes.add(InetAddressAndPort.getByName(s.substring(1)));
+                relatedNodes.add(InetAddressAndPort.getByName(s.substring(2)));
             }
 
 
@@ -172,6 +172,8 @@ public class ECMetadata {
 
     //     logger.debug("rymDebug: sstcontent hash list: {}, parityCodeHashList is {}", 
     //     sstContentHashList.toString(),parityCodeHashList.toString());
+
+
     // }
 
 }
