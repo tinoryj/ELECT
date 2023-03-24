@@ -25,16 +25,21 @@ import java.util.List;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata>{
     public static final ECMetadataVerbHandler instance = new ECMetadataVerbHandler();
     private static final String ecMetadataDir = System.getProperty("user.dir")+"/data/ECMetadata/";
     public static List<ECMetadata> ecMetadatas = new ArrayList<ECMetadata>();
 
+    private static final Logger logger = LoggerFactory.getLogger(ECMetadataVerbHandler.class);
 
     @Override
     public void doVerb(Message<ECMetadata> message) throws IOException {
         // receive metadata and record it to files (append)
         ecMetadatas.add(message.payload);
+        
         
     }
 }
