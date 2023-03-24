@@ -39,7 +39,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata>{
     public void doVerb(Message<ECMetadata> message) throws IOException {
         // receive metadata and record it to files (append)
         ecMetadatas.add(message.payload);
-        
+        logger.debug("rymDebug: received metadata: {}", message.payload);
         
     }
 }
