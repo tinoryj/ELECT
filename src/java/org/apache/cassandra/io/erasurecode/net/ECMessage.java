@@ -134,6 +134,7 @@ public final class ECMessage {
 
         // get all live nodes
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
+        List<InetAddressAndPort> liveRingMembers = new ArrayList<>(StorageService.instance.getLiveRingMembers());
         // get replication nodes for given keyspace and table
         List<String> neps = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
                 ecMessage.table, ecMessage.key);        
@@ -141,6 +142,12 @@ public final class ECMessage {
             InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
             ecMessage.replicationEndpoints.add(ep);
         }
+
+
+        logger.debug("rymDebug: unsorted liveEndpoints is {}, liveRingMember is {}, replicationEps is {}"
+            ,liveEndpoints, liveRingMembers, neps);
+
+
         Collections.sort(ecMessage.replicationEndpoints);
         Collections.sort(liveEndpoints);
 
