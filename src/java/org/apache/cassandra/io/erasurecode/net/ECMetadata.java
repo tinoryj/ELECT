@@ -140,11 +140,11 @@ public class ECMetadata {
             for(String s : parityCodeHashListString.split(",")) {
                 parityCodeHashList.add(s);
             }
-            for(String s : primaryNodesString.split(",")) {
-                primaryNodes.add(InetAddressAndPort.getByName(s.substring(2)));
+            for(String s : primaryNodesString.substring(1, primaryNodesString.length()-1).split(", ")) {
+                primaryNodes.add(InetAddressAndPort.getByName(s.substring(1)));
             }
-            for(String s : relatedNodesString.split(",")) {
-                relatedNodes.add(InetAddressAndPort.getByName(s.substring(2)));
+            for(String s : relatedNodesString.substring(1, relatedNodesString.length()-1).split(", ")) {
+                relatedNodes.add(InetAddressAndPort.getByName(s.substring(1)));
             }
 
 
