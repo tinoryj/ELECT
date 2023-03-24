@@ -141,12 +141,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
 
     private static  class ErasureCodeRunnable implements Runnable {
-        private final int replicaFactor;
+        private final int m;
         private final int k;
         private final ECMessage[] messages;
 
         ErasureCodeRunnable(ECMessage[] message) {
-            this.replicaFactor = message[0].rf;
+            this.m = message[0].m;
             this.k = message[0].k;
             this.messages = message;
         }
@@ -154,19 +154,20 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         @Override
         public void run() {
             int codeLength = messages[0].sstContent.getBytes().length;
-            ErasureCoderOptions ecOptions = new ErasureCoderOptions(replicaFactor, k);
+            ErasureCoderOptions ecOptions = new ErasureCoderOptions(m, k);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 
             logger.debug("rymDebug: let's start computing erasure coding");
 
             // Encoding input and output
-            ByteBuffer[] data = new ByteBuffer[replicaFactor];
+            ByteBuffer[] data = new ByteBuffer[m];
             ByteBuffer[] parity = new ByteBuffer[k];
 
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
                 data[i] = ByteBuffer.allocateDirect(codeLength);
                 data[i].put(messages[i].sstContent.getBytes());
+                logger.debug("rymDebug: message[{}].sstconetent {}", i, messages[i].sstContent);
                 data[i].rewind();
             }
 
