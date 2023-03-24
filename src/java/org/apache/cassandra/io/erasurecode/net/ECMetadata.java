@@ -160,20 +160,4 @@ public class ECMetadata {
 
     }
 
-    // public static void main(String[] args) {
-    //     List<String> sstContentHashList = new ArrayList<String>();
-    //     sstContentHashList.add("1111111");
-    //     sstContentHashList.add("2222222");
-    //     sstContentHashList.add("3333333");
-    //     List<InetAddressAndPort> parityCodeHashList = new ArrayList<InetAddressAndPort>();
-    //     parityCodeHashList.add(FBUtilities.getLocalAddressAndPort());
-    //     parityCodeHashList.add(FBUtilities.getLocalAddressAndPort());
-    //     parityCodeHashList.add(FBUtilities.getBroadcastAddressAndPort());
-
-    //     logger.debug("rymDebug: sstcontent hash list: {}, parityCodeHashList is {}", 
-    //     sstContentHashList.toString(),parityCodeHashList.toString());
-
-
-    // }
-
 }
