@@ -48,17 +48,19 @@ public class ECMetadata {
 
     private List<InetAddressAndPort> primaryNodes;
     private Set<InetAddressAndPort> relatedNodes; // e.g. secondary nodes or parity nodes
-    public static final ECMetadata instance = new ECMetadata();
+    public static final ECMetadata instance = new ECMetadata("",new ArrayList<String>(),new ArrayList<String>(),
+     new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>());
     
     private static final Logger logger = LoggerFactory.getLogger(ECMetadata.class);
     public static final Serializer serializer = new Serializer();
 
-    public ECMetadata() {
+    public ECMetadata(String stripeId, List<String> sstContentHashList, List<String> parityCodeHashList,
+     List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> relatedNodes) {
         this.stripeId = "";
-        this.sstContentHashList = new ArrayList<String>();
-        this.parityCodeHashList = new ArrayList<String>();
-        this.primaryNodes = new ArrayList<InetAddressAndPort>();
-        this.relatedNodes = new HashSet<InetAddressAndPort>();
+        this.sstContentHashList = sstContentHashList;
+        this.parityCodeHashList = parityCodeHashList;
+        this.primaryNodes = primaryNodes;
+        this.relatedNodes = relatedNodes;
     }
 
     public void generateMetadata(ECMessage[] messages, ByteBuffer[] parityCode, List<String> parityHashes) {
@@ -125,7 +127,7 @@ public class ECMetadata {
             String relatedNodes = in.readUTF();
 
 
-            return new ECMetadata();
+            return new ECMetadata(stripeId,null,null,null,null);
         }
 
         @Override
