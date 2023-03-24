@@ -1463,14 +1463,21 @@ public class StorageProxy implements StorageProxyMBean {
         /*
          * The following is ECMessage test code
          */
-        ECMessage ecMessage = new ECMessage(mutation.toString(), "cassandraec", "primarydata", "1", "", "");
-        logger.debug("rymDebug: the test message is: {}", ecMessage);
-        try {
-            ecMessage.sendSelectedSSTables();
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        if (mutation.getKeyspaceName() == "cassandraec") {
+            String ks = mutation.getKeyspaceName();
+            String table = mutation.getTableName(mutation.getTableIds().iterator().next());
+            String key = mutation.getKeyName();
+            ECMessage ecMessage = new ECMessage(mutation.toString(), ks, table, key, "",
+                    "");
+            logger.debug("rymDebug: the test message is: {}", ecMessage);
+            try {
+                ecMessage.sendSelectedSSTables();
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
         }
+
         ////////////////////////////////////////////////////////////////////////////////
 
         // this dc replicas:

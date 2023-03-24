@@ -172,7 +172,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
                     try {
                         String sstContent = ssTableReader.getSSTContent();
                         ECMessage ecMessage = new ECMessage(sstContent, ssTableReader.getKeyspaceName(),
-                         ssTableReader.getColumnFamilyName(), "key", "", "");
+                         ssTableReader.getColumnFamilyName(), "", "", "");
                          logger.debug("rymDebug: the test message is: {}", ecMessage);
                         ecMessage.sendSelectedSSTables();
                     } catch (IOException e) {
