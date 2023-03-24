@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
@@ -48,7 +49,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
     private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
     private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
 
-    private static SortedMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new TreeMap<InetAddressAndPort, Queue<ECMessage>>();
+    private static ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
 
     private void respond(Message<?> respondTo, InetAddressAndPort respondToAddress) {
         Tracing.trace("Enqueuing response to {}", respondToAddress);
