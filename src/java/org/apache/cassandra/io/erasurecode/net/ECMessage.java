@@ -19,6 +19,7 @@
 package org.apache.cassandra.io.erasurecode.net;
 
 import java.net.UnknownHostException;
+import java.text.CollationElementIterator;
 import java.io.IOException;
 
 import org.apache.cassandra.io.IVersionedSerializer;
@@ -28,6 +29,7 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import java.util.Random;
 import java.util.Set;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -133,16 +135,17 @@ public final class ECMessage {
 
         // get all live nodes
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
-        logger.debug("rymDebug: All living nodes are {}", liveEndpoints);
         // get replication nodes for given keyspace and table
         List<String> neps = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
-                ecMessage.table, ecMessage.key);
-        logger.debug("rymDebug: getTargetEdpoints.replicationEndpoints is {}", neps);
-        
+                ecMessage.table, ecMessage.key);        
         for (String nep : neps) {
             InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
             ecMessage.replicationEndpoints.add(ep);
         }
+        Collections.sort(ecMessage.replicationEndpoints);
+        Collections.sort(liveEndpoints);
+
+        logger.debug("rymDebug: All living nodes are {}", liveEndpoints);
         logger.debug("rymDebug: ecMessage.replicationEndpoints is {}", ecMessage.replicationEndpoints);    
 
         // select parity nodes from live nodes, suppose all nodes work healthy
