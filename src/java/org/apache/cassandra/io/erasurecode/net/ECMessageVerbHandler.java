@@ -46,7 +46,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
     public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
-    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/";
+    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
 
     private static SortedMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new TreeMap<InetAddressAndPort, Queue<ECMessage>>();
 
@@ -96,6 +96,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         }
 
         if(recvQueues.size()>=message.payload.k) {
+            logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
             ECMessage tmpArray[] = new ECMessage[message.payload.k];
             //traverse the recvQueues
             int i = 0;
@@ -193,6 +194,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 FileWriter fileWritter = new FileWriter(parityCodeFile.getName(),true);
                 fileWritter.write(parity[0].toString());
                 fileWritter.close();
+                logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
             } catch (IOException e) {
                 logger.error("rymError: Perform erasure code error", e);
             }

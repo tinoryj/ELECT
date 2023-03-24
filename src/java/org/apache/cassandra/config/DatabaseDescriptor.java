@@ -1904,6 +1904,20 @@ public class DatabaseDescriptor
         conf.phi_convict_threshold = phiConvictThreshold;
     }
 
+    public static int getCompactionThreshold() 
+    {
+        return conf.compaction_threshold;
+    }
+
+    public static void setCompactionThreshold(int compaction_threshold)
+    {
+        if (compaction_threshold < 0)
+        {
+            throw new IllegalArgumentException("Parity nodes must be non-negative");
+        }
+        conf.compaction_threshold = compaction_threshold;
+    }
+
     public static int getEcDataNodes() 
     {
         return conf.ec_data_nodes;
@@ -1915,7 +1929,7 @@ public class DatabaseDescriptor
         {
             throw new IllegalArgumentException("Parity nodes must be non-negative");
         }
-        conf.parity_nodes = ecDataNodes;
+        conf.ec_data_nodes = ecDataNodes;
     }
 
     public static int getParityNodes() 

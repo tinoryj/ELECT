@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.db.compaction;
 
+import java.io.IOException;
 import java.util.*;
 
 
@@ -34,12 +35,14 @@ import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.config.Config;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 
@@ -160,6 +163,22 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
                             "unless it happens frequently, in which case it must be reported. Will retry later.",
                             candidate.sstables);
                 return null;
+            }
+
+            // TODO: Add my test code to send sstContent
+            for (SSTableReader ssTableReader : candidate.sstables) {
+                if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                    logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}", ssTableReader.getSSTableLevel());
+                    try {
+                        String sstContent = ssTableReader.getSSTContent();
+                        ECMessage ecMessage = new ECMessage(sstContent, ssTableReader.getKeyspaceName(),
+                         ssTableReader.getColumnFamilyName(), "key", "", "");
+                         logger.debug("rymDebug: the test message is: {}", ecMessage);
+                        ecMessage.sendSelectedSSTables();
+                    } catch (IOException e) {
+                        logger.error("rymError: {}", e);
+                    }
+                }
             }
 
             LifecycleTransaction txn = cfs.getTracker().tryModify(candidate.sstables, OperationType.COMPACTION);

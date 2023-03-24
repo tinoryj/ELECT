@@ -29,22 +29,25 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
 
+import static org.apache.cassandra.db.TypeSizes.sizeof;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 public class ECParityNode {
 
 
-    public static final ECParityNode instance = new ECParityNode(null, null);
+    public static final ECParityNode instance = new ECParityNode(null, null, 0);
     private static final Logger logger = LoggerFactory.getLogger(ECParityNode.class);
     public static final Serializer serializer = new Serializer();
 
     public final ByteBuffer parityCode;
     public final String hashCode;
+    public final int parityCodeSize;
 
-    public ECParityNode(ByteBuffer parityCode, String hashCode) {
+    public ECParityNode(ByteBuffer parityCode, String hashCode, int parityCodeSize) {
         this.parityCode = parityCode;
         this.hashCode = hashCode;
+        this.parityCodeSize = parityCodeSize;
     }
 
 
@@ -52,7 +55,8 @@ public class ECParityNode {
         logger.debug("rymDebug: distribute ec data to parity nodes");
         Message<ECParityNode> message = null;
         for (int i = 1; i < parityNodes.size(); i++) {
-            message = Message.outWithFlag(Verb.ECPARITYNODE_REQ, new ECParityNode(parityCode, parityHash.get(i)), MessageFlag.CALL_BACK_ON_FAILURE);
+            message = Message.outWithFlag(Verb.ECPARITYNODE_REQ, 
+            new ECParityNode(parityCode, parityHash.get(i), parityCode.capacity()), MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().send(message, parityNodes.get(i));
         }
         
@@ -68,16 +72,17 @@ public class ECParityNode {
 
         @Override
         public ECParityNode deserialize(DataInputPlus in, int version) throws IOException {
-            byte[] bytes = new byte[in.readInt()];
+            int parityCodeSize = in.readInt();
+            byte[] bytes = new byte[parityCodeSize];
             in.readFully(bytes);
             String hashCode = in.readUTF();
-            return new ECParityNode(ByteBuffer.wrap(bytes), hashCode);
+            return new ECParityNode(ByteBuffer.wrap(bytes), hashCode, parityCodeSize);
         }
 
         @Override
         public long serializedSize(ECParityNode t, int version) {
             long size = Integer.SIZE;
-            size += t.parityCode.capacity();
+            size += t.parityCode.capacity() + sizeof(t.hashCode);
             return size;
         }
     }

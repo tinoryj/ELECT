@@ -107,8 +107,7 @@ public final class ECMessage {
         GLOBAL_COUNTER++;
 
         getTargetEdpoints(this);
-        // this.replicationEndpoints = naturalEndpoints;
-        // this.parityNodes = allParityNodes;
+        
         for (InetAddressAndPort ep : this.replicationEndpoints) {
             this.repEpsString += ep.toString() + ",";
         }

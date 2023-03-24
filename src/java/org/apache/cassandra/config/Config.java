@@ -164,8 +164,9 @@ public class Config
     
     public int ec_data_nodes = 3;
     public int parity_nodes = 2;
+    public int compaction_threshold = 1;
     
-    public int concurrent_ec = 32;
+    public int concurrent_ec = 3;
     public int concurrent_reads = 32;
     public int concurrent_writes = 32;
     public int concurrent_counter_writes = 32;

@@ -48,7 +48,6 @@ public class ECMetadata {
 
     private List<InetAddressAndPort> primaryNodes;
     private Set<InetAddressAndPort> relatedNodes; // e.g. secondary nodes or parity nodes
-    private ECMessage[] messages;
     public static final ECMetadata instance = new ECMetadata();
     
     private static final Logger logger = LoggerFactory.getLogger(ECMetadata.class);
@@ -60,11 +59,9 @@ public class ECMetadata {
         this.parityCodeHashList = new ArrayList<String>();
         this.primaryNodes = new ArrayList<InetAddressAndPort>();
         this.relatedNodes = new HashSet<InetAddressAndPort>();
-        this.messages = new ECMessage[0];
     }
 
     public void generateMetadata(ECMessage[] messages, ByteBuffer[] parityCode, List<String> parityHashes) {
-        this.messages = messages;
         // get stripe id, sst content hashes and primary nodes
         String connectedSSTHash = "";
         for(ECMessage msg : messages) {

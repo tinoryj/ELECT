@@ -18,6 +18,7 @@
 package org.apache.cassandra.io.sstable;
 
 
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOError;
 import java.io.IOException;
@@ -186,6 +187,28 @@ public abstract class SSTable
     public String getKeyspaceName()
     {
         return descriptor.ksname;
+    }
+
+    public String getSSTContent() throws IOException
+    {
+        String fileName = descriptor.filenameFor(Component.DATA);
+        File file = new File(fileName);
+        long fileLength = file.length();
+        FileInputStream fileStream = new FileInputStream(fileName);
+        byte[] buffer = new byte[(int)fileLength];
+        int offset = 0;
+        int numRead = 0;
+        while (offset < buffer.length && (numRead = fileStream.read(buffer, offset, buffer.length - offset)) >= 0) {
+            offset += numRead;
+        }
+        if (offset != buffer.length) {
+            throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
+        }
+        fileStream.close();
+        
+        String sstContent = new String(buffer);
+
+        return sstContent;
     }
 
     public List<String> getAllFilePaths()
