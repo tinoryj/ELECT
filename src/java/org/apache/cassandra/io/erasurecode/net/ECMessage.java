@@ -119,7 +119,7 @@ public final class ECMessage {
         }
 
         if (this.parityNodes != null) {
-            logger.debug("target endpoints are : {}", this.parityNodes);
+            // logger.debug("target endpoints are : {}", this.parityNodes);
             message = Message.outWithFlag(Verb.ERASURECODE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().sendSSTContentWithoutCallback(message, this.parityNodes.get(0));
         } else {
@@ -134,7 +134,6 @@ public final class ECMessage {
 
         // get all live nodes
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
-        List<InetAddressAndPort> liveRingMembers = new ArrayList<>(StorageService.instance.getLiveRingMembers());
         // get replication nodes for given keyspace and table
         List<String> neps = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
                 ecMessage.table, ecMessage.key);        
@@ -142,10 +141,6 @@ public final class ECMessage {
             InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
             ecMessage.replicationEndpoints.add(ep);
         }
-
-
-        logger.debug("rymDebug: unsorted liveEndpoints is {}, liveRingMember is {}, replicationEps is {}"
-            ,liveEndpoints, liveRingMembers, neps);
 
 
         Collections.sort(ecMessage.replicationEndpoints);
@@ -190,8 +185,8 @@ public final class ECMessage {
             String repEpsString = in.readUTF();
             String parityNodesString = in.readUTF();
 
-            logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {},repEpString is {},parityNodes are: {}"
-            , sstContent,ks, table, key,repEpsString,parityNodesString);
+            //logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {},repEpString is {},parityNodes are: {}"
+            //, sstContent,ks, table, key,repEpsString,parityNodesString);
             
             return new ECMessage(sstContent, ks, table, key, repEpsString, parityNodesString);
         }
