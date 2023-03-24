@@ -95,6 +95,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         else {
             recvQueues.get(primaryNode).add(message.payload);
         }
+        
+        logger.debug("rymDebug: recvQueues is {}", recvQueues);
 
         if(recvQueues.size()>=message.payload.k) {
             logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
