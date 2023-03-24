@@ -98,7 +98,7 @@ public class ECMetadata {
 
     public void distributeEcMetadata(ECMetadata ecMetadata) {
         logger.debug("rymDebug: this distributeEcMetadata method");
-        Message<ECMetadata> message = Message.outWithFlag(Verb.ERASURECODE_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
+        Message<ECMetadata> message = Message.outWithFlag(Verb.ECMETADATA_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
         for (InetAddressAndPort node : ecMetadata.relatedNodes) {
             MessagingService.instance().send(message, node);
         }
