@@ -18,9 +18,16 @@
 package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.concurrent.ExecutionException;
 
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.dht.Range;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.service.StorageService;
 
 public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
     /*
@@ -29,8 +36,27 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
      */
     @Override
     public void doVerb(Message<ECCompaction> message) throws IOException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'doVerb'");
+        String sstHash = message.payload.sstHash;
+        String ksName = message.payload.ksName;
+        String cfName = message.payload.cfName;
+        String startToken = message.payload.startToken;
+        String endToken = message.payload.endToken;
+
+        //TODO: get sstContent and do compaction
+        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName);
+        
+        Collection<Range<Token>> tokenRanges = StorageService.instance.createRepairRangeFrom(startToken, endToken);
+        try {
+            cfs.forceCompactionForTokenRange(tokenRanges);
+        } catch (ExecutionException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+
     }
 
 }

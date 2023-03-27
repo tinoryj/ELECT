@@ -74,7 +74,7 @@ public class ECMetadata {
             String sstContentHash = String.valueOf(msg.sstContent.hashCode());
             this.sstContentHashList.add(sstContentHash);
             connectedSSTHash += sstContentHash;
-            this.primaryNodes.add(msg.replicationEndpoints.get(0));
+            this.primaryNodes.add(msg.replicaNodes.get(0));
         }
         this.stripeId = String.valueOf(connectedSSTHash.hashCode());
 
@@ -88,7 +88,7 @@ public class ECMetadata {
         }
         // also need to add related nodes
         for(ECMessage msg : messages) {
-            for(InetAddressAndPort pns : msg.replicationEndpoints) {
+            for(InetAddressAndPort pns : msg.replicaNodes) {
                 if(!this.primaryNodes.contains(pns))
                     this.relatedNodes.add(pns);
             }

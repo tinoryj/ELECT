@@ -17,10 +17,12 @@
  */
 package org.apache.cassandra.db.compaction;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +35,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
@@ -40,6 +44,7 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
+import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.service.ActiveRepairService;
@@ -216,6 +221,25 @@ public class CompactionTask extends AbstractCompactionTask
 
                     // point of no return
                     newSStables = writer.finish();
+
+                    // send compacted sstables to an parity node
+                    for (SSTableReader ssTableReader : newSStables) {
+                        if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                            logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                                    ssTableReader.getSSTableLevel());
+                            String keyspace = ssTableReader.getKeyspaceName();
+                            try {
+                                String sstContent = ssTableReader.getSSTContent();
+                                List<InetAddressAndPort> relicaNodes = ssTableReader.getRelicaNodes(keyspace);
+                                ECMessage ecMessage = new ECMessage(sstContent, ssTableReader.getKeyspaceName(),
+                                 "", "", relicaNodes);
+                                logger.debug("rymDebug: the test message is: {}", ecMessage);
+                                ecMessage.sendSelectedSSTables();
+                            } catch (IOException e) {
+                                logger.error("rymError: {}", e);
+                            }
+                        }
+                    }
                 }
                 finally
                 {

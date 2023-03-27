@@ -72,21 +72,21 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         long k = message.payload.k;
 
         for (String ep : message.payload.repEpsString.split(",")) {
-            message.payload.replicationEndpoints.add(InetAddressAndPort.getByName(ep.substring(1)));
+            message.payload.replicaNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
         }
         for (String ep : message.payload.parityNodesString.split(",")) {
             message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
         }
 
         logger.debug("rymDebug: get new message!!! message is from: {}, primaryNode is {}, parityNodes is {}",
-         message.from(), message.payload.replicationEndpoints.get(0), message.payload.parityNodes);
+         message.from(), message.payload.replicaNodes.get(0), message.payload.parityNodes);
 
         // check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null)
             forwardToLocalNodes(message, forwardTo);
 
-        InetAddressAndPort primaryNode = message.payload.replicationEndpoints.get(0);
+        InetAddressAndPort primaryNode = message.payload.replicaNodes.get(0);
         // Once we have k different sstContent, do erasure coding locally
         if(!recvQueues.containsKey(primaryNode)) {
             Queue<ECMessage> recvQueue = new LinkedList<ECMessage>();

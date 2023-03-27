@@ -18,6 +18,7 @@
 package org.apache.cassandra.db.compaction;
 
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.util.*;
 
 
@@ -32,16 +33,20 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
+import org.apache.cassandra.dht.IPartitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
+import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
@@ -129,7 +134,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
      * (by explicit user request) even when compaction is disabled.
      */
     @SuppressWarnings("resource") // transaction is closed by AbstractCompactionTask::execute
-    public AbstractCompactionTask getNextBackgroundTask(int gcBefore)
+    public AbstractCompactionTask getNextBackgroundTask(int gcBefore) throws IOException
     {
         Collection<SSTableReader> previousCandidate = null;
         while (true)
@@ -165,21 +170,34 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy
                 return null;
             }
 
-            // TODO: Add my test code to send sstContent
-            for (SSTableReader ssTableReader : candidate.sstables) {
-                if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                    logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}", ssTableReader.getSSTableLevel());
+            /////////////////////////////////////////////////
+            if (candidate.level == DatabaseDescriptor.getCompactionThreshold() - 1) {
+                for (SSTableReader ssTableReader : candidate.sstables) {
+                    logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                            ssTableReader.getSSTableLevel());
+                    String keyspace = ssTableReader.getKeyspaceName();
+                    String cfName = ssTableReader.getColumnFamilyName();
+                    // DecoratedKey fistKey = ssTableReader.first;
+                    String startToken = ssTableReader.metadata().partitioner.getMinimumToken().toString();
+                    String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
+
+                    // get sstHash
+                    String sstHash = "";
                     try {
-                        String sstContent = ssTableReader.getSSTContent();
-                        ECMessage ecMessage = new ECMessage(sstContent, ssTableReader.getKeyspaceName(),
-                         ssTableReader.getColumnFamilyName(), "", "", "");
-                         logger.debug("rymDebug: the test message is: {}", ecMessage);
-                        ecMessage.sendSelectedSSTables();
+                        sstHash = String.valueOf(ssTableReader.getSSTContent().hashCode());
                     } catch (IOException e) {
-                        logger.error("rymError: {}", e);
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
                     }
+
+                    // get replica nodes
+                    List<InetAddressAndPort> replicaNodes = ssTableReader.getRelicaNodes(keyspace);
+                    ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
+                    // send compaction message to replica nodes
+                    ecCompaction.synchronizeCompaction(replicaNodes);
                 }
             }
+            ////////////////////////////////////////////////
 
             LifecycleTransaction txn = cfs.getTracker().tryModify(candidate.sstables, OperationType.COMPACTION);
             if (txn != null)

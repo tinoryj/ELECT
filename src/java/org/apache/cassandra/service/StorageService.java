@@ -4377,6 +4377,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      * @return collection of ranges that match ring layout in TokenMetadata
      */
     @VisibleForTesting
+    public
     Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken)
     {
         Token parsedBeginToken = getTokenFactory().fromString(beginToken);

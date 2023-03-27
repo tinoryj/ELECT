@@ -55,13 +55,11 @@ public final class ECMessage {
     public static final Serializer serializer = new Serializer();
     public final String sstContent;
     public final String keyspace;
-    public final String key;
-    public final String table;
     public final int k;
     public final int rf;
     public final int m;
     
-    public List<InetAddressAndPort> replicationEndpoints;
+    public List<InetAddressAndPort> replicaNodes;
     public List<InetAddressAndPort> parityNodes;
     
     private static int GLOBAL_COUNTER = 0;
@@ -70,16 +68,15 @@ public final class ECMessage {
 
 
 
-    public ECMessage(String sstContent, String keyspace, String table, String key, String repEpString, String parityEpString) {
+    public ECMessage(String sstContent, String keyspace, String repEpString, String parityEpString,
+        List<InetAddressAndPort> replicaNodes) {
         this.sstContent = sstContent;
         this.keyspace = keyspace;
-        this.table = table;
-        this.key = key;
         this.k = DatabaseDescriptor.getEcDataNodes();
         this.m = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
         
-        this.replicationEndpoints =  new ArrayList<InetAddressAndPort>();
+        this.replicaNodes = new ArrayList<InetAddressAndPort>(replicaNodes);
         this.parityNodes =  new ArrayList<InetAddressAndPort>();
         this.repEpsString = repEpString;
         this.parityNodesString = parityEpString;
@@ -94,8 +91,6 @@ public final class ECMessage {
      * @param sstContent selected sstables
      * @param k         number of parity nodes
      * @param ks        keyspace name of sstables
-     * @param table     cf name of sstables
-     * @param key       one of the key in sstables
      * @throws UnknownHostException
      *                              TODO List
      *                              1. implement Verb.ERASURECODE_REQ
@@ -110,7 +105,7 @@ public final class ECMessage {
 
         getTargetEdpoints(this);
         
-        for (InetAddressAndPort ep : this.replicationEndpoints) {
+        for (InetAddressAndPort ep : this.replicaNodes) {
             this.repEpsString += ep.toString() + ",";
         }
         
@@ -135,23 +130,23 @@ public final class ECMessage {
         // get all live nodes
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
         // get replication nodes for given keyspace and table
-        List<String> neps = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
-                ecMessage.table, ecMessage.key);        
-        for (String nep : neps) {
-            InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
-            ecMessage.replicationEndpoints.add(ep);
-        }
+        // List<String> neps = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
+        //        ecMessage.table, ecMessage.key);        
+        // for (String nep : neps) {
+        //     InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
+        //     ecMessage.replicationEndpoints.add(ep);
+        // }
 
 
         //Collections.sort(ecMessage.replicationEndpoints);
         //Collections.sort(liveEndpoints);
 
         logger.debug("rymDebug: All living nodes are {}", liveEndpoints);
-        logger.debug("rymDebug: ecMessage.replicationEndpoints is {}", ecMessage.replicationEndpoints);    
+        logger.debug("rymDebug: ecMessage.replicaNodes is {}", ecMessage.replicaNodes);    
 
         // select parity nodes from live nodes, suppose all nodes work healthy
         int n = liveEndpoints.size();
-        InetAddressAndPort primaryNode = ecMessage.replicationEndpoints.get(0);
+        InetAddressAndPort primaryNode = ecMessage.replicaNodes.get(0);
         int primaryNodeIndex = liveEndpoints.indexOf(primaryNode);
         int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.k+1))%n);
         for (int i = startIndex; i < ecMessage.m+startIndex; i++) {
@@ -178,8 +173,6 @@ public final class ECMessage {
             // TODO: something may need to ensure, could be test
             out.writeUTF(ecMessage.sstContent);
             out.writeUTF(ecMessage.keyspace);
-            out.writeUTF(ecMessage.key);
-            out.writeUTF(ecMessage.table);
             out.writeUTF(ecMessage.repEpsString);
             out.writeUTF(ecMessage.parityNodesString);
         }
@@ -188,21 +181,19 @@ public final class ECMessage {
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
             String sstContent = in.readUTF();
             String ks = in.readUTF();
-            String table = in.readUTF();
-            String key = in.readUTF();
             String repEpsString = in.readUTF();
             String parityNodesString = in.readUTF();
 
             //logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {},repEpString is {},parityNodes are: {}"
             //, sstContent,ks, table, key,repEpsString,parityNodesString);
             
-            return new ECMessage(sstContent, ks, table, key, repEpsString, parityNodesString);
+            return new ECMessage(sstContent, ks, repEpsString, parityNodesString, null);
         }
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
-            long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.keyspace) + sizeof(ecMessage.table) +
-             sizeof(ecMessage.key)+sizeof(ecMessage.parityNodesString)+sizeof(ecMessage.repEpsString);
+            long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.keyspace) +
+             sizeof(ecMessage.parityNodesString)+sizeof(ecMessage.repEpsString);
             return size;
 
         }
