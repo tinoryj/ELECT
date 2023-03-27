@@ -1463,12 +1463,11 @@ public class StorageProxy implements StorageProxyMBean {
         /*
          * The following is ECMessage test code
          */
-        
+
         String ks = mutation.getKeyspaceName();
         String table = mutation.getTableName(mutation.getTableIds().iterator().next());
         String key = mutation.getKeyName();
-        ECMessage ecMessage = new ECMessage(mutation.toString(), ks, table, key, "",
-                "");
+        ECMessage ecMessage = new ECMessage(mutation.toString(), ks, table, key, null);
         logger.debug("rymDebug: the test message is: {}", ecMessage);
         try {
             ecMessage.sendSelectedSSTables();

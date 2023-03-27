@@ -319,7 +319,9 @@ public class CompactionStrategyManager implements INotificationConsumer {
             fanout = (repaired.first() instanceof LeveledCompactionStrategy)
                     ? ((LeveledCompactionStrategy) repaired.first()).getLevelFanoutSize()
                     : LeveledCompactionStrategy.DEFAULT_LEVEL_FANOUT_SIZE;
+            logger.debug("[Tinoryj] Compaction strategy fanout is {}", fanout);
             maxSSTableSizeBytes = repaired.first().getMaxSSTableBytes();
+            logger.debug("[Tinoryj] Compaction strategy maxSSTableSizeBytes is {}", maxSSTableSizeBytes);
             name = repaired.first().getName();
         } finally {
             writeLock.unlock();

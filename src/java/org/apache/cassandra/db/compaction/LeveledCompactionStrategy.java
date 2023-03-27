@@ -67,7 +67,10 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
     public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options) {
         super(cfs, options);
-        int configuredMaxSSTableSize = 160;
+        int configuredMaxSSTableSize = 1;
+        // int configuredMaxSSTableSize =
+        // Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));
+        logger.debug("[Tinoryj] Configured max sstable size: {} MB", configuredMaxSSTableSize);
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;
         boolean configuredSingleSSTableUplevel = false;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
@@ -126,8 +129,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
      * (by explicit user request) even when compaction is disabled.
      */
     @SuppressWarnings("resource") // transaction is closed by AbstractCompactionTask::execute
-    public AbstractCompactionTask getNextBackgroundTask(int gcBefore) throws IOException
-    {
+    public AbstractCompactionTask getNextBackgroundTask(int gcBefore) {
         Collection<SSTableReader> previousCandidate = null;
         while (true) {
             OperationType op;
