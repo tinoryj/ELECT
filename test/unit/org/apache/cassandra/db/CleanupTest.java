@@ -293,7 +293,7 @@ public class CleanupTest
             beforeFirstCleanup.forEach((sstable) -> {
                 try
                 {
-                    sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, System.currentTimeMillis(), null, false);
+                    sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, System.currentTimeMillis(), null, false,false);
                     sstable.reloadSSTableMetadata();
                 }
                 catch (Exception e)

@@ -45,8 +45,7 @@ import org.apache.cassandra.metrics.TableMetrics;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.FBUtilities;
 
-public class Flushing
-{
+public class Flushing {
     private static final Logger logger = LoggerFactory.getLogger(Flushing.class);
 
     private Flushing() // prevent instantiation
@@ -54,24 +53,20 @@ public class Flushing
     }
 
     public static List<FlushRunnable> flushRunnables(ColumnFamilyStore cfs,
-                                                     Memtable memtable,
-                                                     LifecycleTransaction txn)
-    {
+            Memtable memtable,
+            LifecycleTransaction txn) {
         DiskBoundaries diskBoundaries = cfs.getDiskBoundaries();
         List<PartitionPosition> boundaries = diskBoundaries.positions;
         List<Directories.DataDirectory> locations = diskBoundaries.directories;
-        if (boundaries == null)
-        {
+        if (boundaries == null) {
             FlushRunnable runnable = flushRunnable(cfs, memtable, null, null, txn, null);
             return Collections.singletonList(runnable);
         }
 
         List<FlushRunnable> runnables = new ArrayList<>(boundaries.size());
         PartitionPosition rangeStart = boundaries.get(0).getPartitioner().getMinimumToken().minKeyBound();
-        try
-        {
-            for (int i = 0; i < boundaries.size(); i++)
-            {
+        try {
+            for (int i = 0; i < boundaries.size(); i++) {
                 PartitionPosition t = boundaries.get(i);
                 FlushRunnable runnable = flushRunnable(cfs, memtable, rangeStart, t, txn, locations.get(i));
 
@@ -79,48 +74,43 @@ public class Flushing
                 rangeStart = t;
             }
             return runnables;
-        }
-        catch (Throwable e)
-        {
+        } catch (Throwable e) {
             throw Throwables.propagate(abortRunnables(runnables, e));
         }
     }
 
-    @SuppressWarnings("resource")   // writer owned by runnable, to be closed or aborted by its caller
+    @SuppressWarnings("resource") // writer owned by runnable, to be closed or aborted by its caller
     static FlushRunnable flushRunnable(ColumnFamilyStore cfs,
-                                       Memtable memtable,
-                                       PartitionPosition from,
-                                       PartitionPosition to,
-                                       LifecycleTransaction txn,
-                                       Directories.DataDirectory flushLocation)
-    {
+            Memtable memtable,
+            PartitionPosition from,
+            PartitionPosition to,
+            LifecycleTransaction txn,
+            Directories.DataDirectory flushLocation) {
         Memtable.FlushablePartitionSet<?> flushSet = memtable.getFlushSet(from, to);
         SSTableFormat.Type formatType = SSTableFormat.Type.current();
         long estimatedSize = formatType.info.getWriterFactory().estimateSize(flushSet);
 
         Descriptor descriptor = flushLocation == null
-                                ? cfs.newSSTableDescriptor(cfs.getDirectories().getWriteableLocationAsFile(estimatedSize), formatType)
-                                : cfs.newSSTableDescriptor(cfs.getDirectories().getLocationForDisk(flushLocation), formatType);
+                ? cfs.newSSTableDescriptor(cfs.getDirectories().getWriteableLocationAsFile(estimatedSize), formatType)
+                : cfs.newSSTableDescriptor(cfs.getDirectories().getLocationForDisk(flushLocation), formatType);
 
         SSTableMultiWriter writer = createFlushWriter(cfs,
-                                                      flushSet,
-                                                      txn,
-                                                      descriptor,
-                                                      flushSet.partitionCount());
+                flushSet,
+                txn,
+                descriptor,
+                flushSet.partitionCount());
 
         return new FlushRunnable(flushSet, writer, cfs.metric, true);
     }
 
-    public static Throwable abortRunnables(List<FlushRunnable> runnables, Throwable t)
-    {
+    public static Throwable abortRunnables(List<FlushRunnable> runnables, Throwable t) {
         if (runnables != null)
             for (FlushRunnable runnable : runnables)
                 t = runnable.writer.abort(t);
         return t;
     }
 
-    public static class FlushRunnable implements Callable<SSTableMultiWriter>
-    {
+    public static class FlushRunnable implements Callable<SSTableMultiWriter> {
         private final Memtable.FlushablePartitionSet<?> toFlush;
 
         private final SSTableMultiWriter writer;
@@ -129,10 +119,9 @@ public class Flushing
         private final boolean logCompletion;
 
         public FlushRunnable(Memtable.FlushablePartitionSet<?> flushSet,
-                             SSTableMultiWriter writer,
-                             TableMetrics metrics,
-                             boolean logCompletion)
-        {
+                SSTableMultiWriter writer,
+                TableMetrics metrics,
+                boolean logCompletion) {
             this.toFlush = flushSet;
             this.writer = writer;
             this.metrics = metrics;
@@ -140,78 +129,76 @@ public class Flushing
             this.logCompletion = logCompletion;
         }
 
-        private void writeSortedContents()
-        {
+        private void writeSortedContents() {
             logger.info("Writing {}, flushed range = [{}, {})", toFlush.memtable(), toFlush.from(), toFlush.to());
 
             // (we can't clear out the map as-we-go to free up memory,
-            //  since the memtable is being used for queries in the "pending flush" category)
-            for (Partition partition : toFlush)
-            {
-                // Each batchlog partition is a separate entry in the log. And for an entry, we only do 2
-                // operations: 1) we insert the entry and 2) we delete it. Further, BL data is strictly local,
-                // we don't need to preserve tombstones for repair. So if both operation are in this
-                // memtable (which will almost always be the case if there is no ongoing failure), we can
+            // since the memtable is being used for queries in the "pending flush" category)
+            for (Partition partition : toFlush) {
+                // Each batchlog partition is a separate entry in the log. And for an entry, we
+                // only do 2
+                // operations: 1) we insert the entry and 2) we delete it. Further, BL data is
+                // strictly local,
+                // we don't need to preserve tombstones for repair. So if both operation are in
+                // this
+                // memtable (which will almost always be the case if there is no ongoing
+                // failure), we can
                 // just skip the entry (CASSANDRA-4667).
                 if (isBatchLogTable && !partition.partitionLevelDeletion().isLive() && partition.hasRows())
                     continue;
 
-                if (!partition.isEmpty())
-                {
-                    try (UnfilteredRowIterator iter = partition.unfilteredIterator())
-                    {
+                if (!partition.isEmpty()) {
+                    try (UnfilteredRowIterator iter = partition.unfilteredIterator()) {
                         writer.append(iter);
                     }
                 }
             }
 
-            if (logCompletion)
-            {
+            if (logCompletion) {
                 long bytesFlushed = writer.getFilePointer();
                 logger.info("Completed flushing {} ({}) for commitlog position {}",
-                            writer.getFilename(),
-                            FBUtilities.prettyPrintMemory(bytesFlushed),
-                            toFlush.memtable().getFinalCommitLogUpperBound());
+                        writer.getFilename(),
+                        FBUtilities.prettyPrintMemory(bytesFlushed),
+                        toFlush.memtable().getFinalCommitLogUpperBound());
                 // Update the metrics
                 metrics.bytesFlushed.inc(bytesFlushed);
             }
         }
 
         @Override
-        public SSTableMultiWriter call()
-        {
+        public SSTableMultiWriter call() {
             writeSortedContents();
             return writer;
-            // We don't close the writer on error as the caller aborts all runnables if one happens.
+            // We don't close the writer on error as the caller aborts all runnables if one
+            // happens.
         }
 
         @Override
-        public String toString()
-        {
+        public String toString() {
             return "Flush " + toFlush.metadata().keyspace + '.' + toFlush.metadata().name;
         }
     }
 
     public static SSTableMultiWriter createFlushWriter(ColumnFamilyStore cfs,
-                                                       Memtable.FlushablePartitionSet<?> flushSet,
-                                                       LifecycleTransaction txn,
-                                                       Descriptor descriptor,
-                                                       long partitionCount)
-    {
+            Memtable.FlushablePartitionSet<?> flushSet,
+            LifecycleTransaction txn,
+            Descriptor descriptor,
+            long partitionCount) {
         MetadataCollector sstableMetadataCollector = new MetadataCollector(flushSet.metadata().comparator)
-                                                     .commitLogIntervals(new IntervalSet<>(flushSet.commitLogLowerBound(),
-                                                                                           flushSet.commitLogUpperBound()));
+                .commitLogIntervals(new IntervalSet<>(flushSet.commitLogLowerBound(),
+                        flushSet.commitLogUpperBound()));
 
         return cfs.createSSTableMultiWriter(descriptor,
-                                            partitionCount,
-                                            ActiveRepairService.UNREPAIRED_SSTABLE,
-                                            ActiveRepairService.NO_PENDING_REPAIR,
-                                            false,
-                                            sstableMetadataCollector,
-                                            new SerializationHeader(true,
-                                                                    flushSet.metadata(),
-                                                                    flushSet.columns(),
-                                                                    flushSet.encodingStats()),
-                                            txn);
+                partitionCount,
+                ActiveRepairService.UNREPAIRED_SSTABLE,
+                ActiveRepairService.NO_PENDING_REPAIR,
+                false,
+                false,
+                sstableMetadataCollector,
+                new SerializationHeader(true,
+                        flushSet.metadata(),
+                        flushSet.columns(),
+                        flushSet.encodingStats()),
+                txn);
     }
 }

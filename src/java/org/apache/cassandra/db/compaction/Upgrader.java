@@ -38,8 +38,7 @@ import org.apache.cassandra.utils.OutputHandler;
 
 import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
-public class Upgrader
-{
+public class Upgrader {
     private final ColumnFamilyStore cfs;
     private final SSTableReader sstable;
     private final LifecycleTransaction transaction;
@@ -51,8 +50,7 @@ public class Upgrader
 
     private final OutputHandler outputHandler;
 
-    public Upgrader(ColumnFamilyStore cfs, LifecycleTransaction txn, OutputHandler outputHandler)
-    {
+    public Upgrader(ColumnFamilyStore cfs, LifecycleTransaction txn, OutputHandler outputHandler) {
         this.cfs = cfs;
         this.transaction = txn;
         this.sstable = txn.onlyOne();
@@ -63,64 +61,58 @@ public class Upgrader
         this.controller = new UpgradeController(cfs);
 
         this.strategyManager = cfs.getCompactionStrategyManager();
-        long estimatedTotalKeys = Math.max(cfs.metadata().params.minIndexInterval, SSTableReader.getApproximateKeyCount(Arrays.asList(this.sstable)));
-        long estimatedSSTables = Math.max(1, SSTableReader.getTotalBytes(Arrays.asList(this.sstable)) / strategyManager.getMaxSSTableBytes());
+        long estimatedTotalKeys = Math.max(cfs.metadata().params.minIndexInterval,
+                SSTableReader.getApproximateKeyCount(Arrays.asList(this.sstable)));
+        long estimatedSSTables = Math.max(1,
+                SSTableReader.getTotalBytes(Arrays.asList(this.sstable)) / strategyManager.getMaxSSTableBytes());
         this.estimatedRows = (long) Math.ceil((double) estimatedTotalKeys / estimatedSSTables);
     }
 
-    private SSTableWriter createCompactionWriter(StatsMetadata metadata)
-    {
+    private SSTableWriter createCompactionWriter(StatsMetadata metadata) {
         MetadataCollector sstableMetadataCollector = new MetadataCollector(cfs.getComparator());
         sstableMetadataCollector.sstableLevel(sstable.getSSTableLevel());
         return SSTableWriter.create(cfs.newSSTableDescriptor(directory),
-                                    estimatedRows,
-                                    metadata.repairedAt,
-                                    metadata.pendingRepair,
-                                    metadata.isTransient,
-                                    cfs.metadata,
-                                    sstableMetadataCollector,
-                                    SerializationHeader.make(cfs.metadata(), Sets.newHashSet(sstable)),
-                                    cfs.indexManager.listIndexes(),
-                                    transaction);
+                estimatedRows,
+                metadata.repairedAt,
+                metadata.pendingRepair,
+                metadata.isTransient,
+                metadata.isReplicationTransferredToErasureCoding,
+                cfs.metadata,
+                sstableMetadataCollector,
+                SerializationHeader.make(cfs.metadata(), Sets.newHashSet(sstable)),
+                cfs.indexManager.listIndexes(),
+                transaction);
     }
 
-    public void upgrade(boolean keepOriginals)
-    {
+    public void upgrade(boolean keepOriginals) {
         outputHandler.output("Upgrading " + sstable);
         int nowInSec = FBUtilities.nowInSeconds();
-        try (SSTableRewriter writer = SSTableRewriter.construct(cfs, transaction, keepOriginals, CompactionTask.getMaxDataAge(transaction.originals()));
-             AbstractCompactionStrategy.ScannerList scanners = strategyManager.getScanners(transaction.originals());
-             CompactionIterator iter = new CompactionIterator(transaction.opType(), scanners.scanners, controller, nowInSec, nextTimeUUID()))
-        {
+        try (SSTableRewriter writer = SSTableRewriter.construct(cfs, transaction, keepOriginals,
+                CompactionTask.getMaxDataAge(transaction.originals()));
+                AbstractCompactionStrategy.ScannerList scanners = strategyManager.getScanners(transaction.originals());
+                CompactionIterator iter = new CompactionIterator(transaction.opType(), scanners.scanners, controller,
+                        nowInSec, nextTimeUUID())) {
             writer.switchWriter(createCompactionWriter(sstable.getSSTableMetadata()));
             while (iter.hasNext())
                 writer.append(iter.next());
 
             writer.finish();
             outputHandler.output("Upgrade of " + sstable + " complete.");
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             Throwables.propagate(e);
-        }
-        finally
-        {
+        } finally {
             controller.close();
         }
     }
 
-    private static class UpgradeController extends CompactionController
-    {
-        public UpgradeController(ColumnFamilyStore cfs)
-        {
+    private static class UpgradeController extends CompactionController {
+        public UpgradeController(ColumnFamilyStore cfs) {
             super(cfs, Integer.MAX_VALUE);
         }
 
         @Override
-        public LongPredicate getPurgeEvaluator(DecoratedKey key)
-        {
+        public LongPredicate getPurgeEvaluator(DecoratedKey key) {
             return time -> false;
         }
     }
 }
-

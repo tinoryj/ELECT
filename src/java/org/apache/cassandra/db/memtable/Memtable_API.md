@@ -1,12 +1,32 @@
+<!--
+ ~ Licensed to the Apache Software Foundation (ASF) under one
+ ~ or more contributor license agreements.  See the NOTICE file
+ ~ distributed with this work for additional information
+ ~ regarding copyright ownership.  The ASF licenses this file
+ ~ to you under the Apache License, Version 2.0 (the
+ ~ "License"); you may not use this file except in compliance
+ ~ with the License.  You may obtain a copy of the License at
+ ~
+ ~   http://www.apache.org/licenses/LICENSE-2.0
+ ~
+ ~ Unless required by applicable law or agreed to in writing,
+ ~ software distributed under the License is distributed on an
+ ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ ~ KIND, either express or implied.  See the License for the
+ ~ specific language governing permissions and limitations
+ ~ under the License.
+-->
+
+
 # Memtable API
 
-[CEP-11](https://cwiki.apache.org/confluence/display/CASSANDRA/CEP-11%3A+Pluggable+memtable+implementations) 
+[CEP-11](https://cwiki.apache.org/confluence/display/CASSANDRA/CEP-11%3A+Pluggable+memtable+implementations)
 / [CASSANDRA-17034](https://issues.apache.org/jira/browse/CASSANDRA-17034)
 
 ## Configuration specification
 
 Memtable types and options are specified using memtable "configurations", which specify an implementation class
-and its parameters. 
+and its parameters.
 
 The memtable configurations are defined in `cassandra.yaml`, using the following format:
 
@@ -60,21 +80,24 @@ or `ALTER TABLE` statement, for example:
 ```
 CREATE TABLE ... WITH ... AND memtable = 'trie';
 ```
+
 or
+
 ```
 ALTER TABLE ... WITH memtable = 'skiplist';
 ```
 
 If a memtable is not specified, the configuration `default` will be used. To reset a table to the default memtable,
 use
+
 ```
 ALTER TABLE ... WITH memtable = 'default';
 ```
 
 The memtable configuration selection is per table, i.e. it will be propagated to all nodes in the cluster. If some nodes
-do not have a definition for that configuration or cannot instantiate the class, they will log an error and fall 
-back to the default memtable configuration to avoid schema disagreements. However, if some nodes are still on a version 
-of Cassandra before 4.1, they will reject the schema change. We therefore recommend using a separate `ALTER` statement 
+do not have a definition for that configuration or cannot instantiate the class, they will log an error and fall
+back to the default memtable configuration to avoid schema disagreements. However, if some nodes are still on a version
+of Cassandra before 4.1, they will reject the schema change. We therefore recommend using a separate `ALTER` statement
 to change a table's memtable implementation; upgrading all nodes to 4.1 or later is required to use the API.
 
 As additional safety when first deploying an alternative implementation to a production cluster, one may consider
@@ -82,17 +105,22 @@ first deploying a remapped `default` configuration to all nodes in the cluster, 
 it, and then changing the implementation by modifying the configuration one node at a time.
 
 For example, a remapped default can be specified with this:
+
 ```yaml
 memtable:
     configurations:
         better_memtable:
             inherits: default
 ```
+
 selected via
+
 ```
 ALTER TABLE production_table WITH memtable = 'better_memtable';
 ```
+
 and later switched one node at a time to
+
 ```yaml
 memtable:
     configurations:
@@ -106,7 +134,7 @@ memtable:
 
 A memtable implementation is an implementation of the `Memtable` interface. The main work of the class will be
 performed by the `put`, `rowIterator` and `partitionIterator` methods, used to write and read information to/from the
-memtable. In addition to this, the implementation must support retrieval of the content in a form suitable for flushing 
+memtable. In addition to this, the implementation must support retrieval of the content in a form suitable for flushing
 (via `getFlushSet`), memory use and statistics tracking, mechanics for triggering a flush for reasons
 controlled by the memtable (e.g. exhaustion of the given memory allocation), and finally mechanisms for tracking the
 commit log spans covered by a memtable.
@@ -121,9 +149,9 @@ is there to permit memtables that operate long-term and/or can handle some event
 The latter enables memtables that have an internal durability mechanism, such as ones using persistent memory or a
 tightly integrated commit log (e.g. using the commit log buffers for memtable data storage).
 
-The memtable implementation must also provide a mechanism for memtable construction called a memtable "factory" 
+The memtable implementation must also provide a mechanism for memtable construction called a memtable "factory"
 (the `Memtable.Factory` interface). Some features of the implementation may be needed before an instance is created or
-where the memtable instance is not accessible. To make working with them more straightforward, the following 
+where the memtable instance is not accessible. To make working with them more straightforward, the following
 memtable-controlled options are implemented on the factory:
 
 - `boolean writesAreDurable()` should return true if the memtable has its own persistence mechanism and does not want
@@ -132,9 +160,9 @@ memtable-controlled options are implemented on the factory:
 - `boolean writesShouldSkipCommitLog()` should return true if the memtable does not want the commit log to store any of
   its data. The expectation for this flag is that a persistent memtable will take a configuration parameter to turn this
   option on to improve performance. Enabling this flag is not compatible with CDC or PITR.
-- `boolean streamToMemtable()` and `boolean streamFromMemtable()` should return true if the memtable is long-lived and 
-  cannot flush to facilitate streaming. In this case the streaming code will implement the process in a way that 
-  retrieves data in the memtable before sending, and applies received data in the memtable instead of directly creating 
+- `boolean streamToMemtable()` and `boolean streamFromMemtable()` should return true if the memtable is long-lived and
+  cannot flush to facilitate streaming. In this case the streaming code will implement the process in a way that
+  retrieves data in the memtable before sending, and applies received data in the memtable instead of directly creating
   an sstable.
 
 ### Instantiation and configuration
@@ -142,37 +170,36 @@ memtable-controlled options are implemented on the factory:
 The memtables are instantiated by the factory, which is constructed via reflection on creating a `ColumnFamilyStore` or
 altering the table's configuration.
 
-Memtable classes must either contain a static `FACTORY` field (if they take no arguments other than class), or implement 
+Memtable classes must either contain a static `FACTORY` field (if they take no arguments other than class), or implement
 a `factory(Map<String, String>)` method, which is called using the configuration `parameters`. For validation, the
 latter should consume any further options (using `map.remove`).
 
 The `MemtableParams` class will look for the specified class name (prefixed with `org.apache.cassandra.db.memtable.`
-if only a short name was given), then look for a `factory` method. If it finds one, it will call it with a copy of the 
+if only a short name was given), then look for a `factory` method. If it finds one, it will call it with a copy of the
 supplied parameters; if it does not, it will look for the `FACTORY` field and use its value if found. It will error out
-if the class was not found, if neither the method or field was found, or if the user supplied parameters that did not 
+if the class was not found, if neither the method or field was found, or if the user supplied parameters that did not
 get consumed.
 
 Because multiple configurations and tables may use the same parameters, it is expected that the factory method will
-store and reuse constructed factories to avoid wasting space for duplicate objects (this is typical for configuration 
+store and reuse constructed factories to avoid wasting space for duplicate objects (this is typical for configuration
 objects in Cassandra).
 
 At this time many of the configuration parameters for memtables are still configured using top-level parameters like
 `memtable_allocation_type` in `cassandra.yaml` and `memtable_flush_period_in_ms` in the table schema.
 
-
 ### Sample implementation
 
-The API comes with a proof-of-concept implementation, a sharded skip-list memtable implemented by the 
-`ShardedSkipListMemtable` class. The difference between this and the default memtable is that the sharded version breaks 
+The API comes with a proof-of-concept implementation, a sharded skip-list memtable implemented by the
+`ShardedSkipListMemtable` class. The difference between this and the default memtable is that the sharded version breaks
 the token space served by the node into roughly equal regions and uses a separate skip-list for each shard. Sharding
 spreads the write concurrency among these independent skip lists, reducing congestion and can lead to significantly
 improved write throughput.
 
 This implementation takes two parameters, `shards` which specifies the number of shards to split into (by default, the
 number of CPU threads available to the process) and `serialize_writes`, which, if set to `true` causes writes to the
-memtable to be synchronized. The latter can be useful to minimize space and time wasted for unsuccesful lockless 
+memtable to be synchronized. The latter can be useful to minimize space and time wasted for unsuccesful lockless
 partition modification where a new copy of the partition would be prepared but not used due to concurrent modification.
 Regardless of the setting, reads can always execute in parallel, including concurrently with writes.
 
-Please note that sharding cannot be used with non-hashing partitioners (i.e. `ByteOrderPartitioner` or 
+Please note that sharding cannot be used with non-hashing partitioners (i.e. `ByteOrderPartitioner` or
 `OrderPreservingPartitioner`).

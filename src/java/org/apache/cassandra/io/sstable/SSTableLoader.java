@@ -44,8 +44,7 @@ import static org.apache.cassandra.streaming.StreamingChannel.Factory.Global.str
  * Cassandra SSTable bulk loader.
  * Load an externally created sstable into a cluster.
  */
-public class SSTableLoader implements StreamEventHandler
-{
+public class SSTableLoader implements StreamEventHandler {
     private final File directory;
     private final String keyspace;
     private final Client client;
@@ -56,13 +55,12 @@ public class SSTableLoader implements StreamEventHandler
     private final List<SSTableReader> sstables = new ArrayList<>();
     private final Multimap<InetAddressAndPort, OutgoingStream> streamingDetails = HashMultimap.create();
 
-    public SSTableLoader(File directory, Client client, OutputHandler outputHandler)
-    {
+    public SSTableLoader(File directory, Client client, OutputHandler outputHandler) {
         this(directory, client, outputHandler, 1, null);
     }
 
-    public SSTableLoader(File directory, Client client, OutputHandler outputHandler, int connectionsPerHost, String targetKeyspace)
-    {
+    public SSTableLoader(File directory, Client client, OutputHandler outputHandler, int connectionsPerHost,
+            String targetKeyspace) {
         this.directory = directory;
         this.keyspace = targetKeyspace != null ? targetKeyspace : directory.parent().name();
         this.client = client;
@@ -71,139 +69,137 @@ public class SSTableLoader implements StreamEventHandler
     }
 
     @SuppressWarnings("resource")
-    protected Collection<SSTableReader> openSSTables(final Map<InetAddressAndPort, Collection<Range<Token>>> ranges)
-    {
+    protected Collection<SSTableReader> openSSTables(final Map<InetAddressAndPort, Collection<Range<Token>>> ranges) {
         outputHandler.output("Opening sstables and calculating sections to stream");
 
         LifecycleTransaction.getFiles(directory.toPath(),
-                                      (file, type) ->
-                                      {
-                                          File dir = file.parent();
-                                          String name = file.name();
+                (file, type) -> {
+                    File dir = file.parent();
+                    String name = file.name();
 
-                                          if (type != Directories.FileType.FINAL)
-                                          {
-                                              outputHandler.output(String.format("Skipping temporary file %s", name));
-                                              return false;
-                                          }
+                    if (type != Directories.FileType.FINAL) {
+                        outputHandler.output(String.format("Skipping temporary file %s", name));
+                        return false;
+                    }
 
-                                          Pair<Descriptor, Component> p = SSTable.tryComponentFromFilename(file);
-                                          Descriptor desc = p == null ? null : p.left;
-                                          if (p == null || !p.right.equals(Component.DATA))
-                                              return false;
+                    Pair<Descriptor, Component> p = SSTable.tryComponentFromFilename(file);
+                    Descriptor desc = p == null ? null : p.left;
+                    if (p == null || !p.right.equals(Component.DATA) || !p.right.equals(Component.EC_METADATA))
+                        return false;
 
-                                          if (!new File(desc.filenameFor(Component.PRIMARY_INDEX)).exists())
-                                          {
-                                              outputHandler.output(String.format("Skipping file %s because index is missing", name));
-                                              return false;
-                                          }
+                    if (!new File(desc.filenameFor(Component.PRIMARY_INDEX)).exists()) {
+                        outputHandler.output(String.format("Skipping file %s because index is missing", name));
+                        return false;
+                    }
 
-                                          TableMetadataRef metadata = client.getTableMetadata(desc.cfname);
+                    TableMetadataRef metadata = client.getTableMetadata(desc.cfname);
 
-                                          if (metadata == null && // we did not find metadata
-                                              directory.name().equals(Directories.BACKUPS_SUBDIR)) // and it's likely we hit CASSANDRA-16235
-                                          {
-                                              File parentDirectory = directory.parent();
-                                              File parentParentDirectory = parentDirectory != null ? parentDirectory.parent() : null;
-                                              // check that descriptor's cfname and ksname are 1 directory closer to root than they should be
-                                              if (parentDirectory != null &&
-                                                  parentParentDirectory != null &&
-                                                  desc.cfname.equals(parentDirectory.name()) &&
-                                                  desc.ksname.equals(parentParentDirectory.name()))
-                                              {
-                                                  Descriptor newDesc = new Descriptor(desc.directory,
-                                                                                      desc.ksname,
-                                                                                      Directories.BACKUPS_SUBDIR,
-                                                                                      desc.id,
-                                                                                      desc.formatType);
-                                                  metadata = client.getTableMetadata(newDesc.cfname);
-                                                  if (metadata != null)
-                                                      desc = newDesc;
-                                              }
-                                          }
+                    if (metadata == null && // we did not find metadata
+                            directory.name().equals(Directories.BACKUPS_SUBDIR)) // and it's likely we hit
+                                                                                 // CASSANDRA-16235
+                    {
+                        File parentDirectory = directory.parent();
+                        File parentParentDirectory = parentDirectory != null ? parentDirectory.parent() : null;
+                        // check that descriptor's cfname and ksname are 1 directory closer to root than
+                        // they should be
+                        if (parentDirectory != null &&
+                                parentParentDirectory != null &&
+                                desc.cfname.equals(parentDirectory.name()) &&
+                                desc.ksname.equals(parentParentDirectory.name())) {
+                            Descriptor newDesc = new Descriptor(desc.directory,
+                                    desc.ksname,
+                                    Directories.BACKUPS_SUBDIR,
+                                    desc.id,
+                                    desc.formatType);
+                            metadata = client.getTableMetadata(newDesc.cfname);
+                            if (metadata != null)
+                                desc = newDesc;
+                        }
+                    }
 
-                                          if (metadata == null)
-                                          {
-                                              outputHandler.output(String.format("Skipping file %s: table %s.%s doesn't exist", name, keyspace, desc.cfname));
-                                              return false;
-                                          }
+                    if (metadata == null) {
+                        outputHandler.output(String.format("Skipping file %s: table %s.%s doesn't exist", name,
+                                keyspace, desc.cfname));
+                        return false;
+                    }
 
-                                          Set<Component> components = new HashSet<>();
-                                          components.add(Component.DATA);
-                                          components.add(Component.PRIMARY_INDEX);
-                                          if (new File(desc.filenameFor(Component.SUMMARY)).exists())
-                                              components.add(Component.SUMMARY);
-                                          if (new File(desc.filenameFor(Component.COMPRESSION_INFO)).exists())
-                                              components.add(Component.COMPRESSION_INFO);
-                                          if (new File(desc.filenameFor(Component.STATS)).exists())
-                                              components.add(Component.STATS);
+                    Set<Component> components = new HashSet<>();
+                    if (new File(desc.filenameFor(Component.DATA)).exists())
+                        components.add(Component.DATA);
+                    if (new File(desc.filenameFor(Component.EC_METADATA)).exists())
+                        components.add(Component.EC_METADATA);
+                    components.add(Component.PRIMARY_INDEX);
+                    if (new File(desc.filenameFor(Component.SUMMARY)).exists())
+                        components.add(Component.SUMMARY);
+                    if (new File(desc.filenameFor(Component.COMPRESSION_INFO)).exists())
+                        components.add(Component.COMPRESSION_INFO);
+                    if (new File(desc.filenameFor(Component.STATS)).exists())
+                        components.add(Component.STATS);
 
-                                          try
-                                          {
-                                              // To conserve memory, open SSTableReaders without bloom filters and discard
-                                              // the index summary after calculating the file sections to stream and the estimated
-                                              // number of keys for each endpoint. See CASSANDRA-5555 for details.
-                                              SSTableReader sstable = SSTableReader.openForBatch(desc, components, metadata);
-                                              sstables.add(sstable);
+                    try {
+                        // To conserve memory, open SSTableReaders without bloom filters and discard
+                        // the index summary after calculating the file sections to stream and the
+                        // estimated
+                        // number of keys for each endpoint. See CASSANDRA-5555 for details.
+                        SSTableReader sstable = SSTableReader.openForBatch(desc, components, metadata);
+                        sstables.add(sstable);
 
-                                              // calculate the sstable sections to stream as well as the estimated number of
-                                              // keys per host
-                                              for (Map.Entry<InetAddressAndPort, Collection<Range<Token>>> entry : ranges.entrySet())
-                                              {
-                                                  InetAddressAndPort endpoint = entry.getKey();
-                                                  List<Range<Token>> tokenRanges = Range.normalize(entry.getValue());
+                        // calculate the sstable sections to stream as well as the estimated number of
+                        // keys per host
+                        for (Map.Entry<InetAddressAndPort, Collection<Range<Token>>> entry : ranges.entrySet()) {
+                            InetAddressAndPort endpoint = entry.getKey();
+                            List<Range<Token>> tokenRanges = Range.normalize(entry.getValue());
 
-                                                  List<SSTableReader.PartitionPositionBounds> sstableSections = sstable.getPositionsForRanges(tokenRanges);
-                                                  // Do not stream to nodes that don't own any part of the SSTable, empty streams
-                                                  // will generate an error on the server. See CASSANDRA-16349 for details.
-                                                  if (sstableSections.isEmpty())
-                                                      continue;
+                            List<SSTableReader.PartitionPositionBounds> sstableSections = sstable
+                                    .getPositionsForRanges(tokenRanges);
+                            // Do not stream to nodes that don't own any part of the SSTable, empty streams
+                            // will generate an error on the server. See CASSANDRA-16349 for details.
+                            if (sstableSections.isEmpty())
+                                continue;
 
-                                                  long estimatedKeys = sstable.estimatedKeysForRanges(tokenRanges);
-                                                  Ref<SSTableReader> ref = sstable.ref();
-                                                  OutgoingStream stream = new CassandraOutgoingFile(StreamOperation.BULK_LOAD, ref, sstableSections, tokenRanges, estimatedKeys);
-                                                  streamingDetails.put(endpoint, stream);
-                                              }
+                            long estimatedKeys = sstable.estimatedKeysForRanges(tokenRanges);
+                            Ref<SSTableReader> ref = sstable.ref();
+                            OutgoingStream stream = new CassandraOutgoingFile(StreamOperation.BULK_LOAD, ref,
+                                    sstableSections, tokenRanges, estimatedKeys);
+                            streamingDetails.put(endpoint, stream);
+                        }
 
-                                              // to conserve heap space when bulk loading
-                                              sstable.releaseSummary();
-                                          }
-                                          catch (FSError e)
-                                          {
-                                              // todo: should we really continue if we can't open all sstables?
-                                              outputHandler.output(String.format("Skipping file %s, error opening it: %s", name, e.getMessage()));
-                                          }
-                                          return false;
-                                      },
-                                      Directories.OnTxnErr.IGNORE);
+                        // to conserve heap space when bulk loading
+                        sstable.releaseSummary();
+                    } catch (FSError e) {
+                        // todo: should we really continue if we can't open all sstables?
+                        outputHandler
+                                .output(String.format("Skipping file %s, error opening it: %s", name, e.getMessage()));
+                    }
+                    return false;
+                },
+                Directories.OnTxnErr.IGNORE);
 
         return sstables;
     }
 
-    public StreamResultFuture stream()
-    {
+    public StreamResultFuture stream() {
         return stream(Collections.<InetAddressAndPort>emptySet());
     }
 
-    public StreamResultFuture stream(Set<InetAddressAndPort> toIgnore, StreamEventHandler... listeners)
-    {
+    public StreamResultFuture stream(Set<InetAddressAndPort> toIgnore, StreamEventHandler... listeners) {
         client.init(keyspace);
         outputHandler.output("Established connection to initial hosts");
 
-        StreamPlan plan = new StreamPlan(StreamOperation.BULK_LOAD, connectionsPerHost, false, null, PreviewKind.NONE).connectionFactory(client.getConnectionFactory());
+        StreamPlan plan = new StreamPlan(StreamOperation.BULK_LOAD, connectionsPerHost, false, null, PreviewKind.NONE)
+                .connectionFactory(client.getConnectionFactory());
 
         Map<InetAddressAndPort, Collection<Range<Token>>> endpointToRanges = client.getEndpointToRangesMap();
         openSSTables(endpointToRanges);
-        if (sstables.isEmpty())
-        {
+        if (sstables.isEmpty()) {
             // return empty result
             return plan.execute();
         }
 
-        outputHandler.output(String.format("Streaming relevant part of %s to %s", names(sstables), endpointToRanges.keySet()));
+        outputHandler.output(
+                String.format("Streaming relevant part of %s to %s", names(sstables), endpointToRanges.keySet()));
 
-        for (Map.Entry<InetAddressAndPort, Collection<Range<Token>>> entry : endpointToRanges.entrySet())
-        {
+        for (Map.Entry<InetAddressAndPort, Collection<Range<Token>>> entry : endpointToRanges.entrySet()) {
             InetAddressAndPort remote = entry.getKey();
             if (toIgnore.contains(remote))
                 continue;
@@ -211,8 +207,7 @@ public class SSTableLoader implements StreamEventHandler
             List<OutgoingStream> streams = new LinkedList<>();
 
             // references are acquired when constructing the SSTableStreamingSections above
-            for (OutgoingStream stream : streamingDetails.get(remote))
-            {
+            for (OutgoingStream stream : streamingDetails.get(remote)) {
                 streams.add(stream);
             }
 
@@ -222,60 +217,59 @@ public class SSTableLoader implements StreamEventHandler
         return plan.execute();
     }
 
-    public void onSuccess(StreamState finalState)
-    {
+    public void onSuccess(StreamState finalState) {
         releaseReferences();
     }
-    public void onFailure(Throwable t)
-    {
+
+    public void onFailure(Throwable t) {
         releaseReferences();
     }
 
     /**
-     * releases the shared reference for all sstables, we acquire this when opening the sstable
+     * releases the shared reference for all sstables, we acquire this when opening
+     * the sstable
      */
-    private void releaseReferences()
-    {
-        for (SSTableReader sstable : sstables)
-        {
+    private void releaseReferences() {
+        for (SSTableReader sstable : sstables) {
             sstable.selfRef().release();
-            assert sstable.selfRef().globalCount() == 0 : String.format("for sstable = %s, ref count = %d", sstable, sstable.selfRef().globalCount());
+            assert sstable.selfRef().globalCount() == 0
+                    : String.format("for sstable = %s, ref count = %d", sstable, sstable.selfRef().globalCount());
         }
     }
 
-    public void handleStreamEvent(StreamEvent event)
-    {
-        if (event.eventType == StreamEvent.Type.STREAM_COMPLETE)
-        {
+    public void handleStreamEvent(StreamEvent event) {
+        if (event.eventType == StreamEvent.Type.STREAM_COMPLETE) {
             StreamEvent.SessionCompleteEvent se = (StreamEvent.SessionCompleteEvent) event;
             if (!se.success)
                 failedHosts.add(se.peer);
         }
     }
 
-    private String names(Collection<SSTableReader> sstables)
-    {
+    private String names(Collection<SSTableReader> sstables) {
         StringBuilder builder = new StringBuilder();
-        for (SSTableReader sstable : sstables)
-            builder.append(sstable.descriptor.filenameFor(Component.DATA)).append(" ");
+        for (SSTableReader sstable : sstables) {
+            if (new File(sstable.descriptor.filenameFor(Component.DATA)).exists()) {
+                builder.append(sstable.descriptor.filenameFor(Component.DATA)).append(" ");
+            } else {
+                builder.append(sstable.descriptor.filenameFor(Component.EC_METADATA)).append(" ");
+            }
+        }
         return builder.toString();
     }
 
-    public Set<InetAddressAndPort> getFailedHosts()
-    {
+    public Set<InetAddressAndPort> getFailedHosts() {
         return failedHosts;
     }
 
-    public static abstract class Client
-    {
+    public static abstract class Client {
         private final Map<InetAddressAndPort, Collection<Range<Token>>> endpointToRanges = new HashMap<>();
 
         /**
          * Initialize the client.
          * Perform any step necessary so that after the call to the this
          * method:
-         *   * partitioner is initialized
-         *   * getEndpointToRangesMap() returns a correct map
+         * * partitioner is initialized
+         * * getEndpointToRangesMap() returns a correct map
          * This method is guaranteed to be called before any other method of a
          * client.
          */
@@ -284,8 +278,7 @@ public class SSTableLoader implements StreamEventHandler
         /**
          * Stop the client.
          */
-        public void stop()
-        {
+        public void stop() {
         }
 
         /**
@@ -294,8 +287,7 @@ public class SSTableLoader implements StreamEventHandler
          *
          * @return StreamConnectionFactory to use
          */
-        public StreamingChannel.Factory getConnectionFactory()
-        {
+        public StreamingChannel.Factory getConnectionFactory() {
             return streamingFactory();
         }
 
@@ -305,21 +297,17 @@ public class SSTableLoader implements StreamEventHandler
          */
         public abstract TableMetadataRef getTableMetadata(String tableName);
 
-        public void setTableMetadata(TableMetadataRef cfm)
-        {
+        public void setTableMetadata(TableMetadataRef cfm) {
             throw new RuntimeException();
         }
 
-        public Map<InetAddressAndPort, Collection<Range<Token>>> getEndpointToRangesMap()
-        {
+        public Map<InetAddressAndPort, Collection<Range<Token>>> getEndpointToRangesMap() {
             return endpointToRanges;
         }
 
-        protected void addRangeForEndpoint(Range<Token> range, InetAddressAndPort endpoint)
-        {
+        protected void addRangeForEndpoint(Range<Token> range, InetAddressAndPort endpoint) {
             Collection<Range<Token>> ranges = endpointToRanges.get(endpoint);
-            if (ranges == null)
-            {
+            if (ranges == null) {
                 ranges = new HashSet<>();
                 endpointToRanges.put(endpoint, ranges);
             }

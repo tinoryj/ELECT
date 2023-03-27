@@ -50,14 +50,13 @@ import static org.apache.cassandra.utils.FBUtilities.updateChecksumInt;
  *
  * IMetadataComponent.Type's ordinal() defines the order of serialization.
  */
-public class MetadataSerializer implements IMetadataSerializer
-{
+public class MetadataSerializer implements IMetadataSerializer {
     private static final Logger logger = LoggerFactory.getLogger(MetadataSerializer.class);
 
     private static final int CHECKSUM_LENGTH = 4; // CRC32
 
-    public void serialize(Map<MetadataType, MetadataComponent> components, DataOutputPlus out, Version version) throws IOException
-    {
+    public void serialize(Map<MetadataType, MetadataComponent> components, DataOutputPlus out, Version version)
+            throws IOException {
         boolean checksum = version.hasMetadataChecksum();
         CRC32 crc = new CRC32();
         // sort components by type
@@ -72,8 +71,7 @@ public class MetadataSerializer implements IMetadataSerializer
         // build and write toc
         int lastPosition = 4 + (8 * sortedComponents.size()) + (checksum ? 2 * CHECKSUM_LENGTH : 0);
         Map<MetadataType, Integer> sizes = new EnumMap<>(MetadataType.class);
-        for (MetadataComponent component : sortedComponents)
-        {
+        for (MetadataComponent component : sortedComponents) {
             MetadataType type = component.getType();
             // serialize type
             out.writeInt(type.ordinal());
@@ -88,58 +86,50 @@ public class MetadataSerializer implements IMetadataSerializer
         maybeWriteChecksum(crc, out, version);
 
         // serialize components
-        for (MetadataComponent component : sortedComponents)
-        {
+        for (MetadataComponent component : sortedComponents) {
             byte[] bytes;
-            try (DataOutputBuffer dob = new DataOutputBuffer(sizes.get(component.getType())))
-            {
+            try (DataOutputBuffer dob = new DataOutputBuffer(sizes.get(component.getType()))) {
                 component.getType().serializer.serialize(version, component, dob);
                 bytes = dob.getData();
             }
             out.write(bytes);
 
-            crc.reset(); crc.update(bytes);
+            crc.reset();
+            crc.update(bytes);
             maybeWriteChecksum(crc, out, version);
         }
     }
 
-    private static void maybeWriteChecksum(CRC32 crc, DataOutputPlus out, Version version) throws IOException
-    {
+    private static void maybeWriteChecksum(CRC32 crc, DataOutputPlus out, Version version) throws IOException {
         if (version.hasMetadataChecksum())
             out.writeInt((int) crc.getValue());
     }
 
-    public Map<MetadataType, MetadataComponent> deserialize(Descriptor descriptor, EnumSet<MetadataType> types) throws IOException
-    {
+    public Map<MetadataType, MetadataComponent> deserialize(Descriptor descriptor, EnumSet<MetadataType> types)
+            throws IOException {
         Map<MetadataType, MetadataComponent> components;
         logger.trace("Load metadata for {}", descriptor);
         File statsFile = new File(descriptor.filenameFor(Component.STATS));
-        if (!statsFile.exists())
-        {
+        if (!statsFile.exists()) {
             logger.trace("No sstable stats for {}", descriptor);
             components = new EnumMap<>(MetadataType.class);
             components.put(MetadataType.STATS, MetadataCollector.defaultStatsMetadata());
-        }
-        else
-        {
-            try (RandomAccessReader r = RandomAccessReader.open(statsFile))
-            {
+        } else {
+            try (RandomAccessReader r = RandomAccessReader.open(statsFile)) {
                 components = deserialize(descriptor, r, types);
             }
         }
         return components;
     }
 
-    public MetadataComponent deserialize(Descriptor descriptor, MetadataType type) throws IOException
-    {
+    public MetadataComponent deserialize(Descriptor descriptor, MetadataType type) throws IOException {
         return deserialize(descriptor, EnumSet.of(type)).get(type);
     }
 
     public Map<MetadataType, MetadataComponent> deserialize(Descriptor descriptor,
-                                                            FileDataInput in,
-                                                            EnumSet<MetadataType> selectedTypes)
-    throws IOException
-    {
+            FileDataInput in,
+            EnumSet<MetadataType> selectedTypes)
+            throws IOException {
         boolean isChecksummed = descriptor.version.hasMetadataChecksum();
         CRC32 crc = new CRC32();
 
@@ -154,11 +144,10 @@ public class MetadataSerializer implements IMetadataSerializer
         maybeValidateChecksum(crc, in, descriptor);
 
         int[] ordinals = new int[count];
-        int[]  offsets = new int[count];
-        int[]  lengths = new int[count];
+        int[] offsets = new int[count];
+        int[] lengths = new int[count];
 
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             ordinals[i] = in.readInt();
             updateChecksumInt(crc, ordinals[i]);
 
@@ -179,12 +168,10 @@ public class MetadataSerializer implements IMetadataSerializer
 
         Map<MetadataType, MetadataComponent> components = new EnumMap<>(MetadataType.class);
 
-        for (int i = 0; i < count; i++)
-        {
+        for (int i = 0; i < count; i++) {
             MetadataType type = allMetadataTypes[ordinals[i]];
 
-            if (!selectedTypes.contains(type))
-            {
+            if (!selectedTypes.contains(type)) {
                 in.skipBytes(lengths[i]);
                 continue;
             }
@@ -192,10 +179,10 @@ public class MetadataSerializer implements IMetadataSerializer
             byte[] buffer = new byte[isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]];
             in.readFully(buffer);
 
-            crc.reset(); crc.update(buffer);
+            crc.reset();
+            crc.update(buffer);
             maybeValidateChecksum(crc, in, descriptor);
-            try (DataInputBuffer dataInputBuffer = new DataInputBuffer(buffer))
-            {
+            try (DataInputBuffer dataInputBuffer = new DataInputBuffer(buffer)) {
                 components.put(type, type.serializer.deserialize(descriptor.version, dataInputBuffer));
             }
         }
@@ -203,33 +190,30 @@ public class MetadataSerializer implements IMetadataSerializer
         return components;
     }
 
-    private static void maybeValidateChecksum(CRC32 crc, FileDataInput in, Descriptor descriptor) throws IOException
-    {
+    private static void maybeValidateChecksum(CRC32 crc, FileDataInput in, Descriptor descriptor) throws IOException {
         if (!descriptor.version.hasMetadataChecksum())
             return;
 
         int actualChecksum = (int) crc.getValue();
         int expectedChecksum = in.readInt();
 
-        if (actualChecksum != expectedChecksum)
-        {
+        if (actualChecksum != expectedChecksum) {
             String filename = descriptor.filenameFor(Component.STATS);
             throw new CorruptSSTableException(new IOException("Checksums do not match for " + filename), filename);
         }
     }
 
     @Override
-    public void mutate(Descriptor descriptor, String description, UnaryOperator<StatsMetadata> transform) throws IOException
-    {
-        if (logger.isTraceEnabled() )
+    public void mutate(Descriptor descriptor, String description, UnaryOperator<StatsMetadata> transform)
+            throws IOException {
+        if (logger.isTraceEnabled())
             logger.trace("Mutating {} to {}", descriptor.filenameFor(Component.STATS), description);
 
         mutate(descriptor, transform);
     }
 
     @Override
-    public void mutateLevel(Descriptor descriptor, int newLevel) throws IOException
-    {
+    public void mutateLevel(Descriptor descriptor, int newLevel) throws IOException {
         if (logger.isTraceEnabled())
             logger.trace("Mutating {} to level {}", descriptor.filenameFor(Component.STATS), newLevel);
 
@@ -237,34 +221,32 @@ public class MetadataSerializer implements IMetadataSerializer
     }
 
     @Override
-    public void mutateRepairMetadata(Descriptor descriptor, long newRepairedAt, TimeUUID newPendingRepair, boolean isTransient) throws IOException
-    {
+    public void mutateRepairMetadata(Descriptor descriptor, long newRepairedAt, TimeUUID newPendingRepair,
+            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException {
         if (logger.isTraceEnabled())
             logger.trace("Mutating {} to repairedAt time {} and pendingRepair {}",
-                         descriptor.filenameFor(Component.STATS), newRepairedAt, newPendingRepair);
+                    descriptor.filenameFor(Component.STATS), newRepairedAt, newPendingRepair);
 
-        mutate(descriptor, stats -> stats.mutateRepairedMetadata(newRepairedAt, newPendingRepair, isTransient));
+        mutate(descriptor, stats -> stats.mutateRepairedMetadata(newRepairedAt, newPendingRepair, isTransient,
+                isReplicationTransferredToErasureCoding));
     }
 
-    private void mutate(Descriptor descriptor, UnaryOperator<StatsMetadata> transform) throws IOException
-    {
-        Map<MetadataType, MetadataComponent> currentComponents = deserialize(descriptor, EnumSet.allOf(MetadataType.class));
+    private void mutate(Descriptor descriptor, UnaryOperator<StatsMetadata> transform) throws IOException {
+        Map<MetadataType, MetadataComponent> currentComponents = deserialize(descriptor,
+                EnumSet.allOf(MetadataType.class));
         StatsMetadata stats = (StatsMetadata) currentComponents.remove(MetadataType.STATS);
 
         currentComponents.put(MetadataType.STATS, transform.apply(stats));
         rewriteSSTableMetadata(descriptor, currentComponents);
     }
 
-    public void rewriteSSTableMetadata(Descriptor descriptor, Map<MetadataType, MetadataComponent> currentComponents) throws IOException
-    {
+    public void rewriteSSTableMetadata(Descriptor descriptor, Map<MetadataType, MetadataComponent> currentComponents)
+            throws IOException {
         String filePath = descriptor.tmpFilenameFor(Component.STATS);
-        try (DataOutputStreamPlus out = new FileOutputStreamPlus(filePath))
-        {
+        try (DataOutputStreamPlus out = new FileOutputStreamPlus(filePath)) {
             serialize(currentComponents, out, descriptor.version);
             out.flush();
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             Throwables.throwIfInstanceOf(e, FileNotFoundException.class);
             throw new FSWriteError(e, filePath);
         }

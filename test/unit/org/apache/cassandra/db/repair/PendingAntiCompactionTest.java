@@ -92,24 +92,21 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
-{
+public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest {
     static final Logger logger = LoggerFactory.getLogger(PendingAntiCompactionTest.class);
 
-    private static class InstrumentedAcquisitionCallback extends PendingAntiCompaction.AcquisitionCallback
-    {
-        public InstrumentedAcquisitionCallback(TimeUUID parentRepairSession, RangesAtEndpoint ranges)
-        {
+    private static class InstrumentedAcquisitionCallback extends PendingAntiCompaction.AcquisitionCallback {
+        public InstrumentedAcquisitionCallback(TimeUUID parentRepairSession, RangesAtEndpoint ranges) {
             super(parentRepairSession, ranges, () -> false);
         }
 
         Set<TableId> submittedCompactions = new HashSet<>();
 
-        Future<Void> submitPendingAntiCompaction(PendingAntiCompaction.AcquireResult result)
-        {
+        Future<Void> submitPendingAntiCompaction(PendingAntiCompaction.AcquireResult result) {
             submittedCompactions.add(result.cfs.metadata.id);
-            result.abort();  // prevent ref leak complaints
-            return new FutureTask<>(() -> {});
+            result.abort(); // prevent ref leak complaints
+            return new FutureTask<>(() -> {
+            });
         }
     }
 
@@ -117,19 +114,16 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
      * verify the pending anti compaction happy path
      */
     @Test
-    public void successCase() throws Exception
-    {
+    public void successCase() throws Exception {
         Assert.assertSame(ByteOrderedPartitioner.class, DatabaseDescriptor.getPartitioner().getClass());
         cfs.disableAutoCompaction();
 
         // create 2 sstables, one that will be split, and another that will be moved
-        for (int i = 0; i < 8; i++)
-        {
+        for (int i = 0; i < 8; i++) {
             QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (?, ?)", ks, tbl), i, i);
         }
         Util.flush(cfs);
-        for (int i = 8; i < 12; i++)
-        {
+        for (int i = 8; i < 12; i++) {
             QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (?, ?)", ks, tbl), i, i);
         }
         Util.flush(cfs);
@@ -142,24 +136,21 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
 
         // create a session so the anti compaction can fine it
         TimeUUID sessionID = nextTimeUUID();
-        ActiveRepairService.instance.registerParentRepairSession(sessionID, InetAddressAndPort.getLocalHost(), tables, ranges, true, 1, true, PreviewKind.NONE);
+        ActiveRepairService.instance.registerParentRepairSession(sessionID, InetAddressAndPort.getLocalHost(), tables,
+                ranges, true, 1, true, PreviewKind.NONE);
 
         PendingAntiCompaction pac;
         ExecutorService executor = Executors.newSingleThreadExecutor();
-        try
-        {
+        try {
             pac = new PendingAntiCompaction(sessionID, tables, atEndpoint(ranges, NO_RANGES), executor, () -> false);
             pac.run().get();
-        }
-        finally
-        {
+        } finally {
             executor.shutdown();
         }
 
         assertEquals(3, cfs.getLiveSSTables().size());
         int pendingRepair = 0;
-        for (SSTableReader sstable : cfs.getLiveSSTables())
-        {
+        for (SSTableReader sstable : cfs.getLiveSSTables()) {
             if (sstable.isPendingRepair())
                 pendingRepair++;
         }
@@ -167,19 +158,18 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
     }
 
     @Test
-    public void acquisitionSuccess() throws Exception
-    {
+    public void acquisitionSuccess() throws Exception {
         cfs.disableAutoCompaction();
         makeSSTables(6);
         List<SSTableReader> sstables = new ArrayList<>(cfs.getLiveSSTables());
         List<SSTableReader> expected = sstables.subList(0, 3);
         Collection<Range<Token>> ranges = new HashSet<>();
-        for (SSTableReader sstable : expected)
-        {
+        for (SSTableReader sstable : expected) {
             ranges.add(new Range<>(sstable.first.getToken(), sstable.last.getToken()));
         }
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, ranges, nextTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                cfs, ranges, nextTimeUUID(), 0, 0);
 
         logger.info("SSTables: {}", sstables);
         logger.info("Expected: {}", expected);
@@ -187,8 +177,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         assertNotNull(result);
         logger.info("Originals: {}", result.txn.originals());
         assertEquals(3, result.txn.originals().size());
-        for (SSTableReader sstable : expected)
-        {
+        for (SSTableReader sstable : expected) {
             logger.info("Checking {}", sstable);
             assertTrue(result.txn.originals().contains(sstable));
         }
@@ -198,8 +187,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
     }
 
     @Test
-    public void repairedSSTablesAreNotAcquired() throws Exception
-    {
+    public void repairedSSTablesAreNotAcquired() throws Exception {
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
@@ -210,10 +198,11 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         assertTrue(repaired.intersects(FULL_RANGE));
         assertTrue(unrepaired.intersects(FULL_RANGE));
 
-        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 1, null, false);
+        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 1, null, false, false);
         repaired.reloadSSTableMetadata();
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
 
@@ -224,8 +213,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
     }
 
     @Test
-    public void finalizedPendingRepairSSTablesAreNotAcquired() throws Exception
-    {
+    public void finalizedPendingRepairSSTablesAreNotAcquired() throws Exception {
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
@@ -238,23 +226,23 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
 
         TimeUUID sessionId = prepareSession();
         LocalSessionAccessor.finalizeUnsafe(sessionId);
-        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false);
+        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false,false);
         repaired.reloadSSTableMetadata();
         assertTrue(repaired.isPendingRepair());
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
 
         logger.info("Originals: {}", result.txn.originals());
         assertEquals(1, result.txn.originals().size());
         assertTrue(result.txn.originals().contains(unrepaired));
-        result.abort();  // releases sstable refs
+        result.abort(); // releases sstable refs
     }
 
     @Test
-    public void conflictingSessionAcquisitionFailure() throws Exception
-    {
+    public void conflictingSessionAcquisitionFailure() throws Exception {
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
@@ -266,43 +254,45 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         assertTrue(unrepaired.intersects(FULL_RANGE));
 
         TimeUUID sessionId = prepareSession();
-        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false);
+        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false,false);
         repaired.reloadSSTableMetadata();
         assertTrue(repaired.isPendingRepair());
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNull(result);
     }
 
     @Test
-    public void pendingRepairNoSSTablesExist() throws Exception
-    {
+    public void pendingRepairNoSSTablesExist() throws Exception {
         cfs.disableAutoCompaction();
 
         assertEquals(0, cfs.getLiveSSTables().size());
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
 
-        result.abort();  // There's nothing to release, but we should exit cleanly
+        result.abort(); // There's nothing to release, but we should exit cleanly
     }
 
     /**
      * anti compaction task should be submitted if everything is ok
      */
     @Test
-    public void callbackSuccess() throws Exception
-    {
+    public void callbackSuccess() throws Exception {
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
 
-        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(nextTimeUUID(), atEndpoint(FULL_RANGE, NO_RANGES));
+        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(nextTimeUUID(),
+                atEndpoint(FULL_RANGE, NO_RANGES));
         assertTrue(cb.submittedCompactions.isEmpty());
         cb.apply(Lists.newArrayList(result));
 
@@ -311,22 +301,25 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
     }
 
     /**
-     * If one of the supplied AcquireResults is null, either an Exception was thrown, or
-     * we couldn't get a transaction for the sstables. In either case we need to cancel the repair, and release
+     * If one of the supplied AcquireResults is null, either an Exception was
+     * thrown, or
+     * we couldn't get a transaction for the sstables. In either case we need to
+     * cancel the repair, and release
      * any sstables acquired for other tables
      */
     @Test
-    public void callbackNullResult() throws Exception
-    {
+    public void callbackNullResult() throws Exception {
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
         assertEquals(Transactional.AbstractTransactional.State.IN_PROGRESS, result.txn.state());
 
-        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(nextTimeUUID(), atEndpoint(FULL_RANGE, emptyList()));
+        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(nextTimeUUID(),
+                atEndpoint(FULL_RANGE, emptyList()));
         assertTrue(cb.submittedCompactions.isEmpty());
         cb.apply(Lists.newArrayList(result, null));
 
@@ -335,23 +328,26 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
     }
 
     /**
-     * If an AcquireResult has a null txn, there were no sstables to acquire references
+     * If an AcquireResult has a null txn, there were no sstables to acquire
+     * references
      * for, so no anti compaction should have been submitted.
      */
     @Test
-    public void callbackNullTxn() throws Exception
-    {
+    public void callbackNullTxn() throws Exception {
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         assertNotNull(result);
 
-        ColumnFamilyStore cfs2 = Schema.instance.getColumnFamilyStoreInstance(Schema.instance.getTableMetadata("system", "peers").id);
+        ColumnFamilyStore cfs2 = Schema.instance
+                .getColumnFamilyStoreInstance(Schema.instance.getTableMetadata("system", "peers").id);
         PendingAntiCompaction.AcquireResult fakeResult = new PendingAntiCompaction.AcquireResult(cfs2, null, null);
 
-        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(nextTimeUUID(), atEndpoint(FULL_RANGE, NO_RANGES));
+        InstrumentedAcquisitionCallback cb = new InstrumentedAcquisitionCallback(nextTimeUUID(),
+                atEndpoint(FULL_RANGE, NO_RANGES));
         assertTrue(cb.submittedCompactions.isEmpty());
         cb.apply(Lists.newArrayList(result, fakeResult));
 
@@ -360,76 +356,72 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         assertFalse(cb.submittedCompactions.contains(cfs2.metadata.id));
     }
 
-
     @Test
-    public void singleAnticompaction() throws Exception
-    {
+    public void singleAnticompaction() throws Exception {
         cfs.disableAutoCompaction();
         makeSSTables(2);
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         TimeUUID sessionID = nextTimeUUID();
         ActiveRepairService.instance.registerParentRepairSession(sessionID,
-                                                                 InetAddressAndPort.getByName("127.0.0.1"),
-                                                                 Lists.newArrayList(cfs),
-                                                                 FULL_RANGE,
-                                                                 true,0,
-                                                                 true,
-                                                                 PreviewKind.NONE);
-        CompactionManager.instance.performAnticompaction(result.cfs, atEndpoint(FULL_RANGE, NO_RANGES), result.refs, result.txn, sessionID, () -> false);
+                InetAddressAndPort.getByName("127.0.0.1"),
+                Lists.newArrayList(cfs),
+                FULL_RANGE,
+                true, 0,
+                true,
+                PreviewKind.NONE);
+        CompactionManager.instance.performAnticompaction(result.cfs, atEndpoint(FULL_RANGE, NO_RANGES), result.refs,
+                result.txn, sessionID, () -> false);
 
     }
 
-    @Test (expected = CompactionInterruptedException.class)
-    public void cancelledAntiCompaction() throws Exception
-    {
+    @Test(expected = CompactionInterruptedException.class)
+    public void cancelledAntiCompaction() throws Exception {
         cfs.disableAutoCompaction();
         makeSSTables(1);
 
-        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
+        PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                cfs, FULL_RANGE, nextTimeUUID(), 0, 0);
         PendingAntiCompaction.AcquireResult result = acquisitionCallable.call();
         TimeUUID sessionID = nextTimeUUID();
         ActiveRepairService.instance.registerParentRepairSession(sessionID,
-                                                                 InetAddressAndPort.getByName("127.0.0.1"),
-                                                                 Lists.newArrayList(cfs),
-                                                                 FULL_RANGE,
-                                                                 true,0,
-                                                                 true,
-                                                                 PreviewKind.NONE);
+                InetAddressAndPort.getByName("127.0.0.1"),
+                Lists.newArrayList(cfs),
+                FULL_RANGE,
+                true, 0,
+                true,
+                PreviewKind.NONE);
 
         // attempt to anti-compact the sstable in half
         SSTableReader sstable = Iterables.getOnlyElement(cfs.getLiveSSTables());
         Token left = cfs.getPartitioner().midpoint(sstable.first.getToken(), sstable.last.getToken());
         Token right = sstable.last.getToken();
         CompactionManager.instance.performAnticompaction(result.cfs,
-                                                         atEndpoint(Collections.singleton(new Range<>(left, right)), NO_RANGES),
-                                                         result.refs, result.txn, sessionID, () -> true);
+                atEndpoint(Collections.singleton(new Range<>(left, right)), NO_RANGES),
+                result.refs, result.txn, sessionID, () -> true);
     }
 
     /**
-     * Makes sure that PendingAntiCompaction fails when anticompaction throws exception
+     * Makes sure that PendingAntiCompaction fails when anticompaction throws
+     * exception
      */
     @Test
-    public void antiCompactionException()
-    {
+    public void antiCompactionException() {
         cfs.disableAutoCompaction();
         makeSSTables(2);
         TimeUUID prsid = nextTimeUUID();
         ExecutorPlus es = ImmediateExecutor.INSTANCE;
-        PendingAntiCompaction pac = new PendingAntiCompaction(prsid, Collections.singleton(cfs), atEndpoint(FULL_RANGE, NO_RANGES), es, () -> false) {
+        PendingAntiCompaction pac = new PendingAntiCompaction(prsid, Collections.singleton(cfs),
+                atEndpoint(FULL_RANGE, NO_RANGES), es, () -> false) {
             @Override
-            protected AcquisitionCallback getAcquisitionCallback(TimeUUID prsId, RangesAtEndpoint tokenRanges)
-            {
-                return new AcquisitionCallback(prsid, tokenRanges, () -> false)
-                {
+            protected AcquisitionCallback getAcquisitionCallback(TimeUUID prsId, RangesAtEndpoint tokenRanges) {
+                return new AcquisitionCallback(prsid, tokenRanges, () -> false) {
                     @Override
-                    Future submitPendingAntiCompaction(AcquireResult result)
-                    {
-                        Runnable r = new WrappedRunnable()
-                        {
-                            protected void runMayThrow()
-                            {
+                    Future submitPendingAntiCompaction(AcquireResult result) {
+                        Runnable r = new WrappedRunnable() {
+                            protected void runMayThrow() {
                                 throw new CompactionInterruptedException("antiCompactionExceptionTest");
                             }
                         };
@@ -439,19 +431,15 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
             }
         };
         ListenableFuture<?> fut = pac.run();
-        try
-        {
+        try {
             fut.get();
             fail("Should throw exception");
-        }
-        catch(Throwable t)
-        {
+        } catch (Throwable t) {
         }
     }
 
     @Test
-    public void testBlockedAcquisition() throws ExecutionException, InterruptedException, TimeoutException
-    {
+    public void testBlockedAcquisition() throws ExecutionException, InterruptedException, TimeoutException {
         cfs.disableAutoCompaction();
         ExecutorService es = Executors.newFixedThreadPool(1);
 
@@ -459,25 +447,24 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         TimeUUID prsid = nextTimeUUID();
         Set<SSTableReader> sstables = cfs.getLiveSSTables();
         List<ISSTableScanner> scanners = sstables.stream().map(SSTableReader::getScanner).collect(Collectors.toList());
-        try
-        {
+        try {
             try (LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.ANTICOMPACTION);
-                 CompactionController controller = new CompactionController(cfs, sstables, 0);
-                 CompactionIterator ci = CompactionManager.getAntiCompactionIterator(scanners, controller, 0, nextTimeUUID(), CompactionManager.instance.active, () -> false))
-            {
-                // `ci` is our imaginary ongoing anticompaction which makes no progress until after 30s
-                // now we try to start a new AC, which will try to cancel all ongoing compactions
+                    CompactionController controller = new CompactionController(cfs, sstables, 0);
+                    CompactionIterator ci = CompactionManager.getAntiCompactionIterator(scanners, controller, 0,
+                            nextTimeUUID(), CompactionManager.instance.active, () -> false)) {
+                // `ci` is our imaginary ongoing anticompaction which makes no progress until
+                // after 30s
+                // now we try to start a new AC, which will try to cancel all ongoing
+                // compactions
 
                 CompactionManager.instance.active.beginCompaction(ci);
-                PendingAntiCompaction pac = new PendingAntiCompaction(prsid, Collections.singleton(cfs), atEndpoint(FULL_RANGE, NO_RANGES), 0, 0, es, () -> false);
+                PendingAntiCompaction pac = new PendingAntiCompaction(prsid, Collections.singleton(cfs),
+                        atEndpoint(FULL_RANGE, NO_RANGES), 0, 0, es, () -> false);
                 ListenableFuture fut = pac.run();
-                try
-                {
+                try {
                     fut.get(30, TimeUnit.SECONDS);
                     fail("the future should throw exception since we try to start a new anticompaction when one is already running");
-                }
-                catch (ExecutionException e)
-                {
+                } catch (ExecutionException e) {
                     assertTrue(e.getCause() instanceof PendingAntiCompaction.SSTableAcquisitionException);
                 }
 
@@ -485,19 +472,15 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
                 for (CompactionInfo.Holder holder : getCompactionsFor(cfs))
                     assertFalse(holder.isStopRequested());
             }
-        }
-        finally
-        {
+        } finally {
             es.shutdown();
             ISSTableScanner.closeAllAndPropagate(scanners, null);
         }
     }
 
-    private List<CompactionInfo.Holder> getCompactionsFor(ColumnFamilyStore cfs)
-    {
+    private List<CompactionInfo.Holder> getCompactionsFor(ColumnFamilyStore cfs) {
         List<CompactionInfo.Holder> compactions = new ArrayList<>();
-        for (CompactionInfo.Holder holder : CompactionManager.instance.active.getCompactions())
-        {
+        for (CompactionInfo.Holder holder : CompactionManager.instance.active.getCompactions()) {
             if (holder.getCompactionInfo().getTableMetadata().equals(cfs.metadata()))
                 compactions.add(holder);
         }
@@ -505,166 +488,143 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
     }
 
     @Test
-    public void testUnblockedAcquisition() throws ExecutionException, InterruptedException
-    {
+    public void testUnblockedAcquisition() throws ExecutionException, InterruptedException {
         cfs.disableAutoCompaction();
         ExecutorService es = Executors.newFixedThreadPool(1);
         makeSSTables(2);
         TimeUUID prsid = prepareSession();
         Set<SSTableReader> sstables = cfs.getLiveSSTables();
         List<ISSTableScanner> scanners = sstables.stream().map(SSTableReader::getScanner).collect(Collectors.toList());
-        try
-        {
+        try {
             try (LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.ANTICOMPACTION);
-                 CompactionController controller = new CompactionController(cfs, sstables, 0);
-                 CompactionIterator ci = new CompactionIterator(OperationType.COMPACTION, scanners, controller, 0, nextTimeUUID()))
-            {
-                // `ci` is our imaginary ongoing anticompaction which makes no progress until after 5s
-                // now we try to start a new AC, which will try to cancel all ongoing compactions
+                    CompactionController controller = new CompactionController(cfs, sstables, 0);
+                    CompactionIterator ci = new CompactionIterator(OperationType.COMPACTION, scanners, controller, 0,
+                            nextTimeUUID())) {
+                // `ci` is our imaginary ongoing anticompaction which makes no progress until
+                // after 5s
+                // now we try to start a new AC, which will try to cancel all ongoing
+                // compactions
 
                 CompactionManager.instance.active.beginCompaction(ci);
-                PendingAntiCompaction pac = new PendingAntiCompaction(prsid, Collections.singleton(cfs), atEndpoint(FULL_RANGE, NO_RANGES), es, () -> false);
+                PendingAntiCompaction pac = new PendingAntiCompaction(prsid, Collections.singleton(cfs),
+                        atEndpoint(FULL_RANGE, NO_RANGES), es, () -> false);
                 ListenableFuture fut = pac.run();
-                try
-                {
+                try {
                     fut.get(5, TimeUnit.SECONDS);
-                }
-                catch (TimeoutException e)
-                {
-                    // expected, we wait 1 minute for compactions to get cancelled in runWithCompactionsDisabled, but we are not iterating
+                } catch (TimeoutException e) {
+                    // expected, we wait 1 minute for compactions to get cancelled in
+                    // runWithCompactionsDisabled, but we are not iterating
                     // CompactionIterator so the compaction is not actually cancelled
                 }
-                try
-                {
+                try {
                     assertTrue(ci.hasNext());
                     ci.next();
                     fail("CompactionIterator should be abortable");
-                }
-                catch (CompactionInterruptedException e)
-                {
+                } catch (CompactionInterruptedException e) {
                     CompactionManager.instance.active.finishCompaction(ci);
                     txn.abort();
                     // expected
                 }
                 CountDownLatch cdl = new CountDownLatch(1);
-                Futures.addCallback(fut, new FutureCallback<Object>()
-                {
-                    public void onSuccess(@Nullable Object o)
-                    {
+                Futures.addCallback(fut, new FutureCallback<Object>() {
+                    public void onSuccess(@Nullable Object o) {
                         cdl.countDown();
                     }
 
-                    public void onFailure(Throwable throwable)
-                    {
+                    public void onFailure(Throwable throwable) {
                     }
                 }, MoreExecutors.directExecutor());
                 assertTrue(cdl.await(1, TimeUnit.MINUTES));
             }
-        }
-        finally
-        {
+        } finally {
             es.shutdown();
         }
     }
 
     @Test
-    public void testSSTablePredicateOngoingAntiCompaction()
-    {
+    public void testSSTablePredicateOngoingAntiCompaction() {
         ColumnFamilyStore cfs = MockSchema.newCFS();
         cfs.disableAutoCompaction();
         List<SSTableReader> sstables = new ArrayList<>();
         List<SSTableReader> repairedSSTables = new ArrayList<>();
         List<SSTableReader> pendingSSTables = new ArrayList<>();
-        for (int i = 1; i <= 10; i++)
-        {
+        for (int i = 1; i <= 10; i++) {
             SSTableReader sstable = MockSchema.sstable(i, i * 10, i * 10 + 9, cfs);
             sstables.add(sstable);
         }
-        for (int i = 1; i <= 10; i++)
-        {
+        for (int i = 1; i <= 10; i++) {
             SSTableReader sstable = MockSchema.sstable(i + 10, i * 10, i * 10 + 9, cfs);
             AbstractPendingRepairTest.mutateRepaired(sstable, System.currentTimeMillis());
             repairedSSTables.add(sstable);
         }
-        for (int i = 1; i <= 10; i++)
-        {
+        for (int i = 1; i <= 10; i++) {
             SSTableReader sstable = MockSchema.sstable(i + 20, i * 10, i * 10 + 9, cfs);
-            AbstractPendingRepairTest.mutateRepaired(sstable, nextTimeUUID(), false);
+            AbstractPendingRepairTest.mutateRepaired(sstable, nextTimeUUID(), false, false);
             pendingSSTables.add(sstable);
         }
 
         cfs.addSSTables(sstables);
         cfs.addSSTables(repairedSSTables);
 
-        // if we are compacting the non-repaired non-pending sstables, we should get an error
+        // if we are compacting the non-repaired non-pending sstables, we should get an
+        // error
         tryPredicate(cfs, sstables, null, true);
         // make sure we don't try to grab pending or repaired sstables;
         tryPredicate(cfs, repairedSSTables, sstables, false);
         tryPredicate(cfs, pendingSSTables, sstables, false);
     }
 
-    private void tryPredicate(ColumnFamilyStore cfs, List<SSTableReader> compacting, List<SSTableReader> expectedLive, boolean shouldFail)
-    {
-        CompactionInfo.Holder holder = new CompactionInfo.Holder()
-        {
-            public CompactionInfo getCompactionInfo()
-            {
-                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 1000, nextTimeUUID(), compacting);
+    private void tryPredicate(ColumnFamilyStore cfs, List<SSTableReader> compacting, List<SSTableReader> expectedLive,
+            boolean shouldFail) {
+        CompactionInfo.Holder holder = new CompactionInfo.Holder() {
+            public CompactionInfo getCompactionInfo() {
+                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 1000, nextTimeUUID(),
+                        compacting);
             }
 
-            public boolean isGlobal()
-            {
+            public boolean isGlobal() {
                 return false;
             }
         };
         CompactionManager.instance.active.beginCompaction(holder);
-        try
-        {
-            PendingAntiCompaction.AntiCompactionPredicate predicate =
-            new PendingAntiCompaction.AntiCompactionPredicate(Collections.singleton(new Range<>(new Murmur3Partitioner.LongToken(0), new Murmur3Partitioner.LongToken(100))),
-                                                              nextTimeUUID());
+        try {
+            PendingAntiCompaction.AntiCompactionPredicate predicate = new PendingAntiCompaction.AntiCompactionPredicate(
+                    Collections.singleton(
+                            new Range<>(new Murmur3Partitioner.LongToken(0), new Murmur3Partitioner.LongToken(100))),
+                    nextTimeUUID());
             Set<SSTableReader> live = cfs.getLiveSSTables().stream().filter(predicate).collect(Collectors.toSet());
             if (shouldFail)
                 fail("should fail - we try to grab already anticompacting sstables for anticompaction");
             assertEquals(live, new HashSet<>(expectedLive));
-        }
-        catch (PendingAntiCompaction.SSTableAcquisitionException e)
-        {
+        } catch (PendingAntiCompaction.SSTableAcquisitionException e) {
             if (!shouldFail)
                 fail("We should not fail filtering sstables");
-        }
-        finally
-        {
+        } finally {
             CompactionManager.instance.active.finishCompaction(holder);
         }
     }
 
     @Test
-    public void testRetries() throws InterruptedException, ExecutionException
-    {
+    public void testRetries() throws InterruptedException, ExecutionException {
         ColumnFamilyStore cfs = MockSchema.newCFS();
         cfs.addSSTable(MockSchema.sstable(1, true, cfs));
         CountDownLatch cdl = new CountDownLatch(5);
         ExecutorPlus es = executorFactory().sequential("test");
-        CompactionInfo.Holder holder = new CompactionInfo.Holder()
-        {
-            public CompactionInfo getCompactionInfo()
-            {
-                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 0, nextTimeUUID(), cfs.getLiveSSTables());
+        CompactionInfo.Holder holder = new CompactionInfo.Holder() {
+            public CompactionInfo getCompactionInfo() {
+                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 0, nextTimeUUID(),
+                        cfs.getLiveSSTables());
             }
 
-            public boolean isGlobal()
-            {
+            public boolean isGlobal() {
                 return false;
             }
         };
-        try
-        {
-            PendingAntiCompaction.AntiCompactionPredicate acp = new PendingAntiCompaction.AntiCompactionPredicate(FULL_RANGE, nextTimeUUID())
-            {
+        try {
+            PendingAntiCompaction.AntiCompactionPredicate acp = new PendingAntiCompaction.AntiCompactionPredicate(
+                    FULL_RANGE, nextTimeUUID()) {
                 @Override
-                public boolean apply(SSTableReader sstable)
-                {
+                public boolean apply(SSTableReader sstable) {
                     cdl.countDown();
                     if (cdl.getCount() > 0)
                         throw new PendingAntiCompaction.SSTableAcquisitionException("blah");
@@ -672,89 +632,79 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
                 }
             };
             CompactionManager.instance.active.beginCompaction(holder);
-            PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, nextTimeUUID(), 10, 1, acp);
+            PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                    cfs, nextTimeUUID(), 10, 1, acp);
             Future f = es.submit(acquisitionCallable);
             cdl.await();
             assertNotNull(f.get());
-        }
-        finally
-        {
+        } finally {
             es.shutdown();
             CompactionManager.instance.active.finishCompaction(holder);
         }
     }
 
     @Test
-    public void testRetriesTimeout() throws InterruptedException, ExecutionException
-    {
+    public void testRetriesTimeout() throws InterruptedException, ExecutionException {
         ColumnFamilyStore cfs = MockSchema.newCFS();
         cfs.addSSTable(MockSchema.sstable(1, true, cfs));
         ExecutorPlus es = executorFactory().sequential("test");
-        CompactionInfo.Holder holder = new CompactionInfo.Holder()
-        {
-            public CompactionInfo getCompactionInfo()
-            {
-                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 0, nextTimeUUID(), cfs.getLiveSSTables());
+        CompactionInfo.Holder holder = new CompactionInfo.Holder() {
+            public CompactionInfo getCompactionInfo() {
+                return new CompactionInfo(cfs.metadata(), OperationType.ANTICOMPACTION, 0, 0, nextTimeUUID(),
+                        cfs.getLiveSSTables());
             }
 
-            public boolean isGlobal()
-            {
+            public boolean isGlobal() {
                 return false;
             }
         };
-        try
-        {
-            PendingAntiCompaction.AntiCompactionPredicate acp = new PendingAntiCompaction.AntiCompactionPredicate(FULL_RANGE, nextTimeUUID())
-            {
+        try {
+            PendingAntiCompaction.AntiCompactionPredicate acp = new PendingAntiCompaction.AntiCompactionPredicate(
+                    FULL_RANGE, nextTimeUUID()) {
                 @Override
-                public boolean apply(SSTableReader sstable)
-                {
+                public boolean apply(SSTableReader sstable) {
                     throw new PendingAntiCompaction.SSTableAcquisitionException("blah");
                 }
             };
             CompactionManager.instance.active.beginCompaction(holder);
-            PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(cfs, nextTimeUUID(), 2, 1000, acp);
+            PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
+                    cfs, nextTimeUUID(), 2, 1000, acp);
             Future fut = es.submit(acquisitionCallable);
             assertNull(fut.get());
-        }
-        finally
-        {
+        } finally {
             es.shutdown();
             CompactionManager.instance.active.finishCompaction(holder);
         }
     }
 
     @Test
-    public void testWith2i() throws ExecutionException, InterruptedException
-    {
+    public void testWith2i() throws ExecutionException, InterruptedException {
         cfs2.disableAutoCompaction();
         makeSSTables(2, cfs2, 100);
         ColumnFamilyStore idx = cfs2.indexManager.getAllIndexColumnFamilyStores().iterator().next();
         ExecutorService es = Executors.newFixedThreadPool(1);
-        try
-        {
+        try {
             TimeUUID prsid = prepareSession();
             for (SSTableReader sstable : cfs2.getLiveSSTables())
                 assertFalse(sstable.isPendingRepair());
 
-            // mark the sstables pending, with a 2i compaction going, which should be untouched;
-            try (LifecycleTransaction txn = idx.getTracker().tryModify(idx.getLiveSSTables(), OperationType.COMPACTION))
-            {
-                PendingAntiCompaction pac = new PendingAntiCompaction(prsid, Collections.singleton(cfs2), atEndpoint(FULL_RANGE, NO_RANGES), es, () -> false);
+            // mark the sstables pending, with a 2i compaction going, which should be
+            // untouched;
+            try (LifecycleTransaction txn = idx.getTracker().tryModify(idx.getLiveSSTables(),
+                    OperationType.COMPACTION)) {
+                PendingAntiCompaction pac = new PendingAntiCompaction(prsid, Collections.singleton(cfs2),
+                        atEndpoint(FULL_RANGE, NO_RANGES), es, () -> false);
                 pac.run().get();
             }
             // and make sure it succeeded;
             for (SSTableReader sstable : cfs2.getLiveSSTables())
                 assertTrue(sstable.isPendingRepair());
-        }
-        finally
-        {
+        } finally {
             es.shutdown();
         }
     }
 
-    private static RangesAtEndpoint atEndpoint(Collection<Range<Token>> full, Collection<Range<Token>> trans)
-    {
+    private static RangesAtEndpoint atEndpoint(Collection<Range<Token>> full, Collection<Range<Token>> trans) {
         RangesAtEndpoint.Builder builder = RangesAtEndpoint.builder(local);
         for (Range<Token> range : full)
             builder.add(new Replica(local, range, true));

@@ -41,63 +41,58 @@ import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.TimeUUID;
 
-public class PendingRepairHolder extends AbstractStrategyHolder
-{
+public class PendingRepairHolder extends AbstractStrategyHolder {
     private final List<PendingRepairManager> managers = new ArrayList<>();
     private final boolean isTransient;
+    private final boolean isReplicationTransferredToErasureCoding;
 
-    public PendingRepairHolder(ColumnFamilyStore cfs, DestinationRouter router, boolean isTransient)
-    {
+    public PendingRepairHolder(ColumnFamilyStore cfs, DestinationRouter router, boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding) {
         super(cfs, router);
         this.isTransient = isTransient;
+        this.isReplicationTransferredToErasureCoding = isReplicationTransferredToErasureCoding;
     }
 
     @Override
-    public void startup()
-    {
+    public void startup() {
         managers.forEach(PendingRepairManager::startup);
     }
 
     @Override
-    public void shutdown()
-    {
+    public void shutdown() {
         managers.forEach(PendingRepairManager::shutdown);
     }
 
     @Override
-    public void setStrategyInternal(CompactionParams params, int numTokenPartitions)
-    {
+    public void setStrategyInternal(CompactionParams params, int numTokenPartitions) {
         managers.clear();
         for (int i = 0; i < numTokenPartitions; i++)
             managers.add(new PendingRepairManager(cfs, params, isTransient));
     }
 
     @Override
-    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient)
-    {
+    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding) {
         Preconditions.checkArgument(!isPendingRepair || !isRepaired,
-                                    "SSTables cannot be both repaired and pending repair");
-        return isPendingRepair && (this.isTransient == isTransient);
+                "SSTables cannot be both repaired and pending repair");
+        return isPendingRepair && (this.isTransient == isTransient)
+                && (this.isReplicationTransferredToErasureCoding == isReplicationTransferredToErasureCoding);
     }
 
     @Override
-    public AbstractCompactionStrategy getStrategyFor(SSTableReader sstable)
-    {
+    public AbstractCompactionStrategy getStrategyFor(SSTableReader sstable) {
         Preconditions.checkArgument(managesSSTable(sstable), "Attempting to get compaction strategy from wrong holder");
         return managers.get(router.getIndexForSSTable(sstable)).getOrCreate(sstable);
     }
 
     @Override
-    public Iterable<AbstractCompactionStrategy> allStrategies()
-    {
+    public Iterable<AbstractCompactionStrategy> allStrategies() {
         return Iterables.concat(Iterables.transform(managers, PendingRepairManager::getStrategies));
     }
 
-    Iterable<AbstractCompactionStrategy> getStrategiesFor(TimeUUID session)
-    {
+    Iterable<AbstractCompactionStrategy> getStrategiesFor(TimeUUID session) {
         List<AbstractCompactionStrategy> strategies = new ArrayList<>(managers.size());
-        for (PendingRepairManager manager : managers)
-        {
+        for (PendingRepairManager manager : managers) {
             AbstractCompactionStrategy strategy = manager.get(session);
             if (strategy != null)
                 strategies.add(strategy);
@@ -105,27 +100,24 @@ public class PendingRepairHolder extends AbstractStrategyHolder
         return strategies;
     }
 
-    public Iterable<PendingRepairManager> getManagers()
-    {
+    public Iterable<PendingRepairManager> getManagers() {
         return managers;
     }
 
     @Override
-    public Collection<TaskSupplier> getBackgroundTaskSuppliers(int gcBefore)
-    {
+    public Collection<TaskSupplier> getBackgroundTaskSuppliers(int gcBefore) {
         List<TaskSupplier> suppliers = new ArrayList<>(managers.size());
         for (PendingRepairManager manager : managers)
-            suppliers.add(new TaskSupplier(manager.getMaxEstimatedRemainingTasks(), () -> manager.getNextBackgroundTask(gcBefore)));
+            suppliers.add(new TaskSupplier(manager.getMaxEstimatedRemainingTasks(),
+                    () -> manager.getNextBackgroundTask(gcBefore)));
 
         return suppliers;
     }
 
     @Override
-    public Collection<AbstractCompactionTask> getMaximalTasks(int gcBefore, boolean splitOutput)
-    {
+    public Collection<AbstractCompactionTask> getMaximalTasks(int gcBefore, boolean splitOutput) {
         List<AbstractCompactionTask> tasks = new ArrayList<>(managers.size());
-        for (PendingRepairManager manager : managers)
-        {
+        for (PendingRepairManager manager : managers) {
             Collection<AbstractCompactionTask> task = manager.getMaximalTasks(gcBefore, splitOutput);
             if (task != null)
                 tasks.addAll(task);
@@ -134,12 +126,10 @@ public class PendingRepairHolder extends AbstractStrategyHolder
     }
 
     @Override
-    public Collection<AbstractCompactionTask> getUserDefinedTasks(GroupedSSTableContainer sstables, int gcBefore)
-    {
+    public Collection<AbstractCompactionTask> getUserDefinedTasks(GroupedSSTableContainer sstables, int gcBefore) {
         List<AbstractCompactionTask> tasks = new ArrayList<>(managers.size());
 
-        for (int i = 0; i < managers.size(); i++)
-        {
+        for (int i = 0; i < managers.size(); i++) {
             if (sstables.isGroupEmpty(i))
                 continue;
 
@@ -148,14 +138,11 @@ public class PendingRepairHolder extends AbstractStrategyHolder
         return tasks;
     }
 
-    AbstractCompactionTask getNextRepairFinishedTask()
-    {
+    AbstractCompactionTask getNextRepairFinishedTask() {
         List<TaskSupplier> repairFinishedSuppliers = getRepairFinishedTaskSuppliers();
-        if (!repairFinishedSuppliers.isEmpty())
-        {
+        if (!repairFinishedSuppliers.isEmpty()) {
             Collections.sort(repairFinishedSuppliers);
-            for (TaskSupplier supplier : repairFinishedSuppliers)
-            {
+            for (TaskSupplier supplier : repairFinishedSuppliers) {
                 AbstractCompactionTask task = supplier.getTask();
                 if (task != null)
                     return task;
@@ -164,14 +151,11 @@ public class PendingRepairHolder extends AbstractStrategyHolder
         return null;
     }
 
-    private ArrayList<TaskSupplier> getRepairFinishedTaskSuppliers()
-    {
+    private ArrayList<TaskSupplier> getRepairFinishedTaskSuppliers() {
         ArrayList<TaskSupplier> suppliers = new ArrayList<>(managers.size());
-        for (PendingRepairManager manager : managers)
-        {
+        for (PendingRepairManager manager : managers) {
             int numPending = manager.getNumPendingRepairFinishedTasks();
-            if (numPending > 0)
-            {
+            if (numPending > 0) {
                 suppliers.add(new TaskSupplier(numPending, manager::getNextRepairFinishedTask));
             }
         }
@@ -180,34 +164,28 @@ public class PendingRepairHolder extends AbstractStrategyHolder
     }
 
     @Override
-    public void addSSTables(GroupedSSTableContainer sstables)
-    {
+    public void addSSTables(GroupedSSTableContainer sstables) {
         Preconditions.checkArgument(sstables.numGroups() == managers.size());
-        for (int i = 0; i < managers.size(); i++)
-        {
+        for (int i = 0; i < managers.size(); i++) {
             if (!sstables.isGroupEmpty(i))
                 managers.get(i).addSSTables(sstables.getGroup(i));
         }
     }
 
     @Override
-    public void removeSSTables(GroupedSSTableContainer sstables)
-    {
+    public void removeSSTables(GroupedSSTableContainer sstables) {
         Preconditions.checkArgument(sstables.numGroups() == managers.size());
-        for (int i = 0; i < managers.size(); i++)
-        {
+        for (int i = 0; i < managers.size(); i++) {
             if (!sstables.isGroupEmpty(i))
                 managers.get(i).removeSSTables(sstables.getGroup(i));
         }
     }
 
     @Override
-    public void replaceSSTables(GroupedSSTableContainer removed, GroupedSSTableContainer added)
-    {
+    public void replaceSSTables(GroupedSSTableContainer removed, GroupedSSTableContainer added) {
         Preconditions.checkArgument(removed.numGroups() == managers.size());
         Preconditions.checkArgument(added.numGroups() == managers.size());
-        for (int i = 0; i < managers.size(); i++)
-        {
+        for (int i = 0; i < managers.size(); i++) {
             if (removed.isGroupEmpty(i) && added.isGroupEmpty(i))
                 continue;
 
@@ -219,11 +197,9 @@ public class PendingRepairHolder extends AbstractStrategyHolder
     }
 
     @Override
-    public List<ISSTableScanner> getScanners(GroupedSSTableContainer sstables, Collection<Range<Token>> ranges)
-    {
+    public List<ISSTableScanner> getScanners(GroupedSSTableContainer sstables, Collection<Range<Token>> ranges) {
         List<ISSTableScanner> scanners = new ArrayList<>(managers.size());
-        for (int i = 0; i < managers.size(); i++)
-        {
+        for (int i = 0; i < managers.size(); i++) {
             if (sstables.isGroupEmpty(i))
                 continue;
 
@@ -234,51 +210,50 @@ public class PendingRepairHolder extends AbstractStrategyHolder
 
     @Override
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor,
-                                                       long keyCount,
-                                                       long repairedAt,
-                                                       TimeUUID pendingRepair,
-                                                       boolean isTransient,
-                                                       MetadataCollector collector,
-                                                       SerializationHeader header,
-                                                       Collection<Index> indexes,
-                                                       LifecycleNewTracker lifecycleNewTracker)
-    {
+            long keyCount,
+            long repairedAt,
+            TimeUUID pendingRepair,
+            boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding,
+            MetadataCollector collector,
+            SerializationHeader header,
+            Collection<Index> indexes,
+            LifecycleNewTracker lifecycleNewTracker) {
         Preconditions.checkArgument(repairedAt == ActiveRepairService.UNREPAIRED_SSTABLE,
-                                    "PendingRepairHolder can't create sstablewriter with repaired at set");
+                "PendingRepairHolder can't create sstablewriter with repaired at set");
         Preconditions.checkArgument(pendingRepair != null,
-                                    "PendingRepairHolder can't create sstable writer without pendingRepair id");
-        // to avoid creating a compaction strategy for the wrong pending repair manager, we get the index based on where the sstable is to be written
-        AbstractCompactionStrategy strategy = managers.get(router.getIndexForSSTableDirectory(descriptor)).getOrCreate(pendingRepair);
+                "PendingRepairHolder can't create sstable writer without pendingRepair id");
+        // to avoid creating a compaction strategy for the wrong pending repair manager,
+        // we get the index based on where the sstable is to be written
+        AbstractCompactionStrategy strategy = managers.get(router.getIndexForSSTableDirectory(descriptor))
+                .getOrCreate(pendingRepair);
         return strategy.createSSTableMultiWriter(descriptor,
-                                                 keyCount,
-                                                 repairedAt,
-                                                 pendingRepair,
-                                                 isTransient,
-                                                 collector,
-                                                 header,
-                                                 indexes,
-                                                 lifecycleNewTracker);
+                keyCount,
+                repairedAt,
+                pendingRepair,
+                isTransient,
+                isReplicationTransferredToErasureCoding,
+                collector,
+                header,
+                indexes,
+                lifecycleNewTracker);
     }
 
     @Override
-    public int getStrategyIndex(AbstractCompactionStrategy strategy)
-    {
-        for (int i = 0; i < managers.size(); i++)
-        {
+    public int getStrategyIndex(AbstractCompactionStrategy strategy) {
+        for (int i = 0; i < managers.size(); i++) {
             if (managers.get(i).hasStrategy(strategy))
                 return i;
         }
         return -1;
     }
 
-    public boolean hasDataForSession(TimeUUID sessionID)
-    {
+    public boolean hasDataForSession(TimeUUID sessionID) {
         return Iterables.any(managers, prm -> prm.hasDataForSession(sessionID));
     }
 
     @Override
-    public boolean containsSSTable(SSTableReader sstable)
-    {
+    public boolean containsSSTable(SSTableReader sstable) {
         return Iterables.any(managers, prm -> prm.containsSSTable(sstable));
     }
 }

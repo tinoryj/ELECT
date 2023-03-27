@@ -1478,7 +1478,6 @@ public class StorageProxy implements StorageProxyMBean {
         }
 
         ////////////////////////////////////////////////////////////////////////////////
-
         // this dc replicas:
         Collection<Replica> localDc = null;
         // extra-datacenter replicas, grouped by dc

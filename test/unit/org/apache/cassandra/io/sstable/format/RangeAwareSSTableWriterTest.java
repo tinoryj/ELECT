@@ -37,16 +37,14 @@ import org.apache.cassandra.service.StorageService;
 
 import static org.junit.Assert.assertEquals;
 
-public class RangeAwareSSTableWriterTest
-{
+public class RangeAwareSSTableWriterTest {
     public static final String KEYSPACE1 = "Keyspace1";
     public static final String CF_STANDARD = "Standard1";
 
     public static ColumnFamilyStore cfs;
 
     @BeforeClass
-    public static void defineSchema() throws Exception
-    {
+    public static void defineSchema() throws Exception {
         DatabaseDescriptor.daemonInitialization();
         DatabaseDescriptor.setPartitionerUnsafe(Murmur3Partitioner.instance);
         SchemaLoader.cleanupAndLeaveDirs();
@@ -54,9 +52,9 @@ public class RangeAwareSSTableWriterTest
         StorageService.instance.initServer();
 
         SchemaLoader.createKeyspace(KEYSPACE1,
-                                    KeyspaceParams.simple(1),
-                                    SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD)
-                                                .partitioner(Murmur3Partitioner.instance));
+                KeyspaceParams.simple(1),
+                SchemaLoader.standardCFMD(KEYSPACE1, CF_STANDARD)
+                        .partitioner(Murmur3Partitioner.instance));
 
         Keyspace keyspace = Keyspace.open(KEYSPACE1);
         cfs = keyspace.getColumnFamilyStore(CF_STANDARD);
@@ -65,8 +63,7 @@ public class RangeAwareSSTableWriterTest
     }
 
     @Test
-    public void testAccessWriterBeforeAppend() throws IOException
-    {
+    public void testAccessWriterBeforeAppend() throws IOException {
 
         SchemaLoader.insertData(KEYSPACE1, CF_STANDARD, 0, 1);
         Util.flush(cfs);
@@ -74,16 +71,17 @@ public class RangeAwareSSTableWriterTest
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.STREAM);
 
         RangeAwareSSTableWriter writer = new RangeAwareSSTableWriter(cfs,
-                                                                     0,
-                                                                     0,
-                                                                     null,
-                                                                     false,
-                                                                     SSTableFormat.Type.BIG,
-                                                                     0,
-                                                                     0,
-                                                                     txn,
-                                                                     SerializationHeader.make(cfs.metadata(),
-                                                                                              cfs.getLiveSSTables()));
+                0,
+                0,
+                null,
+                false,
+                false,
+                SSTableFormat.Type.BIG,
+                0,
+                0,
+                txn,
+                SerializationHeader.make(cfs.metadata(),
+                        cfs.getLiveSSTables()));
         assertEquals(cfs.metadata.id, writer.getTableId());
         assertEquals(0L, writer.getFilePointer());
 

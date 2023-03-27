@@ -47,14 +47,12 @@ import org.apache.cassandra.utils.concurrent.Transactional;
 import static org.apache.cassandra.service.ActiveRepairService.UNREPAIRED_SSTABLE;
 import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
-public class CompactionTaskTest
-{
+public class CompactionTaskTest {
     private static TableMetadata cfm;
     private static ColumnFamilyStore cfs;
 
     @BeforeClass
-    public static void setUpClass() throws Exception
-    {
+    public static void setUpClass() throws Exception {
         SchemaLoader.prepareServer();
         cfm = CreateTableStatement.parse("CREATE TABLE tbl (k INT PRIMARY KEY, v INT)", "ks").build();
         SchemaLoader.createKeyspace("ks", KeyspaceParams.simple(1), cfm);
@@ -62,15 +60,13 @@ public class CompactionTaskTest
     }
 
     @Before
-    public void setUp() throws Exception
-    {
+    public void setUp() throws Exception {
         cfs.getCompactionStrategyManager().enable();
         cfs.truncateBlocking();
     }
 
     @Test
-    public void compactionInterruption() throws Exception
-    {
+    public void compactionInterruption() throws Exception {
         cfs.getCompactionStrategyManager().disable();
         QueryProcessor.executeInternal("INSERT INTO ks.tbl (k, v) VALUES (1, 1);");
         QueryProcessor.executeInternal("INSERT INTO ks.tbl (k, v) VALUES (2, 2);");
@@ -87,21 +83,19 @@ public class CompactionTaskTest
         CompactionTask task = new CompactionTask(cfs, txn, 0);
         Assert.assertNotNull(task);
         cfs.getCompactionStrategyManager().pause();
-        try
-        {
+        try {
             task.execute(CompactionManager.instance.active);
             Assert.fail("Expected CompactionInterruptedException");
-        }
-        catch (CompactionInterruptedException e)
-        {
+        } catch (CompactionInterruptedException e) {
             // expected
         }
         Assert.assertEquals(Transactional.AbstractTransactional.State.ABORTED, txn.state());
     }
 
-    private static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair, boolean isTransient) throws IOException
-    {
-        sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, repairedAt, pendingRepair, isTransient);
+    private static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair,
+            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException {
+        sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, repairedAt, pendingRepair,
+                isTransient, isReplicationTransferredToErasureCoding);
         sstable.reloadSSTableMetadata();
     }
 
@@ -110,8 +104,7 @@ public class CompactionTaskTest
      * repaired/unrepaired/pending repair sstables, it should fail
      */
     @Test
-    public void mixedSSTableFailure() throws Exception
-    {
+    public void mixedSSTableFailure() throws Exception {
         cfs.getCompactionStrategyManager().disable();
         QueryProcessor.executeInternal("INSERT INTO ks.tbl (k, v) VALUES (1, 1);");
         Util.flush(cfs);
@@ -130,27 +123,21 @@ public class CompactionTaskTest
         SSTableReader pending1 = sstables.get(2);
         SSTableReader pending2 = sstables.get(3);
 
-        mutateRepaired(repaired, FBUtilities.nowInSeconds(), ActiveRepairService.NO_PENDING_REPAIR, false);
-        mutateRepaired(pending1, UNREPAIRED_SSTABLE, nextTimeUUID(), false);
-        mutateRepaired(pending2, UNREPAIRED_SSTABLE, nextTimeUUID(), false);
+        mutateRepaired(repaired, FBUtilities.nowInSeconds(), ActiveRepairService.NO_PENDING_REPAIR, false, false);
+        mutateRepaired(pending1, UNREPAIRED_SSTABLE, nextTimeUUID(), false, false);
+        mutateRepaired(pending2, UNREPAIRED_SSTABLE, nextTimeUUID(), false, false);
 
         LifecycleTransaction txn = null;
         List<SSTableReader> toCompact = new ArrayList<>(sstables);
-        for (int i=0; i<sstables.size(); i++)
-        {
-            try
-            {
+        for (int i = 0; i < sstables.size(); i++) {
+            try {
                 txn = cfs.getTracker().tryModify(sstables, OperationType.COMPACTION);
                 Assert.assertNotNull(txn);
                 CompactionTask task = new CompactionTask(cfs, txn, 0);
                 Assert.fail("Expected IllegalArgumentException");
-            }
-            catch (IllegalArgumentException e)
-            {
+            } catch (IllegalArgumentException e) {
                 // expected
-            }
-            finally
-            {
+            } finally {
                 if (txn != null)
                     txn.abort();
             }
@@ -159,8 +146,7 @@ public class CompactionTaskTest
     }
 
     @Test
-    public void testOfflineCompaction()
-    {
+    public void testOfflineCompaction() {
         cfs.getCompactionStrategyManager().disable();
         QueryProcessor.executeInternal("INSERT INTO ks.tbl (k, v) VALUES (1, 1);");
         Util.flush(cfs);
@@ -174,8 +160,7 @@ public class CompactionTaskTest
         Set<SSTableReader> sstables = cfs.getLiveSSTables();
         Assert.assertEquals(4, sstables.size());
 
-        try (LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.COMPACTION, sstables))
-        {
+        try (LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.COMPACTION, sstables)) {
             Assert.assertEquals(4, txn.tracker.getView().liveSSTables().size());
             CompactionTask task = new CompactionTask(cfs, txn, 1000);
             task.execute(null);
@@ -184,10 +169,9 @@ public class CompactionTaskTest
             Assert.assertEquals(1, txn.tracker.getView().liveSSTables().size());
             SSTableReader newSSTable = txn.tracker.getView().liveSSTables().iterator().next();
             Assert.assertNotNull(newSSTable.tryRef());
-        }
-        finally
-        {
-            // SSTables were compacted offline; CFS didn't notice that, so we have to remove them manually
+        } finally {
+            // SSTables were compacted offline; CFS didn't notice that, so we have to remove
+            // them manually
             cfs.getTracker().removeUnsafe(sstables);
         }
     }

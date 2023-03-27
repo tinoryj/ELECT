@@ -52,15 +52,19 @@ import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.TimeUUID;
 
 /**
- * Companion to CompactionStrategyManager which manages the sstables marked pending repair.
+ * Companion to CompactionStrategyManager which manages the sstables marked
+ * pending repair.
  *
- * SSTables are classified as pending repair by the anti-compaction performed at the beginning
- * of an incremental repair, or when they're streamed in with a pending repair id. This prevents
- * unrepaired / pending repaired sstables from being compacted together. Once the repair session
- * has completed, or failed, sstables will be re-classified as part of the compaction process.
+ * SSTables are classified as pending repair by the anti-compaction performed at
+ * the beginning
+ * of an incremental repair, or when they're streamed in with a pending repair
+ * id. This prevents
+ * unrepaired / pending repaired sstables from being compacted together. Once
+ * the repair session
+ * has completed, or failed, sstables will be re-classified as part of the
+ * compaction process.
  */
-class PendingRepairManager
-{
+class PendingRepairManager {
     private static final Logger logger = LoggerFactory.getLogger(PendingRepairManager.class);
 
     private final ColumnFamilyStore cfs;
@@ -69,53 +73,45 @@ class PendingRepairManager
     private volatile ImmutableMap<TimeUUID, AbstractCompactionStrategy> strategies = ImmutableMap.of();
 
     /**
-     * Indicates we're being asked to do something with an sstable that isn't marked pending repair
+     * Indicates we're being asked to do something with an sstable that isn't marked
+     * pending repair
      */
-    public static class IllegalSSTableArgumentException extends IllegalArgumentException
-    {
-        public IllegalSSTableArgumentException(String s)
-        {
+    public static class IllegalSSTableArgumentException extends IllegalArgumentException {
+        public IllegalSSTableArgumentException(String s) {
             super(s);
         }
     }
 
-    PendingRepairManager(ColumnFamilyStore cfs, CompactionParams params, boolean isTransient)
-    {
+    PendingRepairManager(ColumnFamilyStore cfs, CompactionParams params, boolean isTransient) {
         this.cfs = cfs;
         this.params = params;
         this.isTransient = isTransient;
     }
 
-    private ImmutableMap.Builder<TimeUUID, AbstractCompactionStrategy> mapBuilder()
-    {
+    private ImmutableMap.Builder<TimeUUID, AbstractCompactionStrategy> mapBuilder() {
         return ImmutableMap.builder();
     }
 
-    AbstractCompactionStrategy get(TimeUUID id)
-    {
+    AbstractCompactionStrategy get(TimeUUID id) {
         return strategies.get(id);
     }
 
-    AbstractCompactionStrategy get(SSTableReader sstable)
-    {
+    AbstractCompactionStrategy get(SSTableReader sstable) {
         assert sstable.isPendingRepair();
         return get(sstable.getSSTableMetadata().pendingRepair);
     }
 
-    AbstractCompactionStrategy getOrCreate(TimeUUID id)
-    {
+    AbstractCompactionStrategy getOrCreate(TimeUUID id) {
         checkPendingID(id);
         assert id != null;
         AbstractCompactionStrategy strategy = get(id);
-        if (strategy == null)
-        {
-            synchronized (this)
-            {
+        if (strategy == null) {
+            synchronized (this) {
                 strategy = get(id);
 
-                if (strategy == null)
-                {
-                    logger.debug("Creating {}.{} compaction strategy for pending repair: {}", cfs.metadata.keyspace, cfs.metadata.name, id);
+                if (strategy == null) {
+                    logger.debug("Creating {}.{} compaction strategy for pending repair: {}", cfs.metadata.keyspace,
+                            cfs.metadata.name, id);
                     strategy = cfs.createCompactionStrategyInstance(params);
                     strategies = mapBuilder().putAll(strategies).put(id, strategy).build();
                 }
@@ -124,85 +120,70 @@ class PendingRepairManager
         return strategy;
     }
 
-    private static void checkPendingID(TimeUUID pendingID)
-    {
-        if (pendingID == null)
-        {
+    private static void checkPendingID(TimeUUID pendingID) {
+        if (pendingID == null) {
             throw new IllegalSSTableArgumentException("sstable is not pending repair");
         }
     }
 
-    AbstractCompactionStrategy getOrCreate(SSTableReader sstable)
-    {
+    AbstractCompactionStrategy getOrCreate(SSTableReader sstable) {
         return getOrCreate(sstable.getSSTableMetadata().pendingRepair);
     }
 
-    private synchronized void removeSessionIfEmpty(TimeUUID sessionID)
-    {
+    private synchronized void removeSessionIfEmpty(TimeUUID sessionID) {
         if (!strategies.containsKey(sessionID) || !strategies.get(sessionID).getSSTables().isEmpty())
             return;
 
-        logger.debug("Removing compaction strategy for pending repair {} on  {}.{}", sessionID, cfs.metadata.keyspace, cfs.metadata.name);
+        logger.debug("Removing compaction strategy for pending repair {} on  {}.{}", sessionID, cfs.metadata.keyspace,
+                cfs.metadata.name);
         strategies = ImmutableMap.copyOf(Maps.filterKeys(strategies, k -> !k.equals(sessionID)));
     }
 
-    synchronized void removeSSTable(SSTableReader sstable)
-    {
-        for (Map.Entry<TimeUUID, AbstractCompactionStrategy> entry : strategies.entrySet())
-        {
+    synchronized void removeSSTable(SSTableReader sstable) {
+        for (Map.Entry<TimeUUID, AbstractCompactionStrategy> entry : strategies.entrySet()) {
             entry.getValue().removeSSTable(sstable);
             removeSessionIfEmpty(entry.getKey());
         }
     }
 
-
-    void removeSSTables(Iterable<SSTableReader> removed)
-    {
+    void removeSSTables(Iterable<SSTableReader> removed) {
         for (SSTableReader sstable : removed)
             removeSSTable(sstable);
     }
 
-    synchronized void addSSTable(SSTableReader sstable)
-    {
+    synchronized void addSSTable(SSTableReader sstable) {
         Preconditions.checkArgument(sstable.isTransient() == isTransient);
         getOrCreate(sstable).addSSTable(sstable);
     }
 
-    void addSSTables(Iterable<SSTableReader> added)
-    {
+    void addSSTables(Iterable<SSTableReader> added) {
         for (SSTableReader sstable : added)
             addSSTable(sstable);
     }
 
-    synchronized void replaceSSTables(Set<SSTableReader> removed, Set<SSTableReader> added)
-    {
+    synchronized void replaceSSTables(Set<SSTableReader> removed, Set<SSTableReader> added) {
         if (removed.isEmpty() && added.isEmpty())
             return;
 
         // left=removed, right=added
         Map<TimeUUID, Pair<Set<SSTableReader>, Set<SSTableReader>>> groups = new HashMap<>();
-        for (SSTableReader sstable : removed)
-        {
+        for (SSTableReader sstable : removed) {
             TimeUUID sessionID = sstable.getSSTableMetadata().pendingRepair;
-            if (!groups.containsKey(sessionID))
-            {
+            if (!groups.containsKey(sessionID)) {
                 groups.put(sessionID, Pair.create(new HashSet<>(), new HashSet<>()));
             }
             groups.get(sessionID).left.add(sstable);
         }
 
-        for (SSTableReader sstable : added)
-        {
+        for (SSTableReader sstable : added) {
             TimeUUID sessionID = sstable.getSSTableMetadata().pendingRepair;
-            if (!groups.containsKey(sessionID))
-            {
+            if (!groups.containsKey(sessionID)) {
                 groups.put(sessionID, Pair.create(new HashSet<>(), new HashSet<>()));
             }
             groups.get(sessionID).right.add(sstable);
         }
 
-        for (Map.Entry<TimeUUID, Pair<Set<SSTableReader>, Set<SSTableReader>>> entry : groups.entrySet())
-        {
+        for (Map.Entry<TimeUUID, Pair<Set<SSTableReader>, Set<SSTableReader>>> entry : groups.entrySet()) {
             AbstractCompactionStrategy strategy = getOrCreate(entry.getKey());
             Set<SSTableReader> groupRemoved = entry.getValue().left;
             Set<SSTableReader> groupAdded = entry.getValue().right;
@@ -216,54 +197,44 @@ class PendingRepairManager
         }
     }
 
-    synchronized void startup()
-    {
+    synchronized void startup() {
         strategies.values().forEach(AbstractCompactionStrategy::startup);
     }
 
-    synchronized void shutdown()
-    {
+    synchronized void shutdown() {
         strategies.values().forEach(AbstractCompactionStrategy::shutdown);
     }
 
-    private int getEstimatedRemainingTasks(TimeUUID sessionID, AbstractCompactionStrategy strategy)
-    {
-        if (canCleanup(sessionID))
-        {
+    private int getEstimatedRemainingTasks(TimeUUID sessionID, AbstractCompactionStrategy strategy) {
+        if (canCleanup(sessionID)) {
             return 0;
-        }
-        else
-        {
+        } else {
             return strategy.getEstimatedRemainingTasks();
         }
     }
 
-    int getEstimatedRemainingTasks()
-    {
+    int getEstimatedRemainingTasks() {
         int tasks = 0;
-        for (Map.Entry<TimeUUID, AbstractCompactionStrategy> entry : strategies.entrySet())
-        {
+        for (Map.Entry<TimeUUID, AbstractCompactionStrategy> entry : strategies.entrySet()) {
             tasks += getEstimatedRemainingTasks(entry.getKey(), entry.getValue());
         }
         return tasks;
     }
 
     /**
-     * @return the highest max remaining tasks of all contained compaction strategies
+     * @return the highest max remaining tasks of all contained compaction
+     *         strategies
      */
-    int getMaxEstimatedRemainingTasks()
-    {
+    int getMaxEstimatedRemainingTasks() {
         int tasks = 0;
-        for (Map.Entry<TimeUUID, AbstractCompactionStrategy> entry : strategies.entrySet())
-        {
+        for (Map.Entry<TimeUUID, AbstractCompactionStrategy> entry : strategies.entrySet()) {
             tasks = Math.max(tasks, getEstimatedRemainingTasks(entry.getKey(), entry.getValue()));
         }
         return tasks;
     }
 
     @SuppressWarnings("resource")
-    private RepairFinishedCompactionTask getRepairFinishedCompactionTask(TimeUUID sessionID)
-    {
+    private RepairFinishedCompactionTask getRepairFinishedCompactionTask(TimeUUID sessionID) {
         Preconditions.checkState(canCleanup(sessionID));
         AbstractCompactionStrategy compactionStrategy = get(sessionID);
         if (compactionStrategy == null)
@@ -274,105 +245,82 @@ class PendingRepairManager
         return txn == null ? null : new RepairFinishedCompactionTask(cfs, txn, sessionID, repairedAt);
     }
 
-    public static class CleanupTask
-    {
+    public static class CleanupTask {
         private final ColumnFamilyStore cfs;
         private final List<Pair<TimeUUID, RepairFinishedCompactionTask>> tasks;
 
-        public CleanupTask(ColumnFamilyStore cfs, List<Pair<TimeUUID, RepairFinishedCompactionTask>> tasks)
-        {
+        public CleanupTask(ColumnFamilyStore cfs, List<Pair<TimeUUID, RepairFinishedCompactionTask>> tasks) {
             this.cfs = cfs;
             this.tasks = tasks;
         }
 
-        public CleanupSummary cleanup()
-        {
+        public CleanupSummary cleanup() {
             Set<TimeUUID> successful = new HashSet<>();
             Set<TimeUUID> unsuccessful = new HashSet<>();
-            for (Pair<TimeUUID, RepairFinishedCompactionTask> pair : tasks)
-            {
+            for (Pair<TimeUUID, RepairFinishedCompactionTask> pair : tasks) {
                 TimeUUID session = pair.left;
                 RepairFinishedCompactionTask task = pair.right;
 
-                if (task != null)
-                {
-                    try
-                    {
+                if (task != null) {
+                    try {
                         task.run();
                         successful.add(session);
-                    }
-                    catch (Throwable t)
-                    {
+                    } catch (Throwable t) {
                         t = task.transaction.abort(t);
                         logger.error("Failed cleaning up " + session, t);
                         unsuccessful.add(session);
                     }
-                }
-                else
-                {
+                } else {
                     unsuccessful.add(session);
                 }
             }
             return new CleanupSummary(cfs, successful, unsuccessful);
         }
 
-        public Throwable abort(Throwable accumulate)
-        {
+        public Throwable abort(Throwable accumulate) {
             for (Pair<TimeUUID, RepairFinishedCompactionTask> pair : tasks)
                 accumulate = pair.right.transaction.abort(accumulate);
             return accumulate;
         }
     }
 
-    public CleanupTask releaseSessionData(Collection<TimeUUID> sessionIDs)
-    {
+    public CleanupTask releaseSessionData(Collection<TimeUUID> sessionIDs) {
         List<Pair<TimeUUID, RepairFinishedCompactionTask>> tasks = new ArrayList<>(sessionIDs.size());
-        for (TimeUUID session : sessionIDs)
-        {
-            if (hasDataForSession(session))
-            {
+        for (TimeUUID session : sessionIDs) {
+            if (hasDataForSession(session)) {
                 tasks.add(Pair.create(session, getRepairFinishedCompactionTask(session)));
             }
         }
         return new CleanupTask(cfs, tasks);
     }
 
-    synchronized int getNumPendingRepairFinishedTasks()
-    {
+    synchronized int getNumPendingRepairFinishedTasks() {
         int count = 0;
-        for (TimeUUID sessionID : strategies.keySet())
-        {
-            if (canCleanup(sessionID))
-            {
+        for (TimeUUID sessionID : strategies.keySet()) {
+            if (canCleanup(sessionID)) {
                 count++;
             }
         }
         return count;
     }
 
-    synchronized AbstractCompactionTask getNextRepairFinishedTask()
-    {
-        for (TimeUUID sessionID : strategies.keySet())
-        {
-            if (canCleanup(sessionID))
-            {
+    synchronized AbstractCompactionTask getNextRepairFinishedTask() {
+        for (TimeUUID sessionID : strategies.keySet()) {
+            if (canCleanup(sessionID)) {
                 return getRepairFinishedCompactionTask(sessionID);
             }
         }
         return null;
     }
 
-    synchronized AbstractCompactionTask getNextBackgroundTask(int gcBefore)
-    {
+    synchronized AbstractCompactionTask getNextBackgroundTask(int gcBefore) {
         if (strategies.isEmpty())
             return null;
 
         Map<TimeUUID, Integer> numTasks = new HashMap<>(strategies.size());
         ArrayList<TimeUUID> sessions = new ArrayList<>(strategies.size());
-        for (Map.Entry<TimeUUID, AbstractCompactionStrategy> entry : strategies.entrySet())
-        {
-            if (canCleanup(entry.getKey()))
-            {
+        for (Map.Entry<TimeUUID, AbstractCompactionStrategy> entry : strategies.entrySet()) {
+            if (canCleanup(entry.getKey())) {
                 continue;
             }
             numTasks.put(entry.getKey(), getEstimatedRemainingTasks(entry.getKey(), entry.getValue()));
@@ -389,20 +337,15 @@ class PendingRepairManager
         return get(sessionID).getNextBackgroundTask(gcBefore);
     }
 
-    synchronized Collection<AbstractCompactionTask> getMaximalTasks(int gcBefore, boolean splitOutput)
-    {
+    synchronized Collection<AbstractCompactionTask> getMaximalTasks(int gcBefore, boolean splitOutput) {
         if (strategies.isEmpty())
             return null;
 
         List<AbstractCompactionTask> maximalTasks = new ArrayList<>(strategies.size());
-        for (Map.Entry<TimeUUID, AbstractCompactionStrategy> entry : strategies.entrySet())
-        {
-            if (canCleanup(entry.getKey()))
-            {
+        for (Map.Entry<TimeUUID, AbstractCompactionStrategy> entry : strategies.entrySet()) {
+            if (canCleanup(entry.getKey())) {
                 maximalTasks.add(getRepairFinishedCompactionTask(entry.getKey()));
-            }
-            else
-            {
+            } else {
                 Collection<AbstractCompactionTask> tasks = entry.getValue().getMaximalTask(gcBefore, splitOutput);
                 if (tasks != null)
                     maximalTasks.addAll(tasks);
@@ -411,64 +354,51 @@ class PendingRepairManager
         return !maximalTasks.isEmpty() ? maximalTasks : null;
     }
 
-    Collection<AbstractCompactionStrategy> getStrategies()
-    {
+    Collection<AbstractCompactionStrategy> getStrategies() {
         return strategies.values();
     }
 
-    Set<TimeUUID> getSessions()
-    {
+    Set<TimeUUID> getSessions() {
         return strategies.keySet();
     }
 
-    boolean canCleanup(TimeUUID sessionID)
-    {
+    boolean canCleanup(TimeUUID sessionID) {
         return !ActiveRepairService.instance.consistent.local.isSessionInProgress(sessionID);
     }
 
     @SuppressWarnings("resource")
-    synchronized Set<ISSTableScanner> getScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges)
-    {
-        if (sstables.isEmpty())
-        {
+    synchronized Set<ISSTableScanner> getScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges) {
+        if (sstables.isEmpty()) {
             return Collections.emptySet();
         }
 
         Map<TimeUUID, Set<SSTableReader>> sessionSSTables = new HashMap<>();
-        for (SSTableReader sstable : sstables)
-        {
+        for (SSTableReader sstable : sstables) {
             TimeUUID sessionID = sstable.getSSTableMetadata().pendingRepair;
             checkPendingID(sessionID);
             sessionSSTables.computeIfAbsent(sessionID, k -> new HashSet<>()).add(sstable);
         }
 
         Set<ISSTableScanner> scanners = new HashSet<>(sessionSSTables.size());
-        try
-        {
-            for (Map.Entry<TimeUUID, Set<SSTableReader>> entry : sessionSSTables.entrySet())
-            {
+        try {
+            for (Map.Entry<TimeUUID, Set<SSTableReader>> entry : sessionSSTables.entrySet()) {
                 scanners.addAll(getOrCreate(entry.getKey()).getScanners(entry.getValue(), ranges).scanners);
             }
-        }
-        catch (Throwable t)
-        {
+        } catch (Throwable t) {
             ISSTableScanner.closeAllAndPropagate(scanners, t);
         }
         return scanners;
     }
 
-    public boolean hasStrategy(AbstractCompactionStrategy strategy)
-    {
+    public boolean hasStrategy(AbstractCompactionStrategy strategy) {
         return strategies.values().contains(strategy);
     }
 
-    public synchronized boolean hasDataForSession(TimeUUID sessionID)
-    {
+    public synchronized boolean hasDataForSession(TimeUUID sessionID) {
         return strategies.keySet().contains(sessionID);
     }
 
-    boolean containsSSTable(SSTableReader sstable)
-    {
+    boolean containsSSTable(SSTableReader sstable) {
         if (!sstable.isPendingRepair())
             return false;
 
@@ -476,79 +406,72 @@ class PendingRepairManager
         return strategy != null && strategy.getSSTables().contains(sstable);
     }
 
-    public Collection<AbstractCompactionTask> createUserDefinedTasks(Collection<SSTableReader> sstables, int gcBefore)
-    {
-        Map<TimeUUID, List<SSTableReader>> group = sstables.stream().collect(Collectors.groupingBy(s -> s.getSSTableMetadata().pendingRepair));
-        return group.entrySet().stream().map(g -> strategies.get(g.getKey()).getUserDefinedTask(g.getValue(), gcBefore)).collect(Collectors.toList());
+    public Collection<AbstractCompactionTask> createUserDefinedTasks(Collection<SSTableReader> sstables, int gcBefore) {
+        Map<TimeUUID, List<SSTableReader>> group = sstables.stream()
+                .collect(Collectors.groupingBy(s -> s.getSSTableMetadata().pendingRepair));
+        return group.entrySet().stream().map(g -> strategies.get(g.getKey()).getUserDefinedTask(g.getValue(), gcBefore))
+                .collect(Collectors.toList());
     }
 
     /**
-     * promotes/demotes sstables involved in a consistent repair that has been finalized, or failed
+     * promotes/demotes sstables involved in a consistent repair that has been
+     * finalized, or failed
      */
-    class RepairFinishedCompactionTask extends AbstractCompactionTask
-    {
+    class RepairFinishedCompactionTask extends AbstractCompactionTask {
         private final TimeUUID sessionID;
         private final long repairedAt;
 
-        RepairFinishedCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction transaction, TimeUUID sessionID, long repairedAt)
-        {
+        RepairFinishedCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction transaction, TimeUUID sessionID,
+                long repairedAt) {
             super(cfs, transaction);
             this.sessionID = sessionID;
             this.repairedAt = repairedAt;
         }
 
         @VisibleForTesting
-        TimeUUID getSessionID()
-        {
+        TimeUUID getSessionID() {
             return sessionID;
         }
 
-        protected void runMayThrow() throws Exception
-        {
+        protected void runMayThrow() throws Exception {
             boolean completed = false;
             boolean obsoleteSSTables = isTransient && repairedAt > 0;
-            try
-            {
-                if (obsoleteSSTables)
-                {
+            try {
+                if (obsoleteSSTables) {
                     logger.info("Obsoleting transient repaired sstables for {}", sessionID);
                     Preconditions.checkState(Iterables.all(transaction.originals(), SSTableReader::isTransient));
                     transaction.obsoleteOriginals();
-                }
-                else
-                {
-                    logger.info("Moving {} from pending to repaired with repaired at = {} and session id = {}", transaction.originals(), repairedAt, sessionID);
-                    cfs.getCompactionStrategyManager().mutateRepaired(transaction.originals(), repairedAt, ActiveRepairService.NO_PENDING_REPAIR, false);
+                } else {
+                    logger.info("Moving {} from pending to repaired with repaired at = {} and session id = {}",
+                            transaction.originals(), repairedAt, sessionID);
+                    cfs.getCompactionStrategyManager().mutateRepaired(transaction.originals(), repairedAt,
+                            ActiveRepairService.NO_PENDING_REPAIR, false, false);
                 }
                 completed = true;
-            }
-            finally
-            {
-                if (obsoleteSSTables)
-                {
+            } finally {
+                if (obsoleteSSTables) {
                     transaction.finish();
-                }
-                else
-                {
-                    // we abort here because mutating metadata isn't guarded by LifecycleTransaction, so this won't roll
-                    // anything back. Also, we don't want to obsolete the originals. We're only using it to prevent other
-                    // compactions from marking these sstables compacting, and unmarking them when we're done
+                } else {
+                    // we abort here because mutating metadata isn't guarded by
+                    // LifecycleTransaction, so this won't roll
+                    // anything back. Also, we don't want to obsolete the originals. We're only
+                    // using it to prevent other
+                    // compactions from marking these sstables compacting, and unmarking them when
+                    // we're done
                     transaction.abort();
                 }
-                if (completed)
-                {
+                if (completed) {
                     removeSessionIfEmpty(sessionID);
                 }
             }
         }
 
-        public CompactionAwareWriter getCompactionAwareWriter(ColumnFamilyStore cfs, Directories directories, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables)
-        {
+        public CompactionAwareWriter getCompactionAwareWriter(ColumnFamilyStore cfs, Directories directories,
+                LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables) {
             throw new UnsupportedOperationException();
         }
 
-        protected int executeInternal(ActiveCompactionsTracker activeCompactions)
-        {
+        protected int executeInternal(ActiveCompactionsTracker activeCompactions) {
             run();
             return transaction.originals().size();
         }

@@ -36,8 +36,7 @@ import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.TimeUUID;
 
-public class RangeAwareSSTableWriter implements SSTableMultiWriter
-{
+public class RangeAwareSSTableWriter implements SSTableMultiWriter {
     private final List<PartitionPosition> boundaries;
     private final List<Directories.DataDirectory> directories;
     private final int sstableLevel;
@@ -45,6 +44,7 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter
     private final long repairedAt;
     private final TimeUUID pendingRepair;
     private final boolean isTransient;
+    private final boolean isReplicationTransferredToErasureCoding;
     private final SSTableFormat.Type format;
     private final SerializationHeader header;
     private final LifecycleNewTracker lifecycleNewTracker;
@@ -54,8 +54,10 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter
     private final List<SSTableReader> finishedReaders = new ArrayList<>();
     private SSTableMultiWriter currentWriter = null;
 
-    public RangeAwareSSTableWriter(ColumnFamilyStore cfs, long estimatedKeys, long repairedAt, TimeUUID pendingRepair, boolean isTransient, SSTableFormat.Type format, int sstableLevel, long totalSize, LifecycleNewTracker lifecycleNewTracker, SerializationHeader header) throws IOException
-    {
+    public RangeAwareSSTableWriter(ColumnFamilyStore cfs, long estimatedKeys, long repairedAt, TimeUUID pendingRepair,
+            boolean isTransient, boolean isReplicationTransferredToErasureCoding, SSTableFormat.Type format,
+            int sstableLevel, long totalSize, LifecycleNewTracker lifecycleNewTracker, SerializationHeader header)
+            throws IOException {
         DiskBoundaries db = cfs.getDiskBoundaries();
         directories = db.directories;
         this.sstableLevel = sstableLevel;
@@ -64,57 +66,55 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter
         this.repairedAt = repairedAt;
         this.pendingRepair = pendingRepair;
         this.isTransient = isTransient;
+        this.isReplicationTransferredToErasureCoding = isReplicationTransferredToErasureCoding;
         this.format = format;
         this.lifecycleNewTracker = lifecycleNewTracker;
         this.header = header;
         boundaries = db.positions;
-        if (boundaries == null)
-        {
+        if (boundaries == null) {
             Directories.DataDirectory localDir = cfs.getDirectories().getWriteableLocation(totalSize);
             if (localDir == null)
                 throw new IOException(String.format("Insufficient disk space to store %s",
-                                                    FBUtilities.prettyPrintMemory(totalSize)));
+                        FBUtilities.prettyPrintMemory(totalSize)));
             Descriptor desc = cfs.newSSTableDescriptor(cfs.getDirectories().getLocationForDisk(localDir), format);
-            currentWriter = cfs.createSSTableMultiWriter(desc, estimatedKeys, repairedAt, pendingRepair, isTransient, sstableLevel, header, lifecycleNewTracker);
+            currentWriter = cfs.createSSTableMultiWriter(desc, estimatedKeys, repairedAt, pendingRepair, isTransient,
+                    isReplicationTransferredToErasureCoding, sstableLevel, header, lifecycleNewTracker);
         }
     }
 
-    private void maybeSwitchWriter(DecoratedKey key)
-    {
+    private void maybeSwitchWriter(DecoratedKey key) {
         if (boundaries == null)
             return;
 
         boolean switched = false;
-        while (currentIndex < 0 || key.compareTo(boundaries.get(currentIndex)) > 0)
-        {
+        while (currentIndex < 0 || key.compareTo(boundaries.get(currentIndex)) > 0) {
             switched = true;
             currentIndex++;
         }
 
-        if (switched)
-        {
+        if (switched) {
             if (currentWriter != null)
                 finishedWriters.add(currentWriter);
 
-            Descriptor desc = cfs.newSSTableDescriptor(cfs.getDirectories().getLocationForDisk(directories.get(currentIndex)), format);
-            currentWriter = cfs.createSSTableMultiWriter(desc, estimatedKeys, repairedAt, pendingRepair, isTransient, sstableLevel, header, lifecycleNewTracker);
+            Descriptor desc = cfs.newSSTableDescriptor(
+                    cfs.getDirectories().getLocationForDisk(directories.get(currentIndex)), format);
+            currentWriter = cfs.createSSTableMultiWriter(desc, estimatedKeys, repairedAt, pendingRepair, isTransient,
+                    isReplicationTransferredToErasureCoding,
+                    sstableLevel, header, lifecycleNewTracker);
         }
     }
 
-    public boolean append(UnfilteredRowIterator partition)
-    {
+    public boolean append(UnfilteredRowIterator partition) {
         maybeSwitchWriter(partition.partitionKey());
         return currentWriter.append(partition);
     }
 
     @Override
-    public Collection<SSTableReader> finish(long repairedAt, long maxDataAge, boolean openResult)
-    {
+    public Collection<SSTableReader> finish(long repairedAt, long maxDataAge, boolean openResult) {
         if (currentWriter != null)
             finishedWriters.add(currentWriter);
         currentWriter = null;
-        for (SSTableMultiWriter writer : finishedWriters)
-        {
+        for (SSTableMultiWriter writer : finishedWriters) {
             if (writer.getFilePointer() > 0)
                 finishedReaders.addAll(writer.finish(repairedAt, maxDataAge, openResult));
             else
@@ -124,13 +124,11 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter
     }
 
     @Override
-    public Collection<SSTableReader> finish(boolean openResult)
-    {
+    public Collection<SSTableReader> finish(boolean openResult) {
         if (currentWriter != null)
             finishedWriters.add(currentWriter);
         currentWriter = null;
-        for (SSTableMultiWriter writer : finishedWriters)
-        {
+        for (SSTableMultiWriter writer : finishedWriters) {
             if (writer.getFilePointer() > 0)
                 finishedReaders.addAll(writer.finish(openResult));
             else
@@ -140,39 +138,33 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter
     }
 
     @Override
-    public Collection<SSTableReader> finished()
-    {
+    public Collection<SSTableReader> finished() {
         return finishedReaders;
     }
 
     @Override
-    public SSTableMultiWriter setOpenResult(boolean openResult)
-    {
+    public SSTableMultiWriter setOpenResult(boolean openResult) {
         finishedWriters.forEach((w) -> w.setOpenResult(openResult));
         currentWriter.setOpenResult(openResult);
         return this;
     }
 
-    public String getFilename()
-    {
+    public String getFilename() {
         return String.join("/", cfs.keyspace.getName(), cfs.getTableName());
     }
 
     @Override
-    public long getFilePointer()
-    {
-       return currentWriter != null ? currentWriter.getFilePointer() : 0L;
+    public long getFilePointer() {
+        return currentWriter != null ? currentWriter.getFilePointer() : 0L;
     }
 
     @Override
-    public TableId getTableId()
-    {
+    public TableId getTableId() {
         return cfs.metadata.id;
     }
 
     @Override
-    public Throwable commit(Throwable accumulate)
-    {
+    public Throwable commit(Throwable accumulate) {
         if (currentWriter != null)
             finishedWriters.add(currentWriter);
         currentWriter = null;
@@ -182,8 +174,7 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter
     }
 
     @Override
-    public Throwable abort(Throwable accumulate)
-    {
+    public Throwable abort(Throwable accumulate) {
         if (currentWriter != null)
             finishedWriters.add(currentWriter);
         currentWriter = null;
@@ -194,8 +185,7 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter
     }
 
     @Override
-    public void prepareToCommit()
-    {
+    public void prepareToCommit() {
         if (currentWriter != null)
             finishedWriters.add(currentWriter);
         currentWriter = null;
@@ -203,8 +193,7 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter
     }
 
     @Override
-    public void close()
-    {
+    public void close() {
         if (currentWriter != null)
             finishedWriters.add(currentWriter);
         currentWriter = null;

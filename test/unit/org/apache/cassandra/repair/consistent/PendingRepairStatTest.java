@@ -56,40 +56,36 @@ import static org.apache.cassandra.service.ActiveRepairService.NO_PENDING_REPAIR
 import static org.apache.cassandra.service.ActiveRepairService.UNREPAIRED_SSTABLE;
 import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
-public class PendingRepairStatTest extends AbstractRepairTest
-{
+public class PendingRepairStatTest extends AbstractRepairTest {
     private static TableMetadata cfm;
     private static ColumnFamilyStore cfs;
 
     private static Range<Token> FULL_RANGE;
     private static IPartitioner partitioner;
 
-    static
-    {
+    static {
         DatabaseDescriptor.daemonInitialization();
         partitioner = DatabaseDescriptor.getPartitioner();
         assert partitioner instanceof ByteOrderedPartitioner;
         FULL_RANGE = new Range<>(DatabaseDescriptor.getPartitioner().getMinimumToken(),
-                                 DatabaseDescriptor.getPartitioner().getMinimumToken());
+                DatabaseDescriptor.getPartitioner().getMinimumToken());
     }
 
     @BeforeClass
-    public static void setupClass()
-    {
+    public static void setupClass() {
         SchemaLoader.prepareServer();
-        cfm = CreateTableStatement.parse("CREATE TABLE tbl (k INT PRIMARY KEY, v INT)", "coordinatorsessiontest").build();
+        cfm = CreateTableStatement.parse("CREATE TABLE tbl (k INT PRIMARY KEY, v INT)", "coordinatorsessiontest")
+                .build();
         SchemaLoader.createKeyspace("coordinatorsessiontest", KeyspaceParams.simple(1), cfm);
         cfs = Schema.instance.getColumnFamilyStoreInstance(cfm.id);
     }
 
     @Before
-    public void setUp() throws Exception
-    {
+    public void setUp() throws Exception {
         cfs.enableAutoCompaction();
     }
 
-    static LocalSession createSession()
-    {
+    static LocalSession createSession() {
         LocalSession.Builder builder = LocalSession.builder();
         builder.withState(PREPARING);
         builder.withSessionID(nextTimeUUID());
@@ -106,34 +102,29 @@ public class PendingRepairStatTest extends AbstractRepairTest
         return builder.build();
     }
 
-    private static SSTableReader createSSTable(int startKey, int keys)
-    {
+    private static SSTableReader createSSTable(int startKey, int keys) {
         Set<SSTableReader> existing = cfs.getLiveSSTables();
         assert keys > 0;
-        for (int i=0; i<keys; i++)
-        {
+        for (int i = 0; i < keys; i++) {
             int key = startKey + i;
-            QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (?, ?)", cfm.keyspace, cfm.name), key, key);
+            QueryProcessor.executeInternal(
+                    String.format("INSERT INTO %s.%s (k, v) VALUES (?, ?)", cfm.keyspace, cfm.name), key, key);
         }
         Util.flush(cfs);
         return Iterables.getOnlyElement(Sets.difference(cfs.getLiveSSTables(), existing));
     }
 
-    private static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair)
-    {
-        try
-        {
-            cfs.getCompactionStrategyManager().mutateRepaired(Collections.singleton(sstable), repairedAt, pendingRepair, false);
-        }
-        catch (IOException e)
-        {
+    private static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair) {
+        try {
+            cfs.getCompactionStrategyManager().mutateRepaired(Collections.singleton(sstable), repairedAt, pendingRepair,
+                    false, false);
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Test
-    public void pendingRepairStats()
-    {
+    public void pendingRepairStats() {
         InstrumentedLocalSessions sessions = new InstrumentedLocalSessions();
         sessions.start();
         cfs.disableAutoCompaction();

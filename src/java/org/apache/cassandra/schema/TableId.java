@@ -33,95 +33,100 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 /**
  * The unique identifier of a table.
  * <p>
- * This is essentially a UUID, but we wrap it as it's used quite a bit in the code and having a nicely named class make
+ * This is essentially a UUID, but we wrap it as it's used quite a bit in the
+ * code and having a nicely named class make
  * the code more readable.
  */
-public class TableId
-{
+public class TableId {
     // TODO: should this be a TimeUUID?
     private final UUID id;
+    private boolean isPrimaryTable;
 
-    private TableId(UUID id)
-    {
+    private TableId(UUID id) {
         this.id = id;
     }
 
-    public static TableId fromUUID(UUID id)
-    {
+    public static TableId fromUUID(UUID id) {
         return new TableId(id);
     }
 
     // TODO: should we be using UUID.randomUUID()?
-    public static TableId generate()
-    {
+    public static TableId generate() {
         return new TableId(nextTimeUUID().asUUID());
     }
 
-    public static TableId fromString(String idString)
-    {
+    public static TableId fromString(String idString) {
         return new TableId(UUID.fromString(idString));
+    }
+
+    public boolean setIsPrimaryTableFlag(boolean isPrimaryTableFlag) {
+        isPrimaryTable = isPrimaryTableFlag;
+        return true;
+    }
+
+    public boolean setIsPrimaryTableFlag() {
+        isPrimaryTable = true;
+        return true;
+    }
+
+    public boolean getIsPrimaryTableFlag() {
+        return isPrimaryTable;
     }
 
     /**
      * Creates the UUID of a system table.
      *
-     * This is deterministically based on the table name as system tables are hardcoded and initialized independently
-     * on each node (they don't go through a CREATE), but we still want them to have the same ID everywhere.
+     * This is deterministically based on the table name as system tables are
+     * hardcoded and initialized independently
+     * on each node (they don't go through a CREATE), but we still want them to have
+     * the same ID everywhere.
      *
      * We shouldn't use this for any other table.
      */
-    public static TableId forSystemTable(String keyspace, String table)
-    {
-        assert SchemaConstants.isSystemKeyspace(keyspace) : String.format("Table %s.%s is not a system table; only keyspaces allowed are %s", keyspace, table, SchemaConstants.getSystemKeyspaces());
+    public static TableId forSystemTable(String keyspace, String table) {
+        assert SchemaConstants.isSystemKeyspace(keyspace)
+                : String.format("Table %s.%s is not a system table; only keyspaces allowed are %s", keyspace, table,
+                        SchemaConstants.getSystemKeyspaces());
         return unsafeDeterministic(keyspace, table);
     }
 
-    public static TableId unsafeDeterministic(String keyspace, String table)
-    {
+    public static TableId unsafeDeterministic(String keyspace, String table) {
         return new TableId(UUID.nameUUIDFromBytes(ArrayUtils.addAll(keyspace.getBytes(UTF_8), table.getBytes(UTF_8))));
     }
 
-    public String toHexString()
-    {
+    public String toHexString() {
         return ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(id));
     }
 
-    public UUID asUUID()
-    {
+    public UUID asUUID() {
         return id;
     }
 
     @Override
-    public final int hashCode()
-    {
+    public final int hashCode() {
         return id.hashCode();
     }
 
     @Override
-    public final boolean equals(Object o)
-    {
+    public final boolean equals(Object o) {
         return this == o || (o instanceof TableId && this.id.equals(((TableId) o).id));
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return id.toString();
     }
 
-    public void serialize(DataOutput out) throws IOException
-    {
+    public void serialize(DataOutput out) throws IOException {
         out.writeLong(id.getMostSignificantBits());
         out.writeLong(id.getLeastSignificantBits());
     }
 
-    public int serializedSize()
-    {
+    public int serializedSize() {
         return 16;
     }
 
-    public static TableId deserialize(DataInput in) throws IOException
-    {
+    public static TableId deserialize(DataInput in) throws IOException {
         return new TableId(new UUID(in.readLong(), in.readLong()));
     }
 }

@@ -21,6 +21,8 @@ package org.apache.cassandra.io.sstable;
 import java.io.IOException;
 import java.util.Collection;
 
+import javax.swing.InternalFrameFocusTraversalPolicy;
+
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.SerializationHeader;
@@ -41,94 +43,84 @@ import org.apache.cassandra.utils.concurrent.Transactional;
  * the writer is the only participant in the transaction and therefore
  * it can safely own the transaction.
  */
-public class SSTableTxnWriter extends Transactional.AbstractTransactional implements Transactional
-{
+public class SSTableTxnWriter extends Transactional.AbstractTransactional implements Transactional {
     private final LifecycleTransaction txn;
     private final SSTableMultiWriter writer;
 
-    public SSTableTxnWriter(LifecycleTransaction txn, SSTableMultiWriter writer)
-    {
+    public SSTableTxnWriter(LifecycleTransaction txn, SSTableMultiWriter writer) {
         this.txn = txn;
         this.writer = writer;
     }
 
-    public boolean append(UnfilteredRowIterator iterator)
-    {
+    public boolean append(UnfilteredRowIterator iterator) {
         return writer.append(iterator);
     }
 
-    public String getFilename()
-    {
+    public String getFilename() {
         return writer.getFilename();
     }
 
-    public long getFilePointer()
-    {
+    public long getFilePointer() {
         return writer.getFilePointer();
     }
 
-    protected Throwable doCommit(Throwable accumulate)
-    {
+    protected Throwable doCommit(Throwable accumulate) {
         return writer.commit(txn.commit(accumulate));
     }
 
-    protected Throwable doAbort(Throwable accumulate)
-    {
+    protected Throwable doAbort(Throwable accumulate) {
         return txn.abort(writer.abort(accumulate));
     }
 
-    protected void doPrepare()
-    {
+    protected void doPrepare() {
         writer.prepareToCommit();
         txn.prepareToCommit();
     }
 
     @Override
-    protected Throwable doPostCleanup(Throwable accumulate)
-    {
+    protected Throwable doPostCleanup(Throwable accumulate) {
         txn.close();
         writer.close();
         return super.doPostCleanup(accumulate);
     }
 
-    public Collection<SSTableReader> finish(boolean openResult)
-    {
+    public Collection<SSTableReader> finish(boolean openResult) {
         writer.setOpenResult(openResult);
         finish();
         return writer.finished();
     }
 
     @SuppressWarnings("resource") // log and writer closed during doPostCleanup
-    public static SSTableTxnWriter create(ColumnFamilyStore cfs, Descriptor descriptor, long keyCount, long repairedAt, TimeUUID pendingRepair, boolean isTransient, int sstableLevel, SerializationHeader header)
-    {
+    public static SSTableTxnWriter create(ColumnFamilyStore cfs, Descriptor descriptor, long keyCount, long repairedAt,
+            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            int sstableLevel, SerializationHeader header) {
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE);
-        SSTableMultiWriter writer = cfs.createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair, isTransient, sstableLevel, header, txn);
+        SSTableMultiWriter writer = cfs.createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair,
+                isTransient, isReplicationTransferredToErasureCoding, sstableLevel, header, txn);
         return new SSTableTxnWriter(txn, writer);
     }
 
-
     @SuppressWarnings("resource") // log and writer closed during doPostCleanup
     public static SSTableTxnWriter createRangeAware(TableMetadataRef metadata,
-                                                    long keyCount,
-                                                    long repairedAt,
-                                                    TimeUUID pendingRepair,
-                                                    boolean isTransient,
-                                                    SSTableFormat.Type type,
-                                                    int sstableLevel,
-                                                    SerializationHeader header)
-    {
+            long keyCount,
+            long repairedAt,
+            TimeUUID pendingRepair,
+            boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding,
+            SSTableFormat.Type type,
+            int sstableLevel,
+            SerializationHeader header) {
 
         ColumnFamilyStore cfs = Keyspace.open(metadata.keyspace).getColumnFamilyStore(metadata.name);
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE);
         SSTableMultiWriter writer;
-        try
-        {
-            writer = new RangeAwareSSTableWriter(cfs, keyCount, repairedAt, pendingRepair, isTransient, type, sstableLevel, 0, txn, header);
-        }
-        catch (IOException e)
-        {
-            //We don't know the total size so this should never happen
-            //as we send in 0
+        try {
+            writer = new RangeAwareSSTableWriter(cfs, keyCount, repairedAt, pendingRepair, isTransient,
+                    isReplicationTransferredToErasureCoding, type,
+                    sstableLevel, 0, txn, header);
+        } catch (IOException e) {
+            // We don't know the total size so this should never happen
+            // as we send in 0
             throw new RuntimeException(e);
         }
 
@@ -137,24 +129,28 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
 
     @SuppressWarnings("resource") // log and writer closed during doPostCleanup
     public static SSTableTxnWriter create(TableMetadataRef metadata,
-                                          Descriptor descriptor,
-                                          long keyCount,
-                                          long repairedAt,
-                                          TimeUUID pendingRepair,
-                                          boolean isTransient,
-                                          int sstableLevel,
-                                          SerializationHeader header,
-                                          Collection<Index> indexes)
-    {
-        // if the column family store does not exist, we create a new default SSTableMultiWriter to use:
+            Descriptor descriptor,
+            long keyCount,
+            long repairedAt,
+            TimeUUID pendingRepair,
+            boolean isTransient,
+            boolean isReplicationTransferredToErasureCoding,
+            int sstableLevel,
+            SerializationHeader header,
+            Collection<Index> indexes) {
+        // if the column family store does not exist, we create a new default
+        // SSTableMultiWriter to use:
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE);
         MetadataCollector collector = new MetadataCollector(metadata.get().comparator).sstableLevel(sstableLevel);
-        SSTableMultiWriter writer = SimpleSSTableMultiWriter.create(descriptor, keyCount, repairedAt, pendingRepair, isTransient, metadata, collector, header, indexes, txn);
+        SSTableMultiWriter writer = SimpleSSTableMultiWriter.create(descriptor, keyCount, repairedAt, pendingRepair,
+                isTransient, isReplicationTransferredToErasureCoding, metadata, collector, header, indexes, txn);
         return new SSTableTxnWriter(txn, writer);
     }
 
-    public static SSTableTxnWriter create(ColumnFamilyStore cfs, Descriptor desc, long keyCount, long repairedAt, TimeUUID pendingRepair, boolean isTransient, SerializationHeader header)
-    {
-        return create(cfs, desc, keyCount, repairedAt, pendingRepair, isTransient, 0, header);
+    public static SSTableTxnWriter create(ColumnFamilyStore cfs, Descriptor desc, long keyCount, long repairedAt,
+            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            SerializationHeader header) {
+        return create(cfs, desc, keyCount, repairedAt, pendingRepair, isTransient,
+                isReplicationTransferredToErasureCoding, 0, header);
     }
 }

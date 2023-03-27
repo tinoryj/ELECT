@@ -30,50 +30,51 @@ import org.apache.cassandra.locator.*;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.StorageService;
 
-public final class ReplicationParams
-{
+public final class ReplicationParams {
     public static final String CLASS = "class";
 
     public final Class<? extends AbstractReplicationStrategy> klass;
     public final ImmutableMap<String, String> options;
+    public static int replicationFactor_;
 
-    private ReplicationParams(Class<? extends AbstractReplicationStrategy> klass, Map<String, String> options)
-    {
+    private ReplicationParams(Class<? extends AbstractReplicationStrategy> klass, Map<String, String> options) {
         this.klass = klass;
         this.options = ImmutableMap.copyOf(options);
     }
 
-    static ReplicationParams local()
-    {
+    static ReplicationParams local() {
         return new ReplicationParams(LocalStrategy.class, ImmutableMap.of());
     }
 
-    static ReplicationParams simple(int replicationFactor)
-    {
-        return new ReplicationParams(SimpleStrategy.class, ImmutableMap.of("replication_factor", Integer.toString(replicationFactor)));
+    static ReplicationParams simple(int replicationFactor) {
+        replicationFactor_ = replicationFactor;
+        return new ReplicationParams(SimpleStrategy.class,
+                ImmutableMap.of("replication_factor", Integer.toString(replicationFactor)));
     }
 
-    static ReplicationParams simple(String replicationFactor)
-    {
+    static ReplicationParams simple(String replicationFactor) {
+        replicationFactor_ = Integer.valueOf(replicationFactor).intValue();
         return new ReplicationParams(SimpleStrategy.class, ImmutableMap.of("replication_factor", replicationFactor));
     }
 
-    static ReplicationParams nts(Object... args)
-    {
+    static ReplicationParams nts(Object... args) {
         assert args.length % 2 == 0;
 
         Map<String, String> options = new HashMap<>();
-        for (int i = 0; i < args.length; i += 2)
-        {
+        for (int i = 0; i < args.length; i += 2) {
             options.put((String) args[i], args[i + 1].toString());
         }
 
         return new ReplicationParams(NetworkTopologyStrategy.class, options);
     }
 
-    public void validate(String name, ClientState state)
-    {
-        // Attempt to instantiate the ARS, which will throw a ConfigurationException if the options aren't valid.
+    public int getReplicationFactor() {
+        return replicationFactor_;
+    }
+
+    public void validate(String name, ClientState state) {
+        // Attempt to instantiate the ARS, which will throw a ConfigurationException if
+        // the options aren't valid.
         TokenMetadata tmd = StorageService.instance.getTokenMetadata();
         IEndpointSnitch eps = DatabaseDescriptor.getEndpointSnitch();
         AbstractReplicationStrategy.validateReplicationStrategy(name, klass, tmd, eps, options, state);
@@ -83,8 +84,7 @@ public final class ReplicationParams
         return fromMapWithDefaults(map, new HashMap<>());
     }
 
-    public static ReplicationParams fromMapWithDefaults(Map<String, String> map, Map<String, String> previousOptions)
-    {
+    public static ReplicationParams fromMapWithDefaults(Map<String, String> map, Map<String, String> previousOptions) {
         Map<String, String> options = new HashMap<>(map);
         String className = options.remove(CLASS);
 
@@ -94,16 +94,14 @@ public final class ReplicationParams
         return new ReplicationParams(klass, options);
     }
 
-    public Map<String, String> asMap()
-    {
+    public Map<String, String> asMap() {
         Map<String, String> map = new HashMap<>(options);
         map.put(CLASS, klass.getName());
         return map;
     }
 
     @Override
-    public boolean equals(Object o)
-    {
+    public boolean equals(Object o) {
         if (this == o)
             return true;
 
@@ -116,14 +114,12 @@ public final class ReplicationParams
     }
 
     @Override
-    public int hashCode()
-    {
+    public int hashCode() {
         return Objects.hashCode(klass, options);
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         MoreObjects.ToStringHelper helper = MoreObjects.toStringHelper(this);
         helper.add(CLASS, klass.getName());
         for (Map.Entry<String, String> entry : options.entrySet())
@@ -131,18 +127,17 @@ public final class ReplicationParams
         return helper.toString();
     }
 
-    public void appendCqlTo(CqlBuilder builder)
-    {
+    public void appendCqlTo(CqlBuilder builder) {
         String classname = "org.apache.cassandra.locator".equals(klass.getPackage().getName()) ? klass.getSimpleName()
-                                                                                               : klass.getName();
+                : klass.getName();
         builder.append("{'class': ")
-               .appendWithSingleQuotes(classname);
+                .appendWithSingleQuotes(classname);
 
         options.forEach((k, v) -> {
             builder.append(", ")
-                   .appendWithSingleQuotes(k)
-                   .append(": ")
-                   .appendWithSingleQuotes(v);
+                    .appendWithSingleQuotes(k)
+                    .append(": ")
+                    .appendWithSingleQuotes(v);
         });
 
         builder.append('}');

@@ -78,8 +78,7 @@ import com.google.common.collect.MinMaxPriorityQueue;
 /**
  * Shows the contents of sstable metadata
  */
-public class SSTableMetadataViewer
-{
+public class SSTableMetadataViewer {
     private static final Options options = new Options();
     private static CommandLine cmd;
     private static final String COLORS = "c";
@@ -89,8 +88,7 @@ public class SSTableMetadataViewer
     private static final String SCAN = "s";
     private static Comparator<ValuedByteBuffer> VCOMP = Comparator.comparingLong(ValuedByteBuffer::getValue).reversed();
 
-    static
-    {
+    static {
         DatabaseDescriptor.clientInitialization();
     }
 
@@ -101,13 +99,11 @@ public class SSTableMetadataViewer
     String[] files;
     TimeUnit tsUnit;
 
-    public SSTableMetadataViewer()
-    {
+    public SSTableMetadataViewer() {
         this(true, true, 0, TimeUnit.MICROSECONDS, System.out);
     }
 
-    public SSTableMetadataViewer(boolean color, boolean unicode, int gc, TimeUnit tsUnit, PrintStream out)
-    {
+    public SSTableMetadataViewer(boolean color, boolean unicode, int gc, TimeUnit tsUnit, PrintStream out) {
         this.color = color;
         this.tsUnit = tsUnit;
         this.unicode = unicode;
@@ -115,39 +111,30 @@ public class SSTableMetadataViewer
         this.gc = gc;
     }
 
-    public static String deletion(long time)
-    {
-        if (time == 0 || time == Integer.MAX_VALUE)
-        {
+    public static String deletion(long time) {
+        if (time == 0 || time == Integer.MAX_VALUE) {
             return "no tombstones";
         }
         return toDateString(time, TimeUnit.SECONDS);
     }
 
-    public static String toDateString(long time, TimeUnit unit)
-    {
-        if (time == 0)
-        {
+    public static String toDateString(long time, TimeUnit unit) {
+        if (time == 0) {
             return null;
         }
         return new java.text.SimpleDateFormat("MM/dd/yyyy HH:mm:ss").format(new java.util.Date(unit.toMillis(time)));
     }
 
-    public static String toDurationString(long duration, TimeUnit unit)
-    {
-        if (duration == 0)
-        {
+    public static String toDurationString(long duration, TimeUnit unit) {
+        if (duration == 0) {
             return null;
-        }
-        else if (duration == Integer.MAX_VALUE)
-        {
+        } else if (duration == Integer.MAX_VALUE) {
             return "never";
         }
         return formatDurationWords(unit.toMillis(duration), true, true);
     }
 
-    public static String toByteString(long bytes)
-    {
+    public static String toByteString(long bytes) {
         if (bytes == 0)
             return null;
         else if (bytes < 1024)
@@ -158,39 +145,40 @@ public class SSTableMetadataViewer
         return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
     }
 
-    public String scannedOverviewOutput(String key, long value)
-    {
+    public String scannedOverviewOutput(String key, long value) {
         StringBuilder sb = new StringBuilder();
-        if (color) sb.append(CYAN);
+        if (color)
+            sb.append(CYAN);
         sb.append('[');
-        if (color) sb.append(RESET);
+        if (color)
+            sb.append(RESET);
         sb.append(key);
-        if (color) sb.append(CYAN);
+        if (color)
+            sb.append(CYAN);
         sb.append("] ");
-        if (color) sb.append(RESET);
+        if (color)
+            sb.append(RESET);
         sb.append(value);
         return sb.toString();
     }
 
-    private void printScannedOverview(Descriptor descriptor, StatsMetadata stats) throws IOException
-    {
+    private void printScannedOverview(Descriptor descriptor, StatsMetadata stats) throws IOException {
         TableMetadata cfm = Util.metadataFromSSTable(descriptor);
         SSTableReader reader = SSTableReader.openNoValidation(descriptor, TableMetadataRef.forOfflineTools(cfm));
-        try (ISSTableScanner scanner = reader.getScanner())
-        {
+        try (ISSTableScanner scanner = reader.getScanner()) {
             long bytes = scanner.getLengthInBytes();
             MinMaxPriorityQueue<ValuedByteBuffer> widestPartitions = MinMaxPriorityQueue
-                                                                     .orderedBy(VCOMP)
-                                                                     .maximumSize(5)
-                                                                     .create();
+                    .orderedBy(VCOMP)
+                    .maximumSize(5)
+                    .create();
             MinMaxPriorityQueue<ValuedByteBuffer> largestPartitions = MinMaxPriorityQueue
-                                                                      .orderedBy(VCOMP)
-                                                                      .maximumSize(5)
-                                                                      .create();
+                    .orderedBy(VCOMP)
+                    .maximumSize(5)
+                    .create();
             MinMaxPriorityQueue<ValuedByteBuffer> mostTombstones = MinMaxPriorityQueue
-                                                                   .orderedBy(VCOMP)
-                                                                   .maximumSize(5)
-                                                                   .create();
+                    .orderedBy(VCOMP)
+                    .maximumSize(5)
+                    .create();
             long partitionCount = 0;
             long rowCount = 0;
             long tombstoneCount = 0;
@@ -198,58 +186,49 @@ public class SSTableMetadataViewer
             double totalCells = stats.totalColumnsSet;
             int lastPercent = 0;
             long lastPercentTime = 0;
-            while (scanner.hasNext())
-            {
-                try (UnfilteredRowIterator partition = scanner.next())
-                {
+            while (scanner.hasNext()) {
+                try (UnfilteredRowIterator partition = scanner.next()) {
 
                     long psize = 0;
                     long pcount = 0;
                     int ptombcount = 0;
                     partitionCount++;
-                    if (!partition.staticRow().isEmpty())
-                    {
+                    if (!partition.staticRow().isEmpty()) {
                         rowCount++;
                         pcount++;
                         psize += partition.staticRow().dataSize();
                     }
-                    if (!partition.partitionLevelDeletion().isLive())
-                    {
+                    if (!partition.partitionLevelDeletion().isLive()) {
                         tombstoneCount++;
                         ptombcount++;
                     }
-                    while (partition.hasNext())
-                    {
+                    while (partition.hasNext()) {
                         Unfiltered unfiltered = partition.next();
-                        switch (unfiltered.kind())
-                        {
+                        switch (unfiltered.kind()) {
                             case ROW:
                                 rowCount++;
                                 Row row = (Row) unfiltered;
                                 psize += row.dataSize();
                                 pcount++;
-                                for (org.apache.cassandra.db.rows.Cell<?> cell : row.cells())
-                                {
+                                for (org.apache.cassandra.db.rows.Cell<?> cell : row.cells()) {
                                     cellCount++;
                                     double percentComplete = Math.min(1.0, cellCount / totalCells);
                                     if (lastPercent != (int) (percentComplete * 100) &&
-                                        (currentTimeMillis() - lastPercentTime) > 1000)
-                                    {
+                                            (currentTimeMillis() - lastPercentTime) > 1000) {
                                         lastPercentTime = currentTimeMillis();
                                         lastPercent = (int) (percentComplete * 100);
                                         if (color)
                                             out.printf("\r%sAnalyzing SSTable...  %s%s %s(%%%s)", BLUE, CYAN,
-                                                       Util.progress(percentComplete, 30, unicode),
-                                                       RESET,
-                                                       (int) (percentComplete * 100));
+                                                    Util.progress(percentComplete, 30, unicode),
+                                                    RESET,
+                                                    (int) (percentComplete * 100));
                                         else
                                             out.printf("\rAnalyzing SSTable...  %s (%%%s)",
-                                                       Util.progress(percentComplete, 30, unicode),
-                                                       (int) (percentComplete * 100));
+                                                    Util.progress(percentComplete, 30, unicode),
+                                                    (int) (percentComplete * 100));
                                         out.flush();
                                     }
-                                    if (cell.isTombstone())
-                                    {
+                                    if (cell.isTombstone()) {
                                         tombstoneCount++;
                                         ptombcount++;
                                     }
@@ -275,49 +254,41 @@ public class SSTableMetadataViewer
             field("Tombstones", tombstoneCount);
             field("Cells", cellCount);
             field("Widest Partitions", "");
-            Util.iterToStream(widestPartitions.iterator()).sorted(VCOMP).forEach(p ->
-                                                                                 {
-                                                                                     out.println("  " + scannedOverviewOutput(cfm.partitionKeyType.getString(p.buffer), p.value));
-                                                                                 });
+            Util.iterToStream(widestPartitions.iterator()).sorted(VCOMP).forEach(p -> {
+                out.println("  " + scannedOverviewOutput(cfm.partitionKeyType.getString(p.buffer), p.value));
+            });
             field("Largest Partitions", "");
-            Util.iterToStream(largestPartitions.iterator()).sorted(VCOMP).forEach(p ->
-                                                                                  {
-                                                                                      out.print("  ");
-                                                                                      out.print(scannedOverviewOutput(cfm.partitionKeyType.getString(p.buffer), p.value));
-                                                                                      if (color)
-                                                                                          out.print(WHITE);
-                                                                                      out.print(" (");
-                                                                                      out.print(toByteString(p.value));
-                                                                                      out.print(")");
-                                                                                      if (color)
-                                                                                          out.print(RESET);
-                                                                                      out.println();
-                                                                                  });
+            Util.iterToStream(largestPartitions.iterator()).sorted(VCOMP).forEach(p -> {
+                out.print("  ");
+                out.print(scannedOverviewOutput(cfm.partitionKeyType.getString(p.buffer), p.value));
+                if (color)
+                    out.print(WHITE);
+                out.print(" (");
+                out.print(toByteString(p.value));
+                out.print(")");
+                if (color)
+                    out.print(RESET);
+                out.println();
+            });
             StringBuilder tleaders = new StringBuilder();
-            Util.iterToStream(mostTombstones.iterator()).sorted(VCOMP).forEach(p ->
-                                                                               {
-                                                                                   if (p.value > 0)
-                                                                                   {
-                                                                                       tleaders.append("  ");
-                                                                                       tleaders.append(scannedOverviewOutput(cfm.partitionKeyType.getString(p.buffer), p.value));
-                                                                                       tleaders.append(System.lineSeparator());
-                                                                                   }
-                                                                               });
+            Util.iterToStream(mostTombstones.iterator()).sorted(VCOMP).forEach(p -> {
+                if (p.value > 0) {
+                    tleaders.append("  ");
+                    tleaders.append(scannedOverviewOutput(cfm.partitionKeyType.getString(p.buffer), p.value));
+                    tleaders.append(System.lineSeparator());
+                }
+            });
             String tombstoneLeaders = tleaders.toString();
-            if (tombstoneLeaders.length() > 10)
-            {
+            if (tombstoneLeaders.length() > 10) {
                 field("Tombstone Leaders", "");
                 out.print(tombstoneLeaders);
             }
-        }
-        finally
-        {
+        } finally {
             reader.selfRef().ensureReleased();
         }
     }
 
-    private void printSStableMetadata(String fname, boolean scan) throws IOException
-    {
+    private void printSStableMetadata(String fname, boolean scan) throws IOException {
         Descriptor descriptor = Descriptor.fromFilename(fname);
         Map<MetadataType, MetadataComponent> metadata = descriptor.getMetadataSerializer()
                 .deserialize(descriptor, EnumSet.allOf(MetadataType.class));
@@ -332,17 +303,14 @@ public class SSTableMetadataViewer
                 .get(MetadataType.HEADER);
 
         field("SSTable", descriptor);
-        if (scan && descriptor.version.getVersion().compareTo("ma") >= 0)
-        {
+        if (scan && descriptor.version.getVersion().compareTo("ma") >= 0) {
             printScannedOverview(descriptor, stats);
         }
-        if (validation != null)
-        {
+        if (validation != null) {
             field("Partitioner", validation.partitioner);
             field("Bloom Filter FP chance", validation.bloomFilterFPChance);
         }
-        if (stats != null)
-        {
+        if (stats != null) {
             field("Minimum timestamp", stats.minTimestamp, toDateString(stats.minTimestamp, tsUnit));
             field("Maximum timestamp", stats.maxTimestamp, toDateString(stats.maxTimestamp, tsUnit));
             field("SSTable min local deletion time", stats.minLocalDeletionTime, deletion(stats.minLocalDeletionTime));
@@ -356,15 +324,13 @@ public class SSTableMetadataViewer
             if (validation != null && header != null)
                 printMinMaxToken(descriptor, FBUtilities.newPartitioner(descriptor), header.getKeyType());
 
-            if (header != null && header.getClusteringTypes().size() == stats.minClusteringValues.size())
-            {
+            if (header != null && header.getClusteringTypes().size() == stats.minClusteringValues.size()) {
                 List<AbstractType<?>> clusteringTypes = header.getClusteringTypes();
                 List<ByteBuffer> minClusteringValues = stats.minClusteringValues;
                 List<ByteBuffer> maxClusteringValues = stats.maxClusteringValues;
                 String[] minValues = new String[clusteringTypes.size()];
                 String[] maxValues = new String[clusteringTypes.size()];
-                for (int i = 0; i < clusteringTypes.size(); i++)
-                {
+                for (int i = 0; i < clusteringTypes.size(); i++) {
                     minValues[i] = clusteringTypes.get(i).getString(minClusteringValues.get(i));
                     maxValues[i] = clusteringTypes.get(i).getString(maxClusteringValues.get(i));
                 }
@@ -372,7 +338,7 @@ public class SSTableMetadataViewer
                 field("maxClusteringValues", Arrays.toString(maxValues));
             }
             field("Estimated droppable tombstones",
-                  stats.getEstimatedDroppableTombstoneRatio((int) (currentTimeMillis() / 1000) - this.gc));
+                    stats.getEstimatedDroppableTombstoneRatio((int) (currentTimeMillis() / 1000) - this.gc));
             field("SSTable Level", stats.sstableLevel);
             field("Repaired at", stats.repairedAt, toDateString(stats.repairedAt, TimeUnit.MILLISECONDS));
             field("Pending repair", stats.pendingRepair);
@@ -382,45 +348,43 @@ public class SSTableMetadataViewer
             field("Estimated tombstone drop times", "");
 
             TermHistogram estDropped = new TermHistogram(stats.estimatedTombstoneDropTime,
-                                                         "Drop Time",
-                                                         offset -> String.format("%d %s",
-                                                                offset,
-                                                                Util.wrapQuiet(toDateString(offset, TimeUnit.SECONDS),
-                                                                                        color)),
-                                                         String::valueOf);
+                    "Drop Time",
+                    offset -> String.format("%d %s",
+                            offset,
+                            Util.wrapQuiet(toDateString(offset, TimeUnit.SECONDS),
+                                    color)),
+                    String::valueOf);
             estDropped.printHistogram(out, color, unicode);
             field("Partition Size", "");
             TermHistogram rowSize = new TermHistogram(stats.estimatedPartitionSize,
-                                                      "Size (bytes)",
-                                                      offset -> String.format("%d %s",
-                                                                              offset,
-                                                                              Util.wrapQuiet(toByteString(offset), color)),
-                                                      String::valueOf);
+                    "Size (bytes)",
+                    offset -> String.format("%d %s",
+                            offset,
+                            Util.wrapQuiet(toByteString(offset), color)),
+                    String::valueOf);
             rowSize.printHistogram(out, color, unicode);
             field("Column Count", "");
             TermHistogram cellCount = new TermHistogram(stats.estimatedCellPerPartitionCount,
-                                                        "Columns",
-                                                        String::valueOf,
-                                                        String::valueOf);
+                    "Columns",
+                    String::valueOf,
+                    String::valueOf);
             cellCount.printHistogram(out, color, unicode);
         }
-        if (compaction != null)
-        {
+        if (compaction != null) {
             field("Estimated cardinality", compaction.cardinalityEstimator.cardinality());
         }
-        if (header != null)
-        {
+        if (header != null) {
             EncodingStats encodingStats = header.getEncodingStats();
             AbstractType<?> keyType = header.getKeyType();
             List<AbstractType<?>> clusteringTypes = header.getClusteringTypes();
             Map<ByteBuffer, AbstractType<?>> staticColumns = header.getStaticColumns();
             Map<String, String> statics = staticColumns.entrySet().stream()
                     .collect(Collectors.toMap(e -> UTF8Type.instance.getString(e.getKey()),
-                                              e -> e.getValue().toString()));
+                            e -> e.getValue().toString()));
             Map<ByteBuffer, AbstractType<?>> regularColumns = header.getRegularColumns();
             Map<String, String> regulars = regularColumns.entrySet().stream()
                     .collect(Collectors.toMap(e -> UTF8Type.instance.getString(e.getKey()),
-                                              e -> e.getValue().toString()));
+                            e -> e.getValue().toString()));
 
             field("EncodingStats minTTL", encodingStats.minTTL,
                     toDurationString(encodingStats.minTTL, TimeUnit.SECONDS));
@@ -433,56 +397,55 @@ public class SSTableMetadataViewer
             field("StaticColumns", FBUtilities.toString(statics));
             field("RegularColumns", FBUtilities.toString(regulars));
             field("IsTransient", stats.isTransient);
+            field("IsReplicationTransferredToErasureCoding", stats.isReplicationTransferredToErasureCoding);
         }
     }
 
-    private void field(String field, Object value)
-    {
+    private void field(String field, Object value) {
         field(field, value, null);
     }
 
-    private void field(String field, Object value, String comment)
-    {
+    private void field(String field, Object value, String comment) {
         StringBuilder sb = new StringBuilder();
-        if (color) sb.append(BLUE);
+        if (color)
+            sb.append(BLUE);
         sb.append(field);
-        if (color) sb.append(CYAN);
+        if (color)
+            sb.append(CYAN);
         sb.append(": ");
-        if (color) sb.append(RESET);
-        sb.append(value == null? "--" : value.toString());
+        if (color)
+            sb.append(RESET);
+        sb.append(value == null ? "--" : value.toString());
 
-        if (comment != null)
-        {
-            if (color) sb.append(WHITE);
+        if (comment != null) {
+            if (color)
+                sb.append(WHITE);
             sb.append(" (");
             sb.append(comment);
             sb.append(")");
-            if (color) sb.append(RESET);
+            if (color)
+                sb.append(RESET);
         }
         this.out.println(sb.toString());
     }
 
-    private static void printUsage()
-    {
-        try (PrintWriter errWriter = new PrintWriter(System.err, true))
-        {
+    private static void printUsage() {
+        try (PrintWriter errWriter = new PrintWriter(System.err, true)) {
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp(errWriter, 120, "sstablemetadata <options> <sstable...>",
-                                String.format("%nDump information about SSTable[s] for Apache Cassandra 3.x%nOptions:"),
-                                options, 2, 1, "", true);
+                    String.format("%nDump information about SSTable[s] for Apache Cassandra 3.x%nOptions:"),
+                    options, 2, 1, "", true);
             errWriter.println();
         }
     }
 
     private void printMinMaxToken(Descriptor descriptor, IPartitioner partitioner, AbstractType<?> keyType)
-            throws IOException
-    {
+            throws IOException {
         File summariesFile = new File(descriptor.filenameFor(Component.SUMMARY));
         if (!summariesFile.exists())
             return;
 
-        try (DataInputStream iStream = new DataInputStream(Files.newInputStream(summariesFile.toPath())))
-        {
+        try (DataInputStream iStream = new DataInputStream(Files.newInputStream(summariesFile.toPath()))) {
             Pair<DecoratedKey, DecoratedKey> firstLast = new IndexSummary.IndexSummarySerializer()
                     .deserializeFirstLastKey(iStream, partitioner);
             field("First token", firstLast.left.getToken(), keyType.getString(firstLast.left.getKey()));
@@ -492,10 +455,9 @@ public class SSTableMetadataViewer
 
     /**
      * @param args
-     *            a list of sstables whose metadata we're interested in
+     *             a list of sstables whose metadata we're interested in
      */
-    public static void main(String[] args) throws IOException
-    {
+    public static void main(String[] args) throws IOException {
         CommandLineParser parser = new PosixParser();
 
         Option disableColors = new Option(COLORS, "colors", false, "Use ANSI color sequences");
@@ -505,10 +467,12 @@ public class SSTableMetadataViewer
         unicode.setOptionalArg(true);
 
         options.addOption(unicode);
-        Option gcgs = new Option(GCGS_KEY, "gc_grace_seconds", true, "Time to use when calculating droppable tombstones");
+        Option gcgs = new Option(GCGS_KEY, "gc_grace_seconds", true,
+                "Time to use when calculating droppable tombstones");
         gcgs.setOptionalArg(true);
         options.addOption(gcgs);
-        Option tsUnit = new Option(TIMESTAMP_UNIT, "timestamp_unit", true, "Time unit that cell timestamps are written with");
+        Option tsUnit = new Option(TIMESTAMP_UNIT, "timestamp_unit", true,
+                "Time unit that cell timestamps are written with");
         tsUnit.setOptionalArg(true);
         options.addOption(tsUnit);
 
@@ -516,19 +480,15 @@ public class SSTableMetadataViewer
                 "Full sstable scan for additional details. Only available in 3.0+ sstables. Defaults: false");
         scanEnabled.setOptionalArg(true);
         options.addOption(scanEnabled);
-        try
-        {
+        try {
             cmd = parser.parse(options, args);
-        }
-        catch (ParseException e1)
-        {
+        } catch (ParseException e1) {
             System.err.println(e1.getMessage());
             printUsage();
             System.exit(1);
         }
 
-        if (cmd.getArgs().length < 1)
-        {
+        if (cmd.getArgs().length < 1) {
             System.err.println("You must supply at least one sstable");
             printUsage();
             System.exit(1);
@@ -539,33 +499,26 @@ public class SSTableMetadataViewer
         int gc = Integer.parseInt(cmd.getOptionValue(GCGS_KEY, "0"));
         TimeUnit ts = TimeUnit.valueOf(cmd.getOptionValue(TIMESTAMP_UNIT, "MICROSECONDS"));
         SSTableMetadataViewer metawriter = new SSTableMetadataViewer(enabledColors, enabledUnicode, gc, ts, System.out);
-        for (String fname : cmd.getArgs())
-        {
+        for (String fname : cmd.getArgs()) {
             File sstable = new File(fname);
-            if (sstable.exists())
-            {
+            if (sstable.exists()) {
                 metawriter.printSStableMetadata(sstable.absolutePath(), fullScan);
-            }
-            else
-            {
+            } else {
                 System.out.println("No such file: " + fname);
             }
         }
     }
 
-    private static class ValuedByteBuffer
-    {
+    private static class ValuedByteBuffer {
         public long value;
         public ByteBuffer buffer;
 
-        public ValuedByteBuffer(ByteBuffer buffer, long value)
-        {
+        public ValuedByteBuffer(ByteBuffer buffer, long value) {
             this.value = value;
             this.buffer = buffer;
         }
 
-        public long getValue()
-        {
+        public long getValue() {
             return value;
         }
     }

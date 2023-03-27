@@ -70,8 +70,7 @@ import static org.apache.cassandra.service.ActiveRepairService.NO_PENDING_REPAIR
 import static org.apache.cassandra.service.ActiveRepairService.UNREPAIRED_SSTABLE;
 import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
-public class CassandraStreamManagerTest
-{
+public class CassandraStreamManagerTest {
     private static final String KEYSPACE = null;
     private String keyspace = null;
     private static final String table = "tbl";
@@ -81,42 +80,36 @@ public class CassandraStreamManagerTest
     private ColumnFamilyStore cfs;
 
     @BeforeClass
-    public static void setupClass() throws Exception
-    {
+    public static void setupClass() throws Exception {
         SchemaLoader.prepareServer();
     }
 
     @Before
-    public void createKeyspace() throws Exception
-    {
+    public void createKeyspace() throws Exception {
         keyspace = String.format("ks_%s", System.currentTimeMillis());
-        tbm = CreateTableStatement.parse(String.format("CREATE TABLE %s (k INT PRIMARY KEY, v INT)", table), keyspace).build();
+        tbm = CreateTableStatement.parse(String.format("CREATE TABLE %s (k INT PRIMARY KEY, v INT)", table), keyspace)
+                .build();
         SchemaLoader.createKeyspace(keyspace, KeyspaceParams.simple(1), tbm);
         cfs = Schema.instance.getColumnFamilyStoreInstance(tbm.id);
     }
 
-    private static StreamSession session(TimeUUID pendingRepair)
-    {
-        try
-        {
+    private static StreamSession session(TimeUUID pendingRepair) {
+        try {
             return new StreamSession(StreamOperation.REPAIR,
-                                     InetAddressAndPort.getByName("127.0.0.1"),
-                                     connectionFactory,
-                                     null,
-                                     MessagingService.current_version,
-                                     false,
-                                     0,
-                                     pendingRepair,
-                                     PreviewKind.NONE);
-        }
-        catch (UnknownHostException e)
-        {
+                    InetAddressAndPort.getByName("127.0.0.1"),
+                    connectionFactory,
+                    null,
+                    MessagingService.current_version,
+                    false,
+                    0,
+                    pendingRepair,
+                    PreviewKind.NONE);
+        } catch (UnknownHostException e) {
             throw new AssertionError(e);
         }
     }
 
-    private SSTableReader createSSTable(Runnable queryable)
-    {
+    private SSTableReader createSSTable(Runnable queryable) {
         Set<SSTableReader> before = cfs.getLiveSSTables();
         queryable.run();
         Util.flush(cfs);
@@ -126,19 +119,18 @@ public class CassandraStreamManagerTest
         return Iterables.getOnlyElement(diff);
     }
 
-    private static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair, boolean isTransient) throws IOException
-    {
+    private static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair,
+            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException {
         Descriptor descriptor = sstable.descriptor;
-        descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, repairedAt, pendingRepair, isTransient);
+        descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, repairedAt, pendingRepair, isTransient,
+                isReplicationTransferredToErasureCoding);
         sstable.reloadSSTableMetadata();
 
     }
 
-    private static Set<SSTableReader> sstablesFromStreams(Collection<OutgoingStream> streams)
-    {
+    private static Set<SSTableReader> sstablesFromStreams(Collection<OutgoingStream> streams) {
         Set<SSTableReader> sstables = new HashSet<>();
-        for (OutgoingStream stream: streams)
-        {
+        for (OutgoingStream stream : streams) {
             Ref<SSTableReader> ref = CassandraOutgoingFile.fromStream(stream).getRef();
             sstables.add(ref.get());
             ref.release();
@@ -146,54 +138,56 @@ public class CassandraStreamManagerTest
         return sstables;
     }
 
-    private Set<SSTableReader> getReadersForRange(Range<Token> range)
-    {
+    private Set<SSTableReader> getReadersForRange(Range<Token> range) {
         Collection<OutgoingStream> streams = cfs.getStreamManager().createOutgoingStreams(session(NO_PENDING_REPAIR),
-                                                                                          RangesAtEndpoint.toDummyList(Collections.singleton(range)),
-                                                                                          NO_PENDING_REPAIR,
-                                                                                          PreviewKind.NONE);
+                RangesAtEndpoint.toDummyList(Collections.singleton(range)),
+                NO_PENDING_REPAIR,
+                PreviewKind.NONE);
         return sstablesFromStreams(streams);
     }
 
-    private Set<SSTableReader> selectReaders(TimeUUID pendingRepair)
-    {
+    private Set<SSTableReader> selectReaders(TimeUUID pendingRepair) {
         IPartitioner partitioner = DatabaseDescriptor.getPartitioner();
-        Collection<Range<Token>> ranges = Lists.newArrayList(new Range<Token>(partitioner.getMinimumToken(), partitioner.getMinimumToken()));
-        Collection<OutgoingStream> streams = cfs.getStreamManager().createOutgoingStreams(session(pendingRepair), RangesAtEndpoint.toDummyList(ranges), pendingRepair, PreviewKind.NONE);
+        Collection<Range<Token>> ranges = Lists
+                .newArrayList(new Range<Token>(partitioner.getMinimumToken(), partitioner.getMinimumToken()));
+        Collection<OutgoingStream> streams = cfs.getStreamManager().createOutgoingStreams(session(pendingRepair),
+                RangesAtEndpoint.toDummyList(ranges), pendingRepair, PreviewKind.NONE);
         return sstablesFromStreams(streams);
     }
 
     @Test
-    public void incrementalSSTableSelection() throws Exception
-    {
-        // CASSANDRA-15825 Make sure a compaction won't be triggered under our feet removing the sstables mid-flight
+    public void incrementalSSTableSelection() throws Exception {
+        // CASSANDRA-15825 Make sure a compaction won't be triggered under our feet
+        // removing the sstables mid-flight
         cfs.disableAutoCompaction();
 
-        // make 3 tables, 1 unrepaired, 2 pending repair with different repair ids, and 1 repaired
-        SSTableReader sstable1 = createSSTable(() -> QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (1, 1)", keyspace, table)));
-        SSTableReader sstable2 = createSSTable(() -> QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (2, 2)", keyspace, table)));
-        SSTableReader sstable3 = createSSTable(() -> QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (3, 3)", keyspace, table)));
-        SSTableReader sstable4 = createSSTable(() -> QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (4, 4)", keyspace, table)));
-
+        // make 3 tables, 1 unrepaired, 2 pending repair with different repair ids, and
+        // 1 repaired
+        SSTableReader sstable1 = createSSTable(() -> QueryProcessor
+                .executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (1, 1)", keyspace, table)));
+        SSTableReader sstable2 = createSSTable(() -> QueryProcessor
+                .executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (2, 2)", keyspace, table)));
+        SSTableReader sstable3 = createSSTable(() -> QueryProcessor
+                .executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (3, 3)", keyspace, table)));
+        SSTableReader sstable4 = createSSTable(() -> QueryProcessor
+                .executeInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (4, 4)", keyspace, table)));
 
         TimeUUID pendingRepair = nextTimeUUID();
         long repairedAt = System.currentTimeMillis();
-        mutateRepaired(sstable2, ActiveRepairService.UNREPAIRED_SSTABLE, pendingRepair, false);
-        mutateRepaired(sstable3, UNREPAIRED_SSTABLE, nextTimeUUID(), false);
-        mutateRepaired(sstable4, repairedAt, NO_PENDING_REPAIR, false);
-
-
+        mutateRepaired(sstable2, ActiveRepairService.UNREPAIRED_SSTABLE, pendingRepair, false, false);
+        mutateRepaired(sstable3, UNREPAIRED_SSTABLE, nextTimeUUID(), false, false);
+        mutateRepaired(sstable4, repairedAt, NO_PENDING_REPAIR, false, false);
 
         // no pending repair should return all sstables
         Assert.assertEquals(Sets.newHashSet(sstable1, sstable2, sstable3, sstable4), selectReaders(NO_PENDING_REPAIR));
 
-        // a pending repair arg should only return sstables with the same pending repair id
+        // a pending repair arg should only return sstables with the same pending repair
+        // id
         Assert.assertEquals(Sets.newHashSet(sstable2), selectReaders(pendingRepair));
     }
 
     @Test
-    public void testSSTableSectionsForRanges() throws Exception
-    {
+    public void testSSTableSectionsForRanges() throws Exception {
         cfs.truncateBlocking();
 
         createSSTable(() -> {
@@ -209,15 +203,13 @@ public class CassandraStreamManagerTest
         Set<SSTableReader> sstablesBeforeRewrite = getReadersForRange(new Range<>(firstToken, firstToken));
         Assert.assertEquals(1, sstablesBeforeRewrite.size());
         final AtomicInteger checkCount = new AtomicInteger();
-        // needed since we get notified when compaction is done as well - we can't get sections for ranges for obsoleted sstables
+        // needed since we get notified when compaction is done as well - we can't get
+        // sections for ranges for obsoleted sstables
         final AtomicBoolean done = new AtomicBoolean(false);
         final AtomicBoolean failed = new AtomicBoolean(false);
-        Runnable r = new Runnable()
-        {
-            public void run()
-            {
-                while (!done.get())
-                {
+        Runnable r = new Runnable() {
+            public void run() {
+                while (!done.get()) {
                     Range<Token> range = new Range<Token>(firstToken, firstToken);
                     Set<SSTableReader> sstables = getReadersForRange(range);
                     if (sstables.size() != 1)
@@ -228,14 +220,11 @@ public class CassandraStreamManagerTest
             }
         };
         Thread t = NamedThreadFactory.createAnonymousThread(r);
-        try
-        {
+        try {
             t.start();
             cfs.forceMajorCompaction();
             // reset
-        }
-        finally
-        {
+        } finally {
             DatabaseDescriptor.setSSTablePreemptiveOpenIntervalInMiB(50);
             done.set(true);
             t.join(20);

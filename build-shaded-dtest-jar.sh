@@ -29,7 +29,7 @@ echo $CASSANDRA_VERSION
 echo $DTEST_VERSION
 
 ant clean
-ant dtest-jar
+ant dtest-jar -Duse.jdk11=true
 
 # Install the version that will be shaded
 mvn install:install-file               \
