@@ -698,6 +698,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return dfile.path();
     }
 
+    public String getSSTableHashID() {
+        return sstableMetadata.hashID();
+    }
+
     public void setupOnline() {
         // under normal operation we can do this at any time, but SSTR is also used
         // outside C* proper,

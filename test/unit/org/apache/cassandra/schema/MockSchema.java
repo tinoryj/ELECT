@@ -154,7 +154,7 @@ public class MockSchema {
             StatsMetadata metadata = (StatsMetadata) new MetadataCollector(cfs.metadata().comparator)
                     .sstableLevel(level)
                     .finalizeMetadata(cfs.metadata().partitioner.getClass().getCanonicalName(), 0.01f,
-                            UNREPAIRED_SSTABLE, null, false, false, header)
+                            UNREPAIRED_SSTABLE, null, false, false, header, null)
                     .get(MetadataType.STATS);
             SSTableReader reader = SSTableReader.internalOpen(descriptor, components, cfs.metadata,
                     fileHandle.sharedCopy(), fileHandle.sharedCopy(), indexSummary.sharedCopy(),

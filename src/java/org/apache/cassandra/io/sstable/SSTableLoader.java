@@ -128,8 +128,6 @@ public class SSTableLoader implements StreamEventHandler {
                         components.add(Component.DATA);
                     if (new File(desc.filenameFor(Component.EC_METADATA)).exists())
                         components.add(Component.EC_METADATA);
-                    if (new File(desc.filenameFor(Component.IDENTIFICATION)).exists())
-                        components.add(Component.IDENTIFICATION);
                     components.add(Component.PRIMARY_INDEX);
                     if (new File(desc.filenameFor(Component.SUMMARY)).exists())
                         components.add(Component.SUMMARY);

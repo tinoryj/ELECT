@@ -29,8 +29,6 @@ public enum MetadataType {
     COMPACTION(CompactionMetadata.serializer),
     /** Metadata always keep in memory */
     STATS(StatsMetadata.serializer),
-    /** Metadata (hash ID) always keep in memory */
-    HASHID(HashIDMetadata.serializer),
     /** Serialization header */
     HEADER((IMetadataComponentSerializer) SerializationHeader.serializer);
 

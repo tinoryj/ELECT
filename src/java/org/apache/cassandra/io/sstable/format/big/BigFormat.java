@@ -30,6 +30,7 @@ import org.apache.cassandra.io.sstable.format.*;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.utils.TimeUUID;
+import org.caffinitas.ohc.HashAlgorithm;
 
 /**
  * Legacy bigtable format
@@ -143,6 +144,7 @@ public class BigFormat implements SSTableFormat {
         private final boolean hasMetadataChecksum;
         private final boolean hasIsTransient;
         private final boolean hasIsReplicationTransferredToErasureCoding;
+        private final boolean hasHashID;
 
         /**
          * CASSANDRA-9067: 4.0 bloom filter representation changed (two longs just
@@ -166,6 +168,7 @@ public class BigFormat implements SSTableFormat {
             hasPendingRepair = version.compareTo("na") >= 0;
             hasIsTransient = version.compareTo("na") >= 0;
             hasIsReplicationTransferredToErasureCoding = version.compareTo("na") >= 0;
+            hasHashID = version.compareTo("na") >= 0;
             hasMetadataChecksum = version.compareTo("na") >= 0;
             hasOldBfFormat = version.compareTo("na") < 0;
         }
@@ -197,6 +200,11 @@ public class BigFormat implements SSTableFormat {
         @Override
         public boolean hasIsReplicationTransferredToErasureCoding() {
             return hasIsReplicationTransferredToErasureCoding;
+        }
+
+        @Override
+        public boolean hasHashID() {
+            return hasHashID;
         }
 
         @Override

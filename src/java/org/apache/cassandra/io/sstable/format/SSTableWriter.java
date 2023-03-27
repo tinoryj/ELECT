@@ -19,6 +19,7 @@
 package org.apache.cassandra.io.sstable.format;
 
 import java.util.*;
+import java.io.*;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -54,6 +55,7 @@ import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.Transactional;
+import org.eclipse.jdt.internal.compiler.util.HashSetOfInt;
 
 /**
  * This is the API all table writers must implement.
@@ -67,6 +69,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
     protected TimeUUID pendingRepair;
     protected boolean isTransient;
     protected boolean isReplicationTransferredToErasureCoding;
+    protected String hashID;
     protected long maxDataAge = -1;
     protected final long keyCount;
     protected final MetadataCollector metadataCollector;
@@ -175,7 +178,8 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
     }
 
     private static Set<Component> components(TableMetadata metadata) {
-        Set<Component> components = new HashSet<Component>(Arrays.asList(Component.DATA, Component.EC_METADATA,
+        Set<Component> components = new HashSet<Component>(Arrays.asList(Component.DATA,
+                Component.EC_METADATA,
                 Component.PRIMARY_INDEX,
                 Component.STATS,
                 Component.SUMMARY,
@@ -323,7 +327,8 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
                 pendingRepair,
                 isTransient,
                 isReplicationTransferredToErasureCoding,
-                header);
+                header,
+                hashID);
     }
 
     protected StatsMetadata statsMetadata() {
@@ -335,13 +340,19 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
     }
 
     public static void rename(Descriptor tmpdesc, Descriptor newdesc, Set<Component> components) {
-        for (Component component : Sets.difference(components, Sets.newHashSet(Component.DATA, Component.SUMMARY))) {
+        for (Component component : Sets.difference(components,
+                Sets.newHashSet(Component.DATA, Component.EC_METADATA, Component.SUMMARY))) {
             FileUtils.renameWithConfirm(tmpdesc.filenameFor(component), newdesc.filenameFor(component));
         }
 
         // do -Data last because -Data present should mean the sstable was completely
         // renamed before crash
-        FileUtils.renameWithConfirm(tmpdesc.filenameFor(Component.DATA), newdesc.filenameFor(Component.DATA));
+        if (new File(tmpdesc.filenameFor(Component.DATA)).exists()) {
+            FileUtils.renameWithConfirm(tmpdesc.filenameFor(Component.DATA), newdesc.filenameFor(Component.DATA));
+        } else {
+            FileUtils.renameWithConfirm(tmpdesc.filenameFor(Component.EC_METADATA),
+                    newdesc.filenameFor(Component.EC_METADATA));
+        }
 
         // rename it without confirmation because summary can be available for
         // loadNewSSTables but not for closeAndOpenReader
@@ -355,7 +366,12 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
 
         // do -Data last because -Data present should mean the sstable was completely
         // copied before crash
-        FileUtils.copyWithConfirm(tmpdesc.filenameFor(Component.DATA), newdesc.filenameFor(Component.DATA));
+        if (new File(tmpdesc.filenameFor(Component.DATA)).exists()) {
+            FileUtils.copyWithConfirm(tmpdesc.filenameFor(Component.DATA), newdesc.filenameFor(Component.DATA));
+        } else {
+            FileUtils.copyWithConfirm(tmpdesc.filenameFor(Component.EC_METADATA),
+                    newdesc.filenameFor(Component.EC_METADATA));
+        }
 
         // copy it without confirmation because summary can be available for
         // loadNewSSTables but not for closeAndOpenReader
@@ -369,7 +385,13 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
 
         // do -Data last because -Data present should mean the sstable was completely
         // copied before crash
-        FileUtils.createHardLinkWithConfirm(tmpdesc.filenameFor(Component.DATA), newdesc.filenameFor(Component.DATA));
+        if (new File(tmpdesc.filenameFor(Component.DATA)).exists()) {
+            FileUtils.createHardLinkWithConfirm(tmpdesc.filenameFor(Component.DATA),
+                    newdesc.filenameFor(Component.DATA));
+        } else {
+            FileUtils.createHardLinkWithConfirm(tmpdesc.filenameFor(Component.EC_METADATA),
+                    newdesc.filenameFor(Component.EC_METADATA));
+        }
 
         // copy it without confirmation because summary can be available for
         // loadNewSSTables but not for closeAndOpenReader

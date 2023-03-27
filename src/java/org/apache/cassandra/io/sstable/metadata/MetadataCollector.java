@@ -85,7 +85,8 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 null,
                 null,
                 false,
-                false);
+                false,
+                null);
     }
 
     protected EstimatedHistogram estimatedPartitionSize = defaultPartitionSizeHistogram();
@@ -247,7 +248,8 @@ public class MetadataCollector implements PartitionStatisticsCollector {
     public Map<MetadataType, MetadataComponent> finalizeMetadata(String partitioner, double bloomFilterFPChance,
             long repairedAt, TimeUUID pendingRepair, boolean isTransient,
             boolean isReplicationTransferredToErasureCoding,
-            SerializationHeader header) {
+            SerializationHeader header,
+            String hashID) {
         Preconditions.checkState((minClustering == null && maxClustering == null)
                 || comparator.compare(maxClustering, minClustering) >= 0);
         ByteBuffer[] minValues = minClustering != null ? minClustering.getBufferArray() : EMPTY_CLUSTERING;
@@ -275,10 +277,10 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 originatingHostId,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding));
+                isReplicationTransferredToErasureCoding,
+                hashID));
         components.put(MetadataType.COMPACTION, new CompactionMetadata(cardinality));
         components.put(MetadataType.HEADER, header.toComponent());
-        components.put(MetadataType.HASHID, new HashIDMetadata(partitioner));
         return components;
     }
 

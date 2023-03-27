@@ -154,32 +154,6 @@ public abstract class SSTableReaderBuilder {
         }
     }
 
-    void loadHashID() {
-        File hashIDFile = new File(descriptor.filenameFor(Component.IDENTIFICATION));
-        if (!hashIDFile.exists()) {
-            if (logger.isDebugEnabled())
-                logger.debug("SSTable HashID File {} does not exist", hashIDFile.absolutePath());
-            return;
-        }
-
-        DataInputStream iStream = null;
-        try {
-            iStream = new DataInputStream(Files.newInputStream(hashIDFile.toPath()));
-            byte[] onDiskHashIDBuffer = new byte[32];
-            iStream.readFully(onDiskHashIDBuffer);
-        } catch (IOException e) {
-            if (summary != null)
-                summary.close();
-            logger.trace("Cannot deserialize SSTable Summary File {}: {}", hashIDFile.path(), e.getMessage());
-            // corrupted; delete it and fall back to creating a new summary
-            FileUtils.closeQuietly(iStream);
-            // delete it and fall back to creating a new summary
-            FileUtils.deleteWithConfirm(hashIDFile);
-        } finally {
-            FileUtils.closeQuietly(iStream);
-        }
-    }
-
     /**
      * Build index summary, first key, last key if {@code summaryLoaded} is false
      * and recreate bloom filter if
@@ -250,21 +224,6 @@ public abstract class SSTableReaderBuilder {
     }
 
     /**
-     * Build Identification label (sha256 hash) for detect same sstable on different
-     * nodes.
-     */
-    void buildSSTableIdentificationHash(
-            Set<Component> components,
-            StatsMetadata statsMetadata) throws IOException {
-        if (!components.contains(Component.IDENTIFICATION)) {
-            if (logger.isDebugEnabled())
-                logger.error("Could not found Identification component for {}", descriptor);
-            return;
-        }
-
-    }
-
-    /**
      * Load bloom filter from Filter.db file.
      *
      * @throws IOException
@@ -301,7 +260,8 @@ public abstract class SSTableReaderBuilder {
                 Set<Component> components,
                 StatsMetadata statsMetadata,
                 SerializationHeader header) {
-            super(descriptor, metadataRef, currentTimeMillis(), components, statsMetadata, NORMAL, header);
+            super(descriptor, metadataRef, currentTimeMillis(), components, statsMetadata, NORMAL,
+                    header);
         }
 
         @Override

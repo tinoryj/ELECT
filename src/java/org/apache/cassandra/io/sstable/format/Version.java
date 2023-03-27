@@ -120,4 +120,6 @@ public abstract class Version {
     }
 
     public abstract boolean hasOriginatingHostId();
+
+    public abstract boolean hasHashID();
 }

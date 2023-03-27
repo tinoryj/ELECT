@@ -1631,11 +1631,14 @@ public class CompactionManager implements CompactionManagerMBean {
                     (int) (SSTableReader.getApproximateKeyCount(sstableAsSet)));
 
             fullWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, false, false, sstableAsSet, txn));
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, false, false,
+                    sstableAsSet, txn));
             transWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, true, false, sstableAsSet, txn));
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, true, false,
+                    sstableAsSet, txn));
             unrepairedWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false, false, sstableAsSet, txn));
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false, false,
+                    sstableAsSet, txn));
 
             Predicate<Token> fullChecker = !ranges.onlyFull().isEmpty()
                     ? new Range.OrderedRangeContainmentChecker(ranges.onlyFull().ranges())

@@ -17,11 +17,15 @@
  */
 package org.apache.cassandra.io.sstable.format.big;
 
+import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.FileInputStream;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Stream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.lifecycle.LifecycleNewTracker;
@@ -104,7 +108,7 @@ public class BigTableWriter extends SSTableWriter {
                     writerOption);
         }
         if (isReplicationTransferredToErasureCoding) {
-            dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.EC_METADATA)).compressed(compression)
+            dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.EC_METADATA)).compressed(false)
                     .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
         } else {
             dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA)).compressed(compression)
@@ -451,6 +455,27 @@ public class BigTableWriter extends SSTableWriter {
 
             // write sstable statistics
             dataFile.prepareToCommit();
+            // Read dfile
+
+            try (DataInputStream dataFileReadForHash = new DataInputStream(
+                    new FileInputStream(descriptor.filenameFor(Component.DATA)))) {
+                long fileLength = new File(descriptor.filenameFor(Component.DATA)).length();
+                byte[] bytes = new byte[(int) fileLength];
+                dataFileReadForHash.readFully(bytes);
+                dataFileReadForHash.close();
+                // generate hash based on the bytes buffer
+                try {
+                    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                    byte[] hash = digest.digest(bytes);
+                    hashID = new String(hash);
+                    logger.debug("[Tinoryj]: generated hash value for current SSTable is {}", hashID);
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
             writeMetadata(descriptor, finalizeMetadata());
 
             // save the table of components

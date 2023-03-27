@@ -17,7 +17,6 @@
  */
 package org.apache.cassandra.db.lifecycle;
 
-
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -70,27 +69,22 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class LogTransactionTest extends AbstractTransactionalTest
-{
+public class LogTransactionTest extends AbstractTransactionalTest {
     private static final String KEYSPACE = "TransactionLogsTest";
 
     @BeforeClass
-    public static void setUp()
-    {
+    public static void setUp() {
         MockSchema.cleanup();
     }
 
-    protected AbstractTransactionalTest.TestableTransaction newTest() throws Exception
-    {
+    protected AbstractTransactionalTest.TestableTransaction newTest() throws Exception {
         LogTransaction.waitForDeletions();
         SSTableReader.resetTidying();
         return new TxnTest();
     }
 
-    private static final class TxnTest extends TestableTransaction
-    {
-        private final static class Transaction extends Transactional.AbstractTransactional implements Transactional
-        {
+    private static final class TxnTest extends TestableTransaction {
+        private final static class Transaction extends Transactional.AbstractTransactional implements Transactional {
             final ColumnFamilyStore cfs;
             final LogTransaction txnLogs;
             final File dataFolder;
@@ -98,8 +92,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
             final SSTableReader sstableNew;
             final LogTransaction.SSTableTidier tidier;
 
-            Transaction(ColumnFamilyStore cfs, LogTransaction txnLogs) throws IOException
-            {
+            Transaction(ColumnFamilyStore cfs, LogTransaction txnLogs) throws IOException {
                 this.cfs = cfs;
                 this.txnLogs = txnLogs;
                 this.dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
@@ -115,8 +108,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
                 assertNotNull(tidier);
             }
 
-            protected Throwable doCommit(Throwable accumulate)
-            {
+            protected Throwable doCommit(Throwable accumulate) {
                 sstableOld.markObsolete(tidier);
                 sstableOld.selfRef().release();
                 LogTransaction.waitForDeletions();
@@ -127,8 +119,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
                 return ret;
             }
 
-            protected Throwable doAbort(Throwable accumulate)
-            {
+            protected Throwable doAbort(Throwable accumulate) {
                 tidier.abort();
                 LogTransaction.waitForDeletions();
 
@@ -139,80 +130,66 @@ public class LogTransactionTest extends AbstractTransactionalTest
                 return ret;
             }
 
-            protected void doPrepare()
-            {
+            protected void doPrepare() {
                 txnLogs.prepareToCommit();
             }
 
-            void assertInProgress() throws Exception
-            {
+            void assertInProgress() throws Exception {
                 assertFiles(dataFolder.path(), Sets.newHashSet(Iterables.concat(sstableNew.getAllFilePaths(),
-                                                                                sstableOld.getAllFilePaths(),
-                                                                                txnLogs.logFilePaths())));
+                        sstableOld.getAllFilePaths(),
+                        txnLogs.logFilePaths())));
             }
 
-            void assertPrepared() throws Exception
-            {
+            void assertPrepared() throws Exception {
             }
 
-            void assertAborted() throws Exception
-            {
+            void assertAborted() throws Exception {
                 assertFiles(dataFolder.path(), new HashSet<>(sstableOld.getAllFilePaths()));
             }
 
-            void assertCommitted() throws Exception
-            {
+            void assertCommitted() throws Exception {
                 assertFiles(dataFolder.path(), new HashSet<>(sstableNew.getAllFilePaths()));
             }
         }
 
         final Transaction txn;
 
-        private TxnTest() throws IOException
-        {
+        private TxnTest() throws IOException {
             this(MockSchema.newCFS(KEYSPACE));
         }
 
-        private TxnTest(ColumnFamilyStore cfs) throws IOException
-        {
+        private TxnTest(ColumnFamilyStore cfs) throws IOException {
             this(cfs, new LogTransaction(OperationType.COMPACTION));
         }
 
-        private TxnTest(ColumnFamilyStore cfs, LogTransaction txnLogs) throws IOException
-        {
+        private TxnTest(ColumnFamilyStore cfs, LogTransaction txnLogs) throws IOException {
             this(new Transaction(cfs, txnLogs));
         }
 
-        private TxnTest(Transaction txn)
-        {
+        private TxnTest(Transaction txn) {
             super(txn);
             this.txn = txn;
         }
 
-        protected void assertInProgress() throws Exception
-        {
+        protected void assertInProgress() throws Exception {
             txn.assertInProgress();
         }
 
-        protected void assertPrepared() throws Exception
-        {
+        protected void assertPrepared() throws Exception {
             txn.assertPrepared();
         }
 
-        protected void assertAborted() throws Exception
-        {
+        protected void assertAborted() throws Exception {
             txn.assertAborted();
         }
 
-        protected void assertCommitted() throws Exception
-        {
+        protected void assertCommitted() throws Exception {
             txn.assertCommitted();
         }
     }
 
     @Test
-    public void testUntrack() throws Throwable
-    {
+    public void testUntrack() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstableNew = sstable(dataFolder, cfs, 1, 128);
@@ -234,25 +211,21 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testUntrackIdenticalLogFilesOnDisk() throws Throwable
-    {
+    public void testUntrackIdenticalLogFilesOnDisk() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File datadir1 = new File(Files.createTempDirectory("datadir1"));
         File datadir2 = new File(Files.createTempDirectory("datadir2"));
         SSTableReader sstable1 = sstable(datadir1, cfs, 1, 128);
         SSTableReader sstable2 = sstable(datadir2, cfs, 1, 128);
 
-
         for (Consumer<LogTransaction> c : Arrays.<Consumer<LogTransaction>>asList((log) -> log.trackNew(sstable2),
-                                                                                  (log) -> log.obsoleted(sstable2),
-                                                                                  (log) -> log.txnFile().addAll(LogRecord.Type.ADD, Collections.singleton(sstable2))))
-        {
-            try (LogTransaction log = new LogTransaction(OperationType.COMPACTION))
-            {
+                (log) -> log.obsoleted(sstable2),
+                (log) -> log.txnFile().addAll(LogRecord.Type.ADD, Collections.singleton(sstable2)))) {
+            try (LogTransaction log = new LogTransaction(OperationType.COMPACTION)) {
                 log.trackNew(sstable1); // creates a log file in datadir1
                 log.untrackNew(sstable1); // removes sstable1 from `records`, but still on disk & in `onDiskRecords`
 
-                c.accept(log);  // creates a log file in datadir2, based on contents in onDiskRecords
+                c.accept(log); // creates a log file in datadir2, based on contents in onDiskRecords
                 byte[] log1 = Files.readAllBytes(log.logFiles().get(0).toPath());
                 byte[] log2 = Files.readAllBytes(log.logFiles().get(1).toPath());
                 assertArrayEquals(log1, log2);
@@ -265,8 +238,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testCommitSameDesc() throws Throwable
-    {
+    public void testCommitSameDesc() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstableOld1 = sstable(dataFolder, cfs, 0, 128);
@@ -296,8 +268,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testCommitOnlyNew() throws Throwable
-    {
+    public void testCommitOnlyNew() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstable = sstable(dataFolder, cfs, 0, 128);
@@ -314,8 +285,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testCommitOnlyOld() throws Throwable
-    {
+    public void testCommitOnlyOld() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstable = sstable(dataFolder, cfs, 0, 128);
@@ -334,8 +304,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testCommitMultipleFolders() throws Throwable
-    {
+    public void testCommitMultipleFolders() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
 
         File origiFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
@@ -345,9 +314,9 @@ public class LogTransactionTest extends AbstractTransactionalTest
         Files.createDirectories(dataFolder2.toPath());
 
         SSTableReader[] sstables = { sstable(dataFolder1, cfs, 0, 128),
-                                     sstable(dataFolder1, cfs, 1, 128),
-                                     sstable(dataFolder2, cfs, 2, 128),
-                                     sstable(dataFolder2, cfs, 3, 128)
+                sstable(dataFolder1, cfs, 1, 128),
+                sstable(dataFolder2, cfs, 2, 128),
+                sstable(dataFolder2, cfs, 3, 128)
         };
 
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
@@ -371,8 +340,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testAbortOnlyNew() throws Throwable
-    {
+    public void testAbortOnlyNew() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstable = sstable(dataFolder, cfs, 0, 128);
@@ -389,8 +357,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testAbortOnlyOld() throws Throwable
-    {
+    public void testAbortOnlyOld() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstable = sstable(dataFolder, cfs, 0, 128);
@@ -410,8 +377,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testAbortMultipleFolders() throws Throwable
-    {
+    public void testAbortMultipleFolders() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
 
         File origiFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
@@ -421,9 +387,9 @@ public class LogTransactionTest extends AbstractTransactionalTest
         Files.createDirectories(dataFolder2.toPath());
 
         SSTableReader[] sstables = { sstable(dataFolder1, cfs, 0, 128),
-                                     sstable(dataFolder1, cfs, 1, 128),
-                                     sstable(dataFolder2, cfs, 2, 128),
-                                     sstable(dataFolder2, cfs, 3, 128)
+                sstable(dataFolder1, cfs, 1, 128),
+                sstable(dataFolder2, cfs, 2, 128),
+                sstable(dataFolder2, cfs, 3, 128)
         };
 
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
@@ -444,16 +410,15 @@ public class LogTransactionTest extends AbstractTransactionalTest
         assertFiles(dataFolder2.path(), new HashSet<>(sstables[2].getAllFilePaths()));
     }
 
-
     @Test
-    public void testRemoveUnfinishedLeftovers_abort() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_abort() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstableOld = sstable(dataFolder, cfs, 0, 128);
         SSTableReader sstableNew = sstable(dataFolder, cfs, 1, 128);
 
-        // simulate tracking sstables with a failed transaction (new log file NOT deleted)
+        // simulate tracking sstables with a failed transaction (new log file NOT
+        // deleted)
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
         assertNotNull(log);
 
@@ -483,21 +448,21 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_commit() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_commit() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstableOld = sstable(dataFolder, cfs, 0, 128);
         SSTableReader sstableNew = sstable(dataFolder, cfs, 1, 128);
 
-        // simulate tracking sstables with a committed transaction (new log file deleted)
+        // simulate tracking sstables with a committed transaction (new log file
+        // deleted)
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
         assertNotNull(log);
 
         log.trackNew(sstableNew);
         LogTransaction.SSTableTidier tidier = log.obsoleted(sstableOld);
 
-        //Fake a commit
+        // Fake a commit
         log.txnFile().commit();
 
         Set<File> tmpFiles = sstableOld.getAllFilePaths().stream().map(File::new).collect(Collectors.toSet());
@@ -523,8 +488,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_commit_multipleFolders() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_commit_multipleFolders() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
 
         File origiFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
@@ -534,9 +498,9 @@ public class LogTransactionTest extends AbstractTransactionalTest
         Files.createDirectories(dataFolder2.toPath());
 
         SSTableReader[] sstables = { sstable(dataFolder1, cfs, 0, 128),
-                                     sstable(dataFolder1, cfs, 1, 128),
-                                     sstable(dataFolder2, cfs, 2, 128),
-                                     sstable(dataFolder2, cfs, 3, 128)
+                sstable(dataFolder1, cfs, 1, 128),
+                sstable(dataFolder2, cfs, 2, 128),
+                sstable(dataFolder2, cfs, 3, 128)
         };
 
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
@@ -557,9 +521,9 @@ public class LogTransactionTest extends AbstractTransactionalTest
 
         // test listing
         assertEquals(sstables[0].getAllFilePaths().stream().map(File::new).collect(Collectors.toSet()),
-                            getTemporaryFiles(dataFolder1));
+                getTemporaryFiles(dataFolder1));
         assertEquals(sstables[2].getAllFilePaths().stream().map(File::new).collect(Collectors.toSet()),
-                            getTemporaryFiles(dataFolder2));
+                getTemporaryFiles(dataFolder2));
 
         // normally called at startup
         assertTrue(LogTransaction.removeUnfinishedLeftovers(Arrays.asList(dataFolder1, dataFolder2)));
@@ -574,8 +538,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_abort_multipleFolders() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_abort_multipleFolders() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
 
         File origiFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
@@ -585,9 +548,9 @@ public class LogTransactionTest extends AbstractTransactionalTest
         Files.createDirectories(dataFolder2.toPath());
 
         SSTableReader[] sstables = { sstable(dataFolder1, cfs, 0, 128),
-                                     sstable(dataFolder1, cfs, 1, 128),
-                                     sstable(dataFolder2, cfs, 2, 128),
-                                     sstable(dataFolder2, cfs, 3, 128)
+                sstable(dataFolder1, cfs, 1, 128),
+                sstable(dataFolder2, cfs, 2, 128),
+                sstable(dataFolder2, cfs, 3, 128)
         };
 
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
@@ -608,9 +571,9 @@ public class LogTransactionTest extends AbstractTransactionalTest
 
         // test listing
         assertEquals(sstables[1].getAllFilePaths().stream().map(File::new).collect(Collectors.toSet()),
-                            getTemporaryFiles(dataFolder1));
+                getTemporaryFiles(dataFolder1));
         assertEquals(sstables[3].getAllFilePaths().stream().map(File::new).collect(Collectors.toSet()),
-                            getTemporaryFiles(dataFolder2));
+                getTemporaryFiles(dataFolder2));
 
         // normally called at startup
         assertTrue(LogTransaction.removeUnfinishedLeftovers(Arrays.asList(dataFolder1, dataFolder2)));
@@ -625,8 +588,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_multipleFolders_mismatchedFinalRecords() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_multipleFolders_mismatchedFinalRecords() throws Throwable {
         testRemoveUnfinishedLeftovers_multipleFolders_errorConditions(txn -> {
             List<File> logFiles = txn.logFiles();
             assertEquals(2, logFiles.size());
@@ -639,8 +601,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_multipleFolders_partialFinalRecords_first() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_multipleFolders_partialFinalRecords_first() throws Throwable {
         testRemoveUnfinishedLeftovers_multipleFolders_errorConditions(txn -> {
             List<File> logFiles = txn.logFiles();
             assertEquals(2, logFiles.size());
@@ -655,8 +616,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_multipleFolders_partialFinalRecords_second() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_multipleFolders_partialFinalRecords_second() throws Throwable {
         testRemoveUnfinishedLeftovers_multipleFolders_errorConditions(txn -> {
             List<File> logFiles = txn.logFiles();
             assertEquals(2, logFiles.size());
@@ -671,8 +631,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_multipleFolders_partialNonFinalRecord_first() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_multipleFolders_partialNonFinalRecord_first() throws Throwable {
         testRemoveUnfinishedLeftovers_multipleFolders_errorConditions(txn -> {
             List<File> logFiles = txn.logFiles();
             assertEquals(2, logFiles.size());
@@ -690,8 +649,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_multipleFolders_partialNonFinalRecord_second() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_multipleFolders_partialNonFinalRecord_second() throws Throwable {
         testRemoveUnfinishedLeftovers_multipleFolders_errorConditions(txn -> {
             List<File> logFiles = txn.logFiles();
             assertEquals(2, logFiles.size());
@@ -709,8 +667,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_multipleFolders_missingFinalRecords_first() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_multipleFolders_missingFinalRecords_first() throws Throwable {
         testRemoveUnfinishedLeftovers_multipleFolders_errorConditions(txn -> {
             List<File> logFiles = txn.logFiles();
             assertEquals(2, logFiles.size());
@@ -722,8 +679,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_multipleFolders_missingFinalRecords_second() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_multipleFolders_missingFinalRecords_second() throws Throwable {
         testRemoveUnfinishedLeftovers_multipleFolders_errorConditions(txn -> {
             List<File> logFiles = txn.logFiles();
             assertEquals(2, logFiles.size());
@@ -735,8 +691,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testRemoveUnfinishedLeftovers_multipleFolders_tooManyFinalRecords() throws Throwable
-    {
+    public void testRemoveUnfinishedLeftovers_multipleFolders_tooManyFinalRecords() throws Throwable {
         testRemoveUnfinishedLeftovers_multipleFolders_errorConditions(txn -> {
             List<File> logFiles = txn.logFiles();
             assertEquals(2, logFiles.size());
@@ -749,8 +704,8 @@ public class LogTransactionTest extends AbstractTransactionalTest
         }, false);
     }
 
-    private static void testRemoveUnfinishedLeftovers_multipleFolders_errorConditions(Consumer<LogTransaction> modifier, boolean shouldCommit) throws Throwable
-    {
+    private static void testRemoveUnfinishedLeftovers_multipleFolders_errorConditions(Consumer<LogTransaction> modifier,
+            boolean shouldCommit) throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
 
         File origiFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
@@ -760,9 +715,9 @@ public class LogTransactionTest extends AbstractTransactionalTest
         Files.createDirectories(dataFolder2.toPath());
 
         SSTableReader[] sstables = { sstable(dataFolder1, cfs, 0, 128),
-                                     sstable(dataFolder1, cfs, 1, 128),
-                                     sstable(dataFolder2, cfs, 2, 128),
-                                     sstable(dataFolder2, cfs, 3, 128)
+                sstable(dataFolder1, cfs, 1, 128),
+                sstable(dataFolder2, cfs, 2, 128),
+                sstable(dataFolder2, cfs, 3, 128)
         };
 
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
@@ -778,27 +733,24 @@ public class LogTransactionTest extends AbstractTransactionalTest
 
         Arrays.stream(sstables).forEach(s -> s.selfRef().release());
 
-        // if shouldCommit is true then it should remove the leftovers and return true, false otherwise
+        // if shouldCommit is true then it should remove the leftovers and return true,
+        // false otherwise
         assertEquals(shouldCommit, LogTransaction.removeUnfinishedLeftovers(Arrays.asList(dataFolder1, dataFolder2)));
         LogTransaction.waitForDeletions();
 
-        if (shouldCommit)
-        {
+        if (shouldCommit) {
             // only new sstables should still be there
             assertFiles(dataFolder1.path(), new HashSet<>(sstables[1].getAllFilePaths()));
             assertFiles(dataFolder2.path(), new HashSet<>(sstables[3].getAllFilePaths()));
-        }
-        else
-        {
+        } else {
             // all files should still be there
             assertFiles(dataFolder1.path(), Sets.newHashSet(Iterables.concat(sstables[0].getAllFilePaths(),
-                                                                             sstables[1].getAllFilePaths(),
-                                                                             Collections.singleton(log.logFilePaths().get(0)))));
+                    sstables[1].getAllFilePaths(),
+                    Collections.singleton(log.logFilePaths().get(0)))));
             assertFiles(dataFolder2.path(), Sets.newHashSet(Iterables.concat(sstables[2].getAllFilePaths(),
-                                                                             sstables[3].getAllFilePaths(),
-                                                                             Collections.singleton(log.logFilePaths().get(1)))));
+                    sstables[3].getAllFilePaths(),
+                    Collections.singleton(log.logFilePaths().get(1)))));
         }
-
 
         // complete the transaction to avoid LEAK errors
         Arrays.stream(tidiers).forEach(LogTransaction.SSTableTidier::run);
@@ -807,8 +759,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testGetTemporaryFiles() throws IOException
-    {
+    public void testGetTemporaryFiles() throws IOException {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstable1 = sstable(dataFolder, cfs, 0, 128);
@@ -817,8 +768,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
         assertNotNull(tmpFiles);
         assertEquals(0, tmpFiles.size());
 
-        try(LogTransaction log = new LogTransaction(OperationType.WRITE))
-        {
+        try (LogTransaction log = new LogTransaction(OperationType.WRITE)) {
             Directories directories = new Directories(cfs.metadata());
 
             File[] beforeSecondSSTable = dataFolder.tryList(pathname -> !pathname.isDirectory());
@@ -833,7 +783,8 @@ public class LogTransactionTest extends AbstractTransactionalTest
             File[] afterSecondSSTable = dataFolder.tryList(pathname -> !pathname.isDirectory());
 
             int numNewFiles = afterSecondSSTable.length - beforeSecondSSTable.length;
-            assertEquals(numNewFiles - 1, sstable2.getAllFilePaths().size()); // new files except for transaction log file
+            assertEquals(numNewFiles - 1, sstable2.getAllFilePaths().size()); // new files except for transaction log
+                                                                              // file
 
             tmpFiles = getTemporaryFiles(dataFolder);
             assertNotNull(tmpFiles);
@@ -846,7 +797,8 @@ public class LogTransactionTest extends AbstractTransactionalTest
             assertTrue(tmpFiles.contains(ssTable2IndexFile));
 
             List<File> files = directories.sstableLister(Directories.OnTxnErr.THROW).listFiles();
-            List<File> filesNoTmp = directories.sstableLister(Directories.OnTxnErr.THROW).skipTemporary(true).listFiles();
+            List<File> filesNoTmp = directories.sstableLister(Directories.OnTxnErr.THROW).skipTemporary(true)
+                    .listFiles();
             assertNotNull(files);
             assertNotNull(filesNoTmp);
 
@@ -858,7 +810,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
 
             log.finish();
 
-            //Now it should be empty since the transaction has finished
+            // Now it should be empty since the transaction has finished
             tmpFiles = getTemporaryFiles(dataFolder);
             assertNotNull(tmpFiles);
             assertEquals(0, tmpFiles.size());
@@ -874,8 +826,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testGetTemporaryFilesMultipleFolders() throws IOException
-    {
+    public void testGetTemporaryFilesMultipleFolders() throws IOException {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
 
         File origiFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
@@ -885,19 +836,19 @@ public class LogTransactionTest extends AbstractTransactionalTest
         Files.createDirectories(dataFolder2.toPath());
 
         SSTableReader[] sstables = { sstable(dataFolder1, cfs, 0, 128),
-                                     sstable(dataFolder1, cfs, 1, 128),
-                                     sstable(dataFolder2, cfs, 2, 128),
-                                     sstable(dataFolder2, cfs, 3, 128)
+                sstable(dataFolder1, cfs, 1, 128),
+                sstable(dataFolder2, cfs, 2, 128),
+                sstable(dataFolder2, cfs, 3, 128)
         };
 
-        // they should all have the same number of files since they are created in the same way
+        // they should all have the same number of files since they are created in the
+        // same way
         int numSStableFiles = sstables[0].getAllFilePaths().size();
 
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
         assertNotNull(log);
 
-        for (File dataFolder : new File[] {dataFolder1, dataFolder2})
-        {
+        for (File dataFolder : new File[] { dataFolder1, dataFolder2 }) {
             Set<File> tmpFiles = getTemporaryFiles(dataFolder);
             assertNotNull(tmpFiles);
             assertEquals(0, tmpFiles.size());
@@ -908,8 +859,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
         log.trackNew(sstables[1]);
         log.trackNew(sstables[3]);
 
-        for (File dataFolder : new File[] {dataFolder1, dataFolder2})
-        {
+        for (File dataFolder : new File[] { dataFolder1, dataFolder2 }) {
             Set<File> tmpFiles = getTemporaryFiles(dataFolder);
             assertNotNull(tmpFiles);
             assertEquals(numSStableFiles, tmpFiles.size());
@@ -917,8 +867,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
 
         log.finish();
 
-        for (File dataFolder : new File[] {dataFolder1, dataFolder2})
-        {
+        for (File dataFolder : new File[] { dataFolder1, dataFolder2 }) {
             Set<File> tmpFiles = getTemporaryFiles(dataFolder);
             assertNotNull(tmpFiles);
             assertEquals(numSStableFiles, tmpFiles.size());
@@ -930,8 +879,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
         Arrays.stream(sstables).forEach(s -> s.selfRef().release());
         LogTransaction.waitForDeletions();
 
-        for (File dataFolder : new File[] {dataFolder1, dataFolder2})
-        {
+        for (File dataFolder : new File[] { dataFolder1, dataFolder2 }) {
             Set<File> tmpFiles = getTemporaryFiles(dataFolder);
             assertNotNull(tmpFiles);
             assertEquals(0, tmpFiles.size());
@@ -940,93 +888,77 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testWrongChecksumLastLine() throws IOException
-    {
-        testCorruptRecord((t, s) ->
-                          { // Fake a commit with invalid checksum
-                              long now = System.currentTimeMillis();
-                              t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d,0,0][%d]", now, 12345678L)));
-                          },
-                          true);
+    public void testWrongChecksumLastLine() throws IOException {
+        testCorruptRecord((t, s) -> { // Fake a commit with invalid checksum
+            long now = System.currentTimeMillis();
+            t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d,0,0][%d]", now, 12345678L)));
+        },
+                true);
     }
 
     @Test
-    public void testWrongChecksumSecondFromLastLine() throws IOException
-    {
-        testCorruptRecord((t, s) ->
-                          { // Fake two lines with invalid checksum
-                              long now = System.currentTimeMillis();
-                              t.logFiles().forEach(f -> FileUtils.append(f, String.format("add:[ma-3-big,%d,4][%d]", now, 12345678L)));
-                              t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d,0,0][%d]", now, 12345678L)));
-                          },
-                          false);
+    public void testWrongChecksumSecondFromLastLine() throws IOException {
+        testCorruptRecord((t, s) -> { // Fake two lines with invalid checksum
+            long now = System.currentTimeMillis();
+            t.logFiles().forEach(f -> FileUtils.append(f, String.format("add:[ma-3-big,%d,4][%d]", now, 12345678L)));
+            t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d,0,0][%d]", now, 12345678L)));
+        },
+                false);
     }
 
     @Test
-    public void testWrongChecksumLastLineMissingFile() throws IOException
-    {
-        testCorruptRecord((t, s) ->
-                          { // Fake a commit with invalid checksum and also delete one of the old files
-                              for (String filePath : s.getAllFilePaths())
-                              {
-                                  if (filePath.endsWith("Data.db"))
-                                  {
-                                      assertTrue(FileUtils.delete(filePath));
-                                      assertNull(t.txnFile().syncDirectory(null));
-                                      break;
-                                  }
-                              }
+    public void testWrongChecksumLastLineMissingFile() throws IOException {
+        testCorruptRecord((t, s) -> { // Fake a commit with invalid checksum and also delete one of the old files
+            for (String filePath : s.getAllFilePaths()) {
+                if (filePath.endsWith("Data.db")) {
+                    assertTrue(FileUtils.delete(filePath));
+                    assertNull(t.txnFile().syncDirectory(null));
+                    break;
+                }
+            }
 
-                              long now = System.currentTimeMillis();
-                              t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d,0,0][%d]", now, 12345678L)));
-                          },
-                          false);
+            long now = System.currentTimeMillis();
+            t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d,0,0][%d]", now, 12345678L)));
+        },
+                false);
     }
 
     @Test
-    public void testWrongChecksumLastLineWrongRecordFormat() throws IOException
-    {
-        testCorruptRecord((t, s) ->
-                          { // Fake a commit with invalid checksum and a wrong record format (extra spaces)
-                              long now = System.currentTimeMillis();
-                              t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d ,0 ,0 ][%d]", now, 12345678L)));
-                          },
-                          true);
+    public void testWrongChecksumLastLineWrongRecordFormat() throws IOException {
+        testCorruptRecord((t, s) -> { // Fake a commit with invalid checksum and a wrong record format (extra spaces)
+            long now = System.currentTimeMillis();
+            t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d ,0 ,0 ][%d]", now, 12345678L)));
+        },
+                true);
     }
 
     @Test
-    public void testMissingChecksumLastLine() throws IOException
-    {
-        testCorruptRecord((t, s) ->
-                          {
-                              // Fake a commit without a checksum
-                              long now = System.currentTimeMillis();
-                              t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d,0,0]", now)));
-                          },
-                          true);
+    public void testMissingChecksumLastLine() throws IOException {
+        testCorruptRecord((t, s) -> {
+            // Fake a commit without a checksum
+            long now = System.currentTimeMillis();
+            t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d,0,0]", now)));
+        },
+                true);
     }
 
     @Test
-    public void testMissingChecksumSecondFromLastLine() throws IOException
-    {
-        testCorruptRecord((t, s) ->
-                          { // Fake two lines without a checksum
-                              long now = System.currentTimeMillis();
-                              t.logFiles().forEach( f -> FileUtils.append(f, String.format("add:[ma-3-big,%d,4]", now)));
-                              t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d,0,0]", now)));
-                          },
-                          false);
+    public void testMissingChecksumSecondFromLastLine() throws IOException {
+        testCorruptRecord((t, s) -> { // Fake two lines without a checksum
+            long now = System.currentTimeMillis();
+            t.logFiles().forEach(f -> FileUtils.append(f, String.format("add:[ma-3-big,%d,4]", now)));
+            t.logFiles().forEach(f -> FileUtils.append(f, String.format("commit:[%d,0,0]", now)));
+        },
+                false);
     }
 
     @Test
-    public void testUnparsableLastRecord() throws IOException
-    {
+    public void testUnparsableLastRecord() throws IOException {
         testCorruptRecord((t, s) -> t.logFiles().forEach(f -> FileUtils.append(f, "commit:[a,b,c][12345678]")), true);
     }
 
     @Test
-    public void testUnparsableFirstRecord() throws IOException
-    {
+    public void testUnparsableFirstRecord() throws IOException {
         testCorruptRecord((t, s) -> t.logFiles().forEach(f -> {
             List<String> lines = FileUtils.readLines(f);
             lines.add(0, "add:[a,b,c][12345678]");
@@ -1034,14 +966,15 @@ public class LogTransactionTest extends AbstractTransactionalTest
         }), false);
     }
 
-    private static void testCorruptRecord(BiConsumer<LogTransaction, SSTableReader> modifier, boolean isRecoverable) throws IOException
-    {
+    private static void testCorruptRecord(BiConsumer<LogTransaction, SSTableReader> modifier, boolean isRecoverable)
+            throws IOException {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstableOld = sstable(dataFolder, cfs, 0, 128);
         SSTableReader sstableNew = sstable(dataFolder, cfs, 1, 128);
 
-        // simulate tracking sstables with a committed transaction except the checksum will be wrong
+        // simulate tracking sstables with a committed transaction except the checksum
+        // will be wrong
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
         assertNotNull(log);
 
@@ -1060,32 +993,32 @@ public class LogTransactionTest extends AbstractTransactionalTest
         sstableOld.selfRef().release();
         sstableNew.selfRef().release();
 
-        // The files on disk, for old files make sure to exclude the files that were deleted by the modifier
+        // The files on disk, for old files make sure to exclude the files that were
+        // deleted by the modifier
         Set<String> newFiles = sstableNew.getAllFilePaths().stream().collect(Collectors.toSet());
-        Set<String> oldFiles = sstableOld.getAllFilePaths().stream().filter(p -> new File(p).exists()).collect(Collectors.toSet());
+        Set<String> oldFiles = sstableOld.getAllFilePaths().stream().filter(p -> new File(p).exists())
+                .collect(Collectors.toSet());
 
-        //This should filter as in progress since the last record is corrupt
+        // This should filter as in progress since the last record is corrupt
         assertFiles(newFiles, getTemporaryFiles(dataFolder));
         assertFiles(oldFiles, getFinalFiles(dataFolder));
 
-        if (isRecoverable)
-        { // the corruption is recoverable but the commit record is unreadable so the transaction is still in progress
+        if (isRecoverable) { // the corruption is recoverable but the commit record is unreadable so the
+                             // transaction is still in progress
 
-            //This should remove new files
+            // This should remove new files
             LogTransaction.removeUnfinishedLeftovers(cfs.metadata());
 
             // make sure to exclude the old files that were deleted by the modifier
             assertFiles(dataFolder.path(), oldFiles);
-        }
-        else
-        { // if an intermediate line was also modified, it should ignore the tx log file
+        } else { // if an intermediate line was also modified, it should ignore the tx log file
 
-            //This should not remove any files
+            // This should not remove any files
             LogTransaction.removeUnfinishedLeftovers(cfs.metadata());
 
             assertFiles(dataFolder.path(), Sets.newHashSet(Iterables.concat(newFiles,
-                                                                            oldFiles,
-                                                                            log.logFilePaths())));
+                    oldFiles,
+                    log.logFilePaths())));
         }
 
         // make sure to run the tidier to avoid any leaks in the logs
@@ -1093,46 +1026,44 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testObsoletedDataFileUpdateTimeChanged() throws IOException
-    {
-        testObsoletedFilesChanged(sstable ->
-                                  {
-                                      // increase the modification time of the Data file
-                                      for (String filePath : sstable.getAllFilePaths())
-                                      {
-                                          if (filePath.endsWith("Data.db"))
-                                              assertTrue(new File(filePath).trySetLastModified(System.currentTimeMillis() + 60000)); //one minute later
-                                      }
-                                  });
+    public void testObsoletedDataFileUpdateTimeChanged() throws IOException {
+        testObsoletedFilesChanged(sstable -> {
+            // increase the modification time of the Data file
+            for (String filePath : sstable.getAllFilePaths()) {
+                if (filePath.endsWith("Data.db"))
+                    assertTrue(new File(filePath).trySetLastModified(System.currentTimeMillis() + 60000)); // one minute
+                                                                                                           // later
+            }
+        });
     }
 
-    private static void testObsoletedFilesChanged(Consumer<SSTableReader> modifier) throws IOException
-    {
+    private static void testObsoletedFilesChanged(Consumer<SSTableReader> modifier) throws IOException {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstableOld = sstable(dataFolder, cfs, 0, 128);
         SSTableReader sstableNew = sstable(dataFolder, cfs, 1, 128);
 
-        // simulate tracking sstables with a committed transaction except the checksum will be wrong
+        // simulate tracking sstables with a committed transaction except the checksum
+        // will be wrong
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
         assertNotNull(log);
 
         log.trackNew(sstableNew);
         LogTransaction.SSTableTidier tidier = log.obsoleted(sstableOld);
 
-        //modify the old sstable files
+        // modify the old sstable files
         modifier.accept(sstableOld);
 
-        //Fake a commit
+        // Fake a commit
         log.txnFile().commit();
 
-        //This should not remove the old files
+        // This should not remove the old files
         LogTransaction.removeUnfinishedLeftovers(cfs.metadata());
 
         assertFiles(dataFolder.path(), Sets.newHashSet(Iterables.concat(
-                                                                          sstableNew.getAllFilePaths(),
-                                                                          sstableOld.getAllFilePaths(),
-                                                                          log.logFilePaths())));
+                sstableNew.getAllFilePaths(),
+                sstableOld.getAllFilePaths(),
+                log.logFilePaths())));
 
         sstableOld.selfRef().release();
         sstableNew.selfRef().release();
@@ -1141,49 +1072,48 @@ public class LogTransactionTest extends AbstractTransactionalTest
         assertNull(log.complete(null));
 
         assertFiles(dataFolder.path(), Sets.newHashSet(Iterables.concat(sstableNew.getAllFilePaths(),
-                                                                        sstableOld.getAllFilePaths(),
-                                                                        log.logFilePaths())));
+                sstableOld.getAllFilePaths(),
+                log.logFilePaths())));
 
         // make sure to run the tidier to avoid any leaks in the logs
         tidier.run();
     }
 
     @Test
-    public void testTruncateFileUpdateTime() throws IOException
-    {
-        // Idea is that we truncate the actual modification time on disk after creating the log file.
-        // On java11 this would fail since we would have millisecond resolution in the log file, but
+    public void testTruncateFileUpdateTime() throws IOException {
+        // Idea is that we truncate the actual modification time on disk after creating
+        // the log file.
+        // On java11 this would fail since we would have millisecond resolution in the
+        // log file, but
         // then the file gives second resolution.
-        testTruncatedModificationTimesHelper(sstable ->
-                                  {
-                                      // increase the modification time of the Data file
-                                      for (String filePath : sstable.getAllFilePaths())
-                                      {
-                                          File f = new File(filePath);
-                                          long lastModified = f.lastModified();
-                                          f.trySetLastModified(lastModified - (lastModified % 1000));
-                                      }
-                                  });
+        testTruncatedModificationTimesHelper(sstable -> {
+            // increase the modification time of the Data file
+            for (String filePath : sstable.getAllFilePaths()) {
+                File f = new File(filePath);
+                long lastModified = f.lastModified();
+                f.trySetLastModified(lastModified - (lastModified % 1000));
+            }
+        });
     }
 
-    private static void testTruncatedModificationTimesHelper(Consumer<SSTableReader> modifier) throws IOException
-    {
+    private static void testTruncatedModificationTimesHelper(Consumer<SSTableReader> modifier) throws IOException {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstableOld = sstable(dataFolder, cfs, 0, 128);
         SSTableReader sstableNew = sstable(dataFolder, cfs, 1, 128);
 
-        // simulate tracking sstables with a committed transaction except the checksum will be wrong
+        // simulate tracking sstables with a committed transaction except the checksum
+        // will be wrong
         LogTransaction log = new LogTransaction(OperationType.COMPACTION);
         assertNotNull(log);
 
         log.trackNew(sstableNew);
         LogTransaction.SSTableTidier tidier = log.obsoleted(sstableOld);
 
-        //modify the old sstable files
+        // modify the old sstable files
         modifier.accept(sstableOld);
 
-        //Fake a commit
+        // Fake a commit
         log.txnFile().commit();
 
         LogTransaction.removeUnfinishedLeftovers(cfs.metadata());
@@ -1202,8 +1132,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testGetTemporaryFilesSafeAfterObsoletion() throws Throwable
-    {
+    public void testGetTemporaryFilesSafeAfterObsoletion() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstable = sstable(dataFolder, cfs, 0, 128);
@@ -1226,8 +1155,7 @@ public class LogTransactionTest extends AbstractTransactionalTest
     }
 
     @Test
-    public void testGetTemporaryFilesThrowsIfCompletingAfterObsoletion() throws Throwable
-    {
+    public void testGetTemporaryFilesThrowsIfCompletingAfterObsoletion() throws Throwable {
         ColumnFamilyStore cfs = MockSchema.newCFS(KEYSPACE);
         File dataFolder = new Directories(cfs.metadata()).getDirectoryForNewSSTables();
         SSTableReader sstable = sstable(dataFolder, cfs, 0, 128);
@@ -1242,29 +1170,28 @@ public class LogTransactionTest extends AbstractTransactionalTest
 
         LogTransaction.waitForDeletions();
 
-        try
-        {
+        try {
             // This should race with the asynchronous deletion of txn log files
-            // it should throw because we are violating the requirement that a transaction must
+            // it should throw because we are violating the requirement that a transaction
+            // must
             // finish before deleting files (i.e. releasing sstables)
             getTemporaryFiles(dataFolder);
             fail("Expected runtime exception");
-        }
-        catch(RuntimeException e)
-        {
-            //pass as long as the cause is not an assertion
+        } catch (RuntimeException e) {
+            // pass as long as the cause is not an assertion
             assertFalse(e.getCause() instanceof AssertionError);
         }
 
         logs.finish();
     }
 
-    private static SSTableReader sstable(File dataFolder, ColumnFamilyStore cfs, int generation, int size) throws IOException
-    {
-        Descriptor descriptor = new Descriptor(dataFolder, cfs.keyspace.getName(), cfs.getTableName(), new SequenceBasedSSTableId(generation), SSTableFormat.Type.BIG);
-        Set<Component> components = ImmutableSet.of(Component.DATA, Component.PRIMARY_INDEX, Component.FILTER, Component.TOC);
-        for (Component component : components)
-        {
+    private static SSTableReader sstable(File dataFolder, ColumnFamilyStore cfs, int generation, int size)
+            throws IOException {
+        Descriptor descriptor = new Descriptor(dataFolder, cfs.keyspace.getName(), cfs.getTableName(),
+                new SequenceBasedSSTableId(generation), SSTableFormat.Type.BIG);
+        Set<Component> components = ImmutableSet.of(Component.DATA, Component.PRIMARY_INDEX, Component.FILTER,
+                Component.TOC);
+        for (Component component : components) {
             File file = new File(descriptor.filenameFor(component));
             if (!file.exists())
                 assertTrue(file.createFileIfNotExists());
@@ -1277,38 +1204,36 @@ public class LogTransactionTest extends AbstractTransactionalTest
 
         SerializationHeader header = SerializationHeader.make(cfs.metadata(), Collections.emptyList());
         StatsMetadata metadata = (StatsMetadata) new MetadataCollector(cfs.metadata().comparator)
-                                                 .finalizeMetadata(cfs.metadata().partitioner.getClass().getCanonicalName(), 0.01f, -1, null, false, false,header)
-                                                 .get(MetadataType.STATS);
+                .finalizeMetadata(cfs.metadata().partitioner.getClass().getCanonicalName(), 0.01f, -1, null, false,
+                        false, header, null)
+                .get(MetadataType.STATS);
         SSTableReader reader = SSTableReader.internalOpen(descriptor,
-                                                          components,
-                                                          cfs.metadata,
-                                                          iFile,
-                                                          dFile,
-                                                          MockSchema.indexSummary.sharedCopy(),
-                                                          new AlwaysPresentFilter(),
-                                                          1L,
-                                                          metadata,
-                                                          SSTableReader.OpenReason.NORMAL,
-                                                          header);
+                components,
+                cfs.metadata,
+                iFile,
+                dFile,
+                MockSchema.indexSummary.sharedCopy(),
+                new AlwaysPresentFilter(),
+                1L,
+                metadata,
+                SSTableReader.OpenReason.NORMAL,
+                header);
         reader.first = reader.last = MockSchema.readerBounds(generation);
         return reader;
     }
 
-    private static void assertFiles(String dirPath, Set<String> expectedFiles) throws IOException
-    {
+    private static void assertFiles(String dirPath, Set<String> expectedFiles) throws IOException {
         assertFiles(dirPath, expectedFiles, false);
     }
 
-    private static void assertFiles(String dirPath, Set<String> expectedFiles, boolean excludeNonExistingFiles) throws IOException
-    {
+    private static void assertFiles(String dirPath, Set<String> expectedFiles, boolean excludeNonExistingFiles)
+            throws IOException {
         LogTransaction.waitForDeletions();
 
         File dir = new File(dirPath).toCanonical();
         File[] files = dir.tryList();
-        if (files != null)
-        {
-            for (File file : files)
-            {
+        if (files != null) {
+            for (File file : files) {
                 if (file.isDirectory())
                     continue;
 
@@ -1318,10 +1243,8 @@ public class LogTransactionTest extends AbstractTransactionalTest
             }
         }
 
-        if (excludeNonExistingFiles)
-        {
-            for (String filePath : expectedFiles)
-            {
+        if (excludeNonExistingFiles) {
+            for (String filePath : expectedFiles) {
                 File file = new File(filePath);
                 if (!file.exists())
                     expectedFiles.remove(filePath);
@@ -1331,19 +1254,17 @@ public class LogTransactionTest extends AbstractTransactionalTest
         assertTrue(expectedFiles.toString(), expectedFiles.isEmpty());
     }
 
-    // Check either that a temporary file is expected to exist (in the existingFiles) or that
+    // Check either that a temporary file is expected to exist (in the
+    // existingFiles) or that
     // it does not exist any longer.
-    private static void assertFiles(Iterable<String> existingFiles, Set<File> temporaryFiles)
-    {
-        for (String filePath : existingFiles)
-        {
+    private static void assertFiles(Iterable<String> existingFiles, Set<File> temporaryFiles) {
+        for (String filePath : existingFiles) {
             File file = new File(filePath);
             assertTrue(filePath, temporaryFiles.contains(file));
             temporaryFiles.remove(file);
         }
 
-        for (File file : temporaryFiles)
-        {
+        for (File file : temporaryFiles) {
             if (!file.exists())
                 temporaryFiles.remove(file);
         }
@@ -1351,46 +1272,37 @@ public class LogTransactionTest extends AbstractTransactionalTest
         assertTrue(temporaryFiles.toString(), temporaryFiles.isEmpty());
     }
 
-    static Set<File> getTemporaryFiles(File folder)
-    {
+    static Set<File> getTemporaryFiles(File folder) {
         return listFiles(folder, Directories.FileType.TEMPORARY);
     }
 
-    static Set<File> getFinalFiles(File folder)
-    {
+    static Set<File> getFinalFiles(File folder) {
         return listFiles(folder, Directories.FileType.FINAL);
     }
 
     // Used by listFiles - this test is deliberately racing with files being
-    // removed and cleaned up, so it is possible that files are removed between listing and getting their
+    // removed and cleaned up, so it is possible that files are removed between
+    // listing and getting their
     // canonical names, in which case they can be dropped from the stream.
-    private static Stream<File> toCanonicalIgnoringNotFound(File file)
-    {
-        try
-        {
+    private static Stream<File> toCanonicalIgnoringNotFound(File file) {
+        try {
             return Stream.of(file.toCanonical());
-        }
-        catch (UncheckedIOException io)
-        {
-            if (Throwables.isCausedBy(io, t -> t instanceof NoSuchFileException))
-            {
+        } catch (UncheckedIOException io) {
+            if (Throwables.isCausedBy(io, t -> t instanceof NoSuchFileException)) {
                 return Stream.empty();
-            }
-            else
-            {
+            } else {
                 throw io;
             }
         }
     }
 
-    static Set<File> listFiles(File folder, Directories.FileType... types)
-    {
+    static Set<File> listFiles(File folder, Directories.FileType... types) {
         Collection<Directories.FileType> match = Arrays.asList(types);
         return new LogAwareFileLister(folder.toPath(),
-                                      (file, type) -> match.contains(type),
-                                      Directories.OnTxnErr.IGNORE).list()
-                       .stream()
-                       .flatMap(LogTransactionTest::toCanonicalIgnoringNotFound)
-                       .collect(Collectors.toSet());
+                (file, type) -> match.contains(type),
+                Directories.OnTxnErr.IGNORE).list()
+                .stream()
+                .flatMap(LogTransactionTest::toCanonicalIgnoringNotFound)
+                .collect(Collectors.toSet());
     }
 }
