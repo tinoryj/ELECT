@@ -527,7 +527,7 @@ public class Keyspace {
             boolean isDroppable) {
         String keyspaceName = mutation.getKeyspaceName();
         ByteBuffer key = mutation.key().getKey();
-        List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
+        List<String> ep = StorageService.instance.getNaturalEndpointsWithPort(keyspaceName, key);
         TableId replicaUUID = null;
         logger.debug("## keyspaceName is: {}, tableName is: {}, endpoints are: {}", keyspaceName,
                 mutation.getTableIds(), ep);

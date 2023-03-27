@@ -25,6 +25,8 @@ import java.nio.channels.WritableByteChannel;
 
 import org.apache.cassandra.utils.memory.MemoryUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 /**
  * Base class for DataOutput implementations that does not have an optimized implementations of Plus methods
  * and does no buffering.
@@ -36,6 +38,8 @@ import org.apache.cassandra.utils.memory.MemoryUtil;
 public abstract class UnbufferedDataOutputStreamPlus extends DataOutputStreamPlus
 {
     private static final byte[] zeroBytes = new byte[2];
+    
+    private static final Logger logger = LoggerFactory.getLogger(UnbufferedDataOutputStreamPlus.class);
 
     protected UnbufferedDataOutputStreamPlus()
     {
@@ -270,6 +274,7 @@ public abstract class UnbufferedDataOutputStreamPlus extends DataOutputStreamPlu
             else
                 utfCount += maxSize = 3;
         }
+
 
         if (utfCount > 65535)
             throw new UTFDataFormatException(); //$NON-NLS-1$

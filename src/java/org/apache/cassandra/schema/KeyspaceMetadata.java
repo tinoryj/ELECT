@@ -44,7 +44,6 @@ import org.apache.cassandra.service.StorageService;
 import static java.lang.String.format;
 
 import static com.google.common.collect.Iterables.any;
-
 /**
  * An immutable representation of keyspace metadata (name, params, tables, types, and functions).
  */
@@ -62,6 +61,7 @@ public final class KeyspaceMetadata implements SchemaElement
     public final Views views;
     public final Types types;
     public final Functions functions;
+    
 
     private KeyspaceMetadata(String name, Kind kind, KeyspaceParams params, Tables tables, Views views, Types types, Functions functions)
     {

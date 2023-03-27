@@ -17,10 +17,12 @@
  */
 package org.apache.cassandra.io.sstable;
 
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOError;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -33,12 +35,16 @@ import com.google.common.base.Predicates;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+
+import inet.ipaddr.format.util.Partition;
+
 import org.apache.cassandra.io.util.File;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.BufferDecoratedKey;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.RowIndexEntry;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.IPartitioner;
@@ -48,6 +54,8 @@ import org.apache.cassandra.io.util.DiskOptimizationStrategy;
 import org.apache.cassandra.io.util.FileOutputStreamPlus;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.RandomAccessReader;
+import org.apache.cassandra.locator.EndpointsForToken;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.utils.ByteBufferUtil;
@@ -170,7 +178,22 @@ public abstract class SSTable {
         return metadata().partitioner;
     }
 
-    public DecoratedKey decorateKey(ByteBuffer key) {
+    public List<InetAddressAndPort> getRelicaNodes(String keyspaceName) {
+        Token token = metadata.get().partitioner.getRandomToken();
+        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+        List<InetAddressAndPort> replicaNodes = new ArrayList<>(replicas.size());
+        replicas.forEach(r -> {
+            try {
+                replicaNodes.add(InetAddressAndPort.getByName(r.endpoint().getHostAddress(true)));
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            }
+        });
+        return replicaNodes;
+    }
+
+    public DecoratedKey decorateKey(ByteBuffer key)
+    {
         return getPartitioner().decorateKey(key);
     }
 
@@ -206,7 +229,30 @@ public abstract class SSTable {
         return descriptor.ksname;
     }
 
-    public List<String> getAllFilePaths() {
+    public String getSSTContent() throws IOException
+    {
+        String fileName = descriptor.filenameFor(Component.DATA);
+        File file = new File(fileName);
+        long fileLength = file.length();
+        FileInputStream fileStream = new FileInputStream(fileName);
+        byte[] buffer = new byte[(int)fileLength];
+        int offset = 0;
+        int numRead = 0;
+        while (offset < buffer.length && (numRead = fileStream.read(buffer, offset, buffer.length - offset)) >= 0) {
+            offset += numRead;
+        }
+        if (offset != buffer.length) {
+            throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
+        }
+        fileStream.close();
+        
+        String sstContent = new String(buffer);
+
+        return sstContent;
+    }
+
+    public List<String> getAllFilePaths()
+    {
         List<String> ret = new ArrayList<>(components.size());
         for (Component component : components)
             ret.add(descriptor.filenameFor(component));

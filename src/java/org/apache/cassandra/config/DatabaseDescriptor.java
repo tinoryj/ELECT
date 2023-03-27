@@ -1904,6 +1904,60 @@ public class DatabaseDescriptor
         conf.phi_convict_threshold = phiConvictThreshold;
     }
 
+    public static int getCompactionThreshold() 
+    {
+        return conf.compaction_threshold;
+    }
+
+    public static void setCompactionThreshold(int compaction_threshold)
+    {
+        if (compaction_threshold < 0)
+        {
+            throw new IllegalArgumentException("Parity nodes must be non-negative");
+        }
+        conf.compaction_threshold = compaction_threshold;
+    }
+
+    public static int getEcDataNodes() 
+    {
+        return conf.ec_data_nodes;
+    }
+
+    public static void setEcDataNodes(int ecDataNodes)
+    {
+        if (ecDataNodes < 0)
+        {
+            throw new IllegalArgumentException("Parity nodes must be non-negative");
+        }
+        conf.ec_data_nodes = ecDataNodes;
+    }
+
+    public static int getParityNodes() 
+    {
+        return conf.parity_nodes;
+    }
+
+    public static void setParityNodes(int parityNodes)
+    {
+        if (parityNodes < 0)
+        {
+            throw new IllegalArgumentException("Parity nodes must be non-negative");
+        }
+        conf.parity_nodes = parityNodes;
+    }
+
+    public static int getConcurrentErasureCoders() {
+        return conf.concurrent_ec;
+    }
+
+    public static void setConcurrentErasureCoders(int concurrent_ec) {
+        if (concurrent_ec < 0)
+        {
+            throw new IllegalArgumentException("Concurrent reads must be non-negative");
+        }
+        conf.concurrent_ec = concurrent_ec;
+    }
+
     public static int getConcurrentReaders()
     {
         return conf.concurrent_reads;

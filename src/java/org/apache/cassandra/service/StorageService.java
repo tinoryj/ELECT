@@ -4000,7 +4000,9 @@ public class StorageService extends NotificationBroadcasterSupport
      * @return collection of ranges that match ring layout in TokenMetadata
      */
     @VisibleForTesting
-    Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken) {
+    public
+    Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken)
+    {
         Token parsedBeginToken = getTokenFactory().fromString(beginToken);
         Token parsedEndToken = getTokenFactory().fromString(endToken);
 
@@ -4308,10 +4310,12 @@ public class StorageService extends NotificationBroadcasterSupport
 
     private static ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key) {
         KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
+        
         if (ksMetaData == null)
             throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
 
         TableMetadata metadata = ksMetaData.getTableOrViewNullable(cf);
+        
         if (metadata == null)
             throw new IllegalArgumentException("Unknown table '" + cf + "' in keyspace '" + keyspaceName + "'");
 

@@ -801,6 +801,7 @@ public class OutboundConnection
                             //  2) we have a message that is too large for this connection; this can happen if a message's
                             //     size was calculated for the wrong messaging version when enqueued.
                             //     In this case we want to write it anyway, so simply allocate a large enough buffer.
+                            
 
                             if (sendingBytes > 0)
                                 break;
@@ -811,7 +812,6 @@ public class OutboundConnection
                             //noinspection IOResourceOpenedButNotSafelyClosed
                             out = new DataOutputBufferFixed(sending.buffer);
                         }
-
                         Tracing.instance.traceOutgoingMessage(next, messageSize, settings.connectTo);
                         Message.serializer.serialize(next, out, messagingVersion);
 

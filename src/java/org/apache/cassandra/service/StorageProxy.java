@@ -101,6 +101,7 @@ import org.apache.cassandra.gms.FailureDetector;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.hints.Hint;
 import org.apache.cassandra.hints.HintsService;
+import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.EndpointsForToken;
 import org.apache.cassandra.locator.IEndpointSnitch;
@@ -904,9 +905,8 @@ public class StorageProxy implements StorageProxyMBean {
             }
 
             // wait for writes. throws TimeoutException if necessary
-            for (AbstractWriteResponseHandler<IMutation> responseHandler : responseHandlers) {
+            for (AbstractWriteResponseHandler<IMutation> responseHandler : responseHandlers)
                 responseHandler.get();
-            }
         } catch (WriteTimeoutException | WriteFailureException ex) {
             if (consistencyLevel == ConsistencyLevel.ANY) {
                 hintMutations(mutations);
@@ -1459,6 +1459,25 @@ public class StorageProxy implements StorageProxyMBean {
             String localDataCenter,
             Stage stage)
             throws OverloadedException {
+
+        /*
+         * The following is ECMessage test code
+         */
+        
+        String ks = mutation.getKeyspaceName();
+        String table = mutation.getTableName(mutation.getTableIds().iterator().next());
+        String key = mutation.getKeyName();
+        ECMessage ecMessage = new ECMessage(mutation.toString(), ks, table, key, "",
+                "");
+        logger.debug("rymDebug: the test message is: {}", ecMessage);
+        try {
+            ecMessage.sendSelectedSSTables();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////
         // this dc replicas:
         Collection<Replica> localDc = null;
         // extra-datacenter replicas, grouped by dc

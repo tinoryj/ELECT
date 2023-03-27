@@ -161,7 +161,12 @@ public class Config
     public volatile DurationSpec.LongMillisecondsBound slow_query_log_timeout = new DurationSpec.LongMillisecondsBound("500ms");
 
     public volatile double phi_convict_threshold = 8.0;
-
+    
+    public int ec_data_nodes = 3;
+    public int parity_nodes = 2;
+    public int compaction_threshold = 1;
+    
+    public int concurrent_ec = 3;
     public int concurrent_reads = 32;
     public int concurrent_writes = 32;
     public int concurrent_counter_writes = 32;
@@ -222,7 +227,7 @@ public class Config
     public boolean rpc_keepalive = true;
 
     @Replaces(oldName = "internode_max_message_size_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated=true)
-    public DataStorageSpec.IntBytesBound internode_max_message_size;
+    public DataStorageSpec.IntBytesBound internode_max_message_size = new DataStorageSpec.IntBytesBound("8MiB");;
 
     @Replaces(oldName = "internode_socket_send_buffer_size_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
     @Replaces(oldName = "internode_send_buff_size_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
@@ -233,14 +238,14 @@ public class Config
 
     // TODO: derive defaults from system memory settings?
     @Replaces(oldName = "internode_application_send_queue_capacity_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
-    public DataStorageSpec.IntBytesBound internode_application_send_queue_capacity = new DataStorageSpec.IntBytesBound("4MiB");
+    public DataStorageSpec.IntBytesBound internode_application_send_queue_capacity = new DataStorageSpec.IntBytesBound("8MiB");
     @Replaces(oldName = "internode_application_send_queue_reserve_endpoint_capacity_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
     public DataStorageSpec.IntBytesBound internode_application_send_queue_reserve_endpoint_capacity = new DataStorageSpec.IntBytesBound("128MiB");
     @Replaces(oldName = "internode_application_send_queue_reserve_global_capacity_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
     public DataStorageSpec.IntBytesBound internode_application_send_queue_reserve_global_capacity = new DataStorageSpec.IntBytesBound("512MiB");
 
     @Replaces(oldName = "internode_application_receive_queue_capacity_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
-    public DataStorageSpec.IntBytesBound internode_application_receive_queue_capacity = new DataStorageSpec.IntBytesBound("4MiB");
+    public DataStorageSpec.IntBytesBound internode_application_receive_queue_capacity = new DataStorageSpec.IntBytesBound("8MiB");
     @Replaces(oldName = "internode_application_receive_queue_reserve_endpoint_capacity_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
     public DataStorageSpec.IntBytesBound internode_application_receive_queue_reserve_endpoint_capacity = new DataStorageSpec.IntBytesBound("128MiB");
     @Replaces(oldName = "internode_application_receive_queue_reserve_global_capacity_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)

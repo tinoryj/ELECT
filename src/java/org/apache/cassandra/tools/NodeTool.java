@@ -34,6 +34,7 @@ import org.apache.cassandra.io.util.FileWriter;
 import java.io.FileNotFoundException;
 import java.io.IOError;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -49,8 +50,10 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Throwables;
 
 import org.apache.cassandra.locator.EndpointSnitchInfoMBean;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.tools.nodetool.*;
 import org.apache.cassandra.utils.FBUtilities;
+import org.w3c.dom.NodeList;
 
 import com.google.common.collect.Maps;
 
@@ -507,5 +510,24 @@ public class NodeTool
             throw new RuntimeException(e);
         }
         return ownershipByDc;
+    }
+    
+    public static SortedMap<String, SortedMap<String, InetAddressAndPort>> getEndpointByDcWithPort(NodeProbe probe, Map<String, String> tokenToEndpoint) {
+        SortedMap<String, SortedMap<String, InetAddressAndPort>> endpointByDc = Maps.newTreeMap();
+        EndpointSnitchInfoMBean epSnitchInfo = probe.getEndpointSnitchInfoProxy();
+        try {
+            for (Entry<String, String> tokenAndEndPoint : tokenToEndpoint.entrySet()) {
+                String dc = epSnitchInfo.getDatacenter(tokenAndEndPoint.getValue());
+                if(!endpointByDc.containsKey(dc)) {
+                    SortedMap<String, InetAddressAndPort> tokenToEp = Maps.newTreeMap();
+                    tokenToEp.put(tokenAndEndPoint.getKey(), InetAddressAndPort.getByName(tokenAndEndPoint.getValue()));
+                    endpointByDc.put(dc, tokenToEp);
+                }
+                endpointByDc.get(dc).put(tokenAndEndPoint.getKey(), InetAddressAndPort.getByName(tokenAndEndPoint.getValue()));
+            }
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+        return endpointByDc;
     }
 }

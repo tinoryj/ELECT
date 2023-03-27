@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
+import com.fasterxml.jackson.annotation.JsonCreator.Mode;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.StringUtils;
@@ -116,6 +117,14 @@ public class Mutation implements IMutation, Supplier<Mutation>
     public String getKeyspaceName()
     {
         return keyspaceName;
+    }
+
+    public String getTableName(TableId tableId) {
+        return modifications.get(tableId).metadata().name;
+    }
+
+    public String getKeyName() {
+        return key.toString();
     }
 
     public Collection<TableId> getTableIds()

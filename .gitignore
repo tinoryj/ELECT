@@ -67,9 +67,10 @@ target/
 .DS_Store
 Thumbs.db
 .ccm/
-
+.history/
 **/.ant-targets-build.xml
 .ant_targets
+conf/cassandra.yaml
 
 # Generated files from the documentation
 doc/modules/cassandra/pages/configuration/cass_yaml_file.adoc
