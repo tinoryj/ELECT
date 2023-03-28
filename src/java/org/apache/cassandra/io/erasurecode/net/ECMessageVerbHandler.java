@@ -206,7 +206,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             }
 
 
-            // sync encoded data to parity nodes, need callbacks
+            // sync encoded data to parity nodes
             ECParityNode.instance.distributeEcDataToParityNodes(parity, messages[0].parityNodes, parityHashCode);
 
             // Transform to ECMetadata and dispatch to related nodes

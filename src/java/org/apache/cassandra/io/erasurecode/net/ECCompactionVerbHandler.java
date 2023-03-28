@@ -29,11 +29,16 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.StorageService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
     /*
      * Secondary nodes receive compaction signal from primary nodes and trigger
      * compaction
      */
+    
+    private static final Logger logger = LoggerFactory.getLogger(ECCompaction.class);
     @Override
     public void doVerb(Message<ECCompaction> message) throws IOException {
         String sstHash = message.payload.sstHash;
@@ -41,6 +46,8 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
         String cfName = message.payload.cfName;
         String startToken = message.payload.startToken;
         String endToken = message.payload.endToken;
+        logger.debug("rymDebug: Received compaction request for {}/{}/{}", sstHash, ksName, cfName);
+        
 
         //TODO: get sstContent and do compaction
         ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName);

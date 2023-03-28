@@ -67,7 +67,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
     public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options) {
         super(cfs, options);
-        int configuredMaxSSTableSize = 160;
+        int configuredMaxSSTableSize = 1;
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;
         boolean configuredSingleSSTableUplevel = false;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
@@ -126,7 +126,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
      * (by explicit user request) even when compaction is disabled.
      */
     @SuppressWarnings("resource") // transaction is closed by AbstractCompactionTask::execute
-    public AbstractCompactionTask getNextBackgroundTask(int gcBefore) throws IOException
+    public AbstractCompactionTask getNextBackgroundTask(int gcBefore)
     {
         Collection<SSTableReader> previousCandidate = null;
         while (true) {
@@ -160,9 +160,10 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             }
 
             /////////////////////////////////////////////////
+            // send force compaction request to replica nodes
             if (candidate.level == DatabaseDescriptor.getCompactionThreshold() - 1) {
                 for (SSTableReader ssTableReader : candidate.sstables) {
-                    logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                    logger.debug("rymDebug: send force compaction requests",
                             ssTableReader.getSSTableLevel());
                     String keyspace = ssTableReader.getKeyspaceName();
                     String cfName = ssTableReader.getColumnFamilyName();
@@ -171,16 +172,17 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                     String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
 
                     // get sstHash
-                    String sstHash = "";
-                    try {
-                        sstHash = String.valueOf(ssTableReader.getSSTContent().hashCode());
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
+                    String sstHash = ssTableReader.getSSTableHashID();
+                    // try {
+                    //     sstHash = String.valueOf(ssTableReader.getSSTContent().hashCode());
+                    // } catch (IOException e) {
+                    //     // TODO Auto-generated catch block
+                    //     e.printStackTrace();
+                    // }
 
                     // get replica nodes
                     List<InetAddressAndPort> replicaNodes = ssTableReader.getRelicaNodes(keyspace);
+                    logger.debug("rymDebug: task is send force compaction message, replica nodes {}", replicaNodes);
                     ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
                     // send compaction message to replica nodes
                     ecCompaction.synchronizeCompaction(replicaNodes);

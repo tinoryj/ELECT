@@ -225,9 +225,10 @@ public class CompactionTask extends AbstractCompactionTask {
                             try {
                                 String sstContent = ssTableReader.getSSTContent();
                                 List<InetAddressAndPort> relicaNodes = ssTableReader.getRelicaNodes(keyspace);
+                                logger.debug("rymDebug: send sstables, replicaNodes are {}", relicaNodes);
                                 ECMessage ecMessage = new ECMessage(sstContent, ssTableReader.getKeyspaceName(),
                                  "", "", relicaNodes);
-                                logger.debug("rymDebug: the test message is: {}", ecMessage);
+                                // logger.debug("rymDebug: the test message is: {}", ecMessage);
                                 ecMessage.sendSelectedSSTables();
                             } catch (IOException e) {
                                 logger.error("rymError: {}", e);
