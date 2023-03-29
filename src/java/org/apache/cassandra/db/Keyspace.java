@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.stream.Stream;
@@ -46,6 +47,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.DurationSpec;
+import org.apache.cassandra.cql3.statements.schema.CreateTableStatement;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.repair.CassandraKeyspaceRepairManager;
@@ -85,6 +87,8 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 import static org.apache.cassandra.utils.FBUtilities.now;
 import static org.apache.cassandra.utils.MonotonicClock.Global.approxTime;
+import static java.lang.String.format;
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
 import org.apache.cassandra.dht.Token;
 import java.net.InetAddress;
@@ -99,6 +103,19 @@ public class Keyspace {
     private static final String TEST_FAIL_WRITES_KS = System.getProperty("cassandra.test.fail_writes_ks", "");
     private static final boolean TEST_FAIL_WRITES = !TEST_FAIL_WRITES_KS.isEmpty();
     private static int TEST_FAIL_MV_LOCKS_COUNT = Integer.getInteger("cassandra.test.fail_mv_locks_count", 0);
+
+    private static final String ycsbUsertableCql = "CREATE TABLE %s ("
+                                    + "y_id varchar primary key,"
+                                    + "field0 varchar,"
+                                    + "field1 varchar,"
+                                    + "field2 varchar,"
+                                    + "field3 varchar,"
+                                    + "field4 varchar,"
+                                    + "field5 varchar,"
+                                    + "field6 varchar,"
+                                    + "field7 varchar,"
+                                    + "field8 varchar,"
+                                    + "field9 varchar)";
 
     public final KeyspaceMetrics metric;
 
@@ -118,7 +135,7 @@ public class Keyspace {
 
     /* ColumnFamilyStore per column family */
     private final ConcurrentMap<TableId, ColumnFamilyStore> columnFamilyStores = new ConcurrentHashMap<>();
-    public final Map<Integer, TableId> globalNodeIDtoCFIDMap = new HashMap<Integer, TableId>();
+    public final List<TableId> globalCFIDList = new ArrayList<TableId>();
 
     private volatile AbstractReplicationStrategy replicationStrategy;
     public final ViewManager viewManager;
@@ -434,28 +451,39 @@ public class Keyspace {
             // simultaneously is a "don't do that" scenario.
             ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(metadata.id,
                     ColumnFamilyStore.createColumnFamilyStore(this, metadata, loadSSTables));
-            int replicationFactorInt = replicationParams.getReplicationFactor();
 
-            // if (keyspaceName.equals("cassandraec")) {
-            for (ColumnFamilyStore cfStore : columnFamilyStores.values()) {
-                logger.debug("##cfStore.name:{}, cfStore.metadata.cfId:{}, columnFamilyStores size:{}, loadSSTables:{}",
-                        cfStore.name, cfStore.metadata.id, columnFamilyStores.size(), loadSSTables);
-            }
-            // byte localIP[] = LOCAL.getAddress();
-            ColumnFamilyStore newCFS = columnFamilyStores.get(metadata.id);
-            /////////////////////////////////////////////////////
-            for (int i = 0; i < replicationFactorInt; i++) {
-                String columnNameStr = "data" + Integer.toString(i);
-                if (newCFS != null && !newCFS.name.equals(columnNameStr)) {
-                    globalNodeIDtoCFIDMap.put(i, metadata.id);
-                    break;
+            if (keyspaceName.equals("ycsb")) {
+                int replicationFactorInt = replicationParams.getReplicationFactor();
+                for (ColumnFamilyStore cfStore : columnFamilyStores.values()) {
+                    logger.debug(
+                            "##cfStore.name:{}, cfStore.metadata.cfId:{}, columnFamilyStores size:{}, loadSSTables:{}",
+                            cfStore.name, cfStore.metadata.id, columnFamilyStores.size(), loadSSTables);
                 }
-            }
+                ColumnFamilyStore newCFS = columnFamilyStores.get(metadata.id);
+                /////////////////////////////////////////////////////
+                // TODO: make sure the read and write process of different LSM-tree
+                if (newCFS.name == "usertable0") {
+                    for(int i=1; i<replicationFactorInt; i++) {
+                        String tableNameStr = "usertable" + Integer.toString(i);
+                        
+                        // TableMetadata table = CreateTableStatement.parse(format(ycsbUsertableCql, tableNameStr), keyspaceName)
+                        //                                           .id(TableId.generate())
+                        //                                           .gcGraceSeconds(0)
+                        //                                           .memtableFlushPeriod((int) TimeUnit.HOURS.toMillis(1))
+                        //                                           .comment("description").build();
 
-            for (Map.Entry<Integer, TableId> entry : globalNodeIDtoCFIDMap.entrySet()) {
-                logger.debug("in globalNodeIDtoCFIDMap, nodeID:{}, cfId:{}", entry.getKey(), entry.getValue());
+                    }
+                }
+
+                // for (int i = 0; i < replicationFactorInt; i++) {
+                //     String columnNameStr = "usertable" + Integer.toString(i);
+                //     if (newCFS != null && !newCFS.name.equals(columnNameStr)) {
+                //         globalCFIDList.add(metadata.id);
+                //         break;
+                //     }
+                // }
             }
-            // }
+            
 
             // CFS mbean instantiation will error out before we hit this, but in case that
             // changes...
@@ -470,25 +498,34 @@ public class Keyspace {
     }
 
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes) {
-        String keyspaceName = mutation.getKeyspaceName();
-        ByteBuffer key = mutation.key().getKey();
-        List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
-        TableId replicaUUID = null;
 
-        logger.debug("##Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
-        for (int i = 0; i < ep.size(); i++) {
-            if (StorageService.instance.localIP.equals(ep.get(i))) {
-                replicaUUID = globalNodeIDtoCFIDMap.get(i);
-                logger.debug("##Find current node at : {}, address : {}-{}", i, StorageService.instance.localIP,
-                        ep.get(i));
-                break;
+        String keyspaceName = mutation.getKeyspaceName();
+        if (keyspaceName == "ycsb") {
+            ByteBuffer key = mutation.key().getKey();
+            List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
+            InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
+            TableId replicaUUID = null;
+            logger.debug("##Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+
+            // make sure whether the mutation is for a primary or not.
+            if (localAddress.equals(ep.get(0))) {
+                replicaUUID = globalCFIDList.get(0);
+            } else {
+                // this mutation is for a secondary lsm-tree, get the replica UUID
+                int index = ep.indexOf(localAddress);
+                replicaUUID = globalCFIDList.get(index);
+            }
+
+            if(replicaUUID==null) {
+                logger.error("rymDebug: can not find replica UUID, table names are {}", mutation.getTableNames());
+            } else {
+                return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true,
+                    new AsyncPromise<>());
             }
         }
-        if (replicaUUID == null) {
-            logger.error("Can not found target replica cf : {}", replicaUUID);
-        }
-        return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true,
-                new AsyncPromise<>());
+
+        return applyInternal(mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
+        
     }
 
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes, boolean isDroppable,
@@ -526,25 +563,31 @@ public class Keyspace {
             boolean updateIndexes,
             boolean isDroppable) {
         String keyspaceName = mutation.getKeyspaceName();
-        ByteBuffer key = mutation.key().getKey();
-        List<String> ep = StorageService.instance.getNaturalEndpointsWithPort(keyspaceName, key);
-        TableId replicaUUID = null;
-        logger.debug("## keyspaceName is: {}, tableName is: {}, endpoints are: {}", keyspaceName,
-                mutation.getTableIds(), ep);
+        if (keyspaceName == "ycsb") {
+            ByteBuffer key = mutation.key().getKey();
+            List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
+            InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
+            TableId replicaUUID = null;
+            logger.debug("##Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
 
-        for (int i = 0; i < ep.size(); i++) {
-            if (StorageService.instance.localIP.equals(ep.get(i))) {
-                replicaUUID = globalNodeIDtoCFIDMap.get(i);
-                logger.debug("##Find current node at : {}, address : {}-{}", i, StorageService.instance.localIP,
-                        ep.get(i));
-                break;
+            // make sure whether the mutation is for a primary or not.
+            if (localAddress.equals(ep.get(0))) {
+                replicaUUID = globalCFIDList.get(0);
+            } else {
+                // this mutation is for a secondary lsm-tree, get the replica UUID
+                int index = ep.indexOf(localAddress);
+                replicaUUID = globalCFIDList.get(index);
+            }
+
+            if (replicaUUID == null) {
+                logger.error("rymDebug: cannot find replicaUUID, tablenames are: {}", mutation.getTableNames());
+            } else {
+                applyInternal(replicaUUID, mutation, makeDurable, updateIndexes, isDroppable, false, null);
             }
         }
-        if (replicaUUID == null) {
-            logger.error("Can not found target replica cf : {}", replicaUUID);
-        } else {
-            applyInternal(replicaUUID, mutation, makeDurable, updateIndexes, isDroppable, false, null);
-        }
+
+        applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
+        
     }
 
     /**

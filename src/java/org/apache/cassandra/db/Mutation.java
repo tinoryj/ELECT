@@ -123,6 +123,14 @@ public class Mutation implements IMutation, Supplier<Mutation>
         return modifications.get(tableId).metadata().name;
     }
 
+    public List<String> getTableNames() {
+        List<String> tableNames = new ArrayList<String>();
+        for (PartitionUpdate update : modifications.values()) {
+            tableNames.add(update.metadata().name);
+        }
+        return tableNames;
+    }
+
     public String getKeyName() {
         return key.toString();
     }

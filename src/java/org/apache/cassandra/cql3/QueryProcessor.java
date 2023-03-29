@@ -252,6 +252,7 @@ public class QueryProcessor implements QueryHandler
         ClientState clientState = queryState.getClientState();
         statement.authorize(clientState);
         statement.validate(clientState);
+        logger.debug("rymDebug: the query statement is {}", statement);
 
         ResultMessage result = options.getConsistency() == ConsistencyLevel.NODE_LOCAL
                              ? processNodeLocalStatement(statement, queryState, options)
@@ -527,6 +528,7 @@ public class QueryProcessor implements QueryHandler
     {
         try
         {
+            logger.debug("rymDebug: the query message is {}", query);
             Prepared prepared = prepareInternal(query);
             ResultMessage result = prepared.statement.execute(state, makeInternalOptionsWithNowInSec(prepared.statement, state.getNowInSeconds(), values, cl), nanoTime());
             if (result instanceof ResultMessage.Rows)
