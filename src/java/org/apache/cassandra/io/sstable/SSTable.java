@@ -163,7 +163,7 @@ public abstract class SSTable {
             if (components.contains(Component.EC_METADATA)) {
                 FileUtils.deleteWithConfirm(desc.filenameFor(Component.EC_METADATA));
             } else {
-                logger.error("## deleteComponentOnlyData: no DATA or EC_METADATA component found");
+                logger.error("[Tinoryj] deleteComponentOnlyData: no DATA or EC_METADATA component found");
             }
         }
         isDataRemovedByRedundancyTransionFlag = true;

@@ -115,8 +115,11 @@ public class LeveledManifest {
                 long modificationTime;
                 if (ssTableReader.getFileExistFlagFor(Component.DATA)) {
                     modificationTime = ssTableReader.getCreationTimeFor(Component.DATA);
-                } else {
+                } else if (ssTableReader.getFileExistFlagFor(Component.EC_METADATA)){
                     modificationTime = ssTableReader.getCreationTimeFor(Component.EC_METADATA);
+                }else {
+                    modificationTime=0;
+                    logger.debug("[Tinoryj] could not found both EC metadata and data, modify time to 0");
                 }
 
                 if (modificationTime >= maxModificationTime) {
