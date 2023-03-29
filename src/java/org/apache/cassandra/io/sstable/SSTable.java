@@ -174,6 +174,10 @@ public abstract class SSTable {
         return metadata.get();
     }
 
+    public void updateDataRedundancyTransionFlagToTrue(){
+        isDataRemovedByRedundancyTransionFlag=true;
+    }
+
     public IPartitioner getPartitioner() {
         return metadata().partitioner;
     }
