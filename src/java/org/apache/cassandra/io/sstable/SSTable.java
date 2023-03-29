@@ -209,7 +209,7 @@ public abstract class SSTable {
     }
 
     public String getFilename() {
-        if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
+        if (isDataRemovedByRedundancyTransionFlag==false) {
             return descriptor.filenameFor(Component.DATA);
         } else {
             return descriptor.filenameFor(Component.EC_METADATA);
