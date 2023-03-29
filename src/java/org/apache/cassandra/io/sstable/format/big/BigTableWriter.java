@@ -471,10 +471,12 @@ public class BigTableWriter extends SSTableWriter {
                     hashID = new String(hash);
                     logger.debug("[Tinoryj]: generated hash value for current SSTable is {}", hashID);
                 } catch (NoSuchAlgorithmException e) {
+                    hashID = null;
                     logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", descriptor.filenameFor(Component.DATA));
                     e.printStackTrace();
                 }
             } catch (IOException e) {
+                hashID = null;
                 logger.debug("[Tinoryj]: Could not read SSTable {}", descriptor.filenameFor(Component.DATA));
                 e.printStackTrace();
             }

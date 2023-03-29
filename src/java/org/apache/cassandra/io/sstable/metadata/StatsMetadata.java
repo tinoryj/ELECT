@@ -317,14 +317,14 @@ public class StatsMetadata extends MetadataComponent {
                             version.correspondingMessagingVersion());
             }
 
-            if (version.hasHashID()) {
+            if (version.hasHashID() && component.hashID != null) {
                 size += 32;
             }
             return size;
         }
 
         public void serialize(Version version, StatsMetadata component, DataOutputPlus out) throws IOException {
-            if (version.hasHashID()) {
+            if (version.hasHashID() && component.hashID != null) {
                 out.writeBytes(component.hashID);
             }
             EstimatedHistogram.serializer.serialize(component.estimatedPartitionSize, out);
