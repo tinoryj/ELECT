@@ -45,7 +45,7 @@ import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.util.File;
 
 public class SSTableRepairedAtSetter {
-    private static final Logger logger = LoggerFactory.getLogger(LeveledManifest.class);
+    private static final Logger logger = LoggerFactory.getLogger(SSTableRepairedAtSetter.class);
     /**
      * @param args a list of sstables whose metadata we are changing
      */

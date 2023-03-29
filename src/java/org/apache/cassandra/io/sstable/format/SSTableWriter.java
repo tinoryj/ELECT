@@ -98,7 +98,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
             MetadataCollector metadataCollector,
             SerializationHeader header,
             Collection<SSTableFlushObserver> observers) {
-        super(descriptor, components(metadata.getLocal()), metadata, DatabaseDescriptor.getDiskOptimizationStrategy());
+        super(descriptor, components(metadata.getLocal(), isReplicationTransferredToErasureCoding), metadata, DatabaseDescriptor.getDiskOptimizationStrategy());
         this.keyCount = keyCount;
         this.repairedAt = repairedAt;
         this.pendingRepair = pendingRepair;
@@ -177,27 +177,46 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
                 lifecycleNewTracker);
     }
 
-    private static Set<Component> components(TableMetadata metadata) {
-        Set<Component> components = new HashSet<Component>(Arrays.asList(Component.DATA,
-                Component.EC_METADATA,
-                Component.PRIMARY_INDEX,
-                Component.STATS,
-                Component.SUMMARY,
-                Component.TOC,
-                Component.DIGEST));
+    private static Set<Component> components(TableMetadata metadata, Boolean isReplicationTransferredToErasureCoding) {
+        if(isReplicationTransferredToErasureCoding){
+            Set<Component> components = new HashSet<Component>(Arrays.asList(Component.EC_METADATA,
+            Component.PRIMARY_INDEX,
+            Component.STATS,
+            Component.SUMMARY,
+            Component.TOC,
+            Component.DIGEST));
+            if (metadata.params.bloomFilterFpChance < 1.0)
+                components.add(Component.FILTER);
 
-        if (metadata.params.bloomFilterFpChance < 1.0)
-            components.add(Component.FILTER);
+            if (metadata.params.compression.isEnabled()) {
+                components.add(Component.COMPRESSION_INFO);
+            } else {
+                // it would feel safer to actually add this component later in
+                // maybeWriteDigest(),
+                // but the components are unmodifiable after construction
+                components.add(Component.CRC);
+            }
+            return components;
+        }else {
+            Set<Component> components = new HashSet<Component>(Arrays.asList(Component.DATA,
+            Component.PRIMARY_INDEX,
+            Component.STATS,
+            Component.SUMMARY,
+            Component.TOC,
+            Component.DIGEST));
+            if (metadata.params.bloomFilterFpChance < 1.0)
+                components.add(Component.FILTER);
 
-        if (metadata.params.compression.isEnabled()) {
-            components.add(Component.COMPRESSION_INFO);
-        } else {
-            // it would feel safer to actually add this component later in
-            // maybeWriteDigest(),
-            // but the components are unmodifiable after construction
-            components.add(Component.CRC);
+            if (metadata.params.compression.isEnabled()) {
+                components.add(Component.COMPRESSION_INFO);
+            } else {
+                // it would feel safer to actually add this component later in
+                // maybeWriteDigest(),
+                // but the components are unmodifiable after construction
+                components.add(Component.CRC);
+            }
+            return components;
         }
-        return components;
     }
 
     private static Collection<SSTableFlushObserver> observers(Descriptor descriptor,
