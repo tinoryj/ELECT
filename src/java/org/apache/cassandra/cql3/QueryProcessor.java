@@ -268,7 +268,7 @@ public class QueryProcessor implements QueryHandler
                     logger.debug("rymDebug: consistency level is equal to local, use processNodeLocalStatement()");
                 } else {
                     logger.debug("rymDebug: consistency level is node equal, use statement.execute()");
-                    int rf = ReplicationParams.replicationFactor_;
+                    int rf = Keyspace.open(tableStatement.keyspace()).getMetadata().params.replication.getReplicationFactor();
                     logger.debug("rymDebug: replica factor is {}", rf);
                     for(int i=1; i < rf; i++) {
                         String tableName = "usertable" + Integer.toString(i);
