@@ -269,6 +269,7 @@ public class QueryProcessor implements QueryHandler
                 } else {
                     logger.debug("rymDebug: consistency level is node equal, use statement.execute()");
                     int rf = ReplicationParams.replicationFactor_;
+                    logger.debug("rymDebug: replica factor is {}", rf);
                     for(int i=1; i < rf; i++) {
                         String tableName = "usertable" + Integer.toString(i);
                         CreateTableStatement ts = tableStatement.copyObjects(tableName);
