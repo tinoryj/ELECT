@@ -52,7 +52,7 @@ import static com.google.common.collect.Iterables.concat;
 public final class CreateTableStatement extends AlterSchemaStatement
 {
     private static final Logger logger = LoggerFactory.getLogger(CreateTableStatement.class);
-    private final String tableName;
+    public final String tableName;
 
     private final Map<ColumnIdentifier, CQL3Type.Raw> rawColumns;
     private final Set<ColumnIdentifier> staticColumns;

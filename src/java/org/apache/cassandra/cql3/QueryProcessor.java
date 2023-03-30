@@ -55,6 +55,7 @@ import org.apache.cassandra.cql3.functions.Function;
 import org.apache.cassandra.cql3.functions.FunctionName;
 import org.apache.cassandra.cql3.selection.ResultSetBuilder;
 import org.apache.cassandra.cql3.statements.*;
+import org.apache.cassandra.cql3.statements.schema.CreateTableStatement;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.RowIterator;
@@ -257,7 +258,15 @@ public class QueryProcessor implements QueryHandler
         ResultMessage result = options.getConsistency() == ConsistencyLevel.NODE_LOCAL
                              ? processNodeLocalStatement(statement, queryState, options)
                              : statement.execute(queryState, options, queryStartNanoTime);
-
+        
+        if(CreateTableStatement.class.isInstance(statement)) {
+            CreateTableStatement tableStatement = (CreateTableStatement) statement;
+            if(tableStatement.tableName.equals("usertable")) {
+                if(options.getConsistency() == ConsistencyLevel.NODE_LOCAL) {
+                    logger.debug("rymDebug: consistency level is equal to local!");
+                }
+            }
+        }
         return result == null ? new ResultMessage.Void() : result;
     }
 
