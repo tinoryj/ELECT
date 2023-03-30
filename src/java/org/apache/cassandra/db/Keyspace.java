@@ -135,7 +135,7 @@ public class Keyspace {
 
     /* ColumnFamilyStore per column family */
     private final ConcurrentMap<TableId, ColumnFamilyStore> columnFamilyStores = new ConcurrentHashMap<>();
-    public final Map<Integer, TableId> globalNodeIDtoCFIDMap = new HashMap<Integer, UUID>();
+    public final Map<Integer, TableId> globalNodeIDtoCFIDMap = new HashMap<Integer, TableId>();
 
     private volatile AbstractReplicationStrategy replicationStrategy;
     public final ViewManager viewManager;
