@@ -262,6 +262,7 @@ public class QueryProcessor implements QueryHandler
         
         if(CreateTableStatement.class.isInstance(statement)) {
             CreateTableStatement tableStatement = (CreateTableStatement) statement;
+            logger.debug("rymDebug: receive a CreateTableStatement");
             logger.debug("rymDebug: ks is {}, table is {}", tableStatement.keyspace(), tableStatement.tableName);
             if(tableStatement.keyspace()=="ycsb" && tableStatement.tableName.equals("usertable0")) {
                 logger.debug("rymDebug: create table, table name is usertable");
