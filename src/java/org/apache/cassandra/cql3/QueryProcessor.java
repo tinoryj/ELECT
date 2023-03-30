@@ -276,7 +276,6 @@ public class QueryProcessor implements QueryHandler
                         CreateTableStatement ts = tableStatement.copyObjects(tableName);
                         logger.debug("rymDebug: create table {}, new table statement is {}", tableName, ts);
                         ResultMessage rs = ts.execute(queryState, options, queryStartNanoTime);
-                        logger.debug("rymDebug: {}, resultMessage is {}", tableName, rs);
                     }
                 }
             }
