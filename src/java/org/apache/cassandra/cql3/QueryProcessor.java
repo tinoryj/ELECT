@@ -266,7 +266,8 @@ public class QueryProcessor implements QueryHandler
             String ks = tableStatement.keyspace();
             String tn = tableStatement.tableName;
             logger.debug("rymDebug: ks is {}, table is {}", ks, tn);
-            if(ks=="ycsb") {
+            if(ks.equals("ycsb")) {
+                logger.debug("rymDebug: this CreateTableStatement is belong to ks ycsb");
                 if(options.getConsistency() == ConsistencyLevel.NODE_LOCAL) {
                     logger.debug("rymDebug: consistency level is equal to local, use processNodeLocalStatement()");
                 } else {
@@ -280,6 +281,8 @@ public class QueryProcessor implements QueryHandler
                         ResultMessage rs = ts.execute(queryState, options, queryStartNanoTime);
                     }
                 }
+            } else {
+                logger.debug("rymDebug: this CreateTableStatement is not belong to ycsb, it belongs to {}", ks);
             }
         }
         return result == null ? new ResultMessage.Void() : result;
