@@ -94,6 +94,14 @@ public final class CreateTableStatement extends AlterSchemaStatement
         this.useCompactStorage = useCompactStorage;
     }
 
+    public CreateTableStatement copyObjects(String tableName) {
+        return new CreateTableStatement(this.keyspaceName, tableName,
+                                        this.rawColumns, this.staticColumns,
+                                        this.partitionKeyColumns, this.clusteringColumns,
+                                        this.clusteringOrder, this.attrs,
+                                        this.ifNotExists, this.useCompactStorage);
+    }
+
     public Keyspaces apply(Keyspaces schema)
     {
         KeyspaceMetadata keyspace = schema.getNullable(keyspaceName);

@@ -45,6 +45,7 @@ import org.apache.cassandra.metrics.ClientRequestsMetricsHolder;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceMetadata;
+import org.apache.cassandra.schema.ReplicationParams;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.SchemaChangeListener;
 import org.apache.cassandra.schema.SchemaConstants;
@@ -267,6 +268,13 @@ public class QueryProcessor implements QueryHandler
                     logger.debug("rymDebug: consistency level is equal to local, use processNodeLocalStatement()");
                 } else {
                     logger.debug("rymDebug: consistency level is node equal, use statement.execute()");
+                    int rf = ReplicationParams.replicationFactor_;
+                    for(int i=1; i < rf; i++) {
+                        String tableName = "usertable" + i;
+                        CreateTableStatement ts = tableStatement.copyObjects(tableName);
+                        ResultMessage rs = ts.execute(queryState, options, queryStartNanoTime);
+                        logger.debug("rymDebug: {}, resultMessage is {}", tableName, rs);
+                    }
                 }
             }
         }
