@@ -135,7 +135,7 @@ public class Keyspace {
 
     /* ColumnFamilyStore per column family */
     private final ConcurrentMap<TableId, ColumnFamilyStore> columnFamilyStores = new ConcurrentHashMap<>();
-    public final List<TableId> globalCFIDList = new ArrayList<TableId>();
+    public final Map<Integer, TableId> globalNodeIDtoCFIDMap = new HashMap<Integer, UUID>();
 
     private volatile AbstractReplicationStrategy replicationStrategy;
     public final ViewManager viewManager;
@@ -453,38 +453,10 @@ public class Keyspace {
                     ColumnFamilyStore.createColumnFamilyStore(this, metadata, loadSSTables));
 
             if (keyspaceName.equals("ycsb")) {
-                int replicationFactorInt = replicationParams.getReplicationFactor();
-                for (ColumnFamilyStore cfStore : columnFamilyStores.values()) {
-                    logger.debug(
-                            "##cfStore.name:{}, cfStore.metadata.cfId:{}, columnFamilyStores size:{}, loadSSTables:{}",
-                            cfStore.name, cfStore.metadata.id, columnFamilyStores.size(), loadSSTables);
-                }
-                ColumnFamilyStore newCFS = columnFamilyStores.get(metadata.id);
-                /////////////////////////////////////////////////////
-                // TODO: make sure the read and write process of different LSM-tree
-                if (newCFS.name == "usertable0") {
-                    for(int i=1; i<replicationFactorInt; i++) {
-                        String tableNameStr = "usertable" + Integer.toString(i);
-                        
-                        // TableMetadata table = CreateTableStatement.parse(format(ycsbUsertableCql, tableNameStr), keyspaceName)
-                        //                                           .id(TableId.generate())
-                        //                                           .gcGraceSeconds(0)
-                        //                                           .memtableFlushPeriod((int) TimeUnit.HOURS.toMillis(1))
-                        //                                           .comment("description").build();
-
-                    }
-                }
-
-                // for (int i = 0; i < replicationFactorInt; i++) {
-                //     String columnNameStr = "usertable" + Integer.toString(i);
-                //     if (newCFS != null && !newCFS.name.equals(columnNameStr)) {
-                //         globalCFIDList.add(metadata.id);
-                //         break;
-                //     }
-                // }
+                globalNodeIDtoCFIDMap.put(globalNodeIDtoCFIDMap.size(), metadata.id);
+                logger.debug("rymDebug: globalNodeIDtoCFIDMap is {}", globalNodeIDtoCFIDMap);
             }
             
-
             // CFS mbean instantiation will error out before we hit this, but in case that
             // changes...
             if (oldCfs != null)
@@ -509,11 +481,11 @@ public class Keyspace {
 
             // make sure whether the mutation is for a primary or not.
             if (localAddress.equals(ep.get(0))) {
-                replicaUUID = globalCFIDList.get(0);
+                replicaUUID = globalNodeIDtoCFIDMap.get(0);
             } else {
                 // this mutation is for a secondary lsm-tree, get the replica UUID
                 int index = ep.indexOf(localAddress);
-                replicaUUID = globalCFIDList.get(index);
+                replicaUUID = globalNodeIDtoCFIDMap.get(index);
             }
 
             if(replicaUUID==null) {
@@ -572,11 +544,11 @@ public class Keyspace {
 
             // make sure whether the mutation is for a primary or not.
             if (localAddress.equals(ep.get(0))) {
-                replicaUUID = globalCFIDList.get(0);
+                replicaUUID = globalNodeIDtoCFIDMap.get(0);
             } else {
                 // this mutation is for a secondary lsm-tree, get the replica UUID
                 int index = ep.indexOf(localAddress);
-                replicaUUID = globalCFIDList.get(index);
+                replicaUUID = globalNodeIDtoCFIDMap.get(index);
             }
 
             if (replicaUUID == null) {

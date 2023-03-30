@@ -262,7 +262,7 @@ public class QueryProcessor implements QueryHandler
         
         if(CreateTableStatement.class.isInstance(statement)) {
             CreateTableStatement tableStatement = (CreateTableStatement) statement;
-            if(tableStatement.tableName.equals("usertable")) {
+            if(tableStatement.keyspace()=="ycsb" && tableStatement.tableName.equals("usertable0")) {
                 logger.debug("rymDebug: create table, table name is usertable");
                 if(options.getConsistency() == ConsistencyLevel.NODE_LOCAL) {
                     logger.debug("rymDebug: consistency level is equal to local, use processNodeLocalStatement()");
