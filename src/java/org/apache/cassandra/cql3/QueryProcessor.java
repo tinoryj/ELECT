@@ -264,7 +264,7 @@ public class QueryProcessor implements QueryHandler
             CreateTableStatement tableStatement = (CreateTableStatement) statement;
             logger.debug("rymDebug: receive a CreateTableStatement");
             logger.debug("rymDebug: ks is {}, table is {}", tableStatement.keyspace(), tableStatement.tableName);
-            if(tableStatement.keyspace()=="ycsb" && tableStatement.tableName.equals("usertable0")) {
+            if(tableStatement.keyspace()=="ycsb" && tableStatement.tableName.equals("primarydata")) {
                 if(options.getConsistency() == ConsistencyLevel.NODE_LOCAL) {
                     logger.debug("rymDebug: consistency level is equal to local, use processNodeLocalStatement()");
                 } else {
@@ -272,7 +272,7 @@ public class QueryProcessor implements QueryHandler
                     int rf = Keyspace.open(tableStatement.keyspace()).getMetadata().params.replication.getReplicationFactor();
                     logger.debug("rymDebug: replica factor is {}", rf);
                     for(int i=1; i < 3; i++) {
-                        String tableName = "usertable" + Integer.toString(i);
+                        String tableName = "primarydata" + Integer.toString(i);
                         CreateTableStatement ts = tableStatement.copyObjects(tableName);
                         logger.debug("rymDebug: create table {}, new table statement is {}", tableName, ts);
                         ResultMessage rs = ts.execute(queryState, options, queryStartNanoTime);
