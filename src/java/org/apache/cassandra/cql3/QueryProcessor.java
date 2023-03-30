@@ -270,8 +270,9 @@ public class QueryProcessor implements QueryHandler
                     logger.debug("rymDebug: consistency level is node equal, use statement.execute()");
                     int rf = ReplicationParams.replicationFactor_;
                     for(int i=1; i < rf; i++) {
-                        String tableName = "usertable" + i;
+                        String tableName = "usertable" + Integer.toString(i);
                         CreateTableStatement ts = tableStatement.copyObjects(tableName);
+                        logger.debug("rymDebug: create table {}, new table statement is {}", tableName, ts);
                         ResultMessage rs = ts.execute(queryState, options, queryStartNanoTime);
                         logger.debug("rymDebug: {}, resultMessage is {}", tableName, rs);
                     }
