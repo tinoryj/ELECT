@@ -161,38 +161,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                 return null;
             }
 
-            /////////////////////////////////////////////////
-            // send force compaction request to replica nodes
-            logger.debug("rymDebug: LeveledCompactionStrategy level is {}, candidate number is {}, threshold is: {}",
-             candidate.level, candidate.sstables.size(), DatabaseDescriptor.getCompactionThreshold()-1);
-            if (candidate.level == DatabaseDescriptor.getCompactionThreshold() - 1) {
-                for (SSTableReader ssTableReader : candidate.sstables) {
-                    logger.debug("rymDebug: send force compaction requests",
-                            ssTableReader.getSSTableLevel());
-                    String keyspace = ssTableReader.getKeyspaceName();
-                    String cfName = ssTableReader.getColumnFamilyName();
-                    // DecoratedKey fistKey = ssTableReader.first;
-                    String startToken = ssTableReader.metadata().partitioner.getMinimumToken().toString();
-                    String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
-
-                    // get sstHash
-                    String sstHash = ssTableReader.getSSTableHashID();
-                    // try {
-                    //     sstHash = String.valueOf(ssTableReader.getSSTContent().hashCode());
-                    // } catch (IOException e) {
-                    //     // TODO Auto-generated catch block
-                    //     e.printStackTrace();
-                    // }
-
-                    // get replica nodes
-                    List<InetAddressAndPort> replicaNodes = ssTableReader.getRelicaNodes(keyspace);
-                    logger.debug("rymDebug: task is send force compaction message, replica nodes {}", replicaNodes);
-                    ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
-                    // send compaction message to replica nodes
-                    ecCompaction.synchronizeCompaction(replicaNodes);
-                }
-            }
-            ////////////////////////////////////////////////
+            
 
             LifecycleTransaction txn = cfs.getTracker().tryModify(candidate.sstables, OperationType.COMPACTION);
             if (txn != null) {

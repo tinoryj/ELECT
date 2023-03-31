@@ -4295,6 +4295,14 @@ public class StorageService extends NotificationBroadcasterSupport
         return Replicas.stringify(replicas, true);
     }
 
+    public List<InetAddress> getNaturalEndpointsForToken(String keyspaceName, String tokenStr) {
+        List<InetAddress> inetList = new ArrayList<>();
+        Token token = getTokenFactory().fromString(tokenStr);
+        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+        replicas.forEach(r -> inetList.add(r.endpoint().getAddress()));
+        return inetList;
+    }
+
     public EndpointsForToken getNaturalReplicasForToken(String keyspaceName, String cf, String key) {
         return getNaturalReplicasForToken(keyspaceName, partitionKeyToBytes(keyspaceName, cf, key));
     }

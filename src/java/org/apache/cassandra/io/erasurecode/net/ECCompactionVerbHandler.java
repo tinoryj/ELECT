@@ -18,17 +18,20 @@
 package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.StorageService;
-
+import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,11 +49,15 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
         String cfName = message.payload.cfName;
         String startToken = message.payload.startToken;
         String endToken = message.payload.endToken;
+        InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
+        List<InetAddress> replicaNodes = StorageService.instance.getNaturalEndpointsForToken(ksName, startToken);
         logger.debug("rymDebug: Received compaction request for {}/{}/{}", sstHash, ksName, cfName);
+        
+        int index = replicaNodes.indexOf(localAddress);
         
 
         //TODO: get sstContent and do compaction
-        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName);
+        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName + String.valueOf(index));
         
         Collection<Range<Token>> tokenRanges = StorageService.instance.createRepairRangeFrom(startToken, endToken);
         try {

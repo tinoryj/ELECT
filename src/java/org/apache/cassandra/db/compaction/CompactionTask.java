@@ -44,6 +44,7 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
+import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
@@ -167,6 +168,42 @@ public class CompactionTask extends AbstractCompactionTask {
 
             long[] mergedRowCounts;
             long totalSourceCQLRows;
+
+
+            /////////////////////////////////////////////////
+            // send force compaction request to replica nodes
+            int sstLevel = actuallyCompact.iterator().next().getSSTableLevel()
+            logger.debug("rymDebug: LeveledCompactionStrategy level is {}, candidate number is {}, threshold is: {}",
+            sstLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold()-1);
+            if (sstLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
+                for (SSTableReader ssTableReader : actuallyCompact) {
+                    logger.debug("rymDebug: send force compaction requests",
+                            ssTableReader.getSSTableLevel());
+                    String keyspace = ssTableReader.getKeyspaceName();
+                    String cfName = ssTableReader.getColumnFamilyName();
+                    // DecoratedKey fistKey = ssTableReader.first;
+                    String startToken = ssTableReader.metadata().partitioner.getMinimumToken().toString();
+                    String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
+
+                    // get sstHash
+                    String sstHash = ssTableReader.getSSTableHashID();
+                    // try {
+                    //     sstHash = String.valueOf(ssTableReader.getSSTContent().hashCode());
+                    // } catch (IOException e) {
+                    //     // TODO Auto-generated catch block
+                    //     e.printStackTrace();
+                    // }
+
+                    // get replica nodes
+                    List<InetAddressAndPort> replicaNodes = ssTableReader.getRelicaNodes(keyspace);
+                    logger.debug("rymDebug: task is send force compaction message, replica nodes {}", replicaNodes);
+                    ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
+                    // send compaction message to replica nodes
+                    ecCompaction.synchronizeCompaction(replicaNodes);
+                }
+            }
+            ////////////////////////////////////////////////
+
 
             int nowInSec = FBUtilities.nowInSeconds();
             try (Refs<SSTableReader> refs = Refs.ref(actuallyCompact);
