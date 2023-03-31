@@ -2672,7 +2672,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     public boolean isAutoCompactionDisabled() {
-        return !this.compactionStrategyManager.isEnabled();
+        if (!this.name.equals("usertable")){
+            return true;
+        }else {
+            return !this.compactionStrategyManager.isEnabled();
+        }
+        
     }
 
     /*
