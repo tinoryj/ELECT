@@ -42,6 +42,7 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
      */
     
     private static final Logger logger = LoggerFactory.getLogger(ECCompaction.class);
+    public static final ECCompactionVerbHandler instance = new ECCompactionVerbHandler();
     @Override
     public void doVerb(Message<ECCompaction> message) throws IOException {
         String sstHash = message.payload.sstHash;

@@ -41,6 +41,7 @@ public class ECCompaction {
     String cfName;
     String startToken;
     String endToken;
+    public static final Serializer serializer = new Serializer();
 
     private static final Logger logger = LoggerFactory.getLogger(ECMetadata.class);
 
