@@ -174,32 +174,35 @@ public class CompactionTask extends AbstractCompactionTask {
             // send force compaction request to replica nodes
             int sstLevel = actuallyCompact.iterator().next().getSSTableLevel();
             logger.debug("rymDebug: sstLevel is {}, candidate number is {}, threshold is: {}",
-            sstLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold()-1);
+                    sstLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold() - 1);
             if (sstLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
                 for (SSTableReader ssTableReader : actuallyCompact) {
-                    logger.debug("rymDebug: send force compaction requests",
-                            ssTableReader.getSSTableLevel());
-                    String keyspace = ssTableReader.getKeyspaceName();
-                    String cfName = ssTableReader.getColumnFamilyName();
-                    // DecoratedKey fistKey = ssTableReader.first;
-                    String startToken = ssTableReader.metadata().partitioner.getMinimumToken().toString();
-                    String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
+                    if (ssTableReader.getColumnFamilyName().equals("usertable")) {
 
-                    // get sstHash
-                    String sstHash = ssTableReader.getSSTableHashID();
-                    // try {
-                    //     sstHash = String.valueOf(ssTableReader.getSSTContent().hashCode());
-                    // } catch (IOException e) {
-                    //     // TODO Auto-generated catch block
-                    //     e.printStackTrace();
-                    // }
+                        logger.debug("rymDebug: send force compaction requests",
+                                ssTableReader.getSSTableLevel());
+                        String keyspace = ssTableReader.getKeyspaceName();
+                        String cfName = ssTableReader.getColumnFamilyName();
+                        // DecoratedKey fistKey = ssTableReader.first;
+                        String startToken = ssTableReader.metadata().partitioner.getMinimumToken().toString();
+                        String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
 
-                    // get replica nodes
-                    List<InetAddressAndPort> replicaNodes = ssTableReader.getRelicaNodes(keyspace);
-                    logger.debug("rymDebug: task is send force compaction message, replica nodes {}", replicaNodes);
-                    ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
-                    // send compaction message to replica nodes
-                    ecCompaction.synchronizeCompaction(replicaNodes);
+                        // get sstHash
+                        String sstHash = ssTableReader.getSSTableHashID();
+                        // try {
+                        // sstHash = String.valueOf(ssTableReader.getSSTContent().hashCode());
+                        // } catch (IOException e) {
+                        // // TODO Auto-generated catch block
+                        // e.printStackTrace();
+                        // }
+
+                        // get replica nodes
+                        List<InetAddressAndPort> replicaNodes = ssTableReader.getRelicaNodes(keyspace);
+                        logger.debug("rymDebug: task is send force compaction message, replica nodes {}", replicaNodes);
+                        ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
+                        // send compaction message to replica nodes
+                        ecCompaction.synchronizeCompaction(replicaNodes);
+                    }
                 }
             }
             ////////////////////////////////////////////////
