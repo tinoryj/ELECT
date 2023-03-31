@@ -51,6 +51,7 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
         String endToken = message.payload.endToken;
         InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
         List<InetAddress> replicaNodes = StorageService.instance.getNaturalEndpointsForToken(ksName, startToken);
+        logger.debug("rymDebug: compaction handler, localAddress is {}, replicaNodes is {}", localAddress, replicaNodes);
         int index = replicaNodes.indexOf(localAddress);
         String cfName = message.payload.cfName + String.valueOf(index);
         logger.debug("rymDebug: Received compaction request for {}/{}/{}/{}",
