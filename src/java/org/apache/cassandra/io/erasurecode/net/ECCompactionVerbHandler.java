@@ -47,18 +47,18 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
     public void doVerb(Message<ECCompaction> message) throws IOException {
         String sstHash = message.payload.sstHash;
         String ksName = message.payload.ksName;
-        String cfName = message.payload.cfName;
         String startToken = message.payload.startToken;
         String endToken = message.payload.endToken;
         InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
         List<InetAddress> replicaNodes = StorageService.instance.getNaturalEndpointsForToken(ksName, startToken);
+        int index = replicaNodes.indexOf(localAddress);
+        String cfName = message.payload.cfName + String.valueOf(index);
         logger.debug("rymDebug: Received compaction request for {}/{}/{}", sstHash, ksName, cfName);
         
-        int index = replicaNodes.indexOf(localAddress);
         
 
         //TODO: get sstContent and do compaction
-        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName + String.valueOf(index));
+        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName);
         
         Collection<Range<Token>> tokenRanges = StorageService.instance.createRepairRangeFrom(startToken, endToken);
         try {
