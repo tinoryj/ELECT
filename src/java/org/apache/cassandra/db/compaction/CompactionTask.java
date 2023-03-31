@@ -216,9 +216,9 @@ public class CompactionTask extends AbstractCompactionTask {
                     // point of no return
                     newSStables = writer.finish();
                     logger.debug("rymDebug: Compaction is done!!!!");
-
                     // send compacted sstables to an parity node
                     for (SSTableReader ssTableReader : newSStables) {
+                        logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},", ssTableReader.getFilename(), ssTableReader.getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
                         if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
                             logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
                                     ssTableReader.getSSTableLevel());
