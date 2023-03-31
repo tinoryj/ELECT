@@ -53,7 +53,7 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
         List<InetAddress> replicaNodes = StorageService.instance.getNaturalEndpointsForToken(ksName, startToken);
         int index = replicaNodes.indexOf(localAddress);
         String cfName = message.payload.cfName + String.valueOf(index);
-        logger.debug("rymDebug: Received compaction request for {}/{}/{}/",
+        logger.debug("rymDebug: Received compaction request for {}/{}/{}/{}",
          sstHash, ksName, message.payload.cfName, String.valueOf(index));
         
         
