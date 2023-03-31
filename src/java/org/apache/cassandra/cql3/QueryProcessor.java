@@ -254,7 +254,7 @@ public class QueryProcessor implements QueryHandler
         ClientState clientState = queryState.getClientState();
         statement.authorize(clientState);
         statement.validate(clientState);
-        logger.debug("rymDebug: the query statement is {}", statement);
+        //logger.debug("rymDebug: the query statement is {}", statement);
 
         ResultMessage result = options.getConsistency() == ConsistencyLevel.NODE_LOCAL
                              ? processNodeLocalStatement(statement, queryState, options)
@@ -262,10 +262,8 @@ public class QueryProcessor implements QueryHandler
         
         if(CreateTableStatement.class.isInstance(statement)) {
             CreateTableStatement tableStatement = (CreateTableStatement) statement;
-            logger.debug("rymDebug: receive a CreateTableStatement");
             String ks = tableStatement.keyspace();
             String tn = tableStatement.tableName;
-            logger.debug("rymDebug: ks is {}, table is {}", ks, tn);
             if(ks.equals("ycsb")) {
                 logger.debug("rymDebug: this CreateTableStatement is belong to ks ycsb");
                 if(options.getConsistency() == ConsistencyLevel.NODE_LOCAL) {
@@ -279,6 +277,7 @@ public class QueryProcessor implements QueryHandler
                         CreateTableStatement ts = tableStatement.copyObjects(tableName);
                         logger.debug("rymDebug: create table {}, new table statement is {}", tableName, ts);
                         ResultMessage rs = ts.execute(queryState, options, queryStartNanoTime);
+                        logger.debug("rymDebug: create new table {}, result is {}", tableName, rs);
                     }
                 }
             } else {

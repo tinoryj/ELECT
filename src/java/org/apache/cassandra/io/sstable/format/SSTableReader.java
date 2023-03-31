@@ -61,6 +61,7 @@ import org.apache.cassandra.io.FSError;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.compress.CompressionMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.io.sstable.metadata.*;
 import org.apache.cassandra.io.util.*;
@@ -402,6 +403,11 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return open(descriptor, componentsFor(descriptor), metadata, false, true);
     }
 
+    public Boolean readAndSetHashIDIfNotExists(){
+        String fileName = descriptor.filenameFor(Component.DATA);
+        sstableMetadata.setupHashIDIfMissed(fileName);
+        return true;
+    }
     /**
      * Open SSTable reader to be used in batch mode(such as sstableloader).
      *
@@ -699,7 +705,35 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public String getSSTableHashID() {
+        if(!readAndSetHashIDIfNotExists()){
+            logger.debug("[Tinoryj] could not setup hash ID for current sstable = {}",descriptor.filenameFor(Component.DATA));
+        }
         return sstableMetadata.hashID();
+    }
+
+    public void replaceDatabyECMetadata(ECMetadata message) {
+
+        // delete sstable
+        deleteComponentOnlyData(descriptor);
+
+        // write ECMetadata 
+        File ecMetadataFile = new File(descriptor.filenameFor(Component.EC_METADATA));
+        if (ecMetadataFile.exists())
+            FileUtils.deleteWithConfirm(ecMetadataFile);
+        
+        try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
+            
+            // IndexSummary.serializer.serialize(summary, oStream);
+            ByteBufferUtil.writeWithLength(first.getKey(), oStream);
+            ByteBufferUtil.writeWithLength(last.getKey(), oStream);
+        } catch (IOException e) {
+            logger.error("Cannot save SSTable ecMetadataFile: ", e);
+
+            // corrupted hence delete it and let it load it now.
+            if (ecMetadataFile.exists())
+                FileUtils.deleteWithConfirm(ecMetadataFile);
+        }
+
     }
 
     public void setupOnline() {

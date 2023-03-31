@@ -222,11 +222,13 @@ public class CompactionTask extends AbstractCompactionTask {
                             logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
                                     ssTableReader.getSSTableLevel());
                             String keyspace = ssTableReader.getKeyspaceName();
+                            String cfName = ssTableReader.getColumnFamilyName();
                             try {
                                 String sstContent = ssTableReader.getSSTContent();
+                                String sstHashID = ssTableReader.getSSTableHashID();
                                 List<InetAddressAndPort> relicaNodes = ssTableReader.getRelicaNodes(keyspace);
                                 logger.debug("rymDebug: send sstables, replicaNodes are {}", relicaNodes);
-                                ECMessage ecMessage = new ECMessage(sstContent, ssTableReader.getKeyspaceName(),
+                                ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspace, cfName,
                                  "", "", relicaNodes);
                                 // logger.debug("rymDebug: the test message is: {}", ecMessage);
                                 ecMessage.sendSelectedSSTables();

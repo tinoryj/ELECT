@@ -54,7 +54,9 @@ public final class ECMessage {
 
     public static final Serializer serializer = new Serializer();
     public final String sstContent;
+    public final String sstHashID;
     public final String keyspace;
+    public final String cfName;
     public final int k;
     public final int rf;
     public final int m;
@@ -68,10 +70,12 @@ public final class ECMessage {
 
 
 
-    public ECMessage(String sstContent, String keyspace, String repEpString, String parityEpString,
+    public ECMessage(String sstContent, String sstHashID, String keyspace, String cfName, String repEpString, String parityEpString,
         List<InetAddressAndPort> replicaNodes) {
         this.sstContent = sstContent;
+        this.sstHashID = sstHashID;
         this.keyspace = keyspace;
+        this.cfName = cfName;
         this.k = DatabaseDescriptor.getEcDataNodes();
         this.m = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
@@ -172,7 +176,9 @@ public final class ECMessage {
         public void serialize(ECMessage ecMessage, DataOutputPlus out, int version) throws IOException {
             // TODO: something may need to ensure, could be test
             out.writeUTF(ecMessage.sstContent);
+            out.writeUTF(ecMessage.sstHashID);
             out.writeUTF(ecMessage.keyspace);
+            out.writeUTF(ecMessage.cfName);
             out.writeUTF(ecMessage.repEpsString);
             out.writeUTF(ecMessage.parityNodesString);
         }
@@ -180,19 +186,21 @@ public final class ECMessage {
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
             String sstContent = in.readUTF();
+            String sstHashID = in.readUTF();
             String ks = in.readUTF();
+            String cf = in.readUTF();
             String repEpsString = in.readUTF();
             String parityNodesString = in.readUTF();
 
             //logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {},repEpString is {},parityNodes are: {}"
             //, sstContent,ks, table, key,repEpsString,parityNodesString);
             
-            return new ECMessage(sstContent, ks, repEpsString, parityNodesString, null);
+            return new ECMessage(sstContent, sstHashID, ks, cf, repEpsString, parityNodesString, null);
         }
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
-            long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.keyspace) +
+            long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.sstHashID) + sizeof(ecMessage.keyspace) +
              sizeof(ecMessage.parityNodesString)+sizeof(ecMessage.repEpsString);
             return size;
 

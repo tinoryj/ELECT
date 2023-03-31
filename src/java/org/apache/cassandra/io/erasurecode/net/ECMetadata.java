@@ -18,7 +18,9 @@
 
 package org.apache.cassandra.io.erasurecode.net;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -41,29 +43,35 @@ import static org.apache.cassandra.db.TypeSizes.sizeof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.datastax.driver.core.ParseUtils;
 
 public class ECMetadata {
-
+    // TODO: improve the performance
     public String stripeId;
-    public List<String> sstContentHashList;
+    public String keyspace;
+    public String cfName;
+    public List<String> sstHashIdList;
     public List<String> parityCodeHashList;
+    public Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap;
+    public static String sstHashIdToReplicaMapStr;
 
     public List<InetAddressAndPort> primaryNodes;
     public Set<InetAddressAndPort> relatedNodes; // e.g. secondary nodes or parity nodes
-    public static final ECMetadata instance = new ECMetadata("",new ArrayList<String>(),new ArrayList<String>(),
-     new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>());
+    public static final ECMetadata instance = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
+     new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), "");
     
     private static final Logger logger = LoggerFactory.getLogger(ECMetadata.class);
     public static final Serializer serializer = new Serializer();
 
-    public ECMetadata(String stripeId, List<String> sstContentHashList, List<String> parityCodeHashList,
-     List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> relatedNodes) {
-        this.stripeId = "";
-        this.sstContentHashList = sstContentHashList;
+    public ECMetadata(String stripeId, String ks, String cf, List<String> sstHashIdList, List<String> parityCodeHashList,
+     List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> relatedNodes, String sstHashIdToReplicaMapStr) {
+        this.stripeId = stripeId;
+        this.keyspace = ks;
+        this.cfName = cf;
+        this.sstHashIdList = sstHashIdList;
         this.parityCodeHashList = parityCodeHashList;
         this.primaryNodes = primaryNodes;
         this.relatedNodes = relatedNodes;
+        this.sstHashIdToReplicaMapStr = sstHashIdToReplicaMapStr;
     }
 
     public void generateMetadata(ECMessage[] messages, ByteBuffer[] parityCode, List<String> parityHashes) {
@@ -71,12 +79,30 @@ public class ECMetadata {
         // get stripe id, sst content hashes and primary nodes
         String connectedSSTHash = "";
         for(ECMessage msg : messages) {
-            String sstContentHash = String.valueOf(msg.sstContent.hashCode());
-            this.sstContentHashList.add(sstContentHash);
+            String sstContentHash = msg.sstHashID;
+            this.sstHashIdList.add(sstContentHash);
+            this.sstHashIdToReplicaMap.putIfAbsent(connectedSSTHash, msg.replicaNodes);
+            //this.sstHashIdToReplicaMapStr += sstContentHash + "=" + msg.repEpsString + ";";
             connectedSSTHash += sstContentHash;
             this.primaryNodes.add(msg.replicaNodes.get(0));
         }
+        
         this.stripeId = String.valueOf(connectedSSTHash.hashCode());
+        this.keyspace = messages[0].keyspace;
+        this.cfName = messages[0].cfName;
+
+        try {
+            ByteArrayOutputStream byteOutStream = new ByteArrayOutputStream();
+            ObjectOutputStream objectOutStream = new ObjectOutputStream(byteOutStream);
+            objectOutStream.writeObject(this.sstHashIdToReplicaMap);
+            objectOutStream.flush();
+            byte[] byteArray = byteOutStream.toByteArray();
+            this.sstHashIdToReplicaMapStr = byteArray.toString();
+            
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
         // generate parity code hash
         this.parityCodeHashList = parityHashes;
@@ -113,7 +139,10 @@ public class ECMetadata {
         public void serialize(ECMetadata t, DataOutputPlus out, int version) throws IOException {
             
             out.writeUTF(t.stripeId);
-            out.writeUTF(t.sstContentHashList.toString());
+            out.writeUTF(t.keyspace);
+            out.writeUTF(t.cfName);
+            out.writeUTF(t.sstHashIdList.toString());
+            out.writeUTF(t.sstHashIdToReplicaMapStr);
             out.writeUTF(t.parityCodeHashList.toString());
             out.writeUTF(t.primaryNodes.toString());
             out.writeUTF(t.relatedNodes.toString());
@@ -124,18 +153,21 @@ public class ECMetadata {
         public ECMetadata deserialize(DataInputPlus in, int version) throws IOException {
             // TODO: Correct data types, and revise the Constructor
             String stripeId = in.readUTF();
-            String sstContentHashListString = in.readUTF();
+            String ks = in.readUTF();
+            String cfName = in.readUTF();
+            String sstHashIdListString = in.readUTF();
+            String sstHashIdToReplicaMapStr = in.readUTF();
             String parityCodeHashListString = in.readUTF();
             String primaryNodesString = in.readUTF();
             String relatedNodesString = in.readUTF();
 
-            List<String> sstContentHashList = new ArrayList<String>();
+            List<String> sstHashIdList = new ArrayList<String>();
             List<String> parityCodeHashList = new ArrayList<String>();
             List<InetAddressAndPort> primaryNodes = new ArrayList<InetAddressAndPort>();
             Set<InetAddressAndPort> relatedNodes = new HashSet<InetAddressAndPort>();
 
-            for(String s : sstContentHashListString.split(",")) {
-                sstContentHashList.add(s);
+            for(String s : sstHashIdListString.split(",")) {
+                sstHashIdList.add(s);
             }
             for(String s : parityCodeHashListString.split(",")) {
                 parityCodeHashList.add(s);
@@ -148,13 +180,15 @@ public class ECMetadata {
             }
 
 
-            return new ECMetadata(stripeId,sstContentHashList, parityCodeHashList, primaryNodes, relatedNodes);
+            return new ECMetadata(stripeId, ks, cfName, sstHashIdList, parityCodeHashList,
+             primaryNodes, relatedNodes, sstHashIdToReplicaMapStr);
         }
 
         @Override
         public long serializedSize(ECMetadata t, int version) {
-            long size = sizeof(t.stripeId) + sizeof(t.sstContentHashList.toString()) + sizeof(t.parityCodeHashList.toString())+ 
-            sizeof(t.primaryNodes.toString()) + sizeof(t.relatedNodes.toString());
+            long size = sizeof(t.stripeId) + sizeof(t.keyspace) + sizeof(t.cfName) + sizeof(t.sstHashIdList.toString())
+            + sizeof(t.parityCodeHashList.toString())+  sizeof(t.primaryNodes.toString())
+            + sizeof(t.relatedNodes.toString()) + sizeof(sstHashIdToReplicaMapStr);
             return size;
         }
 

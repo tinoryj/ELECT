@@ -461,6 +461,7 @@ public class BigTableWriter extends SSTableWriter {
 
             try (DataInputStream dataFileReadForHash = new DataInputStream(
                     new FileInputStream(descriptor.filenameFor(Component.DATA)))) {
+                logger.debug("[Tinoryj] Open data file success for SSTable = {}", descriptor.filenameFor(Component.DATA));
                 long fileLength = new File(descriptor.filenameFor(Component.DATA)).length();
                 byte[] bytes = new byte[(int) fileLength];
                 dataFileReadForHash.readFully(bytes);
@@ -479,7 +480,7 @@ public class BigTableWriter extends SSTableWriter {
                 }
             } catch (IOException e) {
                 hashID = null;
-                logger.debug("[Tinoryj]: Could not read SSTable {}", descriptor.filenameFor(Component.DATA));
+                logger.debug("[Tinoryj]: Could not read SSTable = {} for hash ID generation", descriptor.filenameFor(Component.DATA));
                 e.printStackTrace();
             }
 

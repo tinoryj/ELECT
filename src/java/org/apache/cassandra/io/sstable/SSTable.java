@@ -154,18 +154,10 @@ public abstract class SSTable {
     /**
      * @return true if the file was deleted
      */
-    public static boolean deleteComponentOnlyData(Descriptor desc, Set<Component> components) {
+    public static boolean deleteComponentOnlyData(Descriptor desc) {
         logger.info("Deleting sstable: {}", desc);
         // remove the DATA component first if it exists
-        if (components.contains(Component.DATA)) {
-            FileUtils.deleteWithConfirm(desc.filenameFor(Component.DATA));
-        } else {
-            if (components.contains(Component.EC_METADATA)) {
-                FileUtils.deleteWithConfirm(desc.filenameFor(Component.EC_METADATA));
-            } else {
-                logger.error("[Tinoryj] deleteComponentOnlyData: no DATA or EC_METADATA component found");
-            }
-        }
+        FileUtils.deleteWithConfirm(desc.filenameFor(Component.DATA));
         isDataRemovedByRedundancyTransionFlag = true;
         return true;
     }
