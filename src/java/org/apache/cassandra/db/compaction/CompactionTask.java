@@ -173,9 +173,10 @@ public class CompactionTask extends AbstractCompactionTask {
             /////////////////////////////////////////////////
             // send force compaction request to replica nodes
             int sstLevel = actuallyCompact.iterator().next().getSSTableLevel();
+            String keyspaceName = actuallyCompact.iterator().next().getKeyspaceName();
             logger.debug("rymDebug: sstLevel is {}, candidate number is {}, threshold is: {}",
                     sstLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold() - 1);
-            if (sstLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
+            if (keyspaceName.equals("ycsb") && sstLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
                 for (SSTableReader ssTableReader : actuallyCompact) {
                     if (ssTableReader.getColumnFamilyName().equals("usertable")) {
 
@@ -257,24 +258,30 @@ public class CompactionTask extends AbstractCompactionTask {
                     newSStables = writer.finish();
                     logger.debug("rymDebug: Compaction is done!!!!");
                     // send compacted sstables to an parity node
-                    for (SSTableReader ssTableReader : newSStables) {
-                        logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},", ssTableReader.getFilename(), ssTableReader.getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
-                        if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                            logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                                    ssTableReader.getSSTableLevel());
-                            String keyspace = ssTableReader.getKeyspaceName();
-                            String cfName = ssTableReader.getColumnFamilyName();
-                            try {
-                                String sstContent = ssTableReader.getSSTContent();
-                                String sstHashID = ssTableReader.getSSTableHashID();
-                                List<InetAddressAndPort> relicaNodes = ssTableReader.getRelicaNodes(keyspace);
-                                logger.debug("rymDebug: send sstables, replicaNodes are {}", relicaNodes);
-                                ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspace, cfName,
-                                 "", "", relicaNodes);
-                                // logger.debug("rymDebug: the test message is: {}", ecMessage);
-                                ecMessage.sendSelectedSSTables();
-                            } catch (IOException e) {
-                                logger.error("rymError: {}", e);
+                    if (keyspaceName.equals("ycsb")) {
+                        for (SSTableReader ssTableReader : newSStables) {
+                            if (ssTableReader.getColumnFamilyName().equals("usertable")) {
+                                logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},",
+                                        ssTableReader.getFilename(), ssTableReader.getSSTableLevel(),
+                                        DatabaseDescriptor.getCompactionThreshold());
+                                if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                                    logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                                            ssTableReader.getSSTableLevel());
+                                    String keyspace = ssTableReader.getKeyspaceName();
+                                    String cfName = ssTableReader.getColumnFamilyName();
+                                    try {
+                                        String sstContent = ssTableReader.getSSTContent();
+                                        String sstHashID = ssTableReader.getSSTableHashID();
+                                        List<InetAddressAndPort> relicaNodes = ssTableReader.getRelicaNodes(keyspace);
+                                        logger.debug("rymDebug: send sstables, replicaNodes are {}", relicaNodes);
+                                        ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspace, cfName,
+                                                "", "", relicaNodes);
+                                        // logger.debug("rymDebug: the test message is: {}", ecMessage);
+                                        ecMessage.sendSelectedSSTables();
+                                    } catch (IOException e) {
+                                        logger.error("rymError: {}", e);
+                                    }
+                                }
                             }
                         }
                     }
