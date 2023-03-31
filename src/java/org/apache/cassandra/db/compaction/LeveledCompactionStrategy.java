@@ -50,6 +50,7 @@ import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 
+
 public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
     private static final Logger logger = LoggerFactory.getLogger(LeveledCompactionStrategy.class);
     private static final String SSTABLE_SIZE_OPTION = "sstable_size_in_mb";
@@ -71,29 +72,30 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;
         boolean configuredSingleSSTableUplevel = false;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
-        if (options != null) {
-            if (options.containsKey(SSTABLE_SIZE_OPTION)) {
-                configuredMaxSSTableSize = Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));
-                if (!tolerateSstableSize) {
-                    if (configuredMaxSSTableSize >= 1000)
-                        logger.warn(
-                                "Max sstable size of {}MB is configured for {}.{}; having a unit of compaction this large is probably a bad idea",
-                                configuredMaxSSTableSize, cfs.name, cfs.getTableName());
-                    if (configuredMaxSSTableSize < 50)
-                        logger.warn(
-                                "Max sstable size of {}MB is configured for {}.{}.  Testing done for CASSANDRA-5727 indicates that performance improves up to 160MB",
-                                configuredMaxSSTableSize, cfs.name, cfs.getTableName());
-                }
-            }
+        logger.debug("rymDebug: SizeTieredCompaction Strategy Options is: {}, localoption is: {}", options, localOptions);
+        // if (options != null) {
+        //     if (options.containsKey(SSTABLE_SIZE_OPTION)) {
+        //         configuredMaxSSTableSize = Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));
+        //         if (!tolerateSstableSize) {
+        //             if (configuredMaxSSTableSize >= 1000)
+        //                 logger.warn(
+        //                         "Max sstable size of {}MB is configured for {}.{}; having a unit of compaction this large is probably a bad idea",
+        //                         configuredMaxSSTableSize, cfs.name, cfs.getTableName());
+        //             if (configuredMaxSSTableSize < 50)
+        //                 logger.warn(
+        //                         "Max sstable size of {}MB is configured for {}.{}.  Testing done for CASSANDRA-5727 indicates that performance improves up to 160MB",
+        //                         configuredMaxSSTableSize, cfs.name, cfs.getTableName());
+        //         }
+        //     }
 
-            if (options.containsKey(LEVEL_FANOUT_SIZE_OPTION)) {
-                configuredLevelFanoutSize = Integer.parseInt(options.get(LEVEL_FANOUT_SIZE_OPTION));
-            }
+        //     if (options.containsKey(LEVEL_FANOUT_SIZE_OPTION)) {
+        //         configuredLevelFanoutSize = Integer.parseInt(options.get(LEVEL_FANOUT_SIZE_OPTION));
+        //     }
 
-            if (options.containsKey(SINGLE_SSTABLE_UPLEVEL_OPTION)) {
-                configuredSingleSSTableUplevel = Boolean.parseBoolean(options.get(SINGLE_SSTABLE_UPLEVEL_OPTION));
-            }
-        }
+        //     if (options.containsKey(SINGLE_SSTABLE_UPLEVEL_OPTION)) {
+        //         configuredSingleSSTableUplevel = Boolean.parseBoolean(options.get(SINGLE_SSTABLE_UPLEVEL_OPTION));
+        //     }
+        // }
         maxSSTableSizeInMiB = configuredMaxSSTableSize;
         levelFanoutSize = configuredLevelFanoutSize;
         singleSSTableUplevel = configuredSingleSSTableUplevel;
