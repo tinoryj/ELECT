@@ -477,7 +477,7 @@ public class Keyspace {
             List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
             InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
             TableId replicaUUID = null;
-            logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+            // logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
 
             // make sure whether the mutation is for a primary or not.
             if (localAddress.equals(ep.get(0))) {
@@ -540,7 +540,7 @@ public class Keyspace {
             List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
             InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
             TableId replicaUUID = null;
-            logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+            //logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
 
             // make sure whether the mutation is for a primary or not.
             if (localAddress.equals(ep.get(0))) {
