@@ -472,12 +472,12 @@ public class Keyspace {
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes) {
 
         String keyspaceName = mutation.getKeyspaceName();
-        if (keyspaceName == "ycsb") {
+        if (keyspaceName.equals("ycsb")) {
             ByteBuffer key = mutation.key().getKey();
             List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
             InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
             TableId replicaUUID = null;
-            logger.debug("##Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+            logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
 
             // make sure whether the mutation is for a primary or not.
             if (localAddress.equals(ep.get(0))) {
@@ -535,12 +535,12 @@ public class Keyspace {
             boolean updateIndexes,
             boolean isDroppable) {
         String keyspaceName = mutation.getKeyspaceName();
-        if (keyspaceName == "ycsb") {
+        if (keyspaceName.equals("ycsb")) {
             ByteBuffer key = mutation.key().getKey();
             List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
             InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
             TableId replicaUUID = null;
-            logger.debug("##Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+            logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
 
             // make sure whether the mutation is for a primary or not.
             if (localAddress.equals(ep.get(0))) {
