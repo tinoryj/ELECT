@@ -23,7 +23,7 @@ import org.apache.cassandra.exceptions.ConfigurationException;
 
 public final class SizeTieredCompactionStrategyOptions
 {
-    protected static final long DEFAULT_MIN_SSTABLE_SIZE = 50L * 1024L * 1024L;
+    protected static final long DEFAULT_MIN_SSTABLE_SIZE = 4L * 1024L * 1024L;
     protected static final double DEFAULT_BUCKET_LOW = 0.5;
     protected static final double DEFAULT_BUCKET_HIGH = 1.5;
     protected static final String MIN_SSTABLE_SIZE_KEY = "min_sstable_size";
