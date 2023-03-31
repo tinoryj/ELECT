@@ -163,6 +163,8 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
             /////////////////////////////////////////////////
             // send force compaction request to replica nodes
+            logger.debug("rymDebug: LeveledCompactionStrategy level is {}, candidate number is {}, threshold is: {}",
+             candidate.level, candidate.sstables.size(), DatabaseDescriptor.getCompactionThreshold()-1);
             if (candidate.level == DatabaseDescriptor.getCompactionThreshold() - 1) {
                 for (SSTableReader ssTableReader : candidate.sstables) {
                     logger.debug("rymDebug: send force compaction requests",

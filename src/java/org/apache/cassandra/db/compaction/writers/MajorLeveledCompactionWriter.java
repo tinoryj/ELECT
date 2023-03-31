@@ -73,6 +73,7 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter {
             totalWrittenInLevel += totalWrittenInCurrentWriter;
             if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel, levelFanoutSize, maxSSTableSize)) {
                 totalWrittenInLevel = 0;
+                logger.debug("[Tinoryj] current total written in level: {}, current level = {}", totalWrittenInLevel, currentLevel);
                 currentLevel++;
             }
             switchCompactionLocation(sstableDirectory);
