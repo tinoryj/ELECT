@@ -172,8 +172,8 @@ public class CompactionTask extends AbstractCompactionTask {
 
             /////////////////////////////////////////////////
             // send force compaction request to replica nodes
-            int sstLevel = actuallyCompact.iterator().next().getSSTableLevel()
-            logger.debug("rymDebug: LeveledCompactionStrategy level is {}, candidate number is {}, threshold is: {}",
+            int sstLevel = actuallyCompact.iterator().next().getSSTableLevel();
+            logger.debug("rymDebug: sstLevel is {}, candidate number is {}, threshold is: {}",
             sstLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold()-1);
             if (sstLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
                 for (SSTableReader ssTableReader : actuallyCompact) {
