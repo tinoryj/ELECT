@@ -215,28 +215,29 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // point of no return
                     newSStables = writer.finish();
+                    logger.debug("rymDebug: Compaction is done!!!!");
 
                     // send compacted sstables to an parity node
-                    // for (SSTableReader ssTableReader : newSStables) {
-                    //     if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                    //         logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                    //                 ssTableReader.getSSTableLevel());
-                    //         String keyspace = ssTableReader.getKeyspaceName();
-                    //         String cfName = ssTableReader.getColumnFamilyName();
-                    //         try {
-                    //             String sstContent = ssTableReader.getSSTContent();
-                    //             String sstHashID = ssTableReader.getSSTableHashID();
-                    //             List<InetAddressAndPort> relicaNodes = ssTableReader.getRelicaNodes(keyspace);
-                    //             logger.debug("rymDebug: send sstables, replicaNodes are {}", relicaNodes);
-                    //             ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspace, cfName,
-                    //              "", "", relicaNodes);
-                    //             // logger.debug("rymDebug: the test message is: {}", ecMessage);
-                    //             ecMessage.sendSelectedSSTables();
-                    //         } catch (IOException e) {
-                    //             logger.error("rymError: {}", e);
-                    //         }
-                    //     }
-                    // }
+                    for (SSTableReader ssTableReader : newSStables) {
+                        if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                            logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                                    ssTableReader.getSSTableLevel());
+                            String keyspace = ssTableReader.getKeyspaceName();
+                            String cfName = ssTableReader.getColumnFamilyName();
+                            try {
+                                String sstContent = ssTableReader.getSSTContent();
+                                String sstHashID = ssTableReader.getSSTableHashID();
+                                List<InetAddressAndPort> relicaNodes = ssTableReader.getRelicaNodes(keyspace);
+                                logger.debug("rymDebug: send sstables, replicaNodes are {}", relicaNodes);
+                                ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspace, cfName,
+                                 "", "", relicaNodes);
+                                // logger.debug("rymDebug: the test message is: {}", ecMessage);
+                                ecMessage.sendSelectedSSTables();
+                            } catch (IOException e) {
+                                logger.error("rymError: {}", e);
+                            }
+                        }
+                    }
                 }
                 finally
                 {
