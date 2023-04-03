@@ -267,6 +267,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     // send compacted sstables to an parity node
                     if (ksName.equals("ycsb")) {
                         if (!cfName.equals("usertable") && newSStLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
+                            // TODO: also need to consider whether the level size is full or not
                             cfs.disableAutoCompaction();
                             logger.debug("rymDebug: disable auto-compaction for ks {}, cf {}, sstable level {}", ksName, cfName, newSStLevel);
                         } else if (cfName.equals("usertable")) {
@@ -283,7 +284,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                         String sstHashID = ssTableReader.getSSTableHashID();
                                         List<InetAddressAndPort> relicaNodes = StorageService.instance
                                                 .getReplicaNodesWithPort(ksName, cfName, key);
-                                        logger.debug("rymDebug: send sstables, replicaNodes are {}", relicaNodes);
+                                        logger.debug("rymDebug: send sstables {}, replicaNodes are {}", sstContent, relicaNodes);
                                         ECMessage ecMessage = new ECMessage(sstContent, sstHashID, ksName, cfName,
                                                 "", "", relicaNodes);
                                         // logger.debug("rymDebug: the test message is: {}", ecMessage);
