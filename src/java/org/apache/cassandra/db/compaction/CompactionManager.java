@@ -307,9 +307,10 @@ public class CompactionManager implements CompactionManagerMBean {
             } finally {
                 compactingCF.remove(cfs);
             }
-            if (ranCompaction) // only submit background if we actually ran a compaction - otherwise we end up
-                               // in an infinite loop submitting noop background tasks
+            if (ranCompaction){ // only submit background if we actually ran a compaction - otherwise we end up
+                // in an infinite loop submitting noop background tasks
                 submitBackground(cfs);
+            }
         }
 
         boolean maybeRunUpgradeTask(CompactionStrategyManager strategy) {

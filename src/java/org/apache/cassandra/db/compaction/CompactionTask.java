@@ -175,22 +175,24 @@ public class CompactionTask extends AbstractCompactionTask {
 
             /////////////////////////////////////////////////
             // send force compaction request to replica nodes
-            int sstLevel = actuallyCompact.iterator().next().getSSTableLevel();
-            String keyspaceName = actuallyCompact.iterator().next().getKeyspaceName();
-            logger.debug("rymDebug: sstLevel is {}, candidate number is {}, threshold is: {}",
-                    sstLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold() - 1);
-            if (keyspaceName.equals("ycsb") && sstLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
+            // int oldSStLevel = actuallyCompact.iterator().next().getSSTableLevel();
+            String ksName = cfs.keyspace.getName();
+            String cfName = cfs.name;
+            // logger.debug("rymDebug: sstLevel is {}, candidate number is {}, threshold is: {}",
+            // oldSStLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold() - 1);
+            if (ksName.equals("ycsb") && cfName.equals("usertable")) {
                 for (SSTableReader ssTableReader : actuallyCompact) {
-                    if (ssTableReader.getColumnFamilyName().equals("usertable")) {
+                    if (ssTableReader.getSSTableLevel() == DatabaseDescriptor.getCompactionThreshold() - 1) {
 
-                        logger.debug("rymDebug: send force compaction requests",
-                                ssTableReader.getSSTableLevel());
-                        String keyspace = ssTableReader.getKeyspaceName();
-                        String cfName = ssTableReader.getColumnFamilyName();
+                        logger.debug("rymDebug: send force compaction requests, sstlevel is {}", ssTableReader.getSSTableLevel());
+                        // String keyspace = ssTableReader.getKeyspaceName();
+                        // String cfName = ssTableReader.getColumnFamilyName();
                         String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
                         // DecoratedKey fistKey = ssTableReader.first;
-                        // String startToken = ssTableReader.metadata().partitioner.getMinimumToken().toString();
-                        // String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
+                        // String startToken =
+                        // ssTableReader.metadata().partitioner.getMinimumToken().toString();
+                        // String endToken =
+                        // ssTableReader.metadata().partitioner.getMaximumToken().toString();
                         String startToken = ssTableReader.first.getToken().toString();
                         String endToken = ssTableReader.last.getToken().toString();
 
@@ -198,12 +200,15 @@ public class CompactionTask extends AbstractCompactionTask {
                         String sstHash = ssTableReader.getSSTableHashID();
 
                         // get replica nodes
-                        List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(keyspaceName, cfName, key);
-                        logger.debug("rymDebug: task is send force compaction message, replica nodes {}, cfName", replicaNodes);
-                        // ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
-                        ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, key,startToken, endToken);
+                        List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(ksName, cfName, key);
+                        logger.debug("rymDebug: task is send force compaction message, replica nodes {}, cfName",
+                                replicaNodes);
+                        // ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName,
+                        // startToken, endToken);
+                        ECCompaction ecCompaction = new ECCompaction(sstHash, ksName, cfName, key, startToken, endToken);
                         // send compaction message to replica nodes
                         ecCompaction.synchronizeCompaction(replicaNodes);
+
                     }
                 }
             }
@@ -257,26 +262,29 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // point of no return
                     newSStables = writer.finish();
+                    int newSStLevel = newSStables.iterator().next().getSSTableLevel();
                     logger.debug("rymDebug: Compaction is done!!!!");
                     // send compacted sstables to an parity node
-                    if (keyspaceName.equals("ycsb")) {
-                        for (SSTableReader ssTableReader : newSStables) {
-                            if (ssTableReader.getColumnFamilyName().equals("usertable")) {
+                    if (ksName.equals("ycsb")) {
+                        if (!cfName.equals("usertable") && newSStLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
+                            cfs.disableAutoCompaction();
+                            logger.debug("rymDebug: disable auto-compaction for ks {}, cf {}, sstable level {}", ksName, cfName, newSStLevel);
+                        } else if (cfName.equals("usertable")) {
+                            for (SSTableReader ssTableReader : newSStables) {
                                 logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},",
-                                        ssTableReader.getFilename(), ssTableReader.getSSTableLevel(),
-                                        DatabaseDescriptor.getCompactionThreshold());
+                                        ssTableReader.getFilename(), ssTableReader.getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
                                 if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                                    logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                                            ssTableReader.getSSTableLevel());
-                                    String keyspace = ssTableReader.getKeyspaceName();
-                                    String cfName = ssTableReader.getColumnFamilyName();
+                                    logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}", ssTableReader.getSSTableLevel());
+                                    // String keyspace = ssTableReader.getKeyspaceName();
+                                    // String cfName = ssTableReader.getColumnFamilyName();
                                     String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
                                     try {
                                         String sstContent = ssTableReader.getSSTContent();
                                         String sstHashID = ssTableReader.getSSTableHashID();
-                                        List<InetAddressAndPort> relicaNodes = StorageService.instance.getReplicaNodesWithPort(keyspaceName, cfName, key);
+                                        List<InetAddressAndPort> relicaNodes = StorageService.instance
+                                                .getReplicaNodesWithPort(ksName, cfName, key);
                                         logger.debug("rymDebug: send sstables, replicaNodes are {}", relicaNodes);
-                                        ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspace, cfName,
+                                        ECMessage ecMessage = new ECMessage(sstContent, sstHashID, ksName, cfName,
                                                 "", "", relicaNodes);
                                         // logger.debug("rymDebug: the test message is: {}", ecMessage);
                                         ecMessage.sendSelectedSSTables();
