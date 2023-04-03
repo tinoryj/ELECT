@@ -43,6 +43,8 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
     
     private static final Logger logger = LoggerFactory.getLogger(ECCompaction.class);
     public static final ECCompactionVerbHandler instance = new ECCompactionVerbHandler();
+    // TODO: optimization: select a specific LSM-tree and compact specific sstables
+
     @Override
     public void doVerb(Message<ECCompaction> message) throws IOException {
         String sstHash = message.payload.sstHash;
@@ -57,7 +59,6 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
         logger.debug("rymDebug: Received compaction request for {}/{}/{}/{}",
          sstHash, ksName, message.payload.cfName, String.valueOf(index));
         
-        
 
         //TODO: get sstContent and do compaction
         ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName);
@@ -65,6 +66,7 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
         Collection<Range<Token>> tokenRanges = StorageService.instance.createRepairRangeFrom(startToken, endToken);
         try {
             cfs.forceCompactionForTokenRange(tokenRanges);
+            // cfs.forceCompactionForKey(null);
         } catch (ExecutionException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

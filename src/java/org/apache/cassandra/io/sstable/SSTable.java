@@ -174,19 +174,21 @@ public abstract class SSTable {
         return metadata().partitioner;
     }
 
-    public List<InetAddressAndPort> getRelicaNodes(String keyspaceName) {
-        Token token = metadata.get().partitioner.getRandomToken();
-        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
-        List<InetAddressAndPort> replicaNodes = new ArrayList<>(replicas.size());
-        replicas.forEach(r -> {
-            try {
-                replicaNodes.add(InetAddressAndPort.getByName(r.endpoint().getHostAddress(true)));
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            }
-        });
-        return replicaNodes;
-    }
+    // public List<InetAddressAndPort> getRelicaNodes(String keyspaceName) {
+    //     // TODO: get correct replica nodes
+    //     Token token = first.getToken();
+    //     //Token token = metadata.get().partitioner.getMinimumToken();
+    //     EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+    //     List<InetAddressAndPort> replicaNodes = new ArrayList<>(replicas.size());
+    //     replicas.forEach(r -> {
+    //         try {
+    //             replicaNodes.add(InetAddressAndPort.getByName(r.endpoint().getHostAddress(true)));
+    //         } catch (UnknownHostException e) {
+    //             e.printStackTrace();
+    //         }
+    //     });
+    //     return replicaNodes;
+    // }
 
     public DecoratedKey decorateKey(ByteBuffer key)
     {

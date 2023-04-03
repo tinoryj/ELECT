@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
@@ -49,6 +50,8 @@ import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.concurrent.Refs;
@@ -184,21 +187,16 @@ public class CompactionTask extends AbstractCompactionTask {
                                 ssTableReader.getSSTableLevel());
                         String keyspace = ssTableReader.getKeyspaceName();
                         String cfName = ssTableReader.getColumnFamilyName();
+                        String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
                         // DecoratedKey fistKey = ssTableReader.first;
                         String startToken = ssTableReader.metadata().partitioner.getMinimumToken().toString();
                         String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
 
                         // get sstHash
                         String sstHash = ssTableReader.getSSTableHashID();
-                        // try {
-                        // sstHash = String.valueOf(ssTableReader.getSSTContent().hashCode());
-                        // } catch (IOException e) {
-                        // // TODO Auto-generated catch block
-                        // e.printStackTrace();
-                        // }
 
                         // get replica nodes
-                        List<InetAddressAndPort> replicaNodes = ssTableReader.getRelicaNodes(keyspace);
+                        List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(keyspaceName, cfName, key);
                         logger.debug("rymDebug: task is send force compaction message, replica nodes {}", replicaNodes);
                         ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
                         // send compaction message to replica nodes

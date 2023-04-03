@@ -4294,7 +4294,22 @@ public class StorageService extends NotificationBroadcasterSupport
         EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, key);
         return Replicas.stringify(replicas, true);
     }
+    ////////////////////
+    public List<InetAddressAndPort> getReplicaNodesWithPort(String keyspaceName, String cf, String key) {
+        List<String> inetStringList = getNaturalEndpointsWithPort(keyspaceName, cf, key);
+        List<InetAddressAndPort> inetList = new ArrayList<>(inetStringList.size());
+        inetStringList.forEach(r -> {
+            try {
+                inetList.add(InetAddressAndPort.getByName(r));
+            } catch (UnknownHostException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        });
+        return inetList;
 
+    }
+    ///////////////////
     public List<InetAddress> getNaturalEndpointsForToken(String keyspaceName, String tokenStr) {
         List<InetAddress> inetList = new ArrayList<>();
         Token token = getTokenFactory().fromString(tokenStr);
