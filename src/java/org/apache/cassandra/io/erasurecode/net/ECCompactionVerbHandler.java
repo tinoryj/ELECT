@@ -49,24 +49,27 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
     public void doVerb(Message<ECCompaction> message) throws IOException {
         String sstHash = message.payload.sstHash;
         String ksName = message.payload.ksName;
+        String cfName = message.payload.cfName;
+        String key = message.payload.key;
         String startToken = message.payload.startToken;
         String endToken = message.payload.endToken;
-        InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
-        List<InetAddress> replicaNodes = StorageService.instance.getNaturalEndpointsForToken(ksName, startToken);
+        InetAddressAndPort localAddress = FBUtilities.getBroadcastAddressAndPort();
+        List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(ksName, cfName, key);
         logger.debug("rymDebug: compaction handler, localAddress is {}, replicaNodes is {}", localAddress, replicaNodes);
         int index = replicaNodes.indexOf(localAddress);
-        String cfName = message.payload.cfName + String.valueOf(index);
         logger.debug("rymDebug: Received compaction request for {}/{}/{}/{}",
          sstHash, ksName, message.payload.cfName, String.valueOf(index));
         
 
         //TODO: get sstContent and do compaction
-        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName);
+        ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName + String.valueOf(index));
+        logger.debug("rymDebug: received startToken is {}, endToken is {}, but current startToken is {}, endToken is {]}",
+                            startToken, endToken, cfs.getPartitioner().getMinimumToken(), cfs.getPartitioner().getMaximumToken());
+        // cfs.forceCompactionForKey(null);
         
         Collection<Range<Token>> tokenRanges = StorageService.instance.createRepairRangeFrom(startToken, endToken);
         try {
             cfs.forceCompactionForTokenRange(tokenRanges);
-            // cfs.forceCompactionForKey(null);
         } catch (ExecutionException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

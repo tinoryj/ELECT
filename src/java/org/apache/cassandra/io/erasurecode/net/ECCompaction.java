@@ -46,27 +46,29 @@ public class ECCompaction {
     String sstHash;
     String ksName;
     String cfName;
-    // String key;
+    String key;
     String startToken;
     String endToken;
     public static final Serializer serializer = new Serializer();
 
     private static final Logger logger = LoggerFactory.getLogger(ECMetadata.class);
 
-    public ECCompaction(String sstHash, String ksName, String cfName, String startToken, String endToken) {
+    public ECCompaction(String sstHash, String ksName, String cfName, String key,
+                        String startToken, String endToken) {
         this.sstHash = sstHash;
         this.ksName = ksName;
         this.cfName = cfName;
-        // this.key = key;
+        this.key = key;
         this.startToken = startToken;
         this.endToken = endToken;
     }
 
-    public void synchronizeCompaction(List<InetAddressAndPort> secondaryNodes){
-        logger.debug("rymDebug: this distributeEcMetadata method");
+    public void synchronizeCompaction(List<InetAddressAndPort> replicaNodes){
+        logger.debug("rymDebug: this synchronizeCompaction method, replicaNodes: {}, local node is {} ",
+         replicaNodes, FBUtilities.getBroadcastAddressAndPort());
         Message<ECCompaction> message = Message.outWithFlag(Verb.ECCOMPACTION_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         // send compaction request to all secondary nodes
-        for (InetAddressAndPort node : secondaryNodes){
+        for (InetAddressAndPort node : replicaNodes){
             if(!node.equals(FBUtilities.getBroadcastAddressAndPort()))
                 MessagingService.instance().send(message, node);
         }
@@ -79,6 +81,7 @@ public class ECCompaction {
             out.writeUTF(t.sstHash);
             out.writeUTF(t.ksName);
             out.writeUTF(t.cfName);
+            out.writeUTF(t.key);
             out.writeUTF(t.startToken);
             out.writeUTF(t.endToken);
         }
@@ -88,14 +91,15 @@ public class ECCompaction {
             String sstHash = in.readUTF();
             String ksName = in.readUTF();
             String cfName = in.readUTF();
+            String key = in.readUTF();
             String startToken = in.readUTF();
             String endToken = in.readUTF();
-            return new ECCompaction(sstHash, ksName, cfName, startToken, endToken);
+            return new ECCompaction(sstHash, ksName, cfName, key, startToken, endToken);
         }
 
         @Override
         public long serializedSize(ECCompaction t, int version) {
-            long size = sizeof(t.sstHash) + sizeof(t.ksName) + sizeof(t.cfName) 
+            long size = sizeof(t.sstHash) + sizeof(t.ksName) + sizeof(t.cfName) + sizeof(t.key)
                         + sizeof(t.startToken) + sizeof(t.endToken);
             return size;
         }

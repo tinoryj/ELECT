@@ -197,8 +197,9 @@ public class CompactionTask extends AbstractCompactionTask {
 
                         // get replica nodes
                         List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(keyspaceName, cfName, key);
-                        logger.debug("rymDebug: task is send force compaction message, replica nodes {}", replicaNodes);
-                        ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
+                        logger.debug("rymDebug: task is send force compaction message, replica nodes {}, cfName", replicaNodes);
+                        // ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
+                        ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, key,startToken, endToken);
                         // send compaction message to replica nodes
                         ecCompaction.synchronizeCompaction(replicaNodes);
                     }
