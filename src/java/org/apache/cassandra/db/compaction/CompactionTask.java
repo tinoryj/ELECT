@@ -189,8 +189,10 @@ public class CompactionTask extends AbstractCompactionTask {
                         String cfName = ssTableReader.getColumnFamilyName();
                         String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
                         // DecoratedKey fistKey = ssTableReader.first;
-                        String startToken = ssTableReader.metadata().partitioner.getMinimumToken().toString();
-                        String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
+                        // String startToken = ssTableReader.metadata().partitioner.getMinimumToken().toString();
+                        // String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
+                        String startToken = ssTableReader.first.getToken().toString();
+                        String endToken = ssTableReader.last.getToken().toString();
 
                         // get sstHash
                         String sstHash = ssTableReader.getSSTableHashID();
