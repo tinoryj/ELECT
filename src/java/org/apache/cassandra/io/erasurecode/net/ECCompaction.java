@@ -68,9 +68,9 @@ public class ECCompaction {
          replicaNodes, FBUtilities.getBroadcastAddressAndPort());
         Message<ECCompaction> message = Message.outWithFlag(Verb.ECCOMPACTION_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         // send compaction request to all secondary nodes
-        for (InetAddressAndPort node : replicaNodes){
-            if(!node.equals(FBUtilities.getBroadcastAddressAndPort()))
-                MessagingService.instance().send(message, node);
+        for (int i=1; i < replicaNodes.size();i++){
+            if(!replicaNodes.get(i).equals(FBUtilities.getBroadcastAddressAndPort()))
+                MessagingService.instance().send(message, replicaNodes.get(i));
         }
     }
 
