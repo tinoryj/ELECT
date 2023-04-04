@@ -244,7 +244,7 @@ public abstract class SSTable {
         }
         fileStream.close();
         
-        return ByteBuffer.wrap(buffer)
+        return ByteBuffer.wrap(buffer);
     }
 
     public List<String> getAllFilePaths()
