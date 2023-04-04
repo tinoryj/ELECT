@@ -18,6 +18,7 @@
 package org.apache.cassandra.db.compaction;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
@@ -280,11 +281,11 @@ public class CompactionTask extends AbstractCompactionTask {
                                     // String cfName = ssTableReader.getColumnFamilyName();
                                     String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
                                     try {
-                                        String sstContent = ssTableReader.getSSTContent();
+                                        ByteBuffer sstContent = ssTableReader.getSSTContent();
                                         String sstHashID = ssTableReader.getSSTableHashID();
                                         List<InetAddressAndPort> relicaNodes = StorageService.instance
                                                 .getReplicaNodesWithPort(ksName, cfName, key);
-                                        logger.debug("rymDebug: send sstables size {}, replicaNodes are {}", sstContent.length(), relicaNodes);
+                                        logger.debug("rymDebug: send sstables size {}, replicaNodes are {}", sstContent.remaining(), relicaNodes);
                                         ECMessage ecMessage = new ECMessage(sstContent, sstHashID, ksName, cfName,
                                                 "", "", relicaNodes);
                                         // logger.debug("rymDebug: the test message is: {}", ecMessage);

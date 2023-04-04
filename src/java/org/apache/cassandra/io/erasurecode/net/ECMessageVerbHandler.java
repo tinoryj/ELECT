@@ -68,7 +68,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
      */
     @Override
     public void doVerb(Message<ECMessage> message) throws IOException {
-        String sstContent = message.payload.sstContent;
+        ByteBuffer sstContent = message.payload.sstContent;
         long k = message.payload.k;
 
         
@@ -151,7 +151,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
         @Override
         public void run() {
-            int codeLength = messages[0].sstContent.getBytes().length;
+            int codeLength = messages[0].sstSize;
             ErasureCoderOptions ecOptions = new ErasureCoderOptions(m, k);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 
@@ -164,7 +164,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
                 data[i] = ByteBuffer.allocateDirect(codeLength);
-                data[i].put(messages[i].sstContent.getBytes());
+                data[i].put(messages[i].sstContent);
                 logger.debug("rymDebug: message[{}].sstconetent {}, data[{}] is: {}",
                  i, messages[i].sstContent,i, data[i]);
                 data[i].rewind();

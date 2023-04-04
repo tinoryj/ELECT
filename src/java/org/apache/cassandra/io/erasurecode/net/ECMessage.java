@@ -19,6 +19,7 @@
 package org.apache.cassandra.io.erasurecode.net;
 
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.text.CollationElementIterator;
 import java.io.IOException;
 
@@ -54,7 +55,8 @@ import static org.apache.cassandra.db.TypeSizes.sizeofLong;
 public final class ECMessage {
 
     public static final Serializer serializer = new Serializer();
-    public final String sstContent;
+    public final ByteBuffer sstContent;
+    public final int sstSize;
     public final String sstHashID;
     public final String keyspace;
     public final String cfName;
@@ -71,9 +73,10 @@ public final class ECMessage {
 
 
 
-    public ECMessage(String sstContent, String sstHashID, String keyspace, String cfName, String repEpString, String parityEpString,
+    public ECMessage(ByteBuffer sstContent, String sstHashID, String keyspace, String cfName, String repEpString, String parityEpString,
         List<InetAddressAndPort> replicaNodes) {
         this.sstContent = sstContent;
+        this.sstSize = sstContent.remaining();
         this.sstHashID = sstHashID;
         this.keyspace = keyspace;
         this.cfName = cfName;
@@ -176,9 +179,13 @@ public final class ECMessage {
         @Override
         public void serialize(ECMessage ecMessage, DataOutputPlus out, int version) throws IOException {
             // TODO: reduce (de)serialize cost
-            logger.debug("rymDebug: [Load] the length of sstContent buffer is: {}" , ecMessage.sstContent.length());
-            logger.debug("rymDebug: [Load] the size of = {}" , sizeofLong(ecMessage.sstContent));
-            out.writeUTF(ecMessage.sstContent);
+            logger.debug("rymDebug: [Load] the length of sstContent buffer is: {}" , ecMessage.sstSize);
+            // logger.debug("rymDebug: [Load] the size of = {}" , sizeofLong(ecMessage.sstContent));
+            // out.writeUTF(ecMessage.sstContent);
+            out.writeInt(ecMessage.sstSize);
+            byte[]buf = new byte[ecMessage.sstSize];
+            ecMessage.sstContent.get(buf);
+            out.write(buf);
             out.writeUTF(ecMessage.sstHashID);
             out.writeUTF(ecMessage.keyspace);
             out.writeUTF(ecMessage.cfName);
@@ -188,8 +195,12 @@ public final class ECMessage {
 
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
-            String sstContent = in.readUTF();
+            // String sstContent = in.readUTF();
             // String sstContent = "sstContentTest";
+            int sstSize = in.readInt();
+            byte[] buf = new byte[sstSize];
+            in.readFully(buf);
+            ByteBuffer sstContent = ByteBuffer.wrap(buf);
             String sstHashID = in.readUTF();
             String ks = in.readUTF();
             String cf = in.readUTF();
@@ -210,9 +221,9 @@ public final class ECMessage {
         public long serializedSize(ECMessage ecMessage, int version) {
             logger.debug("rymDebug: serializedSize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
-            logger.debug("rymDebug: [Cacl] the length of sstContent buffer is: {}" , ecMessage.sstContent.length());
-            logger.debug("rymDebug: [Cacl] the size of = {}" , sizeofLong(ecMessage.sstContent));
-            long size = sizeofLong(ecMessage.sstContent) +
+            logger.debug("rymDebug: [Cacl] the length of sstContent.size is: {}" , ecMessage.sstSize);
+            logger.debug("rymDebug: [Cacl] the ecMessage.sstContent.remaining() = {}" , ecMessage.sstContent.remaining());
+            long size = ecMessage.sstSize +
                         sizeof(ecMessage.sstHashID) + 
                         sizeof(ecMessage.keyspace) + 
                         sizeof(ecMessage.cfName) + 
