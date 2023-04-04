@@ -192,8 +192,8 @@ public final class ECMessage {
             String repEpsString = in.readUTF();
             String parityNodesString = in.readUTF();
 
-            //logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {},repEpString is {},parityNodes are: {}"
-            //, sstContent,ks, table, key,repEpsString,parityNodesString);
+            logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
+            , sstHashID,ks, cf,repEpsString,parityNodesString);
             
             return new ECMessage("sstContent", sstHashID, ks, cf, repEpsString, parityNodesString, null);
         }

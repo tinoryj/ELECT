@@ -99,8 +99,12 @@ public class ECCompaction {
 
         @Override
         public long serializedSize(ECCompaction t, int version) {
-            long size = sizeof(t.sstHash) + sizeof(t.ksName) + sizeof(t.cfName) + sizeof(t.key)
-                        + sizeof(t.startToken) + sizeof(t.endToken);
+            long size = sizeof(t.sstHash) +
+                        sizeof(t.ksName) + 
+                        sizeof(t.cfName) + 
+                        sizeof(t.key) + 
+                        sizeof(t.startToken) + 
+                        sizeof(t.endToken);
             return size;
         }
 
