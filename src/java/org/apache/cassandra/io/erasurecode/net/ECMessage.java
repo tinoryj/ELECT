@@ -200,6 +200,8 @@ public final class ECMessage {
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
+            logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
+            , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
             long size = //sizeof(ecMessage.sstContent) +
                         sizeof(ecMessage.sstHashID) + 
                         sizeof(ecMessage.keyspace) + 
