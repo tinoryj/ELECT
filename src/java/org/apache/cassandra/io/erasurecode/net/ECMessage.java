@@ -186,6 +186,7 @@ public final class ECMessage {
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
             //String sstContent = in.readUTF();
+            String sstContent = "sstContentTest";
             String sstHashID = in.readUTF();
             String ks = in.readUTF();
             String cf = in.readUTF();
@@ -195,12 +196,12 @@ public final class ECMessage {
             logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             , sstHashID,ks, cf,repEpsString,parityNodesString);
             
-            return new ECMessage("sstContent", sstHashID, ks, cf, repEpsString, parityNodesString, null);
+            return new ECMessage(sstContent, sstHashID, ks, cf, repEpsString, parityNodesString, null);
         }
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
-            logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
+            logger.debug("rymDebug: serializedSize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
             long size = //sizeof(ecMessage.sstContent) +
                         sizeof(ecMessage.sstHashID) + 
