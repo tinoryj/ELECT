@@ -230,7 +230,7 @@ public final class ECMessage {
             , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
             logger.debug("rymDebug: [Cacl] the length of sstContent.size is: {}" , ecMessage.sstSize);
             logger.debug("rymDebug: [Cacl] the ecMessage.sstContent.remaining() = {}" , ecMessage.sstContent.remaining());
-            long size = ecMessage.sstSize +
+            long size = ecMessage.sstSize + sizeof(ecMessage.sstSize) +
                         sizeof(ecMessage.sstHashID) + 
                         sizeof(ecMessage.keyspace) + 
                         sizeof(ecMessage.cfName) + 
