@@ -182,33 +182,40 @@ public final class ECMessage {
             logger.debug("rymDebug: [Load] the length of sstContent buffer is: {}" , ecMessage.sstSize);
             // logger.debug("rymDebug: [Load] the size of = {}" , sizeofLong(ecMessage.sstContent));
             // out.writeUTF(ecMessage.sstContent);
-            out.writeInt(ecMessage.sstSize);
-            byte[]buf = new byte[ecMessage.sstSize];
-            ecMessage.sstContent.get(buf);
-            out.write(buf);
             out.writeUTF(ecMessage.sstHashID);
             out.writeUTF(ecMessage.keyspace);
             out.writeUTF(ecMessage.cfName);
             out.writeUTF(ecMessage.repEpsString);
             out.writeUTF(ecMessage.parityNodesString);
+
+            out.writeInt(ecMessage.sstSize);
+            byte[] buf = new byte[ecMessage.sstSize];
+            ecMessage.sstContent.get(buf);
+            out.write(buf);
+            logger.debug("rymDebug: [serialize] write successfully", buf.length);
         }
 
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
             // String sstContent = in.readUTF();
             // String sstContent = "sstContentTest";
-            int sstSize = in.readInt();
-            byte[] buf = new byte[sstSize];
-            in.readFully(buf);
-            ByteBuffer sstContent = ByteBuffer.wrap(buf);
             String sstHashID = in.readUTF();
             String ks = in.readUTF();
             String cf = in.readUTF();
             String repEpsString = in.readUTF();
             String parityNodesString = in.readUTF();
 
+
             logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             , sstHashID,ks, cf,repEpsString,parityNodesString);
+
+            int sstSize = in.readInt();
+            byte[] buf = new byte[sstSize];
+            in.readFully(buf);
+            ByteBuffer sstContent = ByteBuffer.wrap(buf);
+
+            logger.debug("rymDebug: deserialize.sstSize is {}, sstContent length is {}", sstSize, sstContent.remaining());
+
             List<InetAddressAndPort> replicaNodes = new ArrayList<InetAddressAndPort>();
             for (String ep : repEpsString.split(",")) {
                 replicaNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
