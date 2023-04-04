@@ -213,9 +213,15 @@ public class ECMetadata {
 
         @Override
         public long serializedSize(ECMetadata t, int version) {
-            long size = sizeof(t.stripeId) + sizeof(t.keyspace) + sizeof(t.cfName) + sizeof(t.sstHashIdList.toString())
-            + sizeof(t.parityCodeHashList.toString())+  sizeof(t.primaryNodes.toString())
-            + sizeof(t.relatedNodes.toString());
+            long size = sizeof(t.stripeId) + 
+                        sizeof(t.keyspace) + 
+                        sizeof(t.cfName) + 
+                        sizeof(t.sstHashIdList.toString()) + 
+                        sizeof(t.parityCodeHashList.toString()) + 
+                        sizeof(t.primaryNodes.toString()) + 
+                        sizeof(t.relatedNodes.toString()) +
+                        sizeof(t.mapSize) + 
+                        t.mapSize;
             return size;
         }
 
