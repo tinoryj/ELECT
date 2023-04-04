@@ -175,7 +175,8 @@ public final class ECMessage {
         @Override
         public void serialize(ECMessage ecMessage, DataOutputPlus out, int version) throws IOException {
             // TODO: reduce (de)serialize cost
-            logger.debug("rymDebug: [Load] the length of sstContent buffer is: {}, size of = {}" , ecMessage.sstContent.length(), sizeof(ecMessage.sstContent));
+            logger.debug("rymDebug: [Load] the length of sstContent buffer is: {}" , ecMessage.sstContent.length());
+            logger.debug("rymDebug: [Load] the size of = {}" , sizeof(ecMessage.sstContent));
             out.writeUTF(ecMessage.sstContent);
             out.writeUTF(ecMessage.sstHashID);
             out.writeUTF(ecMessage.keyspace);
@@ -208,7 +209,8 @@ public final class ECMessage {
         public long serializedSize(ECMessage ecMessage, int version) {
             logger.debug("rymDebug: serializedSize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
-            logger.debug("rymDebug: [Cacl] the length of sstContent buffer is: {}, size of = {}" , ecMessage.sstContent.length(), sizeof(ecMessage.sstContent));
+            logger.debug("rymDebug: [Cacl] the length of sstContent buffer is: {}" , ecMessage.sstContent.length());
+            logger.debug("rymDebug: [Cacl] the size of = {}" , sizeof(ecMessage.sstContent));
             long size = sizeof(ecMessage.sstContent) +
                         sizeof(ecMessage.sstHashID) + 
                         sizeof(ecMessage.keyspace) + 
