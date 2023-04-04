@@ -284,7 +284,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                         String sstHashID = ssTableReader.getSSTableHashID();
                                         List<InetAddressAndPort> relicaNodes = StorageService.instance
                                                 .getReplicaNodesWithPort(ksName, cfName, key);
-                                        logger.debug("rymDebug: send sstables {}, replicaNodes are {}", sstContent, relicaNodes);
+                                        logger.debug("rymDebug: send sstables size {}, replicaNodes are {}", sstContent.length(), relicaNodes);
                                         ECMessage ecMessage = new ECMessage(sstContent, sstHashID, ksName, cfName,
                                                 "", "", relicaNodes);
                                         // logger.debug("rymDebug: the test message is: {}", ecMessage);
