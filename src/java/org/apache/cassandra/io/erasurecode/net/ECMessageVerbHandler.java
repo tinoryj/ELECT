@@ -71,9 +71,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         String sstContent = message.payload.sstContent;
         long k = message.payload.k;
 
-        for (String ep : message.payload.repEpsString.split(",")) {
-            message.payload.replicaNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
-        }
+        
         for (String ep : message.payload.parityNodesString.split(",")) {
             message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
         }

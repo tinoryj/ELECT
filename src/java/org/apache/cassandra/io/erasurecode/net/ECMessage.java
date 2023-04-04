@@ -175,7 +175,7 @@ public final class ECMessage {
         @Override
         public void serialize(ECMessage ecMessage, DataOutputPlus out, int version) throws IOException {
             // TODO: reduce (de)serialize cost
-            //out.writeUTF(ecMessage.sstContent);
+            out.writeUTF(ecMessage.sstContent);
             out.writeUTF(ecMessage.sstHashID);
             out.writeUTF(ecMessage.keyspace);
             out.writeUTF(ecMessage.cfName);
@@ -185,8 +185,8 @@ public final class ECMessage {
 
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
-            //String sstContent = in.readUTF();
-            String sstContent = "sstContentTest";
+            String sstContent = in.readUTF();
+            // String sstContent = "sstContentTest";
             String sstHashID = in.readUTF();
             String ks = in.readUTF();
             String cf = in.readUTF();
@@ -195,15 +195,19 @@ public final class ECMessage {
 
             logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             , sstHashID,ks, cf,repEpsString,parityNodesString);
+            List<InetAddressAndPort> replicaNodes = new ArrayList<InetAddressAndPort>();
+            for (String ep : repEpsString.split(",")) {
+                replicaNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
+            }
             
-            return new ECMessage(sstContent, sstHashID, ks, cf, repEpsString, parityNodesString, null);
+            return new ECMessage(sstContent, sstHashID, ks, cf, repEpsString, parityNodesString, replicaNodes);
         }
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
             logger.debug("rymDebug: serializedSize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
-            long size = //sizeof(ecMessage.sstContent) +
+            long size = sizeof(ecMessage.sstContent) +
                         sizeof(ecMessage.sstHashID) + 
                         sizeof(ecMessage.keyspace) + 
                         sizeof(ecMessage.cfName) + 
