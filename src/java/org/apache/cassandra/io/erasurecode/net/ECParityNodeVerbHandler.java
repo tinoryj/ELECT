@@ -33,7 +33,7 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
 
     public static final ECParityNodeVerbHandler instance = new ECParityNodeVerbHandler();
 
-    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/";
+    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
     private static final Logger logger = LoggerFactory.getLogger(ECParityNodeVerbHandler.class);
 
     /*

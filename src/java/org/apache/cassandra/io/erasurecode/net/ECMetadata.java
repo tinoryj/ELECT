@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +73,7 @@ public class ECMetadata {
         this.primaryNodes = primaryNodes;
         this.relatedNodes = relatedNodes;
         this.sstHashIdToReplicaMapStr = sstHashIdToReplicaMapStr;
+        this.sstHashIdToReplicaMap = new HashMap<String, List<InetAddressAndPort>>();
     }
 
     public void generateMetadata(ECMessage[] messages, ByteBuffer[] parityCode, List<String> parityHashes) {
