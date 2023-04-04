@@ -41,13 +41,13 @@ public class ECParityNode {
     public static final Serializer serializer = new Serializer();
 
     public final ByteBuffer parityCode;
-    public final String hashCode;
-    public final int parityCodeSize;
+    public final String parityHash;
+    public final int paritySize;
 
-    public ECParityNode(ByteBuffer parityCode, String hashCode, int parityCodeSize) {
+    public ECParityNode(ByteBuffer parityCode, String parityHash, int paritySize) {
         this.parityCode = parityCode;
-        this.hashCode = hashCode;
-        this.parityCodeSize = parityCodeSize;
+        this.parityHash = parityHash;
+        this.paritySize = paritySize;
     }
 
 
@@ -66,23 +66,31 @@ public class ECParityNode {
 
         @Override
         public void serialize(ECParityNode t, DataOutputPlus out, int version) throws IOException {
-            out.write(t.parityCode);
-            out.writeUTF(t.hashCode);
+            out.writeUTF(t.parityHash);
+
+            out.writeInt(t.paritySize);
+            byte[] buf = new byte[t.paritySize];
+            t.parityCode.get(buf);
+            out.write(buf);
         }
 
         @Override
         public ECParityNode deserialize(DataInputPlus in, int version) throws IOException {
-            int parityCodeSize = in.readInt();
-            byte[] bytes = new byte[parityCodeSize];
-            in.readFully(bytes);
-            String hashCode = in.readUTF();
-            return new ECParityNode(ByteBuffer.wrap(bytes), hashCode, parityCodeSize);
+            String parityHash = in.readUTF();
+
+            int paritySize = in.readInt();
+            byte[] buf = new byte[paritySize];
+            in.readFully(buf);
+            ByteBuffer parityCode = ByteBuffer.wrap(buf);
+
+            return new ECParityNode(parityCode, parityHash, paritySize);
         }
 
         @Override
         public long serializedSize(ECParityNode t, int version) {
-            long size = Integer.SIZE;
-            size += t.parityCode.capacity() + sizeof(t.hashCode);
+            long size = sizeof(t.paritySize) +
+                        t.paritySize + 
+                        sizeof(t.parityHash);
             return size;
         }
     }

@@ -42,9 +42,9 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
      */
     @Override
     public void doVerb(Message<ECParityNode> message) throws IOException {
-        logger.debug("rymDebug: Received message: {}", message.payload.hashCode);
+        logger.debug("rymDebug: Received message: {}", message.payload.parityHash);
         try {
-                File parityCodeFile = new File(parityCodeDir + String.valueOf(message.payload.hashCode));
+                File parityCodeFile = new File(parityCodeDir + String.valueOf(message.payload.parityHash));
                 if (!parityCodeFile.exists()) {
                     parityCodeFile.createNewFile();
                 }
