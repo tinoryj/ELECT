@@ -175,7 +175,7 @@ public final class ECMessage {
         @Override
         public void serialize(ECMessage ecMessage, DataOutputPlus out, int version) throws IOException {
             // TODO: something may need to ensure, could be test
-            out.writeUTF(ecMessage.sstContent);
+            // out.writeUTF(ecMessage.sstContent);
             out.writeUTF(ecMessage.sstHashID);
             out.writeUTF(ecMessage.keyspace);
             out.writeUTF(ecMessage.cfName);
@@ -185,7 +185,7 @@ public final class ECMessage {
 
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
-            String sstContent = in.readUTF();
+            // String sstContent = in.readUTF();
             String sstHashID = in.readUTF();
             String ks = in.readUTF();
             String cf = in.readUTF();
@@ -195,12 +195,12 @@ public final class ECMessage {
             //logger.debug("rymDebug: deserilizer.ecMessage.sstContent is {},ks is: {}, table is {},key is {},repEpString is {},parityNodes are: {}"
             //, sstContent,ks, table, key,repEpsString,parityNodesString);
             
-            return new ECMessage(sstContent, sstHashID, ks, cf, repEpsString, parityNodesString, null);
+            return new ECMessage("sstContent", sstHashID, ks, cf, repEpsString, parityNodesString, null);
         }
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
-            long size = sizeof(ecMessage.sstContent)+ sizeof(ecMessage.sstHashID) + sizeof(ecMessage.keyspace) +
+            long size =  sizeof(ecMessage.sstHashID) + sizeof(ecMessage.keyspace) +
              sizeof(ecMessage.parityNodesString)+sizeof(ecMessage.repEpsString);
             return size;
 
