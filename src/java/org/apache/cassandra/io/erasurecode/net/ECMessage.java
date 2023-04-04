@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 import org.tartarus.snowball.TestApp;
 
 import static org.apache.cassandra.db.TypeSizes.sizeof;
+import static org.apache.cassandra.db.TypeSizes.sizeofLong;
 
 public final class ECMessage {
 
@@ -211,7 +212,7 @@ public final class ECMessage {
             , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
             logger.debug("rymDebug: [Cacl] the length of sstContent buffer is: {}" , ecMessage.sstContent.length());
             logger.debug("rymDebug: [Cacl] the size of = {}" , sizeof(ecMessage.sstContent));
-            long size = sizeof(ecMessage.sstContent) +
+            long size = sizeofLong(ecMessage.sstContent) +
                         sizeof(ecMessage.sstHashID) + 
                         sizeof(ecMessage.keyspace) + 
                         sizeof(ecMessage.cfName) + 
