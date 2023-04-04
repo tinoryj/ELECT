@@ -174,7 +174,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 // data[i].position(data[i].limit());
                 // data[i].limit(data[i].capacity());
                 data[i].put(messages[i].sstContent);
-                int remaining = codeLength - data[i].remaining();
+                logger.debug("rymDebug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
+                int remaining = data[i].remaining();
                 if(remaining>0) {
                     byte[] zeros = new byte[remaining];
                     data[i].put(zeros);
@@ -225,6 +226,28 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             // Transform to ECMetadata and dispatch to related nodes
             ECMetadata.instance.generateMetadata(messages, parity, parityHashCode);
         }
+
+    }
+
+
+    public static void main(String[] args) {
+        int codeLength = 1000;
+        ByteBuffer data = ByteBuffer.allocateDirect(codeLength);
+        ByteBuffer src = ByteBuffer.allocateDirect(900);
+        data.put(src);
+        int remaining = codeLength - data.remaining();
+        logger.debug("rymDebug: remaining: {}, data.remaining {}", remaining, data.remaining());
+        if (data.remaining() > 0) {
+            byte[] zeros = new byte[data.remaining()];
+            data.put(zeros);
+        }
+        logger.debug("rymDebug: remaining: {}, capacity is {}, position is {}",
+                    data.remaining(),data.capacity(),data.position());
+
+        byte[] bb = { 10, 20, 30 };
+        ByteBuffer byteBuffer = ByteBuffer.wrap(bb);
+        logger.debug("rymDebug: remaining element is {}, capacity is {}, position is {}", 
+                    byteBuffer.remaining(), byteBuffer.capacity(), byteBuffer.position());
 
     }
 
