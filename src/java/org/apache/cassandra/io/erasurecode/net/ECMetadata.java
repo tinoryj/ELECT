@@ -18,8 +18,10 @@
 
 package org.apache.cassandra.io.erasurecode.net;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -53,18 +55,19 @@ public class ECMetadata {
     public List<String> sstHashIdList;
     public List<String> parityCodeHashList;
     public Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap;
-    public static String sstHashIdToReplicaMapStr;
+    public int mapSize;
 
     public List<InetAddressAndPort> primaryNodes;
     public Set<InetAddressAndPort> relatedNodes; // e.g. secondary nodes or parity nodes
     public static final ECMetadata instance = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
-     new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), "");
+     new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
     
     private static final Logger logger = LoggerFactory.getLogger(ECMetadata.class);
     public static final Serializer serializer = new Serializer();
 
     public ECMetadata(String stripeId, String ks, String cf, List<String> sstHashIdList, List<String> parityCodeHashList,
-     List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> relatedNodes, String sstHashIdToReplicaMapStr) {
+     List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> relatedNodes, 
+     Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap) {
         this.stripeId = stripeId;
         this.keyspace = ks;
         this.cfName = cf;
@@ -72,8 +75,7 @@ public class ECMetadata {
         this.parityCodeHashList = parityCodeHashList;
         this.primaryNodes = primaryNodes;
         this.relatedNodes = relatedNodes;
-        this.sstHashIdToReplicaMapStr = sstHashIdToReplicaMapStr;
-        this.sstHashIdToReplicaMap = new HashMap<String, List<InetAddressAndPort>>();
+        this.sstHashIdToReplicaMap = sstHashIdToReplicaMap;
     }
 
     public void generateMetadata(ECMessage[] messages, ByteBuffer[] parityCode, List<String> parityHashes) {
@@ -93,18 +95,21 @@ public class ECMetadata {
         this.keyspace = messages[0].keyspace;
         this.cfName = messages[0].cfName;
 
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos;
+        byte[] bytes = null;
+
         try {
-            ByteArrayOutputStream byteOutStream = new ByteArrayOutputStream();
-            ObjectOutputStream objectOutStream = new ObjectOutputStream(byteOutStream);
-            objectOutStream.writeObject(this.sstHashIdToReplicaMap);
-            objectOutStream.flush();
-            byte[] byteArray = byteOutStream.toByteArray();
-            this.sstHashIdToReplicaMapStr = byteArray.toString();
-            
+            oos = new ObjectOutputStream(baos);
+            oos.writeObject(this.sstHashIdToReplicaMap);
+            bytes = baos.toByteArray();
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+
+
+        this.mapSize = bytes.length;
 
         // generate parity code hash
         this.parityCodeHashList = parityHashes;
@@ -131,7 +136,9 @@ public class ECMetadata {
         logger.debug("rymDebug: this distributeEcMetadata method");
         Message<ECMetadata> message = Message.outWithFlag(Verb.ECMETADATA_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
         for (InetAddressAndPort node : ecMetadata.relatedNodes) {
-            MessagingService.instance().send(message, node);
+            if(!node.equals(FBUtilities.getBroadcastAddressAndPort())) {
+                MessagingService.instance().send(message, node);
+            }
         }
     }
 
@@ -144,10 +151,16 @@ public class ECMetadata {
             out.writeUTF(t.keyspace);
             out.writeUTF(t.cfName);
             out.writeUTF(t.sstHashIdList.toString());
-            out.writeUTF(t.sstHashIdToReplicaMapStr);
             out.writeUTF(t.parityCodeHashList.toString());
             out.writeUTF(t.primaryNodes.toString());
             out.writeUTF(t.relatedNodes.toString());
+
+            out.writeInt(t.mapSize);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(baos);
+            oos.writeObject(t.sstHashIdToReplicaMap);
+            byte[] bytes = baos.toByteArray();
+            out.write(bytes);
             
         }
 
@@ -158,10 +171,22 @@ public class ECMetadata {
             String ks = in.readUTF();
             String cfName = in.readUTF();
             String sstHashIdListString = in.readUTF();
-            String sstHashIdToReplicaMapStr = in.readUTF();
             String parityCodeHashListString = in.readUTF();
             String primaryNodesString = in.readUTF();
             String relatedNodesString = in.readUTF();
+
+            int mapSize = in.readInt();
+            byte[] buf = new byte[mapSize];
+            in.readFully(buf);
+            ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(buf));
+            Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap = null;
+            try {
+                sstHashIdToReplicaMap = (Map<String, List<InetAddressAndPort>>) ois.readObject();
+            } catch (ClassNotFoundException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
 
             List<String> sstHashIdList = new ArrayList<String>();
             List<String> parityCodeHashList = new ArrayList<String>();
@@ -183,14 +208,14 @@ public class ECMetadata {
 
 
             return new ECMetadata(stripeId, ks, cfName, sstHashIdList, parityCodeHashList,
-             primaryNodes, relatedNodes, sstHashIdToReplicaMapStr);
+             primaryNodes, relatedNodes, sstHashIdToReplicaMap);
         }
 
         @Override
         public long serializedSize(ECMetadata t, int version) {
             long size = sizeof(t.stripeId) + sizeof(t.keyspace) + sizeof(t.cfName) + sizeof(t.sstHashIdList.toString())
             + sizeof(t.parityCodeHashList.toString())+  sizeof(t.primaryNodes.toString())
-            + sizeof(t.relatedNodes.toString()) + sizeof(sstHashIdToReplicaMapStr);
+            + sizeof(t.relatedNodes.toString());
             return size;
         }
 

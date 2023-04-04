@@ -56,53 +56,41 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         logger.debug("rymDebug: received metadata: {}, {},{},{}", message.payload,
                 message.payload.sstHashIdList, message.payload.primaryNodes, message.payload.relatedNodes);
 
-        // decode the message
-        byte[] byteArray = message.payload.sstHashIdToReplicaMapStr.getBytes();
-        ByteArrayInputStream byteInStream = new ByteArrayInputStream(byteArray);
-        ObjectInputStream objectInStream = new ObjectInputStream(byteInStream);
+        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap = message.payload.sstHashIdToReplicaMap;
 
-        try {
-            Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap = 
-            (Map<String, List<InetAddressAndPort>>) objectInStream.readObject();
-            
-            logger.debug("rymDebug: got sstHashIdToReplicaMap: {} ", sstHashIdToReplicaMap);
+        logger.debug("rymDebug: got sstHashIdToReplicaMap: {} ", sstHashIdToReplicaMap);
 
-            for (Map.Entry<String, List<InetAddressAndPort>> entry : sstHashIdToReplicaMap.entrySet()) {
-                String sstableHash = entry.getKey();
-                InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();
-                if (!localIP.equals(entry.getValue().get(0)) && entry.getValue().contains(localIP)) {
-                    String ks = message.payload.keyspace;
-                    String cfName = message.payload.cfName;
-                    Collection<ColumnFamilyStore> cfs = Keyspace.open(ks).getColumnFamilyStores();
-                    for (ColumnFamilyStore cf : cfs) {
-                        if (!cf.name.equals(cfName)) {
-                            boolean flag = false;
-                            // traverse all the sstables
-                            Iterable<SSTableReader> sstables = cf.getSSTables(SSTableSet.LIVE);
-                            for (SSTableReader sstable : sstables) {
-                                if (sstable.getSSTableHashID().equals(sstableHash)) {
-                                    // delete sstables
-                                    sstable.replaceDatabyECMetadata(message.payload);
-                                    // TODO: send ec_ready signal
+        for (Map.Entry<String, List<InetAddressAndPort>> entry : sstHashIdToReplicaMap.entrySet()) {
+            String sstableHash = entry.getKey();
+            InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();
+            if (!localIP.equals(entry.getValue().get(0)) && entry.getValue().contains(localIP)) {
+                String ks = message.payload.keyspace;
+                String cfName = message.payload.cfName;
+                Collection<ColumnFamilyStore> cfs = Keyspace.open(ks).getColumnFamilyStores();
+                for (ColumnFamilyStore cf : cfs) {
+                    if (!cf.name.equals(cfName)) {
+                        boolean flag = false;
+                        // traverse all the sstables
+                        Iterable<SSTableReader> sstables = cf.getSSTables(SSTableSet.LIVE);
+                        for (SSTableReader sstable : sstables) {
+                            if (sstable.getSSTableHashID().equals(sstableHash)) {
+                                // delete sstables
+                                sstable.replaceDatabyECMetadata(message.payload);
+                                // TODO: send ec_ready signal
 
-                                    flag = true;
-                                    break;
-                                }
-                            }
-
-                            if (!flag) {
-                                logger.error("rymError: cannot find this fucking sstable");
+                                flag = true;
+                                break;
                             }
                         }
-                    }
 
+                        if (!flag) {
+                            logger.error("rymError: cannot find this fucking sstable");
+                        }
+                    }
                 }
 
             }
 
-        } catch (ClassNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
         }
 
     }
