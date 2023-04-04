@@ -43,6 +43,8 @@ import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.netty.channel.unix.Buffer;
+
 public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
     public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
@@ -152,6 +154,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         @Override
         public void run() {
             int codeLength = messages[0].sstSize;
+            for (ECMessage msg : messages) {
+                codeLength = codeLength < msg.sstSize? msg.sstSize : codeLength;
+             }
             ErasureCoderOptions ecOptions = new ErasureCoderOptions(m, k);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 
@@ -164,7 +169,17 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
                 data[i] = ByteBuffer.allocateDirect(codeLength);
+                // data[i].put((byte)0);
+                // data[i].flip();
+                // data[i].position(data[i].limit());
+                // data[i].limit(data[i].capacity());
                 data[i].put(messages[i].sstContent);
+                int remaining = codeLength - data[i].remaining();
+                if(remaining>0) {
+                    byte[] zeros = new byte[remaining];
+                    data[i].put(zeros);
+                }
+                // data[i].put(new byte[data[i].remaining()]);
                 logger.debug("rymDebug: message[{}].sstconetent {}, data[{}] is: {}",
                  i, messages[i].sstContent,i, data[i]);
                 data[i].rewind();
