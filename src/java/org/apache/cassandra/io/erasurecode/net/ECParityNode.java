@@ -56,7 +56,7 @@ public class ECParityNode {
         Message<ECParityNode> message = null;
         for (int i = 1; i < parityNodes.size(); i++) {
             message = Message.outWithFlag(Verb.ECPARITYNODE_REQ, 
-            new ECParityNode(parityCode, parityHash.get(i), parityCode.capacity()), MessageFlag.CALL_BACK_ON_FAILURE);
+            new ECParityNode(parity[i], parityHash.get(i), parity[i].capacity()), MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().send(message, parityNodes.get(i));
         }
         
