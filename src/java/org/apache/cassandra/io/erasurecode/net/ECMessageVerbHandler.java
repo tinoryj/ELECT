@@ -71,7 +71,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
     @Override
     public void doVerb(Message<ECMessage> message) throws IOException {
         ByteBuffer sstContent = message.payload.sstContent;
-        long k = message.payload.k;
+        int ec_data_num = message.payload.ecDataNum;
 
         
         for (String ep : message.payload.parityNodesString.split(",")) {
@@ -99,9 +99,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         
         logger.debug("rymDebug: recvQueues is {}", recvQueues);
 
-        if(recvQueues.size()>=message.payload.k) {
+        if(recvQueues.size()>=message.payload.ecDataNum) {
             logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
-            ECMessage tmpArray[] = new ECMessage[message.payload.k];
+            ECMessage tmpArray[] = new ECMessage[message.payload.ecDataNum];
             //traverse the recvQueues
             int i = 0;
             for (InetAddressAndPort msg : recvQueues.keySet()) {
@@ -109,7 +109,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 if(recvQueues.get(msg).size() == 0) {
                     recvQueues.remove(msg);
                 }
-                if (i == message.payload.k - 1) 
+                if (i == message.payload.ecDataNum - 1) 
                     break;
                 i++;
             }
@@ -117,8 +117,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeRunnable(tmpArray));
         }
 
-        Tracing.trace("recieved sstContent is: {}, k is: {}, sourceEdpoint is: {}, header is: {}",
-                sstContent, k, message.from(), message.header);
+        Tracing.trace("recieved sstContent is: {}, ec_data_num is: {}, sourceEdpoint is: {}, header is: {}",
+                sstContent, ec_data_num, message.from(), message.header);
     }
 
     private static void forwardToLocalNodes(Message<ECMessage> originalMessage, ForwardingInfo forwardTo) {
@@ -141,30 +141,33 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
 
     private static  class ErasureCodeRunnable implements Runnable {
-        private final int m;
-        private final int k;
+        private final int ecDataNum;
+        private final int ecParityNum;
         private final ECMessage[] messages;
 
         ErasureCodeRunnable(ECMessage[] message) {
-            this.m = message[0].m;
-            this.k = message[0].k;
+            this.ecDataNum = message[0].ecDataNum;
+            this.ecParityNum = message[0].ecParityNum;
             this.messages = message;
         }
 
         @Override
         public void run() {
+            if(messages.length != ecDataNum) {
+                logger.error("rymError: message length is not equal to ecDataNum");
+            }
             int codeLength = messages[0].sstSize;
             for (ECMessage msg : messages) {
                 codeLength = codeLength < msg.sstSize? msg.sstSize : codeLength;
              }
-            ErasureCoderOptions ecOptions = new ErasureCoderOptions(m, k);
+            ErasureCoderOptions ecOptions = new ErasureCoderOptions(ecDataNum, ecParityNum);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 
             logger.debug("rymDebug: let's start computing erasure coding");
 
             // Encoding input and output
-            ByteBuffer[] data = new ByteBuffer[m];
-            ByteBuffer[] parity = new ByteBuffer[k];
+            ByteBuffer[] data = new ByteBuffer[ecDataNum];
+            ByteBuffer[] parity = new ByteBuffer[ecParityNum];
 
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
@@ -187,7 +190,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             }
 
             // Prepare parity data
-            for (int i = 0; i < k; i++) {
+            for (int i = 0; i < ecParityNum; i++) {
                 parity[i] = ByteBuffer.allocateDirect(codeLength);
             }
 

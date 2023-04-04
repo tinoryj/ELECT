@@ -60,9 +60,9 @@ public final class ECMessage {
     public final String sstHashID;
     public final String keyspace;
     public final String cfName;
-    public final int k;
+    public final int ecDataNum;
     public final int rf;
-    public final int m;
+    public final int ecParityNum;
     
     public List<InetAddressAndPort> replicaNodes;
     public List<InetAddressAndPort> parityNodes;
@@ -80,8 +80,8 @@ public final class ECMessage {
         this.sstHashID = sstHashID;
         this.keyspace = keyspace;
         this.cfName = cfName;
-        this.k = DatabaseDescriptor.getEcDataNodes();
-        this.m = DatabaseDescriptor.getParityNodes();
+        this.ecDataNum = DatabaseDescriptor.getEcDataNodes();
+        this.ecParityNum = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
         
         this.replicaNodes = new ArrayList<InetAddressAndPort>(replicaNodes);
@@ -156,15 +156,15 @@ public final class ECMessage {
         int n = liveEndpoints.size();
         InetAddressAndPort primaryNode = ecMessage.replicaNodes.get(0);
         int primaryNodeIndex = liveEndpoints.indexOf(primaryNode);
-        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.k+1))%n);
-        for (int i = startIndex; i < ecMessage.m+startIndex; i++) {
+        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.ecDataNum+1))%n);
+        for (int i = startIndex; i < ecMessage.ecParityNum+startIndex; i++) {
             int index = i%n;
             if(index==primaryNodeIndex) {
                 index = (index+1)%n;
                 i++;
             }
             ecMessage.parityNodes.add(liveEndpoints.get(index));
-            if(i==(ecMessage.m+startIndex)&&ecMessage.parityNodes.size()<ecMessage.m) {
+            if(i==(ecMessage.ecParityNum+startIndex)&&ecMessage.parityNodes.size()<ecMessage.ecParityNum) {
                 startIndex++;
             }
         }
