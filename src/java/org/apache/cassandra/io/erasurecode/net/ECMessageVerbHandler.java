@@ -21,6 +21,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -210,14 +213,20 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // record first parity code to current node
             try {
-                File parityCodeFile = new File(parityCodeDir + parityHashCode.get(0));
-                if (!parityCodeFile.exists()) {
-                    parityCodeFile.createNewFile();
-                }
-                FileWriter fileWritter = new FileWriter(parityCodeFile.getName(),true);
-                fileWritter.write(parity[0].toString());
-                fileWritter.close();
-                logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
+                
+                FileChannel fileChannel = FileChannel.open(Paths.get(parityCodeDir, parityHashCode.get(0)),
+                                                            StandardOpenOption.WRITE,
+                                                             StandardOpenOption.CREATE);
+                fileChannel.write(parity[0]);
+                fileChannel.close();
+                // File parityCodeFile = new File(parityCodeDir + parityHashCode.get(0));
+                // if (!parityCodeFile.exists()) {
+                //     parityCodeFile.createNewFile();
+                // }
+                // FileWriter fileWritter = new FileWriter(parityCodeFile.getAbsolutePath(),true);
+                // fileWritter.write(parity[0].toString());
+                // fileWritter.close();
+                // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
             } catch (IOException e) {
                 logger.error("rymError: Perform erasure code error", e);
             }
