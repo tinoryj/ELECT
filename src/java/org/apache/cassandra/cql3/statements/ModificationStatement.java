@@ -17,6 +17,9 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
@@ -672,7 +675,24 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
         long timestamp = options.getTimestamp(queryState);
         int nowInSeconds = options.getNowInSeconds(queryState);
         for (IMutation mutation : getMutations(queryState.getClientState(), options, true, timestamp, nowInSeconds, queryStartNanoTime))
+        {
+            if(mutation.getKeyspaceName().equals("ycsb")) {
+                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "reveivedModification";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+    
+                }
+            }
             mutation.apply();
+        }
         return null;
     }
 
