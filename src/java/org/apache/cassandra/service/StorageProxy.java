@@ -17,6 +17,10 @@
  */
 package org.apache.cassandra.service;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1476,6 +1480,42 @@ public class StorageProxy implements StorageProxyMBean {
         //     // TODO Auto-generated catch block
         //     e.printStackTrace();
         // }
+
+
+        String keyspaceName = mutation.getKeyName();
+        if(keyspaceName.equals("ycsb")) {
+            for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                // ByteBuffer key = upd.partitionKey().getKey();
+                // List<InetAddress> eps = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
+                // InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
+                // TableId replicaUUID = null;
+                // // logger.debug("rymDebug: Storage servers list size :{}, list content : {}",
+                // // columnFamilyStores.size(), ep);
+                // logger.debug("localAddress is {}, replicaNodes are {}", localAddress, eps);
+                // // make sure whether the mutation is for a primary or not.
+                // int index = eps.indexOf(localAddress);
+                // replicaUUID = globalNodeIDtoCFIDMap.get(index);
+                // String fileName = "usertable";
+                // if (index != 0) {
+                //     fileName += index;
+                // }
+                String fileName = "reveivedKeys";
+                try {
+                    FileWriter writer = new FileWriter("logs/" + fileName, true);
+                    BufferedWriter buffer = new BufferedWriter(writer);
+                    buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                    buffer.close();
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+
+            }
+        }
+
+
+
+
 
         ////////////////////////////////////////////////////////////////////////////////
         // this dc replicas:
