@@ -496,9 +496,9 @@ public class Keyspace {
                 fileName+=index;
             }
             try {
-                FileWriter writer = new FileWriter("logs/"+fileName);
+                FileWriter writer = new FileWriter("logs/"+fileName, true);
                 BufferedWriter buffer = new BufferedWriter(writer);
-                buffer.write(String.format("{}\n", mutation.key().toString()));
+                buffer.write( mutation.key().toString()+"\n");
                 buffer.close();
             } catch (IOException e) {
                 // TODO Auto-generated catch block
