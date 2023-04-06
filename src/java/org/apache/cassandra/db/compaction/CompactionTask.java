@@ -65,12 +65,28 @@ import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.apache.cassandra.utils.FBUtilities.now;
 
+
 public class CompactionTask extends AbstractCompactionTask {
     protected static final Logger logger = LoggerFactory.getLogger(CompactionTask.class);
     protected final int gcBefore;
     protected final boolean keepOriginals;
     protected static long totalBytesCompacted = 0;
     private ActiveCompactionsTracker activeCompactions;
+
+
+    // Reset
+    public static final String RESET = "\033[0m"; // Text Reset
+
+    // Regular Colors
+    public static final String WHITE = "\033[0;30m"; // WHITE
+    public static final String RED = "\033[0;31m"; // RED
+    public static final String GREEN = "\033[0;32m"; // GREEN
+    public static final String YELLOW = "\033[0;33m"; // YELLOW
+    public static final String BLUE = "\033[0;34m"; // BLUE
+    public static final String PURPLE = "\033[0;35m"; // PURPLE
+    public static final String CYAN = "\033[0;36m"; // CYAN
+    public static final String GREY = "\033[0;37m"; // GREY
+
 
     public CompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int gcBefore) {
         this(cfs, txn, gcBefore, false);
@@ -270,8 +286,8 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     for (SSTableReader sst: allSStables) {
-                        logger.debug("rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
-                         stringToHex(sst.getSSTableHashID()), sst.getSSTableLevel(), sst.getFilename(),
+                        logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
+                         stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
                          cfName, StreamSupport.stream(allSStables.spliterator(), false).count());
 
                     }

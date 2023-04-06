@@ -178,7 +178,7 @@ public class LeveledManifest {
         if (level == 0)
             return 4L * maxSSTableSizeInBytes;
         double bytes = Math.pow(levelFanoutSize, level) * maxSSTableSizeInBytes;
-        logger.debug("[Tinoryj] generate new level size for level = {}, new size = {}", level, bytes/1024/1024);
+        // logger.debug("[Tinoryj] generate new level size for level = {}, new size = {}", level, bytes/1024/1024);
         if (bytes > Long.MAX_VALUE)
             throw new RuntimeException("At most " + Long.MAX_VALUE
                     + " bytes may be in a compaction level; your maxSSTableSize must be absurdly high to compute "
