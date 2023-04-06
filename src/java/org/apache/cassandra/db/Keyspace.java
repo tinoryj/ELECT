@@ -475,46 +475,41 @@ public class Keyspace {
 
         String keyspaceName = mutation.getKeyspaceName();
         if (keyspaceName.equals("ycsb")) {
-            ByteBuffer key = mutation.key().getKey();
-            List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
-            InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
-            TableId replicaUUID = null;
-            // logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+            // ByteBuffer key = mutation.key().getKey();
+            // List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
+            // InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
+            // TableId replicaUUID = null;
+            // // logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
 
-            // make sure whether the mutation is for a primary or not.
-            // if (localAddress.equals(ep.get(0))) {
-            //     replicaUUID = globalNodeIDtoCFIDMap.get(0);
-            // } else {
-            //     // this mutation is for a secondary lsm-tree, get the replica UUID
-            //     int index = ep.indexOf(localAddress);
-            //     replicaUUID = globalNodeIDtoCFIDMap.get(index);
+            // // make sure whether the mutation is for a primary or not.
+            // int  index = ep.indexOf(localAddress);
+            // replicaUUID = globalNodeIDtoCFIDMap.get(index);
+            // String fileName = "usertable";
+            // if(index!=0) {
+            //     fileName+=index;
             // }
-            int  index = ep.indexOf(localAddress);
-            replicaUUID = globalNodeIDtoCFIDMap.get(index);
-            String fileName = "usertable";
-            if(index!=0) {
-                fileName+=index;
-            }
-            try {
-                FileWriter writer = new FileWriter("logs/"+fileName, true);
-                BufferedWriter buffer = new BufferedWriter(writer);
-                buffer.write( mutation.key().toString()+"\n");
-                buffer.close();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-            
+            // try {
+            //     FileWriter writer = new FileWriter("logs/"+fileName, true);
+            //     BufferedWriter buffer = new BufferedWriter(writer);
+            //     buffer.write( mutation.key().toString()+"\n");
+            //     buffer.close();
+            // } catch (IOException e) {
+            //     // TODO Auto-generated catch block
+            //     e.printStackTrace();
+            // }
+
+            return applyInternalYCSB(mutation, writeCommitLog, updateIndexes, true, true,
+                                    new AsyncPromise<>());
 
 
 
 
-            if(replicaUUID==null) {
-                logger.error("rymDebug: can not find replica UUID, table names are {}", mutation.getTableNames());
-            } else {
-                return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true,
-                    new AsyncPromise<>());
-            }
+            // if(replicaUUID==null) {
+            //     logger.error("rymDebug: can not find replica UUID, table names are {}", mutation.getTableNames());
+            // } else {
+            //     return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true,
+            //         new AsyncPromise<>());
+            // }
         }
 
         return applyInternal(mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
@@ -557,33 +552,209 @@ public class Keyspace {
             boolean isDroppable) {
         String keyspaceName = mutation.getKeyspaceName();
         if (keyspaceName.equals("ycsb")) {
-            ByteBuffer key = mutation.key().getKey();
-            List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
-            InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
-            TableId replicaUUID = null;
-            //logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+            // ByteBuffer key = mutation.key().getKey();
+            // List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
+            // InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
+            // TableId replicaUUID = null;
+            // //logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
 
-            // make sure whether the mutation is for a primary or not.
-            // if (localAddress.equals(ep.get(0))) {
-            //     replicaUUID = globalNodeIDtoCFIDMap.get(0);
-            // } else {
-            //     // this mutation is for a secondary lsm-tree, get the replica UUID
-            //     int index = ep.indexOf(localAddress);
-            //     replicaUUID = globalNodeIDtoCFIDMap.get(index);
-            // }
+            // // make sure whether the mutation is for a primary or not.
+            // // if (localAddress.equals(ep.get(0))) {
+            // //     replicaUUID = globalNodeIDtoCFIDMap.get(0);
+            // // } else {
+            // //     // this mutation is for a secondary lsm-tree, get the replica UUID
+            // //     int index = ep.indexOf(localAddress);
+            // //     replicaUUID = globalNodeIDtoCFIDMap.get(index);
+            // // }
             
-            int  index = ep.indexOf(localAddress);
-            replicaUUID = globalNodeIDtoCFIDMap.get(index);
+            // int  index = ep.indexOf(localAddress);
+            // replicaUUID = globalNodeIDtoCFIDMap.get(index);
 
-            if (replicaUUID == null) {
-                logger.error("rymDebug: cannot find replicaUUID, tablenames are: {}", mutation.getTableNames());
-            } else {
-                applyInternal(replicaUUID, mutation, makeDurable, updateIndexes, isDroppable, false, null);
-            }
+            applyInternalYCSB(mutation, makeDurable, updateIndexes, isDroppable, false, null);
+
+            // if (replicaUUID == null) {
+            //     logger.error("rymDebug: cannot find replicaUUID, tablenames are: {}", mutation.getTableNames());
+            // } else {
+            //     applyInternal(replicaUUID, mutation, makeDurable, updateIndexes, isDroppable, false, null);
+            // }
         }
 
         applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
         
+    }
+
+    private Future<?> applyInternalYCSB(final Mutation mutation,
+            final boolean makeDurable,
+            boolean updateIndexes,
+            boolean isDroppable,
+            boolean isDeferrable,
+            Promise<?> future) {
+        if (TEST_FAIL_WRITES && metadata.name.equals(TEST_FAIL_WRITES_KS))
+            throw new RuntimeException("Testing write failures");
+
+        Lock[] locks = null;
+
+        boolean requiresViewUpdate = updateIndexes
+                && viewManager.updatesAffectView(Collections.singleton(mutation), false);
+        logger.debug("rymDebug: requiresViewUpdate = {}", requiresViewUpdate);
+
+        if (requiresViewUpdate) {
+            mutation.viewLockAcquireStart.compareAndSet(0L, currentTimeMillis());
+
+            // the order of lock acquisition doesn't matter (from a deadlock perspective)
+            // because we only use tryLock()
+            Collection<TableId> tableIds = mutation.getTableIds();
+            Iterator<TableId> idIterator = tableIds.iterator();
+
+            locks = new Lock[tableIds.size()];
+            for (int i = 0; i < tableIds.size(); i++) {
+                TableId tableId = idIterator.next();
+                int lockKey = Objects.hash(mutation.key().getKey(), tableId);
+                while (true) {
+                    Lock lock = null;
+
+                    if (TEST_FAIL_MV_LOCKS_COUNT == 0)
+                        lock = ViewManager.acquireLockFor(lockKey);
+                    else
+                        TEST_FAIL_MV_LOCKS_COUNT--;
+
+                    if (lock == null) {
+                        // throw WTE only if request is droppable
+                        if (isDroppable && (approxTime.isAfter(
+                                mutation.approxCreatedAtNanos + DatabaseDescriptor.getWriteRpcTimeout(NANOSECONDS)))) {
+                            for (int j = 0; j < i; j++)
+                                locks[j].unlock();
+
+                            if (logger.isTraceEnabled())
+                                logger.trace("Could not acquire lock for {} and table {}",
+                                        ByteBufferUtil.bytesToHex(mutation.key().getKey()),
+                                        columnFamilyStores.get(tableId).name);
+                            Tracing.trace("Could not acquire MV lock");
+                            if (future != null) {
+                                future.tryFailure(
+                                        new WriteTimeoutException(WriteType.VIEW, ConsistencyLevel.LOCAL_ONE, 0, 1));
+                                return future;
+                            } else
+                                throw new WriteTimeoutException(WriteType.VIEW, ConsistencyLevel.LOCAL_ONE, 0, 1);
+                        } else if (isDeferrable) {
+                            for (int j = 0; j < i; j++)
+                                locks[j].unlock();
+
+                            // This view update can't happen right now. so rather than keep this thread busy
+                            // we will re-apply ourself to the queue and try again later
+                            Stage.MUTATION.execute(
+                                    () -> applyInternal(mutation, makeDurable, true, isDroppable, true, future));
+                            return future;
+                        } else {
+                            // Retry lock on same thread, if mutation is not deferrable.
+                            // Mutation is not deferrable, if applied from MutationStage and caller is
+                            // waiting for future to finish
+                            // If blocking caller defers future, this may lead to deadlock situation with
+                            // all MutationStage workers
+                            // being blocked by waiting for futures which will never be processed as all
+                            // workers are blocked
+                            try {
+                                // Wait a little bit before retrying to lock
+                                Thread.sleep(10);
+                            } catch (InterruptedException e) {
+                                throw new UncheckedInterruptedException(e);
+                            }
+                            continue;
+                        }
+                    } else {
+                        locks[i] = lock;
+                    }
+                    break;
+                }
+            }
+
+            long acquireTime = currentTimeMillis() - mutation.viewLockAcquireStart.get();
+            // Metrics are only collected for droppable write operations
+            // Bulk non-droppable operations (e.g. commitlog replay, hint delivery) are not
+            // measured
+            if (isDroppable) {
+                for (TableId tableId : tableIds)
+                    columnFamilyStores.get(tableId).metric.viewLockAcquireTime.update(acquireTime, MILLISECONDS);
+            }
+        }
+        int nowInSec = FBUtilities.nowInSeconds();
+        try (WriteContext ctx = getWriteHandler().beginWrite(mutation, makeDurable)) {
+
+            // ColumnFamilyStore cfs = columnFamilyStores.get("replicaUUID");
+            for (PartitionUpdate upd : mutation.getPartitionUpdates()) {
+
+
+                // ColumnFamilyStore cfs = columnFamilyStores.get(upd.metadata().id);
+                ColumnFamilyStore cfs = getColumnFamilyStore(upd);
+                if (cfs == null) {
+                    logger.error("Attempting to mutate non-existant table {} ({}.{})", upd.metadata().id,
+                            upd.metadata().keyspace, upd.metadata().name);
+                    continue;
+                }
+                AtomicLong baseComplete = new AtomicLong(Long.MAX_VALUE);
+
+                if (requiresViewUpdate) {
+                    try {
+                        Tracing.trace("Creating materialized view mutations from base table replica");
+                        viewManager.forTable(upd.metadata().id).pushViewReplicaUpdates(upd, makeDurable, baseComplete);
+                    } catch (Throwable t) {
+                        JVMStabilityInspector.inspectThrowable(t);
+                        logger.error(String.format(
+                                "Unknown exception caught while attempting to update MaterializedView! %s",
+                                upd.metadata().toString()), t);
+                        throw t;
+                    }
+                }
+
+                UpdateTransaction indexTransaction = updateIndexes
+                        ? cfs.indexManager.newUpdateTransaction(upd, ctx, nowInSec)
+                        : UpdateTransaction.NO_OP;
+                cfs.getWriteHandler().write(upd, ctx, indexTransaction);
+
+                if (requiresViewUpdate)
+                    baseComplete.set(currentTimeMillis());
+            }
+
+            if (future != null) {
+                future.trySuccess(null);
+            }
+            return future;
+        } finally {
+            if (locks != null) {
+                for (Lock lock : locks)
+                    if (lock != null)
+                        lock.unlock();
+            }
+        }
+    }
+
+    public ColumnFamilyStore getColumnFamilyStore(PartitionUpdate upd) {
+        // ByteBuffer key = mutation.key().getKey();
+        String keyspaceName = upd.metadata().keyspace;
+        ByteBuffer key = upd.partitionKey().getKey();
+        List<InetAddress> eps = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
+        InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
+        TableId replicaUUID = null;
+        // logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+        logger.debug("localAddress is {}, replicaNodes are {}",localAddress, eps);
+        // make sure whether the mutation is for a primary or not.
+        int  index = eps.indexOf(localAddress);
+        replicaUUID = globalNodeIDtoCFIDMap.get(index);
+        String fileName = "usertable";
+        if(index!=0) {
+            fileName+=index;
+        }
+        try {
+            FileWriter writer = new FileWriter("logs/"+fileName, true);
+            BufferedWriter buffer = new BufferedWriter(writer);
+            buffer.write(upd.partitionKey().toString()+"\n");
+            buffer.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        return columnFamilyStores.get(replicaUUID);
     }
 
     /**
