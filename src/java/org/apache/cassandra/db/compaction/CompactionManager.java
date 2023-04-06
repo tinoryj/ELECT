@@ -190,13 +190,13 @@ public class CompactionManager implements CompactionManagerMBean {
      * turn into a no-op in the bucketing/candidate-scan phase.
      */
     public List<Future<?>> submitBackground(final ColumnFamilyStore cfs) {
-        // if (cfs.isAutoCompactionDisabled()) {
-        //     logger.trace("Autocompaction is disabled");
-        //     logger.debug("[Tinoryj] Autocompaction is enabled, current cfs = {}", cfs.name);
-        //     return Collections.emptyList();
-        // }else {
-        //     logger.debug("[Tinoryj] Autocompaction is enabled, current cfs = {}", cfs.name);
-        // }
+        if (cfs.isAutoCompactionDisabled()) {
+            logger.trace("Autocompaction is disabled");
+            logger.debug("[Tinoryj] Autocompaction is enabled, current cfs = {}", cfs.name);
+            return Collections.emptyList();
+        }else {
+            logger.debug("[Tinoryj] Autocompaction is enabled, current cfs = {}", cfs.name);
+        }
 
         /**
          * If a CF is currently being compacted, and there are no idle threads,
