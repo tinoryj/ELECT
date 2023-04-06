@@ -1485,20 +1485,6 @@ public class StorageProxy implements StorageProxyMBean {
         String keyspaceName = mutation.getKeyspaceName();
         if(keyspaceName.equals("ycsb")) {
             for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                // ByteBuffer key = upd.partitionKey().getKey();
-                // List<InetAddress> eps = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
-                // InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
-                // TableId replicaUUID = null;
-                // // logger.debug("rymDebug: Storage servers list size :{}, list content : {}",
-                // // columnFamilyStores.size(), ep);
-                // logger.debug("localAddress is {}, replicaNodes are {}", localAddress, eps);
-                // // make sure whether the mutation is for a primary or not.
-                // int index = eps.indexOf(localAddress);
-                // replicaUUID = globalNodeIDtoCFIDMap.get(index);
-                // String fileName = "usertable";
-                // if (index != 0) {
-                //     fileName += index;
-                // }
                 String fileName = "reveivedKeys";
                 try {
                     FileWriter writer = new FileWriter("logs/" + fileName, true);
@@ -1586,13 +1572,47 @@ public class StorageProxy implements StorageProxyMBean {
             submitHint(mutation, EndpointsForToken.copyOf(mutation.key().getToken(), endpointsToHint), responseHandler);
 
         if (insertLocal) {
+
+
+            if(keyspaceName.equals("ycsb")) {
+                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "reveivedKeysLocal";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+    
+                }
+            }
+
             Preconditions.checkNotNull(localReplica);
             performLocally(stage, localReplica, mutation::apply, responseHandler);
         }
 
         if (localDc != null) {
-            for (Replica destination : localDc)
+            for (Replica destination : localDc){
+                if(keyspaceName.equals("ycsb")) {
+                    for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                        String fileName = "reveivedKeysRemote";
+                        try {
+                            FileWriter writer = new FileWriter("logs/" + fileName, true);
+                            BufferedWriter buffer = new BufferedWriter(writer);
+                            buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                            buffer.close();
+                        } catch (IOException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+        
+                    }
+                }
                 MessagingService.instance().sendWriteWithCallback(message, destination, responseHandler, true);
+            }
         }
         if (dcGroups != null) {
             // for each datacenter, send the message to one node to relay the write to other
