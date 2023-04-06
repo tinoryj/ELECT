@@ -268,13 +268,13 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     for (SSTableReader sst: allSStables) {
-                        logger.debug("rymDebug: sstableHash {}, sstable level {}, sstable name {}",
+                        logger.debug("rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}",
                          stringToHex(sst.getSSTableHashID()), sst.getSSTableLevel(), sst.getFilename());
 
                     }
 
                     int newSStLevel = newSStables.iterator().next().getSSTableLevel();
-                    logger.debug("rymDebug: Compaction is done!!!!");
+                    // logger.debug("rymDebug: Compaction is done!!!!");
                     // send compacted sstables to an parity node
                     // if (ksName.equals("ycsb")) {
                     //     if (!cfName.equals("usertable") && newSStLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
