@@ -18,6 +18,7 @@
 package org.apache.cassandra.db.compaction;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.Collection;
@@ -46,6 +47,7 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
+import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
@@ -181,38 +183,38 @@ public class CompactionTask extends AbstractCompactionTask {
             String cfName = cfs.name;
             // logger.debug("rymDebug: sstLevel is {}, candidate number is {}, threshold is: {}",
             // oldSStLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold() - 1);
-            if (ksName.equals("ycsb") && cfName.equals("usertable")) {
-                for (SSTableReader ssTableReader : actuallyCompact) {
-                    if (ssTableReader.getSSTableLevel() == DatabaseDescriptor.getCompactionThreshold() - 1) {
+            // if (ksName.equals("ycsb") && cfName.equals("usertable")) {
+            //     for (SSTableReader ssTableReader : actuallyCompact) {
+            //         if (ssTableReader.getSSTableLevel() == DatabaseDescriptor.getCompactionThreshold() - 1) {
 
-                        logger.debug("rymDebug: send force compaction requests, sstlevel is {}", ssTableReader.getSSTableLevel());
-                        // String keyspace = ssTableReader.getKeyspaceName();
-                        // String cfName = ssTableReader.getColumnFamilyName();
-                        String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
-                        // DecoratedKey fistKey = ssTableReader.first;
-                        // String startToken =
-                        // ssTableReader.metadata().partitioner.getMinimumToken().toString();
-                        // String endToken =
-                        // ssTableReader.metadata().partitioner.getMaximumToken().toString();
-                        String startToken = ssTableReader.first.getToken().toString();
-                        String endToken = ssTableReader.last.getToken().toString();
+            //             logger.debug("rymDebug: send force compaction requests, sstlevel is {}", ssTableReader.getSSTableLevel());
+            //             // String keyspace = ssTableReader.getKeyspaceName();
+            //             // String cfName = ssTableReader.getColumnFamilyName();
+            //             String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
+            //             // DecoratedKey fistKey = ssTableReader.first;
+            //             // String startToken =
+            //             // ssTableReader.metadata().partitioner.getMinimumToken().toString();
+            //             // String endToken =
+            //             // ssTableReader.metadata().partitioner.getMaximumToken().toString();
+            //             String startToken = ssTableReader.first.getToken().toString();
+            //             String endToken = ssTableReader.last.getToken().toString();
 
-                        // get sstHash
-                        String sstHash = ssTableReader.getSSTableHashID();
+            //             // get sstHash
+            //             String sstHash = ssTableReader.getSSTableHashID();
 
-                        // get replica nodes
-                        List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(ksName, cfName, key);
-                        logger.debug("rymDebug: task is send force compaction message, replica nodes {}, cfName",
-                                replicaNodes);
-                        // ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName,
-                        // startToken, endToken);
-                        ECCompaction ecCompaction = new ECCompaction(sstHash, ksName, cfName, key, startToken, endToken);
-                        // send compaction message to replica nodes
-                        ecCompaction.synchronizeCompaction(replicaNodes);
+            //             // get replica nodes
+            //             List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(ksName, cfName, key);
+            //             logger.debug("rymDebug: task is send force compaction message, replica nodes {}, cfName",
+            //                     replicaNodes);
+            //             // ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName,
+            //             // startToken, endToken);
+            //             ECCompaction ecCompaction = new ECCompaction(sstHash, ksName, cfName, key, startToken, endToken);
+            //             // send compaction message to replica nodes
+            //             ecCompaction.synchronizeCompaction(replicaNodes);
 
-                    }
-                }
-            }
+            //         }
+            //     }
+            // }
             ////////////////////////////////////////////////
 
 
@@ -263,40 +265,48 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // point of no return
                     newSStables = writer.finish();
+
+                    Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
+                    for (SSTableReader sst: allSStables) {
+                        logger.debug("rymDebug: sstableHash {}, sstable level {}, sstable name {}",
+                         stringToHex(sst.getSSTableHashID()), sst.getSSTableLevel(), sst.getFilename());
+
+                    }
+
                     int newSStLevel = newSStables.iterator().next().getSSTableLevel();
                     logger.debug("rymDebug: Compaction is done!!!!");
                     // send compacted sstables to an parity node
-                    if (ksName.equals("ycsb")) {
-                        if (!cfName.equals("usertable") && newSStLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
-                            // TODO: also need to consider whether the level size is full or not
-                            cfs.disableAutoCompaction();
-                            logger.debug("rymDebug: disable auto-compaction for ks {}, cf {}, sstable level {}", ksName, cfName, newSStLevel);
-                        } else if (cfName.equals("usertable")) {
-                            for (SSTableReader ssTableReader : newSStables) {
-                                logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},",
-                                        ssTableReader.getFilename(), ssTableReader.getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
-                                if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                                    logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}", ssTableReader.getSSTableLevel());
-                                    // String keyspace = ssTableReader.getKeyspaceName();
-                                    // String cfName = ssTableReader.getColumnFamilyName();
-                                    String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
-                                    try {
-                                        ByteBuffer sstContent = ssTableReader.getSSTContent();
-                                        String sstHashID = ssTableReader.getSSTableHashID();
-                                        List<InetAddressAndPort> relicaNodes = StorageService.instance
-                                                .getReplicaNodesWithPort(ksName, cfName, key);
-                                        logger.debug("rymDebug: send sstables size {}, replicaNodes are {}", sstContent.remaining(), relicaNodes);
-                                        ECMessage ecMessage = new ECMessage(sstContent, sstHashID, ksName, cfName,
-                                                "", "", relicaNodes);
-                                        // logger.debug("rymDebug: the test message is: {}", ecMessage);
-                                        ecMessage.sendSelectedSSTables();
-                                    } catch (IOException e) {
-                                        logger.error("rymError: {}", e);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // if (ksName.equals("ycsb")) {
+                    //     if (!cfName.equals("usertable") && newSStLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
+                    //         // TODO: also need to consider whether the level size is full or not
+                    //         cfs.disableAutoCompaction();
+                    //         logger.debug("rymDebug: disable auto-compaction for ks {}, cf {}, sstable level {}", ksName, cfName, newSStLevel);
+                    //     } else if (cfName.equals("usertable")) {
+                    //         for (SSTableReader ssTableReader : newSStables) {
+                    //             logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},",
+                    //                     ssTableReader.getFilename(), ssTableReader.getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
+                    //             if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                    //                 logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}", ssTableReader.getSSTableLevel());
+                    //                 // String keyspace = ssTableReader.getKeyspaceName();
+                    //                 // String cfName = ssTableReader.getColumnFamilyName();
+                    //                 String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
+                    //                 try {
+                    //                     ByteBuffer sstContent = ssTableReader.getSSTContent();
+                    //                     String sstHashID = ssTableReader.getSSTableHashID();
+                    //                     List<InetAddressAndPort> relicaNodes = StorageService.instance
+                    //                             .getReplicaNodesWithPort(ksName, cfName, key);
+                    //                     logger.debug("rymDebug: send sstables size {}, replicaNodes are {}", sstContent.remaining(), relicaNodes);
+                    //                     ECMessage ecMessage = new ECMessage(sstContent, sstHashID, ksName, cfName,
+                    //                             "", "", relicaNodes);
+                    //                     // logger.debug("rymDebug: the test message is: {}", ecMessage);
+                    //                     ecMessage.sendSelectedSSTables();
+                    //                 } catch (IOException e) {
+                    //                     logger.error("rymError: {}", e);
+                    //                 }
+                    //             }
+                    //         }
+                    //     }
+                    // }
                 }
                 finally
                 {
@@ -356,6 +366,16 @@ public class CompactionTask extends AbstractCompactionTask {
             // update the metrics
             cfs.metric.compactionBytesWritten.inc(endsize);
         }
+    }
+
+    public static String stringToHex(String str) {
+        byte[] bytes = str.getBytes();
+        StringBuilder hex = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            hex.append(Character.forDigit((b >> 4) & 0xF, 16))
+               .append(Character.forDigit((b & 0xF), 16));
+        }
+        return hex.toString();
     }
 
     @Override
