@@ -510,9 +510,11 @@ public class Keyspace {
             //     return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true,
             //         new AsyncPromise<>());
             // }
+        } else {
+
+            return applyInternal(mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
         }
 
-        return applyInternal(mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
         
     }
 
@@ -577,9 +579,10 @@ public class Keyspace {
             // } else {
             //     applyInternal(replicaUUID, mutation, makeDurable, updateIndexes, isDroppable, false, null);
             // }
+        } else {
+            applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
         }
 
-        applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
         
     }
 
