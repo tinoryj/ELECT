@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.db;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -489,6 +491,20 @@ public class Keyspace {
             // }
             int  index = ep.indexOf(localAddress);
             replicaUUID = globalNodeIDtoCFIDMap.get(index);
+            String fileName = "usertable";
+            if(index!=0) {
+                fileName+=index;
+            }
+            try {
+                FileWriter writer = new FileWriter("logs/"+fileName);
+                BufferedWriter buffer = new BufferedWriter(writer);
+                buffer.write(String.format("{}\n", mutation.key().toString()));
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            
+
 
 
 

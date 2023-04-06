@@ -254,7 +254,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
             boolean isReplicationTransferredToErasureCoding,
             SerializationHeader header,
             String hashID) {
-                logger.debug("[Tinoryj] new sstable level = {}", sstableLevel);
+                // logger.debug("[Tinoryj] new sstable level = {}", sstableLevel);
         Preconditions.checkState((minClustering == null && maxClustering == null)
                 || comparator.compare(maxClustering, minClustering) >= 0);
         ByteBuffer[] minValues = minClustering != null ? minClustering.getBufferArray() : EMPTY_CLUSTERING;
