@@ -292,40 +292,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     }
 
-                    // int newSStLevel = newSStables.iterator().next().getSSTableLevel();
-                    // logger.debug("rymDebug: Compaction is done!!!!");
-                    // send compacted sstables to an parity node
-                    // if (ksName.equals("ycsb")) {
-                    //     if (!cfName.equals("usertable") && newSStLevel == DatabaseDescriptor.getCompactionThreshold() - 1) {
-                    //         // TODO: also need to consider whether the level size is full or not
-                    //         cfs.disableAutoCompaction();
-                    //         logger.debug("rymDebug: disable auto-compaction for ks {}, cf {}, sstable level {}", ksName, cfName, newSStLevel);
-                    //     } else if (cfName.equals("usertable")) {
-                    //         for (SSTableReader ssTableReader : newSStables) {
-                    //             logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},",
-                    //                     ssTableReader.getFilename(), ssTableReader.getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
-                    //             if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                    //                 logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}", ssTableReader.getSSTableLevel());
-                    //                 // String keyspace = ssTableReader.getKeyspaceName();
-                    //                 // String cfName = ssTableReader.getColumnFamilyName();
-                    //                 String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
-                    //                 try {
-                    //                     ByteBuffer sstContent = ssTableReader.getSSTContent();
-                    //                     String sstHashID = ssTableReader.getSSTableHashID();
-                    //                     List<InetAddressAndPort> relicaNodes = StorageService.instance
-                    //                             .getReplicaNodesWithPort(ksName, cfName, key);
-                    //                     logger.debug("rymDebug: send sstables size {}, replicaNodes are {}", sstContent.remaining(), relicaNodes);
-                    //                     ECMessage ecMessage = new ECMessage(sstContent, sstHashID, ksName, cfName,
-                    //                             "", "", relicaNodes);
-                    //                     // logger.debug("rymDebug: the test message is: {}", ecMessage);
-                    //                     ecMessage.sendSelectedSSTables();
-                    //                 } catch (IOException e) {
-                    //                     logger.error("rymError: {}", e);
-                    //                 }
-                    //             }
-                    //         }
-                    //     }
-                    // }
+
                 }
                 finally
                 {
