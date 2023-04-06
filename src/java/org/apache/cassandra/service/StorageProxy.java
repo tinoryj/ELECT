@@ -1063,6 +1063,21 @@ public class StorageProxy implements StorageProxyMBean {
                     if (pairedEndpoint.get().isSelf() && StorageService.instance.isJoined()
                             && pendingReplicas.isEmpty()) {
                         try {
+                            if(mutation.getKeyspaceName().equals("ycsb")) {
+                                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                                    String fileName = "reveivedMutateMV";
+                                    try {
+                                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                                        BufferedWriter buffer = new BufferedWriter(writer);
+                                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                                        buffer.close();
+                                    } catch (IOException e) {
+                                        // TODO Auto-generated catch block
+                                        e.printStackTrace();
+                                    }
+                    
+                                }
+                            }
                             mutation.apply(writeCommitLog);
                             nonLocalMutations.remove(mutation);
                             // won't trigger cleanup
