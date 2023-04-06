@@ -288,11 +288,11 @@ public class CompactionTask extends AbstractCompactionTask {
                     for (SSTableReader sst: allSStables) {
                         logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
                          stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
-                         cfName, StreamSupport.stream(allSStables.spliterator(), false).count());
+                         cfName+RESET, StreamSupport.stream(allSStables.spliterator(), false).count());
 
                     }
 
-                    int newSStLevel = newSStables.iterator().next().getSSTableLevel();
+                    // int newSStLevel = newSStables.iterator().next().getSSTableLevel();
                     // logger.debug("rymDebug: Compaction is done!!!!");
                     // send compacted sstables to an parity node
                     // if (ksName.equals("ycsb")) {

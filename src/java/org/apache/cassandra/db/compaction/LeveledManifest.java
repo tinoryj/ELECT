@@ -51,14 +51,14 @@ public class LeveledManifest {
      * STCS with at most
      * cfs.getMaxCompactionThreshold() sstables.
      */
-    private static final int MAX_COMPACTING_L0 = 4;
+    private static final int MAX_COMPACTING_L0 = 32;
 
     /**
      * If we go this many rounds without compacting
      * in the highest level, we start bringing in sstables from
      * that level into lower level compactions
      */
-    private static final int NO_COMPACTION_LIMIT = 0;
+    private static final int NO_COMPACTION_LIMIT = 25;
 
     private final ColumnFamilyStore cfs;
 

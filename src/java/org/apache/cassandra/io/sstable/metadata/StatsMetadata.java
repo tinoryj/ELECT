@@ -151,13 +151,13 @@ public class StatsMetadata extends MetadataComponent {
             byte[] bytes = new byte[(int) fileLength];
             dataFileReadForHash.readFully(bytes);
             dataFileReadForHash.close();
-            logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
+            // logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
             // generate hash based on the bytes buffer
             try {
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
                 byte[] hash = digest.digest(bytes);
                 this.hashID = new String(hash);
-                logger.debug("[Tinoryj]: generated hash value for current SSTable is {}", hashID);
+                // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}", hashID);
             } catch (NoSuchAlgorithmException e) {
                 this.hashID = null;
                 logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
