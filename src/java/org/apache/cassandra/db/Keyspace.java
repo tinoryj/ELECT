@@ -754,6 +754,7 @@ public class Keyspace {
 
         boolean requiresViewUpdate = updateIndexes
                 && viewManager.updatesAffectView(Collections.singleton(mutation), false);
+        logger.debug("rymDebug: requiresViewUpdate = {}", requiresViewUpdate);
 
         if (requiresViewUpdate) {
             mutation.viewLockAcquireStart.compareAndSet(0L, currentTimeMillis());
