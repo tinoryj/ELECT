@@ -1482,7 +1482,7 @@ public class StorageProxy implements StorageProxyMBean {
         // }
 
 
-        String keyspaceName = mutation.getKeyName();
+        String keyspaceName = mutation.getKeyspaceName();
         if(keyspaceName.equals("ycsb")) {
             for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
                 // ByteBuffer key = upd.partitionKey().getKey();
