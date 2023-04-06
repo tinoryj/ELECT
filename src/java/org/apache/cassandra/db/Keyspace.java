@@ -599,7 +599,7 @@ public class Keyspace {
 
         boolean requiresViewUpdate = updateIndexes
                 && viewManager.updatesAffectView(Collections.singleton(mutation), false);
-        logger.debug("rymDebug: requiresViewUpdate = {}", requiresViewUpdate);
+        // logger.debug("rymDebug: requiresViewUpdate = {}", requiresViewUpdate);
 
         if (requiresViewUpdate) {
             mutation.viewLockAcquireStart.compareAndSet(0L, currentTimeMillis());
@@ -739,7 +739,7 @@ public class Keyspace {
         InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
         TableId replicaUUID = null;
         // logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
-        logger.debug("localAddress is {}, replicaNodes are {}",localAddress, eps);
+        // logger.debug("localAddress is {}, replicaNodes are {}",localAddress, eps);
         // make sure whether the mutation is for a primary or not.
         int  index = eps.indexOf(localAddress);
         replicaUUID = globalNodeIDtoCFIDMap.get(index);
