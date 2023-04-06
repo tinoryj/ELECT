@@ -28,12 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.StreamSupport;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.commons.lang3.StringUtils;
+import org.checkerframework.checker.guieffect.qual.AlwaysSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -268,8 +270,9 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     for (SSTableReader sst: allSStables) {
-                        logger.debug("rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}",
-                         stringToHex(sst.getSSTableHashID()), sst.getSSTableLevel(), sst.getFilename());
+                        logger.debug("rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
+                         stringToHex(sst.getSSTableHashID()), sst.getSSTableLevel(), sst.getFilename(),
+                         cfName, StreamSupport.stream(allSStables.spliterator(), false).count());
 
                     }
 
