@@ -480,13 +480,17 @@ public class Keyspace {
             // logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
 
             // make sure whether the mutation is for a primary or not.
-            if (localAddress.equals(ep.get(0))) {
-                replicaUUID = globalNodeIDtoCFIDMap.get(0);
-            } else {
-                // this mutation is for a secondary lsm-tree, get the replica UUID
-                int index = ep.indexOf(localAddress);
-                replicaUUID = globalNodeIDtoCFIDMap.get(index);
-            }
+            // if (localAddress.equals(ep.get(0))) {
+            //     replicaUUID = globalNodeIDtoCFIDMap.get(0);
+            // } else {
+            //     // this mutation is for a secondary lsm-tree, get the replica UUID
+            //     int index = ep.indexOf(localAddress);
+            //     replicaUUID = globalNodeIDtoCFIDMap.get(index);
+            // }
+            int  index = ep.indexOf(localAddress);
+            replicaUUID = globalNodeIDtoCFIDMap.get(index);
+
+
 
             if(replicaUUID==null) {
                 logger.error("rymDebug: can not find replica UUID, table names are {}", mutation.getTableNames());
@@ -543,13 +547,16 @@ public class Keyspace {
             //logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
 
             // make sure whether the mutation is for a primary or not.
-            if (localAddress.equals(ep.get(0))) {
-                replicaUUID = globalNodeIDtoCFIDMap.get(0);
-            } else {
-                // this mutation is for a secondary lsm-tree, get the replica UUID
-                int index = ep.indexOf(localAddress);
-                replicaUUID = globalNodeIDtoCFIDMap.get(index);
-            }
+            // if (localAddress.equals(ep.get(0))) {
+            //     replicaUUID = globalNodeIDtoCFIDMap.get(0);
+            // } else {
+            //     // this mutation is for a secondary lsm-tree, get the replica UUID
+            //     int index = ep.indexOf(localAddress);
+            //     replicaUUID = globalNodeIDtoCFIDMap.get(index);
+            // }
+            
+            int  index = ep.indexOf(localAddress);
+            replicaUUID = globalNodeIDtoCFIDMap.get(index);
 
             if (replicaUUID == null) {
                 logger.error("rymDebug: cannot find replicaUUID, tablenames are: {}", mutation.getTableNames());
