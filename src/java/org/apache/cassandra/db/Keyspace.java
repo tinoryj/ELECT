@@ -499,6 +499,7 @@ public class Keyspace {
                 FileWriter writer = new FileWriter("logs/"+fileName);
                 BufferedWriter buffer = new BufferedWriter(writer);
                 buffer.write(String.format("{}\n", mutation.key().toString()));
+                buffer.close();
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
