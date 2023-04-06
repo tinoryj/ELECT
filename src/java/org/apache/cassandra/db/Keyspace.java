@@ -747,7 +747,7 @@ public class Keyspace {
         try {
             FileWriter writer = new FileWriter("logs/"+fileName, true);
             BufferedWriter buffer = new BufferedWriter(writer);
-            buffer.write(upd.partitionKey().toString()+"\n");
+            buffer.write(upd.partitionKey().toCQLString(upd.metadata())+"\n");
             buffer.close();
         } catch (IOException e) {
             // TODO Auto-generated catch block
