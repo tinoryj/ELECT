@@ -130,6 +130,12 @@ public abstract class DecoratedKey implements PartitionPosition, FilterKey
         return "DecoratedKey(" + getToken() + ", " + keystring + ")";
     }
 
+    public String getRawKey(TableMetadata metadata) {
+        List<ColumnMetadata> columns = metadata.partitionKeyColumns();
+
+        return columns.get(0).type.toCQLString(getKey());
+    }
+
     /**
      * Returns a CQL representation of this key.
      *
