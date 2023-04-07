@@ -1084,7 +1084,7 @@ public class StorageProxy implements StorageProxyMBean {
                         try {
                             if(mutation.getKeyspaceName().equals("ycsb")) {
                                 for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                                    String fileName = "reveivedMutateMV";
+                                    String fileName = "receivedMutateMV";
                                     try {
                                         FileWriter writer = new FileWriter("logs/" + fileName, true);
                                         BufferedWriter buffer = new BufferedWriter(writer);
@@ -1519,7 +1519,7 @@ public class StorageProxy implements StorageProxyMBean {
         String keyspaceName = mutation.getKeyspaceName();
         if(keyspaceName.equals("ycsb")) {
             for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                String fileName = "reveivedKeys";
+                String fileName = "receivedKeys";
                 try {
                     FileWriter writer = new FileWriter("logs/" + fileName, true);
                     BufferedWriter buffer = new BufferedWriter(writer);
@@ -1599,8 +1599,24 @@ public class StorageProxy implements StorageProxyMBean {
             }
         }
 
-        if (endpointsToHint != null)
+        if (endpointsToHint != null){
+            if(keyspaceName.equals("ycsb")) {
+                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "endpointsToHint";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+    
+                }
+            }
             submitHint(mutation, EndpointsForToken.copyOf(mutation.key().getToken(), endpointsToHint), responseHandler);
+        }
 
         if (insertLocal) {
             if(keyspaceName.equals("ycsb")) {

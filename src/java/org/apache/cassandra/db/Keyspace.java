@@ -499,7 +499,7 @@ public class Keyspace {
             // }
             if(keyspaceName.equals("ycsb")) {
                 for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "reveivedKeyRemote";
+                    String fileName = "receivedKeyRemote";
                     try {
                         FileWriter writer = new FileWriter("logs/" + fileName, true);
                         BufferedWriter buffer = new BufferedWriter(writer);
@@ -588,7 +588,7 @@ public class Keyspace {
             // replicaUUID = globalNodeIDtoCFIDMap.get(index);
             if(keyspaceName.equals("ycsb")) {
                 for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "reveivedkeyLocal";
+                    String fileName = "receivedkeyLocal";
                     try {
                         FileWriter writer = new FileWriter("logs/" + fileName, true);
                         BufferedWriter buffer = new BufferedWriter(writer);

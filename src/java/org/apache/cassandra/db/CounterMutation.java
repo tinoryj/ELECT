@@ -145,7 +145,7 @@ public class CounterMutation implements IMutation
             Mutation result = resultBuilder.build();
             if(result.getKeyspaceName().equals("ycsb")) {
                 for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "reveivedCounter";
+                    String fileName = "receivedCounter";
                     try {
                         FileWriter writer = new FileWriter("logs/" + fileName, true);
                         BufferedWriter buffer = new BufferedWriter(writer);

@@ -678,7 +678,7 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
         {
             if(mutation.getKeyspaceName().equals("ycsb")) {
                 for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "reveivedModification";
+                    String fileName = "receivedModification";
                     try {
                         FileWriter writer = new FileWriter("logs/" + fileName, true);
                         BufferedWriter buffer = new BufferedWriter(writer);
