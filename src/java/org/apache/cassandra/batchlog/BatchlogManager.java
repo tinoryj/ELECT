@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.batchlog;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -503,6 +505,24 @@ public class BatchlogManager implements BatchlogManagerMBean
             ReplicaPlan.ForWrite replicaPlan = new ReplicaPlan.ForWrite(keyspace, liveAndDown.replicationStrategy(),
                                                                         ConsistencyLevel.ONE, liveRemoteOnly.pending(), liveRemoteOnly.all(), liveRemoteOnly.all(), liveRemoteOnly.all());
             ReplayWriteResponseHandler<Mutation> handler = new ReplayWriteResponseHandler<>(replicaPlan, mutation, nanoTime());
+
+            if(mutation.getKeyspaceName().equals("ycsb")) {
+                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "sendBatchLog";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+    
+                }
+            }
+
+
             Message<Mutation> message = Message.outWithFlag(MUTATION_REQ, mutation, MessageFlag.CALL_BACK_ON_FAILURE);
             for (Replica replica : liveRemoteOnly.all())
                 MessagingService.instance().sendWriteWithCallback(message, replica, handler, false);

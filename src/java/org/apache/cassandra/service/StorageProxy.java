@@ -1515,9 +1515,6 @@ public class StorageProxy implements StorageProxyMBean {
         }
 
 
-
-
-
         ////////////////////////////////////////////////////////////////////////////////
         // this dc replicas:
         Collection<Replica> localDc = null;
@@ -1587,11 +1584,9 @@ public class StorageProxy implements StorageProxyMBean {
             submitHint(mutation, EndpointsForToken.copyOf(mutation.key().getToken(), endpointsToHint), responseHandler);
 
         if (insertLocal) {
-
-
             if(keyspaceName.equals("ycsb")) {
                 for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "reveivedKeysLocal";
+                    String fileName = "sendKeysLocal";
                     try {
                         FileWriter writer = new FileWriter("logs/" + fileName, true);
                         BufferedWriter buffer = new BufferedWriter(writer);
@@ -1613,7 +1608,7 @@ public class StorageProxy implements StorageProxyMBean {
             for (Replica destination : localDc){
                 if(keyspaceName.equals("ycsb")) {
                     for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                        String fileName = "reveivedKeysRemote";
+                        String fileName = "sendKeysRemote";
                         try {
                             FileWriter writer = new FileWriter("logs/" + fileName, true);
                             BufferedWriter buffer = new BufferedWriter(writer);

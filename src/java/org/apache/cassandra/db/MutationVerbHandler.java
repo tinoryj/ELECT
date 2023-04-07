@@ -58,7 +58,7 @@ public class MutationVerbHandler implements IVerbHandler<Mutation>
         {
             if(message.payload.getKeyspaceName().equals("ycsb")) {
                 for(PartitionUpdate upd : message.payload.getPartitionUpdates()) {
-                    String fileName = "reveivedMutation";
+                    String fileName = "reveivedRemoteMutations";
                     try {
                         FileWriter writer = new FileWriter("logs/" + fileName, true);
                         BufferedWriter buffer = new BufferedWriter(writer);
