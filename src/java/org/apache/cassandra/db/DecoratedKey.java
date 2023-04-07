@@ -132,8 +132,9 @@ public abstract class DecoratedKey implements PartitionPosition, FilterKey
 
     public String getRawKey(TableMetadata metadata) {
         List<ColumnMetadata> columns = metadata.partitionKeyColumns();
+        String cqlString = columns.get(0).type.toCQLString(getKey());
 
-        return columns.get(0).type.toCQLString(getKey());
+        return cqlString.substring(1, cqlString.length()-1);
     }
 
     /**
