@@ -1618,6 +1618,13 @@ public class StorageProxy implements StorageProxyMBean {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
                         }
+                        
+                        String key = upd.partitionKey().getRawKey(upd.metadata());
+                        List<InetAddressAndPort> eps = StorageService.instance.getReplicaNodesWithPort(keyspaceName, upd.metadata().name, key);
+                        if(eps.contains(destination.endpoint())) {
+                            logger.debug("rymDebug: oh shit! this fucking destination [{}] is wrong, correct is {}",
+                                            destination.endpoint(), eps);
+                        }
         
                     }
                 }
