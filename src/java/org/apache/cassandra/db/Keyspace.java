@@ -497,6 +497,21 @@ public class Keyspace {
             //     // TODO Auto-generated catch block
             //     e.printStackTrace();
             // }
+            if(keyspaceName.equals("ycsb")) {
+                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "reveivedApplyFuture";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+    
+                }
+            }
 
             return applyInternalYCSB(mutation, writeCommitLog, updateIndexes, true, true,
                                     new AsyncPromise<>());
@@ -571,6 +586,21 @@ public class Keyspace {
             
             // int  index = ep.indexOf(localAddress);
             // replicaUUID = globalNodeIDtoCFIDMap.get(index);
+            if(keyspaceName.equals("ycsb")) {
+                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "reveivedApply";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+    
+                }
+            }
 
             applyInternalYCSB(mutation, makeDurable, updateIndexes, isDroppable, false, null);
 
