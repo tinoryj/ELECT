@@ -1547,9 +1547,11 @@ public class StorageProxy implements StorageProxyMBean {
         Collection<Replica> endpointsToHint = null;
 
         List<InetAddressAndPort> backPressureHosts = null;
-        logger.debug(RED+"rymDebug: get replica destinations: {}", plan.contacts().endpointList()+RESET);
+        
 
+        logger.debug(BLUE+"rymDebug: get replica destinations: {}", plan.contacts().endpointList()+RESET);
         for (Replica destination : plan.contacts()) {
+            logger.debug(YELLOW+"rymDebug: get replica destinations: {}", destination.endpoint()+RESET);
             checkHintOverload(destination);
 
             if (plan.isAlive(destination)) {
