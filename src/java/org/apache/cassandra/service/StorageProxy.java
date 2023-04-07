@@ -173,6 +173,25 @@ import static org.apache.cassandra.utils.concurrent.CountDownLatch.newCountDownL
 import static org.apache.commons.lang3.StringUtils.join;
 
 public class StorageProxy implements StorageProxyMBean {
+
+
+    // Reset
+    public static final String RESET = "\033[0m"; // Text Reset
+
+    // Regular Colors
+    public static final String WHITE = "\033[0;30m"; // WHITE
+    public static final String RED = "\033[0;31m"; // RED
+    public static final String GREEN = "\033[0;32m"; // GREEN
+    public static final String YELLOW = "\033[0;33m"; // YELLOW
+    public static final String BLUE = "\033[0;34m"; // BLUE
+    public static final String PURPLE = "\033[0;35m"; // PURPLE
+    public static final String CYAN = "\033[0;36m"; // CYAN
+    public static final String GREY = "\033[0;37m"; // GREY
+
+
+
+
+
     public static final String MBEAN_NAME = "org.apache.cassandra.db:type=StorageProxy";
     private static final Logger logger = LoggerFactory.getLogger(StorageProxy.class);
 
@@ -1622,8 +1641,8 @@ public class StorageProxy implements StorageProxyMBean {
                         String key = upd.partitionKey().getRawKey(upd.metadata());
                         List<InetAddressAndPort> eps = StorageService.instance.getReplicaNodesWithPort(keyspaceName, upd.metadata().name, key);
                         if(eps.contains(destination.endpoint())) {
-                            logger.debug("rymDebug: oh shit! this fucking destination [{}] is wrong, correct is {}",
-                                            destination.endpoint(), eps);
+                            logger.debug(RED+"rymDebug: oh shit! this fucking destination [{}] is wrong, correct is {}",
+                                            destination.endpoint()+RESET, eps+RESET);
                         }
         
                     }
