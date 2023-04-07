@@ -1641,8 +1641,8 @@ public class StorageProxy implements StorageProxyMBean {
                         String key = upd.partitionKey().getRawKey(upd.metadata());
                         List<InetAddressAndPort> eps = StorageService.instance.getReplicaNodesWithPort(keyspaceName, upd.metadata().name, key);
                         if(eps.contains(destination.endpoint())) {
-                            logger.debug(RED+"rymDebug: oh shit! this fucking destination [{}] is wrong, correct is {}",
-                                            destination.endpoint()+RESET, eps+RESET);
+                            logger.debug(RED+"rymDebug: oh shit! this fucking destination [{}] is wrong, correct is {}m key is {}",
+                                            destination.endpoint()+RESET, eps+RESET, key);
                         }
         
                     }
