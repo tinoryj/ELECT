@@ -1547,6 +1547,7 @@ public class StorageProxy implements StorageProxyMBean {
         Collection<Replica> endpointsToHint = null;
 
         List<InetAddressAndPort> backPressureHosts = null;
+        logger.debug(RED+"rymDebug: get replica destinations: {}", plan.contacts().endpointList()+RESET);
 
         for (Replica destination : plan.contacts()) {
             checkHintOverload(destination);
@@ -1656,8 +1657,8 @@ public class StorageProxy implements StorageProxyMBean {
                         
                         String key = upd.partitionKey().getRawKey(upd.metadata());
                         List<InetAddressAndPort> eps = StorageService.instance.getReplicaNodesWithPort(keyspaceName, upd.metadata().name, key);
-                        if(!eps.contains(destination.endpoint())) {
-                            logger.debug(RED+"rymDebug: oh shit! this fucking destination [{}] is wrong, correct is {} key is {}",
+                        if(!eps.contains(destination.endpoint())||eps.indexOf(destination.endpoint())==0) {
+                            logger.debug(RED+"rymDebug: destination [{}] is wrong, correct is {} key is {}",
                                             destination.endpoint()+RESET, eps+RESET, key);
                         }
         
