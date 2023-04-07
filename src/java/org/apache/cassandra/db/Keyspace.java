@@ -475,28 +475,6 @@ public class Keyspace {
 
         String keyspaceName = mutation.getKeyspaceName();
         if (keyspaceName.equals("ycsb")) {
-            // ByteBuffer key = mutation.key().getKey();
-            // List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
-            // InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
-            // TableId replicaUUID = null;
-            // // logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
-
-            // // make sure whether the mutation is for a primary or not.
-            // int  index = ep.indexOf(localAddress);
-            // replicaUUID = globalNodeIDtoCFIDMap.get(index);
-            // String fileName = "usertable";
-            // if(index!=0) {
-            //     fileName+=index;
-            // }
-            // try {
-            //     FileWriter writer = new FileWriter("logs/"+fileName, true);
-            //     BufferedWriter buffer = new BufferedWriter(writer);
-            //     buffer.write( mutation.key().toString()+"\n");
-            //     buffer.close();
-            // } catch (IOException e) {
-            //     // TODO Auto-generated catch block
-            //     e.printStackTrace();
-            // }
             if(keyspaceName.equals("ycsb")) {
                 for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
                     String fileName = "receivedKeyRemote";
@@ -515,16 +493,6 @@ public class Keyspace {
 
             return applyInternalYCSB(mutation, writeCommitLog, updateIndexes, true, true,
                                     new AsyncPromise<>());
-
-
-
-
-            // if(replicaUUID==null) {
-            //     logger.error("rymDebug: can not find replica UUID, table names are {}", mutation.getTableNames());
-            // } else {
-            //     return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true,
-            //         new AsyncPromise<>());
-            // }
         } else {
 
             return applyInternal(mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
@@ -535,7 +503,33 @@ public class Keyspace {
 
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes, boolean isDroppable,
             boolean isDeferrable) {
-        return applyInternal(mutation, writeCommitLog, updateIndexes, isDroppable, isDeferrable, new AsyncPromise<>());
+
+        String keyspaceName = mutation.getKeyspaceName();
+        if (keyspaceName.equals("ycsb")) {
+            if (keyspaceName.equals("ycsb")) {
+                for (PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "receivedKeyRemote";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+
+                }
+            }
+
+            return applyInternalYCSB(mutation, writeCommitLog, updateIndexes, isDroppable, isDeferrable,
+                    new AsyncPromise<>());
+        } else {
+
+            return applyInternal(mutation, writeCommitLog, updateIndexes, isDroppable, isDeferrable, new AsyncPromise<>());
+        }
+
+        
     }
 
     public void apply(Mutation mutation, boolean writeCommitLog, boolean updateIndexes) {
@@ -569,23 +563,6 @@ public class Keyspace {
             boolean isDroppable) {
         String keyspaceName = mutation.getKeyspaceName();
         if (keyspaceName.equals("ycsb")) {
-            // ByteBuffer key = mutation.key().getKey();
-            // List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
-            // InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
-            // TableId replicaUUID = null;
-            // //logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
-
-            // // make sure whether the mutation is for a primary or not.
-            // // if (localAddress.equals(ep.get(0))) {
-            // //     replicaUUID = globalNodeIDtoCFIDMap.get(0);
-            // // } else {
-            // //     // this mutation is for a secondary lsm-tree, get the replica UUID
-            // //     int index = ep.indexOf(localAddress);
-            // //     replicaUUID = globalNodeIDtoCFIDMap.get(index);
-            // // }
-            
-            // int  index = ep.indexOf(localAddress);
-            // replicaUUID = globalNodeIDtoCFIDMap.get(index);
             if(keyspaceName.equals("ycsb")) {
                 for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
                     String fileName = "receivedkeyLocal";
@@ -603,12 +580,6 @@ public class Keyspace {
             }
 
             applyInternalYCSB(mutation, makeDurable, updateIndexes, isDroppable, false, null);
-
-            // if (replicaUUID == null) {
-            //     logger.error("rymDebug: cannot find replicaUUID, tablenames are: {}", mutation.getTableNames());
-            // } else {
-            //     applyInternal(replicaUUID, mutation, makeDurable, updateIndexes, isDroppable, false, null);
-            // }
         } else {
             applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
         }
