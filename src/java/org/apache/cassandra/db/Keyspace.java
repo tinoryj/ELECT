@@ -508,7 +508,7 @@ public class Keyspace {
         if (keyspaceName.equals("ycsb")) {
             if (keyspaceName.equals("ycsb")) {
                 for (PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "receivedKeyRemote";
+                    String fileName = "receivedKeyRemoteUnknown";
                     try {
                         FileWriter writer = new FileWriter("logs/" + fileName, true);
                         BufferedWriter buffer = new BufferedWriter(writer);
