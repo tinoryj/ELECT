@@ -23,10 +23,10 @@
 #ifndef _DUMP_H_
 #define _DUMP_H_
 
+#include "erasure_coder.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "erasure_coder.h"
 
 void dumpEncoder(IsalEncoder* pCoder);
 

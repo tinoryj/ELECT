@@ -67,9 +67,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
     public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options) {
         super(cfs, options);
-        int configuredMaxSSTableSize = 1;
-        // int configuredMaxSSTableSize =
-        // Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));
+        int configuredMaxSSTableSize = 160;
         logger.debug("[Tinoryj] Configured max sstable size: {} MB", configuredMaxSSTableSize);
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;
         boolean configuredSingleSSTableUplevel = false;
