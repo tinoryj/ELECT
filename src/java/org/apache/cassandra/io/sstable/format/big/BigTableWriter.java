@@ -108,9 +108,11 @@ public class BigTableWriter extends SSTableWriter {
                     writerOption);
         }
         if (isReplicationTransferredToErasureCoding) {
+            // logger.debug("[Tinoryj] find SSTable transfered from replication to EC, sstable's EC metadata name = {}", descriptor.filenameFor(Component.EC_METADATA));
             dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.EC_METADATA)).compressed(false)
                     .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
         } else {
+            // logger.debug("[Tinoryj] find original data, sstable's data name = {}", descriptor.filenameFor(Component.DATA));
             dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA)).compressed(compression)
                     .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
         }
@@ -459,20 +461,26 @@ public class BigTableWriter extends SSTableWriter {
 
             try (DataInputStream dataFileReadForHash = new DataInputStream(
                     new FileInputStream(descriptor.filenameFor(Component.DATA)))) {
+                // logger.debug("[Tinoryj] Open data file success for SSTable = {}", descriptor.filenameFor(Component.DATA));
                 long fileLength = new File(descriptor.filenameFor(Component.DATA)).length();
                 byte[] bytes = new byte[(int) fileLength];
                 dataFileReadForHash.readFully(bytes);
                 dataFileReadForHash.close();
+                // logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
                 // generate hash based on the bytes buffer
                 try {
                     MessageDigest digest = MessageDigest.getInstance("SHA-256");
                     byte[] hash = digest.digest(bytes);
                     hashID = new String(hash);
-                    logger.debug("[Tinoryj]: generated hash value for current SSTable is {}", hashID);
+                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}", hashID);
                 } catch (NoSuchAlgorithmException e) {
+                    hashID = null;
+                    logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", descriptor.filenameFor(Component.DATA));
                     e.printStackTrace();
                 }
             } catch (IOException e) {
+                hashID = null;
+                logger.debug("[Tinoryj]: Could not read SSTable = {} for hash ID generation", descriptor.filenameFor(Component.DATA));
                 e.printStackTrace();
             }
 

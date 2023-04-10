@@ -154,18 +154,10 @@ public abstract class SSTable {
     /**
      * @return true if the file was deleted
      */
-    public static boolean deleteComponentOnlyData(Descriptor desc, Set<Component> components) {
+    public static boolean deleteComponentOnlyData(Descriptor desc) {
         logger.info("Deleting sstable: {}", desc);
         // remove the DATA component first if it exists
-        if (components.contains(Component.DATA)) {
-            FileUtils.deleteWithConfirm(desc.filenameFor(Component.DATA));
-        } else {
-            if (components.contains(Component.EC_METADATA)) {
-                FileUtils.deleteWithConfirm(desc.filenameFor(Component.EC_METADATA));
-            } else {
-                logger.error("## deleteComponentOnlyData: no DATA or EC_METADATA component found");
-            }
-        }
+        FileUtils.deleteWithConfirm(desc.filenameFor(Component.DATA));
         isDataRemovedByRedundancyTransionFlag = true;
         return true;
     }
@@ -174,23 +166,29 @@ public abstract class SSTable {
         return metadata.get();
     }
 
+    public void updateDataRedundancyTransionFlagToTrue(){
+        isDataRemovedByRedundancyTransionFlag=true;
+    }
+
     public IPartitioner getPartitioner() {
         return metadata().partitioner;
     }
 
-    public List<InetAddressAndPort> getRelicaNodes(String keyspaceName) {
-        Token token = metadata.get().partitioner.getRandomToken();
-        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
-        List<InetAddressAndPort> replicaNodes = new ArrayList<>(replicas.size());
-        replicas.forEach(r -> {
-            try {
-                replicaNodes.add(InetAddressAndPort.getByName(r.endpoint().getHostAddress(true)));
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            }
-        });
-        return replicaNodes;
-    }
+    // public List<InetAddressAndPort> getRelicaNodes(String keyspaceName) {
+    //     // TODO: get correct replica nodes
+    //     Token token = first.getToken();
+    //     //Token token = metadata.get().partitioner.getMinimumToken();
+    //     EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+    //     List<InetAddressAndPort> replicaNodes = new ArrayList<>(replicas.size());
+    //     replicas.forEach(r -> {
+    //         try {
+    //             replicaNodes.add(InetAddressAndPort.getByName(r.endpoint().getHostAddress(true)));
+    //         } catch (UnknownHostException e) {
+    //             e.printStackTrace();
+    //         }
+    //     });
+    //     return replicaNodes;
+    // }
 
     public DecoratedKey decorateKey(ByteBuffer key)
     {
@@ -209,7 +207,7 @@ public abstract class SSTable {
     }
 
     public String getFilename() {
-        if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
+        if (isDataRemovedByRedundancyTransionFlag==false) {
             return descriptor.filenameFor(Component.DATA);
         } else {
             return descriptor.filenameFor(Component.EC_METADATA);
@@ -229,7 +227,7 @@ public abstract class SSTable {
         return descriptor.ksname;
     }
 
-    public String getSSTContent() throws IOException
+    public ByteBuffer getSSTContent() throws IOException
     {
         String fileName = descriptor.filenameFor(Component.DATA);
         File file = new File(fileName);
@@ -246,9 +244,7 @@ public abstract class SSTable {
         }
         fileStream.close();
         
-        String sstContent = new String(buffer);
-
-        return sstContent;
+        return ByteBuffer.wrap(buffer);
     }
 
     public List<String> getAllFilePaths()

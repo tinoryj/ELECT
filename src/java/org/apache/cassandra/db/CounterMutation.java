@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.db;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -141,6 +143,21 @@ public class CounterMutation implements IMutation
                 resultBuilder.add(processModifications(upd));
 
             Mutation result = resultBuilder.build();
+            if(result.getKeyspaceName().equals("ycsb")) {
+                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "receivedCounter";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+    
+                }
+            }
             result.apply();
             return result;
         }

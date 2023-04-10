@@ -18,6 +18,8 @@
 package org.apache.cassandra.db.compaction;
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
@@ -26,12 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.StreamSupport;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.commons.lang3.StringUtils;
+import org.checkerframework.checker.guieffect.qual.AlwaysSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,15 +43,20 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
+import org.apache.cassandra.db.lifecycle.SSTableSet;
+import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.concurrent.Refs;
@@ -56,12 +65,28 @@ import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.apache.cassandra.utils.FBUtilities.now;
 
+
 public class CompactionTask extends AbstractCompactionTask {
     protected static final Logger logger = LoggerFactory.getLogger(CompactionTask.class);
     protected final int gcBefore;
     protected final boolean keepOriginals;
     protected static long totalBytesCompacted = 0;
     private ActiveCompactionsTracker activeCompactions;
+
+
+    // Reset
+    public static final String RESET = "\033[0m"; // Text Reset
+
+    // Regular Colors
+    public static final String WHITE = "\033[0;30m"; // WHITE
+    public static final String RED = "\033[0;31m"; // RED
+    public static final String GREEN = "\033[0;32m"; // GREEN
+    public static final String YELLOW = "\033[0;33m"; // YELLOW
+    public static final String BLUE = "\033[0;34m"; // BLUE
+    public static final String PURPLE = "\033[0;35m"; // PURPLE
+    public static final String CYAN = "\033[0;36m"; // CYAN
+    public static final String GREY = "\033[0;37m"; // GREY
+
 
     public CompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int gcBefore) {
         this(cfs, txn, gcBefore, false);
@@ -168,6 +193,49 @@ public class CompactionTask extends AbstractCompactionTask {
             long[] mergedRowCounts;
             long totalSourceCQLRows;
 
+
+            /////////////////////////////////////////////////
+            // send force compaction request to replica nodes
+            // int oldSStLevel = actuallyCompact.iterator().next().getSSTableLevel();
+            String ksName = cfs.keyspace.getName();
+            String cfName = cfs.name;
+            // logger.debug("rymDebug: sstLevel is {}, candidate number is {}, threshold is: {}",
+            // oldSStLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold() - 1);
+            // if (ksName.equals("ycsb") && cfName.equals("usertable")) {
+            //     for (SSTableReader ssTableReader : actuallyCompact) {
+            //         if (ssTableReader.getSSTableLevel() == DatabaseDescriptor.getCompactionThreshold() - 1) {
+
+            //             logger.debug("rymDebug: send force compaction requests, sstlevel is {}", ssTableReader.getSSTableLevel());
+            //             // String keyspace = ssTableReader.getKeyspaceName();
+            //             // String cfName = ssTableReader.getColumnFamilyName();
+            //             String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
+            //             // DecoratedKey fistKey = ssTableReader.first;
+            //             // String startToken =
+            //             // ssTableReader.metadata().partitioner.getMinimumToken().toString();
+            //             // String endToken =
+            //             // ssTableReader.metadata().partitioner.getMaximumToken().toString();
+            //             String startToken = ssTableReader.first.getToken().toString();
+            //             String endToken = ssTableReader.last.getToken().toString();
+
+            //             // get sstHash
+            //             String sstHash = ssTableReader.getSSTableHashID();
+
+            //             // get replica nodes
+            //             List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(ksName, cfName, key);
+            //             logger.debug("rymDebug: task is send force compaction message, replica nodes {}, cfName",
+            //                     replicaNodes);
+            //             // ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName,
+            //             // startToken, endToken);
+            //             ECCompaction ecCompaction = new ECCompaction(sstHash, ksName, cfName, key, startToken, endToken);
+            //             // send compaction message to replica nodes
+            //             ecCompaction.synchronizeCompaction(replicaNodes);
+
+            //         }
+            //     }
+            // }
+            ////////////////////////////////////////////////
+
+
             int nowInSec = FBUtilities.nowInSeconds();
             try (Refs<SSTableReader> refs = Refs.ref(actuallyCompact);
                     AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(actuallyCompact);
@@ -216,24 +284,15 @@ public class CompactionTask extends AbstractCompactionTask {
                     // point of no return
                     newSStables = writer.finish();
 
-                    // send compacted sstables to an parity node
-                    for (SSTableReader ssTableReader : newSStables) {
-                        if (ssTableReader.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                            logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                                    ssTableReader.getSSTableLevel());
-                            String keyspace = ssTableReader.getKeyspaceName();
-                            try {
-                                String sstContent = ssTableReader.getSSTContent();
-                                List<InetAddressAndPort> relicaNodes = ssTableReader.getRelicaNodes(keyspace);
-                                ECMessage ecMessage = new ECMessage(sstContent, ssTableReader.getKeyspaceName(),
-                                 "", "", relicaNodes);
-                                logger.debug("rymDebug: the test message is: {}", ecMessage);
-                                ecMessage.sendSelectedSSTables();
-                            } catch (IOException e) {
-                                logger.error("rymError: {}", e);
-                            }
-                        }
+                    Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
+                    for (SSTableReader sst: allSStables) {
+                        logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
+                         stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
+                         cfName+RESET, StreamSupport.stream(allSStables.spliterator(), false).count());
+
                     }
+
+
                 }
                 finally
                 {
@@ -293,6 +352,16 @@ public class CompactionTask extends AbstractCompactionTask {
             // update the metrics
             cfs.metric.compactionBytesWritten.inc(endsize);
         }
+    }
+
+    public static String stringToHex(String str) {
+        byte[] bytes = str.getBytes();
+        StringBuilder hex = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            hex.append(Character.forDigit((b >> 4) & 0xF, 16))
+               .append(Character.forDigit((b & 0xF), 16));
+        }
+        return hex.toString();
     }
 
     @Override

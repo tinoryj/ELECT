@@ -55,6 +55,7 @@ import org.apache.cassandra.gms.GossipShutdownVerbHandler;
 import org.apache.cassandra.hints.HintMessage;
 import org.apache.cassandra.hints.HintVerbHandler;
 import org.apache.cassandra.io.IVersionedAsymmetricSerializer;
+import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECCompactionVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMessageVerbHandler;
@@ -141,8 +142,8 @@ public enum Verb {
             ERASURECODE_RSP),
     ECCOMPACTION_RSP(203, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
             () -> ResponseVerbHandler.instance),
-    ECCOMPACTION_REQ(204, P3, writeTimeout, ERASURECODE, () -> ECMessage.serializer,
-            () -> ECMessageVerbHandler.instance, ECCOMPACTION_RSP),
+    ECCOMPACTION_REQ(204, P3, writeTimeout, ERASURECODE, () -> ECCompaction.serializer,
+            () -> ECCompactionVerbHandler.instance, ECCOMPACTION_RSP),
     ECDELETEREPLICA_RSP(205, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
             () -> ResponseVerbHandler.instance),
     ECDELETEREPLICA_REQ(206, P3, writeTimeout, ERASURECODE, () -> ECMessage.serializer,

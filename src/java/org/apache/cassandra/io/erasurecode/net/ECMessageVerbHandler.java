@@ -21,6 +21,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,6 +45,8 @@ import org.apache.cassandra.net.ParamType;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.netty.channel.unix.Buffer;
 
 public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
@@ -68,12 +73,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
      */
     @Override
     public void doVerb(Message<ECMessage> message) throws IOException {
-        String sstContent = message.payload.sstContent;
-        long k = message.payload.k;
+        ByteBuffer sstContent = message.payload.sstContent;
+        int ec_data_num = message.payload.ecDataNum;
 
-        for (String ep : message.payload.repEpsString.split(",")) {
-            message.payload.replicaNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
-        }
+        
         for (String ep : message.payload.parityNodesString.split(",")) {
             message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
         }
@@ -99,9 +102,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         
         logger.debug("rymDebug: recvQueues is {}", recvQueues);
 
-        if(recvQueues.size()>=message.payload.k) {
+        if(recvQueues.size()>=message.payload.ecDataNum) {
             logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
-            ECMessage tmpArray[] = new ECMessage[message.payload.k];
+            ECMessage tmpArray[] = new ECMessage[message.payload.ecDataNum];
             //traverse the recvQueues
             int i = 0;
             for (InetAddressAndPort msg : recvQueues.keySet()) {
@@ -109,7 +112,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 if(recvQueues.get(msg).size() == 0) {
                     recvQueues.remove(msg);
                 }
-                if (i == message.payload.k - 1) 
+                if (i == message.payload.ecDataNum - 1) 
                     break;
                 i++;
             }
@@ -117,8 +120,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeRunnable(tmpArray));
         }
 
-        Tracing.trace("recieved sstContent is: {}, k is: {}, sourceEdpoint is: {}, header is: {}",
-                sstContent, k, message.from(), message.header);
+        Tracing.trace("recieved sstContent is: {}, ec_data_num is: {}, sourceEdpoint is: {}, header is: {}",
+                sstContent, ec_data_num, message.from(), message.header);
     }
 
     private static void forwardToLocalNodes(Message<ECMessage> originalMessage, ForwardingInfo forwardTo) {
@@ -141,39 +144,56 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
 
     private static  class ErasureCodeRunnable implements Runnable {
-        private final int m;
-        private final int k;
+        private final int ecDataNum;
+        private final int ecParityNum;
         private final ECMessage[] messages;
 
         ErasureCodeRunnable(ECMessage[] message) {
-            this.m = message[0].m;
-            this.k = message[0].k;
+            this.ecDataNum = message[0].ecDataNum;
+            this.ecParityNum = message[0].ecParityNum;
             this.messages = message;
         }
 
         @Override
         public void run() {
-            int codeLength = messages[0].sstContent.getBytes().length;
-            ErasureCoderOptions ecOptions = new ErasureCoderOptions(m, k);
+            if(messages.length != ecDataNum) {
+                logger.error("rymError: message length is not equal to ecDataNum");
+            }
+            int codeLength = messages[0].sstSize;
+            for (ECMessage msg : messages) {
+                codeLength = codeLength < msg.sstSize? msg.sstSize : codeLength;
+             }
+            ErasureCoderOptions ecOptions = new ErasureCoderOptions(ecDataNum, ecParityNum);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 
             logger.debug("rymDebug: let's start computing erasure coding");
 
             // Encoding input and output
-            ByteBuffer[] data = new ByteBuffer[m];
-            ByteBuffer[] parity = new ByteBuffer[k];
+            ByteBuffer[] data = new ByteBuffer[ecDataNum];
+            ByteBuffer[] parity = new ByteBuffer[ecParityNum];
 
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
                 data[i] = ByteBuffer.allocateDirect(codeLength);
-                data[i].put(messages[i].sstContent.getBytes());
+                // data[i].put((byte)0);
+                // data[i].flip();
+                // data[i].position(data[i].limit());
+                // data[i].limit(data[i].capacity());
+                data[i].put(messages[i].sstContent);
+                logger.debug("rymDebug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
+                int remaining = data[i].remaining();
+                if(remaining>0) {
+                    byte[] zeros = new byte[remaining];
+                    data[i].put(zeros);
+                }
+                // data[i].put(new byte[data[i].remaining()]);
                 logger.debug("rymDebug: message[{}].sstconetent {}, data[{}] is: {}",
                  i, messages[i].sstContent,i, data[i]);
                 data[i].rewind();
             }
 
             // Prepare parity data
-            for (int i = 0; i < k; i++) {
+            for (int i = 0; i < ecParityNum; i++) {
                 parity[i] = ByteBuffer.allocateDirect(codeLength);
             }
 
@@ -193,25 +213,53 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // record first parity code to current node
             try {
-                File parityCodeFile = new File(parityCodeDir + parityHashCode.get(0));
-                if (!parityCodeFile.exists()) {
-                    parityCodeFile.createNewFile();
-                }
-                FileWriter fileWritter = new FileWriter(parityCodeFile.getName(),true);
-                fileWritter.write(parity[0].toString());
-                fileWritter.close();
-                logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
+                
+                FileChannel fileChannel = FileChannel.open(Paths.get(parityCodeDir, parityHashCode.get(0)),
+                                                            StandardOpenOption.WRITE,
+                                                             StandardOpenOption.CREATE);
+                fileChannel.write(parity[0]);
+                fileChannel.close();
+                // File parityCodeFile = new File(parityCodeDir + parityHashCode.get(0));
+                // if (!parityCodeFile.exists()) {
+                //     parityCodeFile.createNewFile();
+                // }
+                // FileWriter fileWritter = new FileWriter(parityCodeFile.getAbsolutePath(),true);
+                // fileWritter.write(parity[0].toString());
+                // fileWritter.close();
+                // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
             } catch (IOException e) {
                 logger.error("rymError: Perform erasure code error", e);
             }
 
 
-            // sync encoded data to parity nodes, need callbacks
+            // sync encoded data to parity nodes
             ECParityNode.instance.distributeEcDataToParityNodes(parity, messages[0].parityNodes, parityHashCode);
 
             // Transform to ECMetadata and dispatch to related nodes
             ECMetadata.instance.generateMetadata(messages, parity, parityHashCode);
         }
+
+    }
+
+
+    public static void main(String[] args) {
+        int codeLength = 1000;
+        ByteBuffer data = ByteBuffer.allocateDirect(codeLength);
+        ByteBuffer src = ByteBuffer.allocateDirect(900);
+        data.put(src);
+        int remaining = codeLength - data.remaining();
+        logger.debug("rymDebug: remaining: {}, data.remaining {}", remaining, data.remaining());
+        if (data.remaining() > 0) {
+            byte[] zeros = new byte[data.remaining()];
+            data.put(zeros);
+        }
+        logger.debug("rymDebug: remaining: {}, capacity is {}, position is {}",
+                    data.remaining(),data.capacity(),data.position());
+
+        byte[] bb = { 10, 20, 30 };
+        ByteBuffer byteBuffer = ByteBuffer.wrap(bb);
+        logger.debug("rymDebug: remaining element is {}, capacity is {}, position is {}", 
+                    byteBuffer.remaining(), byteBuffer.capacity(), byteBuffer.position());
 
     }
 

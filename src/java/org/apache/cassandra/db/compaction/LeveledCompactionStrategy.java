@@ -50,6 +50,7 @@ import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 
+
 public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
     private static final Logger logger = LoggerFactory.getLogger(LeveledCompactionStrategy.class);
     private static final String SSTABLE_SIZE_OPTION = "sstable_size_in_mb";
@@ -67,11 +68,13 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
     public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options) {
         super(cfs, options);
-        int configuredMaxSSTableSize = 160;
-        logger.debug("[Tinoryj] Configured max sstable size: {} MB", configuredMaxSSTableSize);
+
+        int configuredMaxSSTableSize = 4;
+
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;
         boolean configuredSingleSSTableUplevel = false;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
+        logger.debug("rymDebug: SizeTieredCompaction Strategy Options is: {}, localoption is: {}", options, localOptions);
         if (options != null) {
             if (options.containsKey(SSTABLE_SIZE_OPTION)) {
                 configuredMaxSSTableSize = Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));
@@ -127,6 +130,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
      * (by explicit user request) even when compaction is disabled.
      */
     @SuppressWarnings("resource") // transaction is closed by AbstractCompactionTask::execute
+
     public AbstractCompactionTask getNextBackgroundTask(int gcBefore) {
         Collection<SSTableReader> previousCandidate = null;
         while (true) {
@@ -159,34 +163,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                 return null;
             }
 
-            /////////////////////////////////////////////////
-            if (candidate.level == DatabaseDescriptor.getCompactionThreshold() - 1) {
-                for (SSTableReader ssTableReader : candidate.sstables) {
-                    logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                            ssTableReader.getSSTableLevel());
-                    String keyspace = ssTableReader.getKeyspaceName();
-                    String cfName = ssTableReader.getColumnFamilyName();
-                    // DecoratedKey fistKey = ssTableReader.first;
-                    String startToken = ssTableReader.metadata().partitioner.getMinimumToken().toString();
-                    String endToken = ssTableReader.metadata().partitioner.getMaximumToken().toString();
-
-                    // get sstHash
-                    String sstHash = "";
-                    try {
-                        sstHash = String.valueOf(ssTableReader.getSSTContent().hashCode());
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-
-                    // get replica nodes
-                    List<InetAddressAndPort> replicaNodes = ssTableReader.getRelicaNodes(keyspace);
-                    ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName, startToken, endToken);
-                    // send compaction message to replica nodes
-                    ecCompaction.synchronizeCompaction(replicaNodes);
-                }
-            }
-            ////////////////////////////////////////////////
+            
 
             LifecycleTransaction txn = cfs.getTracker().tryModify(candidate.sstables, OperationType.COMPACTION);
             if (txn != null) {

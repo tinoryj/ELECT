@@ -17,8 +17,14 @@
  */
 package org.apache.cassandra.io.sstable.metadata;
 
-import java.io.IOException;
+import java.io.DataInputStream;
+import java.io.FileInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -41,11 +47,14 @@ import org.apache.cassandra.utils.EstimatedHistogram;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.streamhist.TombstoneHistogram;
 import org.apache.cassandra.utils.UUIDSerializer;
+import org.apache.cassandra.io.util.*;
+import org.apache.cassandra.utils.*;
 
 /**
  * SSTable metadata that always stay on heap.
  */
 public class StatsMetadata extends MetadataComponent {
+    private static final Logger logger = LoggerFactory.getLogger(StatsMetadata.class);
     public static final IMetadataComponentSerializer serializer = new StatsMetadataSerializer();
     public static final ISerializer<IntervalSet<CommitLogPosition>> commitLogPositionSetSerializer = IntervalSet
             .serializer(CommitLogPosition.serializer);
@@ -72,7 +81,7 @@ public class StatsMetadata extends MetadataComponent {
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
     public final boolean isReplicationTransferredToErasureCoding;
-    public final String hashID;
+    public String hashID = null;
     // just holds the current encoding stats to avoid allocating - it is not
     // serialized
     public final EncodingStats encodingStats;
@@ -134,6 +143,35 @@ public class StatsMetadata extends MetadataComponent {
         return hashID;
     }
 
+    public Boolean setupHashIDIfMissed(String fileName) {
+        if (this.hashID == null){
+            try (DataInputStream dataFileReadForHash = new DataInputStream(
+                new FileInputStream(fileName))) {
+            long fileLength = new File(fileName).length();
+            byte[] bytes = new byte[(int) fileLength];
+            dataFileReadForHash.readFully(bytes);
+            dataFileReadForHash.close();
+            // logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
+            // generate hash based on the bytes buffer
+            try {
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                byte[] hash = digest.digest(bytes);
+                this.hashID = new String(hash);
+                // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}", hashID);
+            } catch (NoSuchAlgorithmException e) {
+                this.hashID = null;
+                logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
+                e.printStackTrace();
+            }
+        } catch (IOException e) {
+            this.hashID = null;
+            logger.debug("[Tinoryj]: Could not read SSTable {}", fileName);
+            e.printStackTrace();
+            return false;
+        }
+        }
+        return true;
+    }
     /**
      * @param gcBefore gc time in seconds
      * @return estimated droppable tombstone ratio at given gcBefore time.
@@ -317,14 +355,14 @@ public class StatsMetadata extends MetadataComponent {
                             version.correspondingMessagingVersion());
             }
 
-            if (version.hasHashID()) {
+            if (version.hasHashID() && component.hashID != null) {
                 size += 32;
             }
             return size;
         }
 
         public void serialize(Version version, StatsMetadata component, DataOutputPlus out) throws IOException {
-            if (version.hasHashID()) {
+            if (version.hasHashID() && component.hashID != null) {
                 out.writeBytes(component.hashID);
             }
             EstimatedHistogram.serializer.serialize(component.estimatedPartitionSize, out);

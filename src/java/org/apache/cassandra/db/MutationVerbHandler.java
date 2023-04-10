@@ -17,16 +17,25 @@
  */
 package org.apache.cassandra.db;
 
+import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.exceptions.WriteTimeoutException;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.tracing.Tracing;
 
+import ch.qos.logback.classic.Logger;
+
 import static org.apache.cassandra.db.commitlog.CommitLogSegment.ENTRY_OVERHEAD_SIZE;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MutationVerbHandler implements IVerbHandler<Mutation>
 {
     public static final MutationVerbHandler instance = new MutationVerbHandler();
+    public static ConcurrentHashMap<InetAddressAndPort, Integer> counter= new ConcurrentHashMap<InetAddressAndPort, Integer>();
 
     private void respond(Message<?> respondTo, InetAddressAndPort respondToAddress)
     {
@@ -49,8 +58,25 @@ public class MutationVerbHandler implements IVerbHandler<Mutation>
             forwardToLocalNodes(message, forwardTo);
 
         InetAddressAndPort respondToAddress = message.respondTo();
+        counter.compute(message.from(), (k, v) -> v == null ? 1 : v + 1);
         try
         {
+            if(message.payload.getKeyspaceName().equals("ycsb")) {
+                for(PartitionUpdate upd : message.payload.getPartitionUpdates()) {
+                    String fileName = "receivedRemoteMutations";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) +
+                        message.from().toString() + ": " + counter.get(message.from()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+    
+                }
+            }
             message.payload.applyFuture().addCallback(o -> respond(message, respondToAddress), wto -> failed());
         }
         catch (WriteTimeoutException wto)

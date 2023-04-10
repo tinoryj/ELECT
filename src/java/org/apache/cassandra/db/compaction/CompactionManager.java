@@ -192,7 +192,10 @@ public class CompactionManager implements CompactionManagerMBean {
     public List<Future<?>> submitBackground(final ColumnFamilyStore cfs) {
         if (cfs.isAutoCompactionDisabled()) {
             logger.trace("Autocompaction is disabled");
+            logger.debug("[Tinoryj] Autocompaction is enabled, current cfs = {}", cfs.name);
             return Collections.emptyList();
+        }else {
+            // logger.debug("[Tinoryj] Autocompaction is enabled, current cfs = {}", cfs.name);
         }
 
         /**
@@ -304,9 +307,10 @@ public class CompactionManager implements CompactionManagerMBean {
             } finally {
                 compactingCF.remove(cfs);
             }
-            if (ranCompaction) // only submit background if we actually ran a compaction - otherwise we end up
-                               // in an infinite loop submitting noop background tasks
+            if (ranCompaction){ // only submit background if we actually ran a compaction - otherwise we end up
+                // in an infinite loop submitting noop background tasks
                 submitBackground(cfs);
+            }
         }
 
         boolean maybeRunUpgradeTask(CompactionStrategyManager strategy) {

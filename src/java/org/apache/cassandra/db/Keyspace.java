@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.db;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -32,6 +34,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.stream.Stream;
@@ -46,6 +49,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.DurationSpec;
+import org.apache.cassandra.cql3.statements.schema.CreateTableStatement;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.repair.CassandraKeyspaceRepairManager;
@@ -85,6 +89,8 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 import static org.apache.cassandra.utils.FBUtilities.now;
 import static org.apache.cassandra.utils.MonotonicClock.Global.approxTime;
+import static java.lang.String.format;
+import static org.apache.cassandra.utils.TimeUUID.Generator.nextTimeUUID;
 
 import org.apache.cassandra.dht.Token;
 import java.net.InetAddress;
@@ -99,6 +105,19 @@ public class Keyspace {
     private static final String TEST_FAIL_WRITES_KS = System.getProperty("cassandra.test.fail_writes_ks", "");
     private static final boolean TEST_FAIL_WRITES = !TEST_FAIL_WRITES_KS.isEmpty();
     private static int TEST_FAIL_MV_LOCKS_COUNT = Integer.getInteger("cassandra.test.fail_mv_locks_count", 0);
+
+    private static final String ycsbUsertableCql = "CREATE TABLE %s ("
+                                    + "y_id varchar primary key,"
+                                    + "field0 varchar,"
+                                    + "field1 varchar,"
+                                    + "field2 varchar,"
+                                    + "field3 varchar,"
+                                    + "field4 varchar,"
+                                    + "field5 varchar,"
+                                    + "field6 varchar,"
+                                    + "field7 varchar,"
+                                    + "field8 varchar,"
+                                    + "field9 varchar)";
 
     public final KeyspaceMetrics metric;
 
@@ -434,29 +453,12 @@ public class Keyspace {
             // simultaneously is a "don't do that" scenario.
             ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(metadata.id,
                     ColumnFamilyStore.createColumnFamilyStore(this, metadata, loadSSTables));
-            int replicationFactorInt = replicationParams.getReplicationFactor();
 
-            // if (keyspaceName.equals("cassandraec")) {
-            for (ColumnFamilyStore cfStore : columnFamilyStores.values()) {
-                logger.debug("##cfStore.name:{}, cfStore.metadata.cfId:{}, columnFamilyStores size:{}, loadSSTables:{}",
-                        cfStore.name, cfStore.metadata.id, columnFamilyStores.size(), loadSSTables);
+            if (keyspaceName.equals("ycsb")) {
+                globalNodeIDtoCFIDMap.put(globalNodeIDtoCFIDMap.size(), metadata.id);
+                logger.debug("rymDebug: globalNodeIDtoCFIDMap is {}", globalNodeIDtoCFIDMap);
             }
-            // byte localIP[] = LOCAL.getAddress();
-            ColumnFamilyStore newCFS = columnFamilyStores.get(metadata.id);
-            /////////////////////////////////////////////////////
-            for (int i = 0; i < replicationFactorInt; i++) {
-                String columnNameStr = "data" + Integer.toString(i);
-                if (newCFS != null && !newCFS.name.equals(columnNameStr)) {
-                    globalNodeIDtoCFIDMap.put(i, metadata.id);
-                    break;
-                }
-            }
-
-            for (Map.Entry<Integer, TableId> entry : globalNodeIDtoCFIDMap.entrySet()) {
-                logger.debug("in globalNodeIDtoCFIDMap, nodeID:{}, cfId:{}", entry.getKey(), entry.getValue());
-            }
-            // }
-
+            
             // CFS mbean instantiation will error out before we hit this, but in case that
             // changes...
             if (oldCfs != null)
@@ -470,30 +472,64 @@ public class Keyspace {
     }
 
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes) {
-        String keyspaceName = mutation.getKeyspaceName();
-        ByteBuffer key = mutation.key().getKey();
-        List<InetAddress> ep = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
-        TableId replicaUUID = null;
 
-        logger.debug("##Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
-        for (int i = 0; i < ep.size(); i++) {
-            if (StorageService.instance.localIP.equals(ep.get(i))) {
-                replicaUUID = globalNodeIDtoCFIDMap.get(i);
-                logger.debug("##Find current node at : {}, address : {}-{}", i, StorageService.instance.localIP,
-                        ep.get(i));
-                break;
+        String keyspaceName = mutation.getKeyspaceName();
+        if (keyspaceName.equals("ycsb")) {
+            if(keyspaceName.equals("ycsb")) {
+                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "receivedKeyRemote";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+    
+                }
             }
+
+            return applyInternalYCSB(mutation, writeCommitLog, updateIndexes, true, true,
+                                    new AsyncPromise<>());
+        } else {
+
+            return applyInternal(mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
         }
-        if (replicaUUID == null) {
-            logger.error("Can not found target replica cf : {}", replicaUUID);
-        }
-        return applyInternal(replicaUUID, mutation, writeCommitLog, updateIndexes, true, true,
-                new AsyncPromise<>());
+
+        
     }
 
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes, boolean isDroppable,
             boolean isDeferrable) {
-        return applyInternal(mutation, writeCommitLog, updateIndexes, isDroppable, isDeferrable, new AsyncPromise<>());
+
+        String keyspaceName = mutation.getKeyspaceName();
+        if (keyspaceName.equals("ycsb")) {
+            if (keyspaceName.equals("ycsb")) {
+                for (PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "receivedKeyRemoteUnknown";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+
+                }
+            }
+
+            return applyInternalYCSB(mutation, writeCommitLog, updateIndexes, isDroppable, isDeferrable,
+                    new AsyncPromise<>());
+        } else {
+
+            return applyInternal(mutation, writeCommitLog, updateIndexes, isDroppable, isDeferrable, new AsyncPromise<>());
+        }
+
+        
     }
 
     public void apply(Mutation mutation, boolean writeCommitLog, boolean updateIndexes) {
@@ -526,25 +562,216 @@ public class Keyspace {
             boolean updateIndexes,
             boolean isDroppable) {
         String keyspaceName = mutation.getKeyspaceName();
-        ByteBuffer key = mutation.key().getKey();
-        List<String> ep = StorageService.instance.getNaturalEndpointsWithPort(keyspaceName, key);
-        TableId replicaUUID = null;
-        logger.debug("## keyspaceName is: {}, tableName is: {}, endpoints are: {}", keyspaceName,
-                mutation.getTableIds(), ep);
+        if (keyspaceName.equals("ycsb")) {
+            if(keyspaceName.equals("ycsb")) {
+                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                    String fileName = "receivedkeyLocal";
+                    try {
+                        FileWriter writer = new FileWriter("logs/" + fileName, true);
+                        BufferedWriter buffer = new BufferedWriter(writer);
+                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                        buffer.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+    
+                }
+            }
 
-        for (int i = 0; i < ep.size(); i++) {
-            if (StorageService.instance.localIP.equals(ep.get(i))) {
-                replicaUUID = globalNodeIDtoCFIDMap.get(i);
-                logger.debug("##Find current node at : {}, address : {}-{}", i, StorageService.instance.localIP,
-                        ep.get(i));
-                break;
+            applyInternalYCSB(mutation, makeDurable, updateIndexes, isDroppable, false, null);
+        } else {
+            applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
+        }
+
+        
+    }
+
+    private Future<?> applyInternalYCSB(final Mutation mutation,
+            final boolean makeDurable,
+            boolean updateIndexes,
+            boolean isDroppable,
+            boolean isDeferrable,
+            Promise<?> future) {
+        if (TEST_FAIL_WRITES && metadata.name.equals(TEST_FAIL_WRITES_KS))
+            throw new RuntimeException("Testing write failures");
+
+        Lock[] locks = null;
+
+        boolean requiresViewUpdate = updateIndexes
+                && viewManager.updatesAffectView(Collections.singleton(mutation), false);
+        // logger.debug("rymDebug: requiresViewUpdate = {}", requiresViewUpdate);
+
+        if (requiresViewUpdate) {
+            mutation.viewLockAcquireStart.compareAndSet(0L, currentTimeMillis());
+
+            // the order of lock acquisition doesn't matter (from a deadlock perspective)
+            // because we only use tryLock()
+            Collection<TableId> tableIds = mutation.getTableIds();
+            Iterator<TableId> idIterator = tableIds.iterator();
+
+            locks = new Lock[tableIds.size()];
+            for (int i = 0; i < tableIds.size(); i++) {
+                TableId tableId = idIterator.next();
+                int lockKey = Objects.hash(mutation.key().getKey(), tableId);
+                while (true) {
+                    Lock lock = null;
+
+                    if (TEST_FAIL_MV_LOCKS_COUNT == 0)
+                        lock = ViewManager.acquireLockFor(lockKey);
+                    else
+                        TEST_FAIL_MV_LOCKS_COUNT--;
+
+                    if (lock == null) {
+                        // throw WTE only if request is droppable
+                        if (isDroppable && (approxTime.isAfter(
+                                mutation.approxCreatedAtNanos + DatabaseDescriptor.getWriteRpcTimeout(NANOSECONDS)))) {
+                            for (int j = 0; j < i; j++)
+                                locks[j].unlock();
+
+                            if (logger.isTraceEnabled())
+                                logger.trace("Could not acquire lock for {} and table {}",
+                                        ByteBufferUtil.bytesToHex(mutation.key().getKey()),
+                                        columnFamilyStores.get(tableId).name);
+                            Tracing.trace("Could not acquire MV lock");
+                            if (future != null) {
+                                future.tryFailure(
+                                        new WriteTimeoutException(WriteType.VIEW, ConsistencyLevel.LOCAL_ONE, 0, 1));
+                                return future;
+                            } else
+                                throw new WriteTimeoutException(WriteType.VIEW, ConsistencyLevel.LOCAL_ONE, 0, 1);
+                        } else if (isDeferrable) {
+                            for (int j = 0; j < i; j++)
+                                locks[j].unlock();
+
+                            // This view update can't happen right now. so rather than keep this thread busy
+                            // we will re-apply ourself to the queue and try again later
+                            Stage.MUTATION.execute(
+                                    () -> applyInternal(mutation, makeDurable, true, isDroppable, true, future));
+                            return future;
+                        } else {
+                            // Retry lock on same thread, if mutation is not deferrable.
+                            // Mutation is not deferrable, if applied from MutationStage and caller is
+                            // waiting for future to finish
+                            // If blocking caller defers future, this may lead to deadlock situation with
+                            // all MutationStage workers
+                            // being blocked by waiting for futures which will never be processed as all
+                            // workers are blocked
+                            try {
+                                // Wait a little bit before retrying to lock
+                                Thread.sleep(10);
+                            } catch (InterruptedException e) {
+                                throw new UncheckedInterruptedException(e);
+                            }
+                            continue;
+                        }
+                    } else {
+                        locks[i] = lock;
+                    }
+                    break;
+                }
+            }
+
+            long acquireTime = currentTimeMillis() - mutation.viewLockAcquireStart.get();
+            // Metrics are only collected for droppable write operations
+            // Bulk non-droppable operations (e.g. commitlog replay, hint delivery) are not
+            // measured
+            if (isDroppable) {
+                for (TableId tableId : tableIds)
+                    columnFamilyStores.get(tableId).metric.viewLockAcquireTime.update(acquireTime, MILLISECONDS);
             }
         }
-        if (replicaUUID == null) {
-            logger.error("Can not found target replica cf : {}", replicaUUID);
-        } else {
-            applyInternal(replicaUUID, mutation, makeDurable, updateIndexes, isDroppable, false, null);
+        int nowInSec = FBUtilities.nowInSeconds();
+        try (WriteContext ctx = getWriteHandler().beginWrite(mutation, makeDurable)) {
+
+            // ColumnFamilyStore cfs = columnFamilyStores.get("replicaUUID");
+            for (PartitionUpdate upd : mutation.getPartitionUpdates()) {
+
+
+                // ColumnFamilyStore cfs = columnFamilyStores.get(upd.metadata().id);
+                ColumnFamilyStore cfs = getColumnFamilyStore(upd);
+                if (cfs == null) {
+                    logger.error("Attempting to mutate non-existant table {} ({}.{})", upd.metadata().id,
+                            upd.metadata().keyspace, upd.metadata().name);
+                    continue;
+                }
+                AtomicLong baseComplete = new AtomicLong(Long.MAX_VALUE);
+
+                if (requiresViewUpdate) {
+                    try {
+                        Tracing.trace("Creating materialized view mutations from base table replica");
+                        viewManager.forTable(upd.metadata().id).pushViewReplicaUpdates(upd, makeDurable, baseComplete);
+                    } catch (Throwable t) {
+                        JVMStabilityInspector.inspectThrowable(t);
+                        logger.error(String.format(
+                                "Unknown exception caught while attempting to update MaterializedView! %s",
+                                upd.metadata().toString()), t);
+                        throw t;
+                    }
+                }
+
+                UpdateTransaction indexTransaction = updateIndexes
+                        ? cfs.indexManager.newUpdateTransaction(upd, ctx, nowInSec)
+                        : UpdateTransaction.NO_OP;
+                cfs.getWriteHandler().write(upd, ctx, indexTransaction);
+
+                if (requiresViewUpdate)
+                    baseComplete.set(currentTimeMillis());
+            }
+
+            if (future != null) {
+                future.trySuccess(null);
+            }
+            return future;
+        } finally {
+            if (locks != null) {
+                for (Lock lock : locks)
+                    if (lock != null)
+                        lock.unlock();
+            }
         }
+    }
+
+    public ColumnFamilyStore getColumnFamilyStore(PartitionUpdate upd) {
+        // ByteBuffer key = mutation.key().getKey();
+        String keyspaceName = upd.metadata().keyspace;
+        ByteBuffer key = upd.partitionKey().getKey();
+        List<InetAddress> eps = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
+        InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
+        TableId replicaUUID = null;
+        // logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+        // logger.debug("localAddress is {}, replicaNodes are {}",localAddress, eps);
+        // make sure whether the mutation is for a primary or not.
+        int  index = eps.indexOf(localAddress);
+        replicaUUID = globalNodeIDtoCFIDMap.get(index);
+        String fileName = "usertable";
+        if(index!=0) {
+            fileName+=index;
+        }
+
+        try {
+            FileWriter writer = new FileWriter("logs/usertableAll", true);
+            BufferedWriter buffer = new BufferedWriter(writer);
+            buffer.write(upd.partitionKey().getRawKey(upd.metadata())+"\n");
+            buffer.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+
+
+        try {
+            FileWriter writer = new FileWriter("logs/"+fileName, true);
+            BufferedWriter buffer = new BufferedWriter(writer);
+            buffer.write(upd.partitionKey().getRawKey(upd.metadata())+"\n");
+            buffer.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        return columnFamilyStores.get(replicaUUID);
     }
 
     /**
@@ -715,6 +942,7 @@ public class Keyspace {
 
         boolean requiresViewUpdate = updateIndexes
                 && viewManager.updatesAffectView(Collections.singleton(mutation), false);
+        logger.debug("rymDebug: requiresViewUpdate = {}", requiresViewUpdate);
 
         if (requiresViewUpdate) {
             mutation.viewLockAcquireStart.compareAndSet(0L, currentTimeMillis());

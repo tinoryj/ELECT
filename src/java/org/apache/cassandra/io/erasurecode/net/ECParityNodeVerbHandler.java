@@ -18,6 +18,10 @@
 package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
@@ -33,7 +37,7 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
 
     public static final ECParityNodeVerbHandler instance = new ECParityNodeVerbHandler();
 
-    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/";
+    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
     private static final Logger logger = LoggerFactory.getLogger(ECParityNodeVerbHandler.class);
 
     /*
@@ -42,19 +46,39 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
      */
     @Override
     public void doVerb(Message<ECParityNode> message) throws IOException {
-        logger.debug("rymDebug: Received message: {}", message.payload.hashCode);
+        logger.debug("rymDebug: Received message: {}", message.payload.parityHash);
         try {
-                File parityCodeFile = new File(parityCodeDir + String.valueOf(message.payload.hashCode));
-                if (!parityCodeFile.exists()) {
-                    parityCodeFile.createNewFile();
-                }
-                FileWriter fileWritter = new FileWriter(parityCodeFile.getName(),true);
-                fileWritter.write(message.payload.parityCode.toString());
-                fileWritter.close();
+                // File parityCodeFile = new File(parityCodeDir + String.valueOf(message.payload.parityHash));
+                FileChannel fileChannel = FileChannel.open(Paths.get(parityCodeDir, message.payload.parityHash),
+                                                            StandardOpenOption.WRITE,
+                                                             StandardOpenOption.CREATE);
+                fileChannel.write(message.payload.parityCode);
+                fileChannel.close();
+                // if (!parityCodeFile.exists()) {
+                //     parityCodeFile.createNewFile();
+                // }
+                // logger.debug("rymDebug: parityCodeFile.getName is {}", parityCodeFile.getAbsolutePath());
+                // FileWriter fileWritter = new FileWriter(parityCodeFile.getAbsolutePath(),true);
+                // fileWritter.write(message.payload.parityCode.toString());
+                // fileWritter.close();
             } 
         catch (IOException e) {
                 logger.error("rymError: Perform erasure code error", e);
             }
+    }
+
+    public static void main(String[] args) {
+        File parityCodeFile = new File(parityCodeDir + String.valueOf("parityCodeTest"));
+        
+        if (!parityCodeFile.exists()) {
+            try {
+                parityCodeFile.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+        logger.debug("rymDebug: parityCodeFile.getName is {}", parityCodeFile.getAbsolutePath());
     }
 
 }

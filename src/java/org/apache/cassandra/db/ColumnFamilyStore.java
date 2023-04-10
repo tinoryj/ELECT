@@ -2672,7 +2672,15 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     public boolean isAutoCompactionDisabled() {
+        // if (!this.name.equals("usertable")){
+        //     logger.debug("[Tinoryj] check isAutoCompactionDisabled, returning {} for cfs name = {}", !this.compactionStrategyManager.isEnabled(), this.name);
+        //     return true;
+        // }else {
+        //     logger.debug("[Tinoryj] check isAutoCompactionDisabled, returning {} for cfs name = {}", !this.compactionStrategyManager.isEnabled(), this.name);
+        //     return !this.compactionStrategyManager.isEnabled();
+        // }
         return !this.compactionStrategyManager.isEnabled();
+        
     }
 
     /*

@@ -35,6 +35,7 @@ public final class TypeSizes
     public static final int FLOAT_SIZE = 4;
     public static final int DOUBLE_SIZE = 8;
     public static final int UUID_SIZE = 16;
+    
 
     /** assumes UTF8 */
     public static int sizeof(String value)
@@ -42,6 +43,13 @@ public final class TypeSizes
         int length = encodedUTF8Length(value);
         assert length <= Short.MAX_VALUE;
         return sizeof((short) length) + length;
+    }
+    
+    public static long sizeofLong(String value)
+    {
+        long length = encodedUTF8Length(value);
+        assert length <= Long.MAX_VALUE;
+        return sizeof((long) length) + length;
     }
 
     public static int encodedUTF8Length(String st)

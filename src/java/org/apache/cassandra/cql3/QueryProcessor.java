@@ -45,6 +45,7 @@ import org.apache.cassandra.metrics.ClientRequestsMetricsHolder;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceMetadata;
+import org.apache.cassandra.schema.ReplicationParams;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.SchemaChangeListener;
 import org.apache.cassandra.schema.SchemaConstants;
@@ -55,6 +56,7 @@ import org.apache.cassandra.cql3.functions.Function;
 import org.apache.cassandra.cql3.functions.FunctionName;
 import org.apache.cassandra.cql3.selection.ResultSetBuilder;
 import org.apache.cassandra.cql3.statements.*;
+import org.apache.cassandra.cql3.statements.schema.CreateTableStatement;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.RowIterator;
@@ -252,11 +254,36 @@ public class QueryProcessor implements QueryHandler
         ClientState clientState = queryState.getClientState();
         statement.authorize(clientState);
         statement.validate(clientState);
+        //logger.debug("rymDebug: the query statement is {}", statement);
 
         ResultMessage result = options.getConsistency() == ConsistencyLevel.NODE_LOCAL
                              ? processNodeLocalStatement(statement, queryState, options)
                              : statement.execute(queryState, options, queryStartNanoTime);
-
+        
+        if(CreateTableStatement.class.isInstance(statement)) {
+            CreateTableStatement tableStatement = (CreateTableStatement) statement;
+            String ks = tableStatement.keyspace();
+            String tn = tableStatement.tableName;
+            if(ks.equals("ycsb")) {
+                logger.debug("rymDebug: this CreateTableStatement is belong to ks ycsb");
+                if(options.getConsistency() == ConsistencyLevel.NODE_LOCAL) {
+                    logger.debug("rymDebug: consistency level is equal to local, use processNodeLocalStatement()");
+                } else {
+                    logger.debug("rymDebug: consistency level is node equal, use statement.execute()");
+                    int rf = Keyspace.open(tableStatement.keyspace()).getMetadata().params.replication.getReplicationFactor();
+                    logger.debug("rymDebug: replica factor is {}", rf);
+                    for(int i=1; i < 3; i++) {
+                        String tableName = tn + Integer.toString(i);
+                        CreateTableStatement ts = tableStatement.copyObjects(tableName);
+                        logger.debug("rymDebug: create table {}, new table statement is {}", tableName, ts);
+                        ResultMessage rs = ts.execute(queryState, options, queryStartNanoTime);
+                        logger.debug("rymDebug: create new table {}, result is {}", tableName, rs);
+                    }
+                }
+            } else {
+                logger.debug("rymDebug: this CreateTableStatement is not belong to ycsb, it belongs to {}", ks);
+            }
+        }
         return result == null ? new ResultMessage.Void() : result;
     }
 
@@ -527,6 +554,7 @@ public class QueryProcessor implements QueryHandler
     {
         try
         {
+            logger.debug("rymDebug: the query string is {}", query);
             Prepared prepared = prepareInternal(query);
             ResultMessage result = prepared.statement.execute(state, makeInternalOptionsWithNowInSec(prepared.statement, state.getNowInSeconds(), values, cl), nanoTime());
             if (result instanceof ResultMessage.Rows)

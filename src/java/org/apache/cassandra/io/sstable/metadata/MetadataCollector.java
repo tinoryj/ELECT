@@ -45,7 +45,11 @@ import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.streamhist.TombstoneHistogram;
 import org.apache.cassandra.utils.streamhist.StreamingTombstoneHistogramBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class MetadataCollector implements PartitionStatisticsCollector {
+    private static final Logger logger = LoggerFactory.getLogger(MetadataCollector.class);
     public static final double NO_COMPRESSION_RATIO = -1.0;
     private static final ByteBuffer[] EMPTY_CLUSTERING = new ByteBuffer[0];
 
@@ -250,6 +254,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
             boolean isReplicationTransferredToErasureCoding,
             SerializationHeader header,
             String hashID) {
+                // logger.debug("[Tinoryj] new sstable level = {}", sstableLevel);
         Preconditions.checkState((minClustering == null && maxClustering == null)
                 || comparator.compare(maxClustering, minClustering) >= 0);
         ByteBuffer[] minValues = minClustering != null ? minClustering.getBufferArray() : EMPTY_CLUSTERING;
