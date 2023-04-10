@@ -1501,6 +1501,7 @@ public class StorageProxy implements StorageProxyMBean {
         /*
          * The following is ECMessage test code
          */
+
         
         // String ks = mutation.getKeyspaceName();
         // String table = mutation.getTableName(mutation.getTableIds().iterator().next());

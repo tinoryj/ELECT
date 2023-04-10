@@ -62,19 +62,23 @@ public final class ECMessage {
     public final String cfName;
     public final int ecDataNum;
     public final int rf;
+
     public final int ecParityNum;
     
+
     public List<InetAddressAndPort> replicaNodes;
     public List<InetAddressAndPort> parityNodes;
-    
+
     private static int GLOBAL_COUNTER = 0;
     public String repEpsString;
     public String parityNodesString;
 
 
 
+
     public ECMessage(ByteBuffer sstContent, String sstHashID, String keyspace, String cfName, String repEpString, String parityEpString,
         List<InetAddressAndPort> replicaNodes) {
+
         this.sstContent = sstContent;
         this.sstSize = sstContent.remaining();
         this.sstHashID = sstHashID;
@@ -83,9 +87,9 @@ public final class ECMessage {
         this.ecDataNum = DatabaseDescriptor.getEcDataNodes();
         this.ecParityNum = DatabaseDescriptor.getParityNodes();
         this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
-        
+
         this.replicaNodes = new ArrayList<InetAddressAndPort>(replicaNodes);
-        this.parityNodes =  new ArrayList<InetAddressAndPort>();
+        this.parityNodes = new ArrayList<InetAddressAndPort>();
         this.repEpsString = repEpString;
         this.parityNodesString = parityEpString;
     }
@@ -97,8 +101,8 @@ public final class ECMessage {
      * This method sends selected sstables to parity nodes for EC/
      * 
      * @param sstContent selected sstables
-     * @param k         number of parity nodes
-     * @param ks        keyspace name of sstables
+     * @param k          number of parity nodes
+     * @param ks         keyspace name of sstables
      * @throws UnknownHostException
      *                              TODO List
      *                              1. implement Verb.ERASURECODE_REQ
@@ -112,11 +116,11 @@ public final class ECMessage {
         GLOBAL_COUNTER++;
 
         getTargetEdpoints(this);
-        
+
         for (InetAddressAndPort ep : this.replicaNodes) {
             this.repEpsString += ep.toString() + ",";
         }
-        
+
         for (InetAddressAndPort ep : this.parityNodes) {
             this.parityNodesString += ep.toString() + ",";
         }
@@ -129,7 +133,7 @@ public final class ECMessage {
             logger.debug("targetEndpoints is null");
         }
     }
-    
+
     /*
      * Get target nodes, use the methods related to nodetool.java and status.java
      */
@@ -138,24 +142,25 @@ public final class ECMessage {
         // get all live nodes
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
         // get replication nodes for given keyspace and table
-        // List<String> neps = StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
-        //        ecMessage.table, ecMessage.key);        
+        // List<String> neps =
+        // StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
+        // ecMessage.table, ecMessage.key);
         // for (String nep : neps) {
-        //     InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
-        //     ecMessage.replicationEndpoints.add(ep);
+        // InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
+        // ecMessage.replicationEndpoints.add(ep);
         // }
 
-
-        //Collections.sort(ecMessage.replicationEndpoints);
-        //Collections.sort(liveEndpoints);
+        // Collections.sort(ecMessage.replicationEndpoints);
+        // Collections.sort(liveEndpoints);
 
         logger.debug("rymDebug: All living nodes are {}", liveEndpoints);
-        logger.debug("rymDebug: ecMessage.replicaNodes is {}", ecMessage.replicaNodes);    
+        logger.debug("rymDebug: ecMessage.replicaNodes is {}", ecMessage.replicaNodes);
 
         // select parity nodes from live nodes, suppose all nodes work healthy
         int n = liveEndpoints.size();
         InetAddressAndPort primaryNode = ecMessage.replicaNodes.get(0);
         int primaryNodeIndex = liveEndpoints.indexOf(primaryNode);
+
         int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.ecDataNum+1))%n);
         for (int i = startIndex; i < ecMessage.ecParityNum+startIndex; i++) {
             int index = i%n;
@@ -165,13 +170,12 @@ public final class ECMessage {
             }
             ecMessage.parityNodes.add(liveEndpoints.get(index));
             if(i==(ecMessage.ecParityNum+startIndex)&&ecMessage.parityNodes.size()<ecMessage.ecParityNum) {
+
                 startIndex++;
             }
         }
         logger.debug("rymDebug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
 
-
-        
     }
 
     public static final class Serializer implements IVersionedSerializer<ECMessage> {
@@ -206,6 +210,7 @@ public final class ECMessage {
             String parityNodesString = in.readUTF();
 
 
+
             logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             , sstHashID,ks, cf,repEpsString,parityNodesString);
 
@@ -222,10 +227,12 @@ public final class ECMessage {
             }
             
             return new ECMessage(sstContent, sstHashID, ks, cf, repEpsString, parityNodesString, replicaNodes);
+
         }
 
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
+
             logger.debug("rymDebug: serializedSize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
             logger.debug("rymDebug: [Cacl] the length of sstContent.size is: {}" , ecMessage.sstSize);
@@ -236,6 +243,7 @@ public final class ECMessage {
                         sizeof(ecMessage.cfName) + 
                         sizeof(ecMessage.parityNodesString) + 
                         sizeof(ecMessage.repEpsString);
+
             return size;
 
         }

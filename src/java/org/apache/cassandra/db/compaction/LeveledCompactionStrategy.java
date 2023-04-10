@@ -68,7 +68,9 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
     public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options) {
         super(cfs, options);
+
         int configuredMaxSSTableSize = 4;
+
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;
         boolean configuredSingleSSTableUplevel = false;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
@@ -128,8 +130,8 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
      * (by explicit user request) even when compaction is disabled.
      */
     @SuppressWarnings("resource") // transaction is closed by AbstractCompactionTask::execute
-    public AbstractCompactionTask getNextBackgroundTask(int gcBefore)
-    {
+
+    public AbstractCompactionTask getNextBackgroundTask(int gcBefore) {
         Collection<SSTableReader> previousCandidate = null;
         while (true) {
             OperationType op;

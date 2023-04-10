@@ -34,34 +34,34 @@
 #define KMAX 10
 
 typedef struct _IsalCoder {
-  int verbose;
-  int numParityUnits;
-  int numDataUnits;
-  int numAllUnits;
+    int verbose;
+    int numParityUnits;
+    int numDataUnits;
+    int numAllUnits;
 } IsalCoder;
 
 typedef struct _IsalEncoder {
-  IsalCoder coder;
+    IsalCoder coder;
 
-  unsigned char gftbls[MMAX * KMAX * 32];
-  unsigned char encodeMatrix[MMAX * KMAX];
+    unsigned char gftbls[MMAX * KMAX * 32];
+    unsigned char encodeMatrix[MMAX * KMAX];
 } IsalEncoder;
 
 typedef struct _IsalDecoder {
-  IsalCoder coder;
+    IsalCoder coder;
 
-  unsigned char encodeMatrix[MMAX * KMAX];
-  // Below are per decode call
-  unsigned char gftbls[MMAX * KMAX * 32];
-  unsigned int decodeIndex[MMAX];
-  unsigned char tmpMatrix[MMAX * KMAX];
-  unsigned char invertMatrix[MMAX * KMAX];
-  unsigned char decodeMatrix[MMAX * KMAX];
-  unsigned char erasureFlags[MMAX];
-  int erasedIndexes[MMAX];
-  int numErased;
-  int numErasedDataUnits;
-  unsigned char* realInputs[MMAX];
+    unsigned char encodeMatrix[MMAX * KMAX];
+    // Below are per decode call
+    unsigned char gftbls[MMAX * KMAX * 32];
+    unsigned int decodeIndex[MMAX];
+    unsigned char tmpMatrix[MMAX * KMAX];
+    unsigned char invertMatrix[MMAX * KMAX];
+    unsigned char decodeMatrix[MMAX * KMAX];
+    unsigned char erasureFlags[MMAX];
+    int erasedIndexes[MMAX];
+    int numErased;
+    int numErasedDataUnits;
+    unsigned char* realInputs[MMAX];
 } IsalDecoder;
 
 void initCoder(IsalCoder* pCoder, int numDataUnits, int numParityUnits);
@@ -74,12 +74,9 @@ void initDecoder(IsalDecoder* decoder, int numDataUnits, int numParityUnits);
 
 void clearDecoder(IsalDecoder* decoder);
 
-int encode(IsalEncoder* encoder, unsigned char** dataUnits,
-    unsigned char** parityUnits, int chunkSize);
-
-int decode(IsalDecoder* decoder, unsigned char** allUnits,
-    int* erasedIndexes, int numErased,
-    unsigned char** recoveredUnits, int chunkSize);
+int encode(IsalEncoder* encoder, unsigned char** dataUnits, unsigned char** parityUnits, int chunkSize);
+int encodeUpdate(IsalEncoder* pCoder, unsigned char* newDataUnit, int fragment_index, unsigned char** parityUnits, int chunkSize);
+int decode(IsalDecoder* decoder, unsigned char** allUnits, int* erasedIndexes, int numErased, unsigned char** recoveredUnits, int chunkSize);
 
 int generateDecodeMatrix(IsalDecoder* pCoder);
 

@@ -24,8 +24,7 @@ import java.nio.ByteBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class ErasureEncoder extends ErasureCoder
-{
+public abstract class ErasureEncoder extends ErasureCoder {
     private static Logger logger = LoggerFactory.getLogger(ErasureEncoder.class.getName());
 
     public ErasureEncoder(ErasureCoderOptions coderOptions) {
@@ -36,7 +35,7 @@ public abstract class ErasureEncoder extends ErasureCoder
      * Encode with inputs and generates outputs
      */
     public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs)
-    throws IOException {
+            throws IOException {
         ByteBufferEncodingState bbestate = new ByteBufferEncodingState(this, inputs, outputs);
         boolean usingDirectBuffer = bbestate.usingDirectBuffer;
         int dataLen = bbestate.encodeLength;
@@ -68,6 +67,28 @@ public abstract class ErasureEncoder extends ErasureCoder
         }
     }
 
+    /**
+     * Encode with inputs and generates outputs
+     */
+    public void encodeUpdate(ByteBuffer[] inputs, ByteBuffer[] outputs, int targetDataIndex)
+            throws IOException {
+        ByteBufferEncodingState bbestate = new ByteBufferEncodingState(this, inputs, outputs);
+        boolean usingDirectBuffer = bbestate.usingDirectBuffer;
+        int dataLen = bbestate.encodeLength;
+        if (dataLen == 0) {
+            return;
+        }
+
+        // Perform encoding
+        if (usingDirectBuffer) {
+            doEncode(bbestate);
+        } else {
+            ByteArrayEncodingState baeState = bbestate.convertToByteArrayState();
+            doEncode(baeState);
+        }
+
+    }
+
     public void encode(byte[][] inputs, byte[][] outputs) throws IOException {
         ByteArrayEncodingState baeState = new ByteArrayEncodingState(this, inputs, outputs);
         if (baeState.encodeLength == 0) {
@@ -77,17 +98,46 @@ public abstract class ErasureEncoder extends ErasureCoder
         doEncode(baeState);
     }
 
+    public void encodeUpdate(byte[][] newData, byte[][] parity, int targetDataIndex) throws IOException {
+        ByteArrayEncodingState baeState = new ByteArrayEncodingState(this, newData, parity);
+        if (baeState.encodeLength == 0) {
+            return;
+        }
+
+        doEncodeUpdate(baeState, targetDataIndex);
+    }
+
     /**
      * Perform the real encoding using direct bytebuffer.
+     * 
      * @param encodingState, the encoding state.
      * @throws IOException
      */
     protected abstract void doEncode(ByteBufferEncodingState encodingState) throws IOException;
 
     /**
+     * Perform the real encoding using direct bytebuffer.
+     * 
+     * @param encodingState, the encoding state.
+     * @throws IOException
+     */
+    protected abstract void doEncodeUpdate(ByteBufferEncodingState encodingState, int targetDataIndex)
+            throws IOException;
+
+    /**
      * Perform the real encoding using byte array, supporting offsets and lengths.
+     * 
      * @param encodingState, the encoding state.
      * @throws IOException
      */
     protected abstract void doEncode(ByteArrayEncodingState encodingState) throws IOException;
+
+    /**
+     * Perform the real encoding using byte array, supporting offsets and lengths.
+     * 
+     * @param encodingState, the encoding state.
+     * @throws IOException
+     */
+    protected abstract void doEncodeUpdate(ByteArrayEncodingState encodingState,
+            int targetDataIndex) throws IOException;
 }

@@ -12,24 +12,21 @@ extern "C" {
  * Method:    initImpl
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_initImpl
-  (JNIEnv *, jobject, jint, jint);
+JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_initImpl(JNIEnv*, jobject, jint, jint);
 
 /*
  * Class:     org_apache_cassandra_io_erasurecode_NativeRSDecoder
  * Method:    decodeImpl
  * Signature: ([Ljava/nio/ByteBuffer;[II[I[Ljava/nio/ByteBuffer;[I)V
  */
-JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_decodeImpl
-  (JNIEnv *, jobject, jobjectArray, jintArray, jint, jintArray, jobjectArray, jintArray);
+JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_decodeImpl(JNIEnv*, jobject, jobjectArray, jintArray, jint, jintArray, jobjectArray, jintArray);
 
 /*
  * Class:     org_apache_cassandra_io_erasurecode_NativeRSDecoder
  * Method:    destroyImpl
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_destroyImpl
-  (JNIEnv *, jobject);
+JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_destroyImpl(JNIEnv*, jobject);
 
 #ifdef __cplusplus
 }
