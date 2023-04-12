@@ -367,6 +367,10 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         return manifest.getSSTables();
     }
 
+    protected Set<SSTableReader> getSStablesForLevel(int level) {
+        return manifest.getSSTablesForLevel(level);
+    }
+
     // Lazily creates SSTableBoundedScanner for sstable that are assumed to be from
     // the
     // same level (e.g. non overlapping) - see #4142

@@ -108,7 +108,7 @@ public final class ECMessage {
      *                              1. implement Verb.ERASURECODE_REQ
      *                              2. implement responsehandler
      */
-    public void sendSelectedSSTables() throws UnknownHostException {
+    public void sendSSTableToParity() throws UnknownHostException {
         logger.debug("rymDebug: this is sendSelectedSSTables");
 
         // create a Message for sstContent
@@ -141,17 +141,6 @@ public final class ECMessage {
 
         // get all live nodes
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
-        // get replication nodes for given keyspace and table
-        // List<String> neps =
-        // StorageService.instance.getNaturalEndpointsWithPort(ecMessage.keyspace,
-        // ecMessage.table, ecMessage.key);
-        // for (String nep : neps) {
-        // InetAddressAndPort ep = InetAddressAndPort.getByName(nep);
-        // ecMessage.replicationEndpoints.add(ep);
-        // }
-
-        // Collections.sort(ecMessage.replicationEndpoints);
-        // Collections.sort(liveEndpoints);
 
         logger.debug("rymDebug: All living nodes are {}", liveEndpoints);
         logger.debug("rymDebug: ecMessage.replicaNodes is {}", ecMessage.replicaNodes);

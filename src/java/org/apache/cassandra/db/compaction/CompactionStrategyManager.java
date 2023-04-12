@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Longs;
 import org.apache.cassandra.io.util.File;
@@ -46,6 +48,7 @@ import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.DiskBoundaries;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.compaction.AbstractStrategyHolder.TaskSupplier;
+import org.apache.cassandra.db.compaction.CompactionLogger.Strategy;
 import org.apache.cassandra.db.compaction.PendingRepairManager.CleanupTask;
 import org.apache.cassandra.db.lifecycle.LifecycleNewTracker;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -73,6 +76,7 @@ import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.TimeUUID;
+import org.psjava.formula.geometry.StraightOrder;
 
 import static org.apache.cassandra.db.compaction.AbstractStrategyHolder.GroupedSSTableContainer;
 
@@ -555,6 +559,33 @@ public class CompactionStrategyManager implements INotificationConsumer {
                 }
                 return res;
             }
+        } finally {
+            readLock.unlock();
+        }
+        return null;
+    }
+
+    public Set<SSTableReader> getSSTableForLevel(int sstableLevel) {
+        maybeReloadDiskBoundaries();
+        readLock.lock();
+        try {
+            if(repaired.first() instanceof LeveledCompactionStrategy) {
+                Set<SSTableReader> res = new HashSet<SSTableReader>();
+                int cnt = 0;
+                for (AbstractCompactionStrategy strategy : getAllStrategies()) {
+                    if(cnt==sstableLevel) {
+                        res = ((LeveledCompactionStrategy) strategy).getSStablesForLevel(sstableLevel);
+                        break;
+                    }
+                    cnt++;
+                }
+                if(cnt!=sstableLevel){
+                    logger.error("rymError: cannot reach level {}, the most closed is {}",sstableLevel, cnt);
+                    throw new IllegalStateException();
+                }
+                return res;
+            }
+            
         } finally {
             readLock.unlock();
         }

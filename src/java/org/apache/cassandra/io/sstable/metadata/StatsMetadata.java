@@ -49,6 +49,10 @@ import org.apache.cassandra.utils.streamhist.TombstoneHistogram;
 import org.apache.cassandra.utils.UUIDSerializer;
 import org.apache.cassandra.io.util.*;
 import org.apache.cassandra.utils.*;
+import static org.apache.cassandra.utils.FBUtilities.now;
+
+import java.time.temporal.ChronoField;
+
 
 /**
  * SSTable metadata that always stay on heap.
@@ -62,6 +66,7 @@ public class StatsMetadata extends MetadataComponent {
     public final EstimatedHistogram estimatedPartitionSize;
     public final EstimatedHistogram estimatedCellPerPartitionCount;
     public final IntervalSet<CommitLogPosition> commitLogIntervals;
+    public final long creationTimestamp;
     public final long minTimestamp;
     public final long maxTimestamp;
     public final int minLocalDeletionTime;
@@ -89,6 +94,7 @@ public class StatsMetadata extends MetadataComponent {
     public StatsMetadata(EstimatedHistogram estimatedPartitionSize,
             EstimatedHistogram estimatedCellPerPartitionCount,
             IntervalSet<CommitLogPosition> commitLogIntervals,
+            long creationTimestamp,
             long minTimestamp,
             long maxTimestamp,
             int minLocalDeletionTime,
@@ -112,6 +118,7 @@ public class StatsMetadata extends MetadataComponent {
         this.estimatedPartitionSize = estimatedPartitionSize;
         this.estimatedCellPerPartitionCount = estimatedCellPerPartitionCount;
         this.commitLogIntervals = commitLogIntervals;
+        this.creationTimestamp = creationTimestamp;
         this.minTimestamp = minTimestamp;
         this.maxTimestamp = maxTimestamp;
         this.minLocalDeletionTime = minLocalDeletionTime;
@@ -198,6 +205,7 @@ public class StatsMetadata extends MetadataComponent {
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
                 minTimestamp,
                 maxTimestamp,
                 minLocalDeletionTime,
@@ -225,6 +233,7 @@ public class StatsMetadata extends MetadataComponent {
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
                 minTimestamp,
                 maxTimestamp,
                 minLocalDeletionTime,
@@ -314,7 +323,7 @@ public class StatsMetadata extends MetadataComponent {
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedCellPerPartitionCount);
             size += CommitLogPosition.serializer
                     .serializedSize(component.commitLogIntervals.upperBound().orElse(CommitLogPosition.NONE));
-            size += 8 + 8 + 4 + 4 + 4 + 4 + 8 + 8; // mix/max timestamp(long), min/maxLocalDeletionTime(int), min/max
+            size += 8 + 8 + 8 + 4 + 4 + 4 + 4 + 8 + 8; // creation timestamp, mix/max timestamp(long), min/maxLocalDeletionTime(int), min/max
                                                    // TTL, compressionRatio(double), repairedAt (long)
             size += TombstoneHistogram.serializer.serializedSize(component.estimatedTombstoneDropTime);
             size += TypeSizes.sizeof(component.sstableLevel);
@@ -369,6 +378,7 @@ public class StatsMetadata extends MetadataComponent {
             EstimatedHistogram.serializer.serialize(component.estimatedCellPerPartitionCount, out);
             CommitLogPosition.serializer
                     .serialize(component.commitLogIntervals.upperBound().orElse(CommitLogPosition.NONE), out);
+            out.writeLong(component.creationTimestamp);
             out.writeLong(component.minTimestamp);
             out.writeLong(component.maxTimestamp);
             out.writeInt(component.minLocalDeletionTime);
@@ -455,6 +465,7 @@ public class StatsMetadata extends MetadataComponent {
 
             CommitLogPosition commitLogLowerBound = CommitLogPosition.NONE, commitLogUpperBound;
             commitLogUpperBound = CommitLogPosition.serializer.deserialize(in);
+            long creationTimestamp = in.readLong();
             long minTimestamp = in.readLong();
             long maxTimestamp = in.readLong();
             int minLocalDeletionTime = in.readInt();
@@ -514,6 +525,7 @@ public class StatsMetadata extends MetadataComponent {
             return new StatsMetadata(partitionSizes,
                     columnCounts,
                     commitLogIntervals,
+                    creationTimestamp,
                     minTimestamp,
                     maxTimestamp,
                     minLocalDeletionTime,

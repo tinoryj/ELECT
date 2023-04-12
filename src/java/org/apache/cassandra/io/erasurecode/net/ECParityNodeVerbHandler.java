@@ -19,7 +19,6 @@ package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
@@ -27,7 +26,6 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 
 import java.io.File;
-import java.io.FileWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,19 +46,11 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
     public void doVerb(Message<ECParityNode> message) throws IOException {
         logger.debug("rymDebug: Received message: {}", message.payload.parityHash);
         try {
-                // File parityCodeFile = new File(parityCodeDir + String.valueOf(message.payload.parityHash));
                 FileChannel fileChannel = FileChannel.open(Paths.get(parityCodeDir, message.payload.parityHash),
                                                             StandardOpenOption.WRITE,
                                                              StandardOpenOption.CREATE);
                 fileChannel.write(message.payload.parityCode);
                 fileChannel.close();
-                // if (!parityCodeFile.exists()) {
-                //     parityCodeFile.createNewFile();
-                // }
-                // logger.debug("rymDebug: parityCodeFile.getName is {}", parityCodeFile.getAbsolutePath());
-                // FileWriter fileWritter = new FileWriter(parityCodeFile.getAbsolutePath(),true);
-                // fileWritter.write(message.payload.parityCode.toString());
-                // fileWritter.close();
             } 
         catch (IOException e) {
                 logger.error("rymError: Perform erasure code error", e);

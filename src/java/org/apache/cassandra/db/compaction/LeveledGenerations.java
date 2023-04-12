@@ -245,6 +245,13 @@ class LeveledGenerations
         return builder.build();
     }
 
+    Set<SSTableReader> sstablesForLevel(int level) {
+        ImmutableSet.Builder<SSTableReader> builder = ImmutableSet.builder();
+        // note that since l0 is broken out, levels[0] represents L1:
+        builder.addAll(levels[level-1]);
+        return builder.build();
+    }
+
     /**
      * given a level with sstables with first tokens [0, 10, 20, 30] and a lastCompactedSSTable with last = 15, we will
      * return an Iterator over [20, 30, 0, 10].

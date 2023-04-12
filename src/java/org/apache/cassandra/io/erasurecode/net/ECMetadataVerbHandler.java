@@ -18,33 +18,29 @@
 
 package org.apache.cassandra.io.erasurecode.net;
 
-import java.io.ByteArrayInputStream;
+
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
-import org.apache.cassandra.db.Directories;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
-import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     public static final ECMetadataVerbHandler instance = new ECMetadataVerbHandler();
-    private static final String ecMetadataDir = System.getProperty("user.dir") + "/data/ECMetadata/";
+    // private static final String ecMetadataDir = System.getProperty("user.dir") + "/data/ECMetadata/";
     public static List<ECMetadata> ecMetadatas = new ArrayList<ECMetadata>();
 
     private static final Logger logger = LoggerFactory.getLogger(ECMetadataVerbHandler.class);
@@ -60,34 +56,48 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         logger.debug("rymDebug: got sstHashIdToReplicaMap: {} ", sstHashIdToReplicaMap);
 
+        InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();
         for (Map.Entry<String, List<InetAddressAndPort>> entry : sstHashIdToReplicaMap.entrySet()) {
             String sstableHash = entry.getKey();
-            InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();
             if (!localIP.equals(entry.getValue().get(0)) && entry.getValue().contains(localIP)) {
                 String ks = message.payload.keyspace;
                 String cfName = message.payload.cfName;
-                Collection<ColumnFamilyStore> cfs = Keyspace.open(ks).getColumnFamilyStores();
-                for (ColumnFamilyStore cf : cfs) {
-                    if (!cf.name.equals(cfName)) {
-                        boolean flag = false;
-                        // traverse all the sstables
-                        Iterable<SSTableReader> sstables = cf.getSSTables(SSTableSet.LIVE);
-                        for (SSTableReader sstable : sstables) {
-                            if (sstable.getSSTableHashID().equals(sstableHash)) {
-                                // delete sstables
-                                sstable.replaceDatabyECMetadata(message.payload);
-                                // TODO: send ec_ready signal
+                int index = entry.getValue().indexOf(localIP);
+                
+                ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName+index);
 
-                                flag = true;
-                                break;
-                            }
-                        }
+                // get the dedicated level of sstables
+                Set<SSTableReader> sstables = cfs.getSSTableForLevel(DatabaseDescriptor.getCompactionThreshold());
 
-                        if (!flag) {
-                            logger.error("rymError: cannot find this fucking sstable");
-                        }
+                // traverse the sstables and find the most similar node to do transition
+                boolean flag = false;
+                for (SSTableReader sstable : sstables) {
+                    if(sstable.getSSTableHashID().equals(sstableHash)) {
+                        // delete sstable if sstableHash can be found
+                        sstable.replaceDatabyECMetadata(message.payload);
+                        flag = true;
                     }
                 }
+
+                if (!flag) {
+                    // rewrite the most similar sstables
+                    // use binary search to find related sstables
+
+                    // reconstruct sstbaleReader from sstable content from primary node
+
+                    // first search which sstable does the first key stored
+                    DecoratedKey first = null;
+                    DecoratedKey last = null;
+                    
+
+                    // then search which sstable does the last key stored
+
+
+                    
+                    
+                }
+
+                StorageService.instance.globalSSTMap.remove(sstableHash);
 
             }
 

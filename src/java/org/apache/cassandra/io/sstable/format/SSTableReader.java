@@ -1734,6 +1734,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return sstableMetadata.compressionRatio;
     }
 
+    public long getCreationTimeStamp() {
+        return sstableMetadata.creationTimestamp;
+    }
+
     public long getMinTimestamp() {
         return sstableMetadata.minTimestamp;
     }

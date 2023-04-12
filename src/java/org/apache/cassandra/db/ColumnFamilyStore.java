@@ -117,6 +117,8 @@ import org.apache.cassandra.index.internal.CassandraIndex;
 import org.apache.cassandra.index.transactions.UpdateTransaction;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
+import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTable;
@@ -130,9 +132,11 @@ import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileOutputStreamPlus;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.metrics.Sampler;
 import org.apache.cassandra.metrics.Sampler.Sample;
 import org.apache.cassandra.metrics.Sampler.SamplerType;
+import org.apache.cassandra.net.LatencyConsumer;
 import org.apache.cassandra.metrics.TableMetrics;
 import org.apache.cassandra.metrics.TopPartitionTracker;
 import org.apache.cassandra.repair.TableRepairManager;
@@ -183,6 +187,8 @@ import static org.apache.cassandra.utils.FBUtilities.now;
 import static org.apache.cassandra.utils.Throwables.maybeFail;
 import static org.apache.cassandra.utils.Throwables.merge;
 import static org.apache.cassandra.utils.concurrent.CountDownLatch.newCountDownLatch;
+
+
 
 public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner {
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
@@ -440,6 +446,64 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
     public void setCompressionParametersJson(String options) {
         setCompressionParameters(FBUtilities.fromJsonMap(options));
+    }
+
+    public static Runnable getSendSSTRunnable (String keyspaceName, String cfName, int sendSSTLevel, int latency) {
+        return new SendSSTRunnable(keyspaceName, cfName, sendSSTLevel, latency);
+    }
+
+    private static class SendSSTRunnable implements Runnable {
+        private final String keyspaceName;
+        private final String cfName;
+        private final int sendSSTLevel;
+        private final int latency; // in minutes
+
+        SendSSTRunnable (String keyspaceName, String cfName, int sendSSTLevel, int latency) {
+            this.keyspaceName = keyspaceName;
+            this.cfName = cfName;
+            this.sendSSTLevel = sendSSTLevel;
+            this.latency = latency;
+        }
+
+        @Override
+        public void run() {
+
+            ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
+            Set<SSTableReader> ssTableReaders = cfs.getSSTableForLevel(sendSSTLevel);
+
+            for (SSTableReader sstable : ssTableReaders) {
+                logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},",
+                                sstable.getFilename(), sstable.getSSTableLevel(),
+                        DatabaseDescriptor.getCompactionThreshold());
+                long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+
+                long latencyMilli = latency * 60 * 1000;
+                
+                if (duration >= latencyMilli && sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                    logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}", sstable.getSSTableLevel());
+                    String key = ByteBufferUtil.bytesToHex(sstable.first.getKey());
+                    try {
+                        ByteBuffer sstContent = sstable.getSSTContent();
+                        String sstHashID = sstable.getSSTableHashID();
+                        List<InetAddressAndPort> relicaNodes = StorageService.
+                                                               instance.getReplicaNodesWithPort(keyspaceName, cfName, key);
+                        logger.debug("rymDebug: send sstables size {}, replicaNodes are {}", 
+                                     sstContent.remaining(), relicaNodes);
+                        ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
+                                "", "", relicaNodes);
+                        // send selected sstable to parity nodes
+                        ecMessage.sendSSTableToParity();
+                        // send selected sstable to secondary nodes
+                        ECSyncSSTable ecSync = new ECSyncSSTable(sstContent, sstHashID);
+                        ecSync.sendSSTableToSecondary(relicaNodes);
+
+                    } catch (IOException e) {
+                        logger.error("rymError: {}", e);
+                    }
+                }
+            }
+        }
+
     }
 
     @VisibleForTesting
@@ -2831,6 +2895,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
     public int getLevelFanoutSize() {
         return compactionStrategyManager.getLevelFanoutSize();
+    }
+
+    public Set<SSTableReader> getSSTableForLevel(int sstLevel) {
+        return compactionStrategyManager.getSSTableForLevel(sstLevel);
     }
 
     public static class ViewFragment {

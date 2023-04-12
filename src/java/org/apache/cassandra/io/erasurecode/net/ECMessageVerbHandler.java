@@ -28,8 +28,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.cassandra.concurrent.Stage;
@@ -46,7 +44,6 @@ import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.netty.channel.unix.Buffer;
 
 public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
@@ -175,10 +172,6 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
                 data[i] = ByteBuffer.allocateDirect(codeLength);
-                // data[i].put((byte)0);
-                // data[i].flip();
-                // data[i].position(data[i].limit());
-                // data[i].limit(data[i].capacity());
                 data[i].put(messages[i].sstContent);
                 logger.debug("rymDebug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
                 int remaining = data[i].remaining();
@@ -219,13 +212,6 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                                                              StandardOpenOption.CREATE);
                 fileChannel.write(parity[0]);
                 fileChannel.close();
-                // File parityCodeFile = new File(parityCodeDir + parityHashCode.get(0));
-                // if (!parityCodeFile.exists()) {
-                //     parityCodeFile.createNewFile();
-                // }
-                // FileWriter fileWritter = new FileWriter(parityCodeFile.getAbsolutePath(),true);
-                // fileWritter.write(parity[0].toString());
-                // fileWritter.close();
                 // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
             } catch (IOException e) {
                 logger.error("rymError: Perform erasure code error", e);

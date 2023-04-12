@@ -15,19 +15,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.cassandra.io.erasurecode.net;
 
+package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
 
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.service.StorageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class ECDeleteReplicaVerbHandler implements IVerbHandler<ECDeleteReplica> {
-
+public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
+    public static final ECSyncSSTableVerbHandler instance = new ECSyncSSTableVerbHandler();
+    private static final Logger logger = LoggerFactory.getLogger(ECSyncSSTableVerbHandler.class);
     @Override
-    public void doVerb(Message<ECDeleteReplica> message) throws IOException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'doVerb'");
+    public void doVerb(Message<ECSyncSSTable> message) throws IOException {
+        // collect sstcontent
+        StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, message.payload.sstContent);
     }
-
 }
