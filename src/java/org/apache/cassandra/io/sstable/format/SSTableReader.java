@@ -1524,6 +1524,50 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return isSuspect.get();
     }
 
+    public Iterable<DecoratedKey> getAllKeys() {
+        final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
+                Collections.singletonList(fullRange()));
+
+        if (indexRanges.isEmpty())
+            return Collections.emptyList();
+
+        return new Iterable<DecoratedKey>() {
+            public Iterator<DecoratedKey> iterator() {
+                return new Iterator<DecoratedKey>() {
+                    private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
+                    private IndexesBounds current;
+                    private int idx;
+
+                    public boolean hasNext() {
+                        if (current == null || idx > current.upperPosition) {
+                            if (rangeIter.hasNext()) {
+                                current = rangeIter.next();
+                                idx = current.lowerPosition;
+                                return true;
+                            }
+                            return false;
+                        }
+
+                        return true;
+                    }
+
+                    public DecoratedKey next() {
+                        byte[] bytes = indexSummary.getKey(idx++);
+                        return decorateKey(ByteBuffer.wrap(bytes));
+                    }
+
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+                };
+            }
+        };
+    }
+
+    public Range<Token> fullRange() {
+        return new Range<>(first.getToken(), last.getToken());
+    }
+
     /**
      * Direct I/O SSTableScanner over a defined range of tokens.
      *
@@ -1532,7 +1576,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
      */
     public ISSTableScanner getScanner(Range<Token> range) {
         
-        logger.debug("rymDebug: SSTableReader.getscanner7");
+        logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner7",
+                     this.getColumnFamilyName(), this.getSSTableLevel());
         if (range == null)
             return getScanner();
         return getScanner(Collections.singletonList(range));

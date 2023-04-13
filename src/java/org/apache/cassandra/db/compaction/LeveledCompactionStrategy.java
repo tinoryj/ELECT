@@ -290,7 +290,8 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
     public ScannerList getScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges) {
         Set<SSTableReader>[] sstablesPerLevel = manifest.getSStablesPerLevelSnapshot();
         
-        logger.debug("rymDebug: LeveledCompactionStrategy.getscanner5");
+        logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner5",
+                     sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
 
         Multimap<Integer, SSTableReader> byLevel = ArrayListMultimap.create();
         for (SSTableReader sstable : sstables) {
@@ -417,7 +418,8 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             assert sstableIterator.hasNext(); // caller should check intersecting first
             SSTableReader currentSSTable = sstableIterator.next();
             currentScanner = currentSSTable.getScanner(ranges);
-            logger.debug("rymDebug: LeveledCompactionStrategy.getscanner6");
+            logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner6",
+                     sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
 
         }
 

@@ -19,9 +19,14 @@
 package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.cassandra.db.BufferDecoratedKey;
+import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
+import org.apache.cassandra.io.erasurecode.net.utils.ByteObjectConversion;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -30,26 +35,38 @@ import org.apache.cassandra.net.MessageFlag;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.utils.FBUtilities;
+import org.checkerframework.checker.units.qual.A;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 
+
 public class ECSyncSSTable {
     public static final Serializer serializer = new Serializer();
-    public final ByteBuffer sstContent;
-    public final int sstSize;
+    public byte[] sstContent;
+    public int sstSize;
+    public final Iterable<DecoratedKey> allKey;
     public final String sstHashID;
+    public static ByteObjectConversion<Iterable<DecoratedKey>> converter = new ByteObjectConversion<Iterable<DecoratedKey>>();
 
     
     public static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
-    public ECSyncSSTable(ByteBuffer sstContent, String sstHashID) {
-        this.sstContent = sstContent;
-        this.sstSize = sstContent.remaining();
+    public ECSyncSSTable(Iterable<DecoratedKey> allKey, String sstHashID) {
+        // this.sstContent = sstContent;
+        // this.sstSize = sstContent.remaining();
+        this.allKey = allKey;
         this.sstHashID = sstHashID;
     }
 
     public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) {
+        try {
+            this.sstContent = converter.toByteArray(this.allKey);
+            this.sstSize = this.sstContent.length;
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
         Message<ECSyncSSTable> message = null;
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
         if (replicaNodes != null) {
@@ -70,19 +87,27 @@ public class ECSyncSSTable {
         public void serialize(ECSyncSSTable t, DataOutputPlus out, int version) throws IOException {
             out.writeUTF(t.sstHashID);
             out.writeInt(t.sstSize);
-            byte[] buf = new byte[t.sstSize];
-            t.sstContent.get(buf);
-            out.write(buf);
+            // byte[] buf = new byte[t.sstSize];
+            // t.sstContent.get(buf);
+            out.write(t.sstContent);
         }
     
         @Override
         public ECSyncSSTable deserialize(DataInputPlus in, int version) throws IOException {
             String sstHashID = in.readUTF();
             int sstSize = in.readInt();
-            byte[] buf = new byte[sstSize];
-            in.readFully(buf);
-            ByteBuffer sstContent = ByteBuffer.wrap(buf);
-            return new ECSyncSSTable(sstContent, sstHashID);
+            byte[] sstContent = new byte[sstSize];
+            in.readFully(sstContent);
+            Iterable<DecoratedKey> allKey = new ArrayList<DecoratedKey>();
+            try {
+                allKey = converter.fromByteArray(sstContent);
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            // ByteBuffer sstContent = ByteBuffer.wrap(buf);
+
+            return new ECSyncSSTable(allKey, sstHashID);
         }
     
         @Override

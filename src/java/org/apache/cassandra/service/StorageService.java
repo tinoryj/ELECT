@@ -179,7 +179,7 @@ public class StorageService extends NotificationBroadcasterSupport
     public static final int RING_DELAY_MILLIS = getRingDelay(); // delay after which we assume ring has stablized
     public static final int SCHEMA_DELAY_MILLIS = getSchemaDelay();
 
-    public Map<String, ByteBuffer> globalSSTMap = new HashMap<String, ByteBuffer>();
+    public Map<String, List<DecoratedKey>> globalSSTMap = new HashMap<String, List<DecoratedKey>>();
 
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 

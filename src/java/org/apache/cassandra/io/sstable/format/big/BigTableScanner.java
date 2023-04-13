@@ -51,6 +51,7 @@ import static org.apache.cassandra.dht.AbstractBounds.minRight;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.stringtemplate.v4.compiler.STParser.namedArg_return;
 
 public class BigTableScanner implements ISSTableScanner
 {
@@ -76,7 +77,8 @@ public class BigTableScanner implements ISSTableScanner
     // Full scan of the sstables
     public static ISSTableScanner getScanner(SSTableReader sstable)
     {
-        logger.debug("rymDebug: BigTableScanner.getscanner9");
+        logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner9",
+                     sstable.getColumnFamilyName(), sstable.getSSTableLevel());
 
         return getScanner(sstable, Iterators.singletonIterator(fullRange(sstable)));
     }

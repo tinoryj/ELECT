@@ -67,6 +67,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.RateLimiter;
@@ -484,18 +485,20 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     String key = ByteBufferUtil.bytesToHex(sstable.first.getKey());
                     try {
                         ByteBuffer sstContent = sstable.getSSTContent();
+                        Iterable<DecoratedKey> allKeys = sstable.getAllKeys();
+                        
                         String sstHashID = sstable.getSSTableHashID();
                         List<InetAddressAndPort> relicaNodes = StorageService.
                                                                instance.getReplicaNodesWithPort(keyspaceName, cfName, key);
-                        logger.debug("rymDebug: send sstables size {}, replicaNodes are {}", 
-                                     sstContent.remaining(), relicaNodes);
+                        logger.debug("rymDebug: send sstables size {}, replicaNodes are {}, row num is {},allKeys num is {}", 
+                                     sstContent.remaining(), relicaNodes, sstable.getTotalRows(), Iterators.size((Iterator<?>) allKeys));
                         ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
                                 "", "", relicaNodes);
                         // send selected sstable to parity nodes
                         ecMessage.sendSSTableToParity();
                         // send selected sstable to secondary nodes
                         // sstable.getScanner();
-                        ECSyncSSTable ecSync = new ECSyncSSTable(sstContent, sstHashID);
+                        ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID);
                         ecSync.sendSSTableToSecondary(relicaNodes);
 
                     } catch (IOException e) {

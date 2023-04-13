@@ -18,7 +18,10 @@
 
 package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.StorageService;
@@ -31,6 +34,10 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     @Override
     public void doVerb(Message<ECSyncSSTable> message) throws IOException {
         // collect sstcontent
-        StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, message.payload.sstContent);
+        List<DecoratedKey> keyList = new ArrayList<DecoratedKey>();
+        message.payload.allKey.forEach(keyList::add);
+        StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
+                                                         keyList);
+        logger.debug("rymDebug: globalSSTMap is {}", StorageService.instance.globalSSTMap);
     }
 }
