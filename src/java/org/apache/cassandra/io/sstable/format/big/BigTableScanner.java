@@ -76,7 +76,7 @@ public class BigTableScanner implements ISSTableScanner
     // Full scan of the sstables
     public static ISSTableScanner getScanner(SSTableReader sstable)
     {
-        logger.debug("rymDebug: BigTableScanner.getscanner8");
+        logger.debug("rymDebug: BigTableScanner.getscanner9");
 
         return getScanner(sstable, Iterators.singletonIterator(fullRange(sstable)));
     }
