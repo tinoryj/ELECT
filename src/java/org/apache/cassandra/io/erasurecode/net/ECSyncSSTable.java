@@ -45,14 +45,14 @@ public class ECSyncSSTable {
     public static final Serializer serializer = new Serializer();
     public byte[] sstContent;
     public int sstSize;
-    public final Iterable<DecoratedKey> allKey;
+    public final List<DecoratedKey> allKey;
     public final String sstHashID;
-    public static ByteObjectConversion<Iterable<DecoratedKey>> converter = new ByteObjectConversion<Iterable<DecoratedKey>>();
+    public static ByteObjectConversion<List<DecoratedKey>> converter = new ByteObjectConversion<List<DecoratedKey>>();
 
     
     public static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
-    public ECSyncSSTable(Iterable<DecoratedKey> allKey, String sstHashID) {
+    public ECSyncSSTable(List<DecoratedKey> allKey, String sstHashID) {
         // this.sstContent = sstContent;
         // this.sstSize = sstContent.remaining();
         this.allKey = allKey;
@@ -98,7 +98,7 @@ public class ECSyncSSTable {
             int sstSize = in.readInt();
             byte[] sstContent = new byte[sstSize];
             in.readFully(sstContent);
-            Iterable<DecoratedKey> allKey = new ArrayList<DecoratedKey>();
+            List<DecoratedKey> allKey = new ArrayList<DecoratedKey>();
             try {
                 allKey = converter.fromByteArray(sstContent);
             } catch (Exception e) {

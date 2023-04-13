@@ -25,6 +25,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterables;
@@ -1524,14 +1526,13 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return isSuspect.get();
     }
 
-    public Iterable<DecoratedKey> getAllKeys() {
+    public List<DecoratedKey> getAllKeys() {
         final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
                 Collections.singletonList(fullRange()));
 
         if (indexRanges.isEmpty())
             return Collections.emptyList();
-
-        return new Iterable<DecoratedKey>() {
+        List<DecoratedKey> allKeys =  StreamSupport.stream(new Iterable<DecoratedKey>() {
             public Iterator<DecoratedKey> iterator() {
                 return new Iterator<DecoratedKey>() {
                     private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
@@ -1561,7 +1562,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                     }
                 };
             }
-        };
+        }.spliterator(),false).collect(Collectors.toList());
+        return allKeys;
     }
 
     public Range<Token> fullRange() {

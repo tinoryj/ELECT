@@ -48,6 +48,8 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
@@ -485,13 +487,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     String key = ByteBufferUtil.bytesToHex(sstable.first.getKey());
                     try {
                         ByteBuffer sstContent = sstable.getSSTContent();
-                        Iterable<DecoratedKey> allKeys = sstable.getAllKeys();
+                        List<DecoratedKey> allKeys = sstable.getAllKeys()
                         
                         String sstHashID = sstable.getSSTableHashID();
                         List<InetAddressAndPort> relicaNodes = StorageService.
                                                                instance.getReplicaNodesWithPort(keyspaceName, cfName, key);
                         logger.debug("rymDebug: send sstables size {}, replicaNodes are {}, row num is {},allKeys num is {}", 
-                                     sstContent.remaining(), relicaNodes, sstable.getTotalRows(), Iterators.size((Iterator<?>) allKeys));
+                                     sstContent.remaining(), relicaNodes, sstable.getTotalRows(), allKeys.size());
                         ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
                                 "", "", relicaNodes);
                         // send selected sstable to parity nodes

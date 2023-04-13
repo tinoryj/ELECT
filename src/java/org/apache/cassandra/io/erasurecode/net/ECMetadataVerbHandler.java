@@ -21,6 +21,10 @@ package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,36 +71,50 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName+index);
 
                 // get the dedicated level of sstables
-                Set<SSTableReader> sstables = cfs.getSSTableForLevel(DatabaseDescriptor.getCompactionThreshold());
+                List<SSTableReader> sstables = new ArrayList<>(cfs.getSSTableForLevel(DatabaseDescriptor.getCompactionThreshold()));
+                Collections.sort(sstables, new SSTableReaderComparator());
 
-                // traverse the sstables and find the most similar node to do transition
-                boolean flag = false;
-                for (SSTableReader sstable : sstables) {
-                    if(sstable.getSSTableHashID().equals(sstableHash)) {
-                        // delete sstable if sstableHash can be found
-                        sstable.replaceDatabyECMetadata(message.payload);
-                        flag = true;
+                // rewrite the most similar sstables
+                List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
+
+                // use binary search to find related sstables
+                int keyNums = StorageService.instance.globalSSTMap.get(sstableHash).size();
+                DecoratedKey first = StorageService.instance.globalSSTMap.get(sstableHash).get(0);
+                DecoratedKey last = StorageService.instance.globalSSTMap.get(sstableHash).get(keyNums - 1);
+                rewriteSStables = getRewriteSSTables(sstables, first, last);
+
+                // rewrite and update the sstables
+                // M is the sstable from primary node, M` is the corresponding sstable of secondary node
+                if(rewriteSStables.size()==1) {
+                    List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllKeys();
+
+                    if(rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
+                        // delete sstable if sstable Hash can be found 
+                        rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
+                    } else {
+                        // a bit different, update sstable and delete it
+                        if(allKeys.size() >= keyNums) {
+                            // M missed some keys,
+                            // suppose that the compaction speed of primary tree is faster than that of
+                            // secondary, so the these missed keys should be deleted
+                            rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
+                        } else {
+                            // M` missed some keys,
+                            // need to update the metadata
+                            
+                        }
+                        
+
+
+                        
+
                     }
+                } else {
+                    // many sstables are involved
+
+
                 }
-
-                if (!flag) {
-                    // rewrite the most similar sstables
-                    // use binary search to find related sstables
-
-                    // convert the sstable contents to Iterable<UnfilteredRowIterator>
-                    
-
-                    // first search which sstable does the first key stored
-                    DecoratedKey first = null;
-                    DecoratedKey last = null;
-                    
-
-                    // then search which sstable does the last key stored
-
-
-                    
-                    
-                }
+                
 
                 StorageService.instance.globalSSTMap.remove(sstableHash);
 
@@ -104,5 +122,43 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         }
 
+    }
+
+    private static List<SSTableReader> getRewriteSSTables(List<SSTableReader> sstables, DecoratedKey first, DecoratedKey last) {
+        List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
+        // first search which sstable does the first key stored
+        int left = 0;
+        int right = sstables.size() - 1;
+        int mid = 0;
+        while(left <= right) {
+            mid = (left + right) / 2;
+            SSTableReader sstable = sstables.get(mid);
+            if(sstable.first.compareTo(first)<=0 && 
+               sstable.last.compareTo(first)>=0) {
+                rewriteSStables.add(sstable);
+                break;
+            }
+            else if (sstable.first.compareTo(first)<0) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        // then search which sstable does the last key stored
+        mid++;
+        while (mid<sstables.size() && last.compareTo(sstables.get(mid).last)>0) {
+            rewriteSStables.add(sstables.get(mid));
+        }
+        return rewriteSStables;
+    }
+
+    private class SSTableReaderComparator implements Comparator<SSTableReader> {
+
+        @Override
+        public int compare(SSTableReader o1, SSTableReader o2) {
+            return o1.first.getToken().compareTo(o2.first.getToken());
+        }
+        
     }
 }

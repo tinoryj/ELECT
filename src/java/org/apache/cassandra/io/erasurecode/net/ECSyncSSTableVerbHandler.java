@@ -34,10 +34,9 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     @Override
     public void doVerb(Message<ECSyncSSTable> message) throws IOException {
         // collect sstcontent
-        List<DecoratedKey> keyList = new ArrayList<DecoratedKey>();
-        message.payload.allKey.forEach(keyList::add);
+        
         StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
-                                                         keyList);
+                                                         message.payload.allKey);
         logger.debug("rymDebug: globalSSTMap is {}", StorageService.instance.globalSSTMap);
     }
 }
