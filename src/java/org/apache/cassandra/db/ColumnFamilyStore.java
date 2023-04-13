@@ -494,6 +494,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         // send selected sstable to parity nodes
                         ecMessage.sendSSTableToParity();
                         // send selected sstable to secondary nodes
+                        // sstable.getScanner();
                         ECSyncSSTable ecSync = new ECSyncSSTable(sstContent, sstHashID);
                         ecSync.sendSSTableToSecondary(relicaNodes);
 

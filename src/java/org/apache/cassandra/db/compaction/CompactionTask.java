@@ -197,43 +197,8 @@ public class CompactionTask extends AbstractCompactionTask {
             /////////////////////////////////////////////////
             // send force compaction request to replica nodes
             // int oldSStLevel = actuallyCompact.iterator().next().getSSTableLevel();
-            String ksName = cfs.keyspace.getName();
+            // String ksName = cfs.keyspace.getName();
             String cfName = cfs.name;
-            // logger.debug("rymDebug: sstLevel is {}, candidate number is {}, threshold is: {}",
-            // oldSStLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold() - 1);
-            // if (ksName.equals("ycsb") && cfName.equals("usertable")) {
-            //     for (SSTableReader ssTableReader : actuallyCompact) {
-            //         if (ssTableReader.getSSTableLevel() == DatabaseDescriptor.getCompactionThreshold() - 1) {
-
-            //             logger.debug("rymDebug: send force compaction requests, sstlevel is {}", ssTableReader.getSSTableLevel());
-            //             // String keyspace = ssTableReader.getKeyspaceName();
-            //             // String cfName = ssTableReader.getColumnFamilyName();
-            //             String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
-            //             // DecoratedKey fistKey = ssTableReader.first;
-            //             // String startToken =
-            //             // ssTableReader.metadata().partitioner.getMinimumToken().toString();
-            //             // String endToken =
-            //             // ssTableReader.metadata().partitioner.getMaximumToken().toString();
-            //             String startToken = ssTableReader.first.getToken().toString();
-            //             String endToken = ssTableReader.last.getToken().toString();
-
-            //             // get sstHash
-            //             String sstHash = ssTableReader.getSSTableHashID();
-
-            //             // get replica nodes
-            //             List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(ksName, cfName, key);
-            //             logger.debug("rymDebug: task is send force compaction message, replica nodes {}, cfName",
-            //                     replicaNodes);
-            //             // ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName,
-            //             // startToken, endToken);
-            //             ECCompaction ecCompaction = new ECCompaction(sstHash, ksName, cfName, key, startToken, endToken);
-            //             // send compaction message to replica nodes
-            //             ecCompaction.synchronizeCompaction(replicaNodes);
-
-            //         }
-            //     }
-            // }
-            ////////////////////////////////////////////////
 
 
             int nowInSec = FBUtilities.nowInSeconds();

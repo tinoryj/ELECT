@@ -49,8 +49,13 @@ import static org.apache.cassandra.dht.AbstractBounds.isEmpty;
 import static org.apache.cassandra.dht.AbstractBounds.maxLeft;
 import static org.apache.cassandra.dht.AbstractBounds.minRight;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class BigTableScanner implements ISSTableScanner
 {
+    private static final Logger logger = LoggerFactory.getLogger(BigTableScanner.class);
+
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
     protected final RandomAccessReader dfile;
     protected final RandomAccessReader ifile;
@@ -71,6 +76,8 @@ public class BigTableScanner implements ISSTableScanner
     // Full scan of the sstables
     public static ISSTableScanner getScanner(SSTableReader sstable)
     {
+        logger.debug("rymDebug: BigTableScanner.getscanner8");
+
         return getScanner(sstable, Iterators.singletonIterator(fullRange(sstable)));
     }
 

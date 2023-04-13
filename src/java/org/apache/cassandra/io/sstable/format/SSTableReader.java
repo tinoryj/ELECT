@@ -1531,6 +1531,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
      * @return A Scanner for seeking over the rows of the SSTable.
      */
     public ISSTableScanner getScanner(Range<Token> range) {
+        
+        logger.debug("rymDebug: SSTableReader.getscanner7");
         if (range == null)
             return getScanner();
         return getScanner(Collections.singletonList(range));

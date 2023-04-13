@@ -101,6 +101,8 @@ public class BigTableReader extends SSTableReader
      */
     public ISSTableScanner getScanner()
     {
+        logger.debug("rymDebug: BigTableReader.getscanner8");
+
         return BigTableScanner.getScanner(this);
     }
 

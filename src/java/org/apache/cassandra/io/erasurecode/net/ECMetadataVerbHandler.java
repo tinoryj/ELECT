@@ -83,7 +83,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     // rewrite the most similar sstables
                     // use binary search to find related sstables
 
-                    // reconstruct sstbaleReader from sstable content from primary node
+                    // convert the sstable contents to Iterable<UnfilteredRowIterator>
+                    
 
                     // first search which sstable does the first key stored
                     DecoratedKey first = null;
