@@ -487,7 +487,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     String key = ByteBufferUtil.bytesToHex(sstable.first.getKey());
                     try {
                         ByteBuffer sstContent = sstable.getSSTContent();
-                        List<DecoratedKey> allKeys = sstable.getAllKeys()
+                        List<DecoratedKey> allKeys = sstable.getAllKeys();
                         
                         String sstHashID = sstable.getSSTableHashID();
                         List<InetAddressAndPort> relicaNodes = StorageService.
