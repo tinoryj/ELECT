@@ -1661,8 +1661,8 @@ public class StorageProxy implements StorageProxyMBean {
                         String key = upd.partitionKey().getRawKey(upd.metadata());
                         List<InetAddressAndPort> eps = StorageService.instance.getReplicaNodesWithPort(keyspaceName, upd.metadata().name, key);
                         if(!eps.contains(destination.endpoint())||eps.indexOf(destination.endpoint())==0) {
-                            logger.debug(RED+"rymDebug: destination [{}] is wrong, correct is {} key is {}, local address is {}",
-                                            destination.endpoint()+RESET, eps+RESET, key, FBUtilities.getBroadcastAddressAndPort()+RESET);
+                            // logger.debug(RED+"rymDebug: destination [{}] is wrong, correct is {} key is {}, local address is {}",
+                            //                destination.endpoint()+RESET, eps+RESET, key, FBUtilities.getBroadcastAddressAndPort()+RESET);
                         }
         
                     }
