@@ -493,6 +493,77 @@ public class CompactionManager implements CompactionManagerMBean {
         }, jobs);
     }
 
+    // rewrite sstables based source decorated keys
+    public AllSSTableOpStatus performSSTableRewrite(final ColumnFamilyStore cfs,
+            final List<DecoratedKey> sourceKeys, 
+            List<SSTableReader> sstables,
+            final boolean skipIfCurrentVersion,
+            final long skipIfOlderThanTimestamp,
+            final boolean skipIfCompressionMatches,
+            int jobs) throws InterruptedException, ExecutionException {
+        return performSSTableRewrite(cfs, sourceKeys, sstables, (sstable) -> {
+            // TODO: check this filter
+
+            // Skip if descriptor version matches current version
+            if (skipIfCurrentVersion
+                    && sstable.descriptor.version.equals(sstable.descriptor.getFormat().getLatestVersion()))
+                return false;
+
+            // Skip if SSTable creation time is past given timestamp
+            if (sstable.getCreationTimeFor(Component.DATA) > skipIfOlderThanTimestamp || sstable
+                    .getCreationTimeFor(Component.EC_METADATA) > skipIfOlderThanTimestamp) {
+                return false;
+            }
+
+            TableMetadata metadata = cfs.metadata.get();
+            // Skip if SSTable compression parameters match current ones
+            if (skipIfCompressionMatches &&
+                    ((!sstable.compression && !metadata.params.compression.isEnabled()) ||
+                            (sstable.compression && metadata.params.compression
+                                    .equals(sstable.getCompressionMetadata().parameters))))
+                return false;
+
+            return true;
+        }, jobs);
+    }
+
+    public AllSSTableOpStatus performSSTableRewrite(final ColumnFamilyStore cfs,
+            final List<DecoratedKey> sourceKeys, 
+            List<SSTableReader> sstables, 
+            Predicate<SSTableReader> sstableFilter,
+            int jobs) throws InterruptedException, ExecutionException {
+        return parallelAllSSTableOperation(cfs, new OneSSTableOperation() {
+            @Override
+            public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
+                // List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
+                // Collections.sort(sortedSSTables, SSTableReader.sizeComparator.reversed());
+
+                Iterator<SSTableReader> iter = sstables.iterator();
+                while (iter.hasNext()) {
+                    SSTableReader sstable = iter.next();
+                    if (!sstableFilter.test(sstable)) {
+                        transaction.cancel(sstable);
+                        iter.remove();
+                    }
+                }
+                return sstables;
+            }
+
+            @Override
+            public void execute(LifecycleTransaction txn) {
+                // AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC,Long.MAX_VALUE);
+                // TODO: what's the meanning of gcBefore.
+                int gcBefore = cfs.gcBefore(FBUtilities.nowInSeconds());
+                AbstractCompactionTask task =  cfs.getCompactionStrategyManager()
+                                                  .getCompactionStrategyFor(sstables.get(0))
+                                                  .getUserDefinedTask(sstables, gcBefore);
+                task.setUserDefined(true);
+                task.setCompactionType(OperationType.UPGRADE_SSTABLES);
+                task.execute(active, sourceKeys);
+            }
+        }, jobs, OperationType.UPGRADE_SSTABLES);
+    }
+
     /**
      * Perform SSTable rewrite
      * 
@@ -708,6 +779,12 @@ public class CompactionManager implements CompactionManagerMBean {
                     performAnticompaction(cfs, tokenRanges, sstables, txn, sessionId, isCancelled);
                 }
             }
+
+            @Override
+            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
         };
 
         Future<Void> task = null;
@@ -891,6 +968,12 @@ public class CompactionManager implements CompactionManagerMBean {
                 protected void runMayThrow() {
                     task.execute(active);
                 }
+
+                @Override
+                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
             };
 
             Future<?> fut = executor.submitIfRunning(runnable, "maximal task");
@@ -929,6 +1012,12 @@ public class CompactionManager implements CompactionManagerMBean {
                     for (AbstractCompactionTask task : tasks)
                         if (task != null)
                             task.execute(active);
+                }
+
+                @Override
+                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
             };
 
@@ -1103,6 +1192,12 @@ public class CompactionManager implements CompactionManagerMBean {
                         }
                     }
                 }
+            }
+
+            @Override
+            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
         };
 

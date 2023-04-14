@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -28,7 +29,7 @@ import java.util.Set;
 import com.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
@@ -76,6 +77,12 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch
                 protected void runMayThrow() throws ConfigurationException
                 {
                     reloadConfiguration(true);
+                }
+
+                @Override
+                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
             };
             ResourceWatcher.watch(SNITCH_PROPERTIES_FILENAME, runnable, refreshPeriodInSeconds * 1000);

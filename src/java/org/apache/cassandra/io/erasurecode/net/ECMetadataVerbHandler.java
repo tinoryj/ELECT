@@ -28,11 +28,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.db.compaction.CompactionManager.AllSSTableOpStatus;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.IVerbHandler;
@@ -78,9 +81,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
 
                 // use binary search to find related sstables
-                int keyNums = StorageService.instance.globalSSTMap.get(sstableHash).size();
-                DecoratedKey first = StorageService.instance.globalSSTMap.get(sstableHash).get(0);
-                DecoratedKey last = StorageService.instance.globalSSTMap.get(sstableHash).get(keyNums - 1);
+                List<DecoratedKey> updateKeys = StorageService.instance.globalSSTMap.get(sstableHash);
+                DecoratedKey first = updateKeys.get(0);
+                DecoratedKey last = updateKeys.get(updateKeys.size() - 1);
                 rewriteSStables = getRewriteSSTables(sstables, first, last);
 
                 // rewrite and update the sstables
@@ -96,17 +99,17 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     } else {
                         // a bit different, update sstable and delete it
                         if(first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size()-1))
-                             && allKeys.size() < keyNums) {
+                             && allKeys.size() < updateKeys.size()) {
                             // M` missed some keys in the middle, update metadata and delete M`,
                             // suppose that the compaction speed of primary tree is faster than that of
                             // secondary, so the these missed keys should be deleted
                             // TODO: need to consider rewrite sstables.
-                            rewriteSStables.get(0).updateBloomFilter(cfs, allKeys);
+                            rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
                             rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
                             logger.debug("rymDebug: M` missed keys in the middle, delete and update it!");
 
                         } else if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size()-1))
-                                    && allKeys.size() >= keyNums) {
+                                    && allKeys.size() >= updateKeys.size()) {
                             // M missed some keys int the middle, just delete it
                             // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume that
                             // the compaction speed of secondary node is slower than primary node
@@ -116,6 +119,19 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             // M` missed some keys in the boundary,
                             // need to update the metadata
                             logger.debug("rymDebug: need to rewrite sstables");
+                            try {
+                                AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys, 
+                                    rewriteSStables, false, Long.MAX_VALUE, false, 2);
+                                if(status != AllSSTableOpStatus.SUCCESSFUL)
+                                    printStatusCode(status.statusCode, cfs.name);
+                            } catch (ExecutionException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            } catch (InterruptedException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
+                            rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
                         } 
 
                     }
@@ -123,12 +139,21 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     // one to many: many sstables are involved
                     // delete the sstables and update the metadata
                     // rewrite the sstables, just delete the key ranges of M` which are matching those of M 
+
                     logger.debug("rymDebug: many sstbales are involved, need to rewrite!");
-
-
-
+                    try {
+                        AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys, 
+                            rewriteSStables, false, Long.MAX_VALUE, false, 2);
+                        if(status != AllSSTableOpStatus.SUCCESSFUL)
+                            printStatusCode(status.statusCode, cfs.name);
+                    } catch (ExecutionException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                 }
-                
 
                 StorageService.instance.globalSSTMap.remove(sstableHash);
 
@@ -138,8 +163,19 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
     }
 
+    private static void printStatusCode(int statusCode, String cfName) {
+        switch (statusCode) {
+            case 1:
+                logger.debug("Aborted rewrite sstables for at least one table in cfs {}, check server logs for more information.", cfName);
+                break;
+            case 2:
+                logger.error("Failed marking some sstables compacting in cfs {}, check server logs for more information.", cfName);
+        }
+    }
+
     private static List<SSTableReader> getRewriteSSTables(List<SSTableReader> sstables, DecoratedKey first, DecoratedKey last) {
         List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
+        // TODO: add head and tail 
         // first search which sstable does the first key stored
         int left = 0;
         int right = sstables.size() - 1;

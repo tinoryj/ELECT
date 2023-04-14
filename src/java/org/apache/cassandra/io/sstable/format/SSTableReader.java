@@ -732,10 +732,6 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    public void rewriteSSTables() {
-        
-    }
-
     public void replaceDatabyECMetadata(ECMetadata message) {
 
         // delete sstable

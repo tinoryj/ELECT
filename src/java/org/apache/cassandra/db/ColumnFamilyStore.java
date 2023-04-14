@@ -505,6 +505,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                     } catch (IOException e) {
                         logger.error("rymError: {}", e);
+                    } catch (Exception e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
                     }
                 }
             }
@@ -1370,6 +1373,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     readBarrier.await();
                     memtable.discard();
                 }
+
+                @Override
+                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
             }, reclaimExecutor);
         }
 
@@ -1718,6 +1727,18 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final boolean skipIfCompressionMatches,
             final int jobs) throws ExecutionException, InterruptedException {
         return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, skipIfCurrentVersion,
+                skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
+    }
+
+    // rewrite the sstables based on the source decorated keys
+    public CompactionManager.AllSSTableOpStatus sstablesRewrite(final List<DecoratedKey> sourceKeys, 
+            List<SSTableReader> sstables,
+            final boolean skipIfCurrentVersion,
+            final long skipIfNewerThanTimestamp,
+            final boolean skipIfCompressionMatches,
+            final int jobs) throws ExecutionException, InterruptedException {
+        logger.debug("rymDebug: this is sstablesRewrite");
+        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables, skipIfCurrentVersion,
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 

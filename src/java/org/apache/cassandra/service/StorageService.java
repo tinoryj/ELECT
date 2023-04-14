@@ -774,6 +774,12 @@ public class StorageService extends NotificationBroadcasterSupport
                     LoggingSupportFactory.getLoggingSupport().onShutdown();
                 }
             }
+
+            @Override
+            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
         }, "StorageServiceShutdownHook");
         Runtime.getRuntime().addShutdownHook(drainOnShutdown);
 
