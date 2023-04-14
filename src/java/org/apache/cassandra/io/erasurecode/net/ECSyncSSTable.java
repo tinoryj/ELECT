@@ -20,10 +20,12 @@ package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.cassandra.db.BufferDecoratedKey;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.erasurecode.net.utils.ByteObjectConversion;
@@ -57,17 +59,19 @@ public class ECSyncSSTable {
         // this.sstSize = sstContent.remaining();
         this.allKey = allKey;
         this.sstHashID = sstHashID;
-    }
-
-    public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) {
-        logger.debug("rymDebug: this is sendSSTableToSecondary.");
         try {
-            this.sstContent = converter.toByteArray(this.allKey);
-            this.sstSize = this.sstContent.length;
+            
+            this.sstSize = converter.toByteArray(this.allKey).length;
+            this.sstContent = new byte[this.sstSize];
+            this.sstContent = Arrays.copyOf(this.sstContent, this.sstSize);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+
+    public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) {
+        logger.debug("rymDebug: this is sendSSTableToSecondary, send key num is {}, content size is {}.", this.allKey.size(), this.sstContent.length);
         Message<ECSyncSSTable> message = null;
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
         if (replicaNodes != null) {
