@@ -74,7 +74,7 @@ public class ECSyncSSTable {
         }
     }
 
-    public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) {
+    public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) throws Exception {
         logger.debug("rymDebug: ECSyncSSTable allKey num is {}", this.allKey.size());
         logger.debug("rymDebug: ECSyncSSTable key to bytes length is {}", converter.toByteArray(this.allKey).length);
         logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstSize);
