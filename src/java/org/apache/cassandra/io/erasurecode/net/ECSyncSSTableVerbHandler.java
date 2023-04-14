@@ -28,6 +28,7 @@ import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     public static final ECSyncSSTableVerbHandler instance = new ECSyncSSTableVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECSyncSSTableVerbHandler.class);
@@ -37,6 +38,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         
         StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
                                                          message.payload.allKey);
-        logger.debug("rymDebug: globalSSTMap is {}", StorageService.instance.globalSSTMap);
+        logger.debug("rymDebug: globalSSTMap size is {}, received key num is {}", 
+                     StorageService.instance.globalSSTMap.size(), message.payload.allKey.size());
     }
 }

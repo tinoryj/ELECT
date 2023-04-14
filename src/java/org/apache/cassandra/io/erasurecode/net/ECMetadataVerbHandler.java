@@ -85,32 +85,46 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                 // rewrite and update the sstables
                 // M is the sstable from primary node, M` is the corresponding sstable of secondary node
+                // one to one
                 if(rewriteSStables.size()==1) {
                     List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllKeys();
 
                     if(rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
                         // delete sstable if sstable Hash can be found 
                         rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
+                        logger.debug("rymDebug: get the match sstbales, delete it!");
                     } else {
                         // a bit different, update sstable and delete it
-                        if(allKeys.size() >= keyNums) {
-                            // M missed some keys,
+                        if(first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size()-1))
+                             && allKeys.size() < keyNums) {
+                            // M` missed some keys in the middle, update metadata and delete M`,
                             // suppose that the compaction speed of primary tree is faster than that of
                             // secondary, so the these missed keys should be deleted
+                            // TODO: need to consider rewrite sstables.
+                            rewriteSStables.get(0).updateBloomFilter(cfs, allKeys);
                             rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
+                            logger.debug("rymDebug: M` missed keys in the middle, delete and update it!");
+
+                        } else if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size()-1))
+                                    && allKeys.size() >= keyNums) {
+                            // M missed some keys int the middle, just delete it
+                            // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume that
+                            // the compaction speed of secondary node is slower than primary node
+                            rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
+                            logger.debug("rymDebug: M missed keys in the middle, delete it!");
                         } else {
-                            // M` missed some keys,
+                            // M` missed some keys in the boundary,
                             // need to update the metadata
-                            
-                        }
-                        
-
-
-                        
+                            logger.debug("rymDebug: need to rewrite sstables");
+                        } 
 
                     }
                 } else {
-                    // many sstables are involved
+                    // one to many: many sstables are involved
+                    // delete the sstables and update the metadata
+                    // rewrite the sstables, just delete the key ranges of M` which are matching those of M 
+                    logger.debug("rymDebug: many sstbales are involved, need to rewrite!");
+
 
 
                 }

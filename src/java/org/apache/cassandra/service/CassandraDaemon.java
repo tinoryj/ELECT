@@ -436,8 +436,8 @@ public class CassandraDaemon {
 
         // schedule periodic send sstable content task submission
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
-                ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", DatabaseDescriptor.getCompactionThreshold(), 1),
-                20, 1, TimeUnit.MINUTES);
+                ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", DatabaseDescriptor.getCompactionThreshold(), 5),
+                20, 5, TimeUnit.MINUTES);
         
 
         // schedule periodic recomputation of speculative retry thresholds

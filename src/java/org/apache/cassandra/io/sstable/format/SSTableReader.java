@@ -50,7 +50,9 @@ import org.apache.cassandra.concurrent.ScheduledExecutorPlus;
 import org.apache.cassandra.concurrent.ScheduledExecutors;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.filter.ColumnFilter;
+import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.EncodingStats;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
@@ -711,6 +713,27 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             logger.debug("[Tinoryj] could not setup hash ID for current sstable = {}",descriptor.filenameFor(Component.DATA));
         }
         return sstableMetadata.hashID();
+    }
+
+    public void updateBloomFilter(ColumnFamilyStore cfs, List<DecoratedKey> allKeys) throws IOException {
+        long allKeysNum = allKeys.size();
+        IFilter newBf;
+        
+        newBf = FilterFactory.getFilter(allKeysNum, metadata.get().params.bloomFilterFpChance);
+        for (DecoratedKey key : allKeys) {
+            newBf.add(key);
+        }
+        try (LifecycleTransaction txn = cfs.getTracker().tryModify(this, OperationType.UPGRADE_SSTABLES)) {
+            txn.update(this.cloneAndReplace(newBf),
+                    true);
+            txn.checkpoint();
+            txn.finish();
+        }
+
+    }
+
+    public void rewriteSSTables() {
+        
     }
 
     public void replaceDatabyECMetadata(ECMetadata message) {
