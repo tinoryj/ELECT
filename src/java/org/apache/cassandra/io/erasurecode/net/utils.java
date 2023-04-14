@@ -20,6 +20,7 @@ package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
@@ -29,11 +30,21 @@ public class utils {
 
         // convert object to byte array
         public byte[] toByteArray(T object) throws Exception {
-            try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                 ObjectOutputStream oos = new ObjectOutputStream(bos)) {
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ObjectOutputStream oos;
+            byte[] bytes = null;
+
+            try {
+                oos = new ObjectOutputStream(baos);
                 oos.writeObject(object);
-                return bos.toByteArray();
+                bytes = baos.toByteArray();
+                return bytes;
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
             }
+            return bytes;
         }
     
         //convert byte array to object
