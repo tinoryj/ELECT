@@ -63,7 +63,12 @@ public class ECSyncSSTable {
             
             this.sstSize = converter.toByteArray(this.allKey).length;
             this.sstContent = new byte[this.sstSize];
-            this.sstContent = Arrays.copyOf(converter.toByteArray(this.allKey), this.sstSize);
+            System.arraycopy(converter.toByteArray(this.allKey), 0, this.sstContent, 0, this.sstSize);
+            // this.sstContent = Arrays.copyOf(converter.toByteArray(this.allKey), this.sstSize);
+            logger.debug("rymDebug: ECSyncSSTable allKey num is {}", this.allKey.size());
+            logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstSize);
+
+
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -71,7 +76,7 @@ public class ECSyncSSTable {
     }
 
     public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) {
-        logger.debug("rymDebug: this is sendSSTableToSecondary, send key num is {}, content size is {}.", this.allKey.size(), this.sstContent.length);
+        // logger.debug("rymDebug: this is sendSSTableToSecondary, send key num is {}, content size is {}.", this.allKey.size(), this.sstContent.length);
         Message<ECSyncSSTable> message = null;
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
         if (replicaNodes != null) {
