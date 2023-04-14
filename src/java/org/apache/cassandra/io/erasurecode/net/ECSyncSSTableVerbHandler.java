@@ -35,7 +35,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     @Override
     public void doVerb(Message<ECSyncSSTable> message) throws IOException {
         // collect sstcontent
-        
+        logger.debug("rymDebug: this is ECSyncSSTableVerbHandler");
         StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
                                                          message.payload.allKey);
         logger.debug("rymDebug: globalSSTMap size is {}, received key num is {}", 

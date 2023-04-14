@@ -60,6 +60,7 @@ public class ECSyncSSTable {
     }
 
     public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) {
+        logger.debug("rymDebug: this is sendSSTableToSecondary.");
         try {
             this.sstContent = converter.toByteArray(this.allKey);
             this.sstSize = this.sstContent.length;
