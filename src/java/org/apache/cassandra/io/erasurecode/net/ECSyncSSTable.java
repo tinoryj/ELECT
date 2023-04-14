@@ -63,7 +63,7 @@ public class ECSyncSSTable {
             
             this.sstSize = converter.toByteArray(this.allKey).length;
             this.sstContent = new byte[this.sstSize];
-            this.sstContent = Arrays.copyOf(this.sstContent, this.sstSize);
+            this.sstContent = Arrays.copyOf(converter.toByteArray(this.allKey), this.sstSize);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
