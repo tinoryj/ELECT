@@ -1585,6 +1585,46 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return allKeys;
     }
 
+    public List<DecoratedKey> getAllDecoratedKeys() {
+        final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
+                Collections.singletonList(fullRange()));
+
+        if (indexRanges.isEmpty())
+            return Collections.emptyList();
+        List<DecoratedKey> allKeys =  StreamSupport.stream(new Iterable<DecoratedKey>() {
+            public Iterator<DecoratedKey> iterator() {
+                return new Iterator<DecoratedKey>() {
+                    private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
+                    private IndexesBounds current;
+                    private int idx;
+
+                    public boolean hasNext() {
+                        if (current == null || idx > current.upperPosition) {
+                            if (rangeIter.hasNext()) {
+                                current = rangeIter.next();
+                                idx = current.lowerPosition;
+                                return true;
+                            }
+                            return false;
+                        }
+
+                        return true;
+                    }
+
+                    public DecoratedKey next() {
+                        byte[] bytes = indexSummary.getKey(idx++);
+                        return decorateKey(ByteBuffer.wrap(bytes));
+                    }
+
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+                };
+            }
+        }.spliterator(),false).collect(Collectors.toList());
+        return allKeys;
+    }
+
     public Range<Token> fullRange() {
         return new Range<>(first.getToken(), last.getToken());
     }

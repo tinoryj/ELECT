@@ -90,7 +90,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 // M is the sstable from primary node, M` is the corresponding sstable of secondary node
                 // one to one
                 if(rewriteSStables.size()==1) {
-                    List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllKeys();
+                    List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllDecoratedKeys();
 
                     if(rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
                         // delete sstable if sstable Hash can be found 
