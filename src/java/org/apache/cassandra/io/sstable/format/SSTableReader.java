@@ -1551,7 +1551,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         if (indexRanges.isEmpty())
             return Collections.emptyList();
-        List<String> allKeys =  StreamSupport.stream(new Iterable<String>() {
+        Iterable<String> keys = new Iterable<String>() {
             public Iterator<String> iterator() {
                 return new Iterator<String>() {
                     private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
@@ -1581,7 +1581,11 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                     }
                 };
             }
-        }.spliterator(),false).collect(Collectors.toList());
+        };
+        List<String> allKeys = new ArrayList<String>();
+        while (keys.iterator().hasNext()) {
+            allKeys.add(keys.iterator().next());
+        }
         return allKeys;
     }
 
@@ -1591,7 +1595,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         if (indexRanges.isEmpty())
             return Collections.emptyList();
-        List<DecoratedKey> allKeys =  StreamSupport.stream(new Iterable<DecoratedKey>() {
+        Iterable<DecoratedKey> keys = new Iterable<DecoratedKey>() {
             public Iterator<DecoratedKey> iterator() {
                 return new Iterator<DecoratedKey>() {
                     private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
@@ -1621,7 +1625,11 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                     }
                 };
             }
-        }.spliterator(),false).collect(Collectors.toList());
+        };
+        List<DecoratedKey> allKeys = new ArrayList<DecoratedKey>();
+        while(keys.iterator().hasNext()) {
+            allKeys.add(keys.iterator().next());
+        }
         return allKeys;
     }
 
