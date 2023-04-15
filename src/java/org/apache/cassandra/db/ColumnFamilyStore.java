@@ -489,7 +489,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         ByteBuffer sstContent = sstable.getSSTContent();
                         List<String> allKeys = new ArrayList<>(sstable.getAllKeys()) ;
                         
-                        String sstHashID = sstable.getSSTableHashID();
+                        String sstHashID = stringToHex(sstable.getSSTableHashID());
                         List<InetAddressAndPort> replicaNodes = StorageService.
                                                                instance.getReplicaNodesWithPort(keyspaceName, cfName, key);
                         logger.debug("rymDebug: send sstables size {}, replicaNodes are {}, row num is {},allKeys num is {}", 
@@ -511,6 +511,16 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     }
                 }
             }
+        }
+
+        public static String stringToHex(String str) {
+            byte[] bytes = str.getBytes();
+            StringBuilder hex = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                hex.append(Character.forDigit((b >> 4) & 0xF, 16))
+                   .append(Character.forDigit((b & 0xF), 16));
+            }
+            return hex.toString();
         }
 
     }
