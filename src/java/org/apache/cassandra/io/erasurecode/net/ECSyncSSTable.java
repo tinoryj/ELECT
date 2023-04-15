@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,8 +50,8 @@ public class ECSyncSSTable {
     public int sstSize;
     public final List<DecoratedKey> allKey;
     public final String sstHashID;
-    public static ByteObjectConversion<List<DecoratedKey>> keyConverter = new ByteObjectConversion<List<DecoratedKey>>();
-    public static ByteObjectConversion<List<InetAddressAndPort>> ipConverter = new ByteObjectConversion<List<InetAddressAndPort>>();
+    // public static ByteObjectConversion<List<DecoratedKey>> keyConverter = new ByteObjectConversion<List<DecoratedKey>>();
+    // public static ByteObjectConversion<List<InetAddressAndPort>> ipConverter = new ByteObjectConversion<List<InetAddressAndPort>>();
 
     
     public static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
@@ -65,10 +66,13 @@ public class ECSyncSSTable {
     public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) throws Exception {
         try {
             logger.debug("rymDebug: try to serialize allKey, allKey num is {}, keys are {}", this.allKey.size(), this.allKey);
-            this.sstSize = keyConverter.toByteArray(this.allKey).length;
+            // this.sstSize = keyConverter.toByteArray(this.allKey).length;
             logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
-            this.sstContent = new byte[this.sstSize];
-            this.sstContent = keyConverter.toByteArray(this.allKey);
+            // this.sstContent = new byte[this.sstSize];
+            // this.sstContent = keyConverter.toByteArray(this.allKey);
+            this.sstContent = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
+
+
             logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstContent.length);
 
             // logger.debug("rymDebug: ECSyncSSTable key to bytes length is {}", converter.toByteArray(this.allKey).length);
@@ -107,7 +111,8 @@ public class ECSyncSSTable {
             in.readFully(sstContent);
             List<DecoratedKey> allKey = new ArrayList<DecoratedKey>();
             try {
-                allKey = keyConverter.fromByteArray(sstContent);
+                // allKey = keyConverter.fromByteArray(sstContent);
+                allKey = (List<DecoratedKey>) ByteObjectConversion.byteArrayToObject(sstContent);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -131,7 +136,7 @@ public class ECSyncSSTable {
         List<InetAddressAndPort> eps = new ArrayList<InetAddressAndPort>();
         eps.add(FBUtilities.getBroadcastAddressAndPort());
         try {
-            byte[] epsByte =  ipConverter.toByteArray(eps);
+            byte[] epsByte =  ByteObjectConversion.objectToByteArray((Serializable) eps);
             logger.debug("eps is {}, eps byte is {}, length is {}", eps, epsByte, epsByte.length);
         } catch (Exception e) {
             // TODO Auto-generated catch block

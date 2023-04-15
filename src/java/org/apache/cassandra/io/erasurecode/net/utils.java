@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.List;
 
 import org.apache.cassandra.db.DecoratedKey;
@@ -33,35 +34,56 @@ public class utils {
     private static final Logger logger = LoggerFactory.getLogger(utils.class);
 
 
-    public static class ByteObjectConversion<T> {
+    // public static class ByteObjectConversion<T> {
 
-        // convert object to byte array
-        public byte[] toByteArray(T object) throws Exception {
+    //     // convert object to byte array
+    //     public byte[] toByteArray(T object) throws Exception {
 
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ObjectOutputStream oos;
+    //         ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    //         ObjectOutputStream oos;
 
-            try {
-                logger.debug("rymDebug: start to transform, obj is {}, class is {}", object,object.getClass());
-                oos = new ObjectOutputStream(baos);
-                oos.writeObject(object);
-                byte[] bytes = baos.toByteArray();
-                logger.debug("rymDebug: get bytes is {}", bytes);
-                return bytes;
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                logger.error("rymError: cannot serialize this fucking obj! error info {}", e);
-            }
-            return null;
-        }
+    //         try {
+    //             logger.debug("rymDebug: start to transform, obj is {}, class is {}", object,object.getClass());
+    //             oos = new ObjectOutputStream(baos);
+    //             oos.writeObject(object);
+    //             byte[] bytes = baos.toByteArray();
+    //             logger.debug("rymDebug: get bytes is {}", bytes);
+    //             return bytes;
+    //         } catch (IOException e) {
+    //             // TODO Auto-generated catch block
+    //             logger.error("rymError: cannot serialize this fucking obj! error info {}", e);
+    //         }
+    //         return null;
+    //     }
     
-        //convert byte array to object
-        public T fromByteArray(byte[] bytes) throws Exception {
-            try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-                 ObjectInputStream ois = new ObjectInputStream(bis)) {
-                return (T) ois.readObject();
-            }
+    //     //convert byte array to object
+    //     public T fromByteArray(byte[] bytes) throws Exception {
+    //         try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+    //              ObjectInputStream ois = new ObjectInputStream(bis)) {
+    //             return (T) ois.readObject();
+    //         }
+    //     }
+
+    public static class ByteObjectConversion {
+        public static byte[] objectToByteArray(Serializable obj) throws Exception {
+            logger.debug("rymDebug: start to transform");
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(bos);
+            oos.writeObject(obj);
+            oos.flush();
+            oos.close();
+            bos.close();
+            return bos.toByteArray();
+        }
+
+        public static Object byteArrayToObject(byte[] bytes) throws Exception {
+            ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+            ObjectInputStream ois = new ObjectInputStream(bis);
+            Object obj = ois.readObject();
+            bis.close();
+            ois.close();
+            return obj;
         }
     }
-    
+
 }
