@@ -1545,15 +1545,15 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return isSuspect.get();
     }
 
-    public List<DecoratedKey> getAllKeys() {
+    public List<String> getAllKeys() {
         final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
                 Collections.singletonList(fullRange()));
 
         if (indexRanges.isEmpty())
             return Collections.emptyList();
-        List<DecoratedKey> allKeys =  StreamSupport.stream(new Iterable<DecoratedKey>() {
-            public Iterator<DecoratedKey> iterator() {
-                return new Iterator<DecoratedKey>() {
+        List<String> allKeys =  StreamSupport.stream(new Iterable<String>() {
+            public Iterator<String> iterator() {
+                return new Iterator<String>() {
                     private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
                     private IndexesBounds current;
                     private int idx;
@@ -1571,9 +1571,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                         return true;
                     }
 
-                    public DecoratedKey next() {
+                    public String next() {
                         byte[] bytes = indexSummary.getKey(idx++);
-                        return decorateKey(ByteBuffer.wrap(bytes));
+                        return decorateKey(ByteBuffer.wrap(bytes)).getRawKey(metadata());
                     }
 
                     public void remove() {

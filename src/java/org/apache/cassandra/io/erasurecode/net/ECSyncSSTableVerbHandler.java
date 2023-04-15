@@ -36,8 +36,12 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     public void doVerb(Message<ECSyncSSTable> message) throws IOException {
         // collect sstcontent
         logger.debug("rymDebug: this is ECSyncSSTableVerbHandler");
+        List<DecoratedKey> sourceKeys = new ArrayList<DecoratedKey>();
+        for(String key : message.payload.allKey) {
+            sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", message.payload.targetCfName, key));
+        }
         StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
-                                                         message.payload.allKey);
+                                                         sourceKeys);
         logger.debug("rymDebug: globalSSTMap size is {}, received key num is {}", 
                      StorageService.instance.globalSSTMap.size(), message.payload.allKey.size());
     }

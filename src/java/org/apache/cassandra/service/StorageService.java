@@ -4339,7 +4339,7 @@ public class StorageService extends NotificationBroadcasterSupport
         return tokenMetadata.partitioner.decorateKey(partitionKeyToBytes(keyspaceName, table, partitionKey));
     }
 
-    private static ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key) {
+    public ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key) {
         KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
         
         if (ksMetaData == null)

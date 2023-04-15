@@ -42,7 +42,7 @@ import org.apache.cassandra.utils.IFilter.FilterKey;
  * if this matters, you can subclass RP to use a stronger hash, or use a non-lossy tokenization scheme (as in the
  * OrderPreservingPartitioner classes).
  */
-public abstract class DecoratedKey implements PartitionPosition, FilterKey, Serializable
+public abstract class DecoratedKey implements PartitionPosition, FilterKey
 {
     public static final Comparator<DecoratedKey> comparator = new Comparator<DecoratedKey>()
     {

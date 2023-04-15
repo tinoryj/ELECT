@@ -487,7 +487,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     String key = ByteBufferUtil.bytesToHex(sstable.first.getKey());
                     try {
                         ByteBuffer sstContent = sstable.getSSTContent();
-                        List<DecoratedKey> allKeys = new ArrayList<>(sstable.getAllKeys()) ;
+                        List<String> allKeys = new ArrayList<>(sstable.getAllKeys()) ;
                         
                         String sstHashID = sstable.getSSTableHashID();
                         List<InetAddressAndPort> relicaNodes = StorageService.
@@ -500,7 +500,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         ecMessage.sendSSTableToParity();
                         // send selected sstable to secondary nodes
                         // sstable.getScanner();
-                        ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID);
+                        ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, "");
                         ecSync.sendSSTableToSecondary(relicaNodes);
 
                     } catch (IOException e) {

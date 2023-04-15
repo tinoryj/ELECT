@@ -48,19 +48,21 @@ public class ECSyncSSTable {
     public static final Serializer serializer = new Serializer();
     public byte[] sstContent;
     public int sstSize;
-    public final List<DecoratedKey> allKey;
+    public final List<String> allKey;
     public final String sstHashID;
+    public String targetCfName;
     // public static ByteObjectConversion<List<DecoratedKey>> keyConverter = new ByteObjectConversion<List<DecoratedKey>>();
     // public static ByteObjectConversion<List<InetAddressAndPort>> ipConverter = new ByteObjectConversion<List<InetAddressAndPort>>();
 
     
     public static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
-    public ECSyncSSTable(List<DecoratedKey> allKey, String sstHashID) {
+    public ECSyncSSTable(List<String> allKey, String sstHashID, String targetCfName) {
         // this.sstContent = sstContent;
         // this.sstSize = sstContent.remaining();
         this.allKey = new ArrayList<>(allKey);
         this.sstHashID = sstHashID;
+        this.targetCfName = targetCfName;
     }
 
     public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) throws Exception {
@@ -86,6 +88,7 @@ public class ECSyncSSTable {
         if (replicaNodes != null) {
             for(InetAddressAndPort node : replicaNodes) {
                 if(!node.equals(locaIP)) {
+                    this.targetCfName = "usertable" + replicaNodes.indexOf(node);
                     message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
                     MessagingService.instance().sendSSTContentWithoutCallback(message, node);
                 }
@@ -100,6 +103,7 @@ public class ECSyncSSTable {
         @Override
         public void serialize(ECSyncSSTable t, DataOutputPlus out, int version) throws IOException {
             out.writeUTF(t.sstHashID);
+            out.writeUTF(t.targetCfName);
             out.writeInt(t.sstSize);
             out.write(t.sstContent);
         }
@@ -107,25 +111,26 @@ public class ECSyncSSTable {
         @Override
         public ECSyncSSTable deserialize(DataInputPlus in, int version) throws IOException {
             String sstHashID = in.readUTF();
+            String targetCfName = in.readUTF();
             int sstSize = in.readInt();
             byte[] sstContent = new byte[sstSize];
             in.readFully(sstContent);
-            List<DecoratedKey> allKey = new ArrayList<DecoratedKey>();
+            List<String> allKey = new ArrayList<String>();
             try {
                 // allKey = keyConverter.fromByteArray(sstContent);
-                allKey = (List<DecoratedKey>) ByteObjectConversion.byteArrayToObject(sstContent);
+                allKey = (List<String>) ByteObjectConversion.byteArrayToObject(sstContent);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
             // ByteBuffer sstContent = ByteBuffer.wrap(buf);
 
-            return new ECSyncSSTable(allKey, sstHashID);
+            return new ECSyncSSTable(allKey, sstHashID, targetCfName);
         }
     
         @Override
         public long serializedSize(ECSyncSSTable t, int version) {
-            long size = t.sstSize + sizeof(t.sstSize) + sizeof(t.sstHashID);
+            long size = t.sstSize + sizeof(t.sstSize) + sizeof(t.sstHashID) + sizeof(t.targetCfName);
             return size;
     
         }
