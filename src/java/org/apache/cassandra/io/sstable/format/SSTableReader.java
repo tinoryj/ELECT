@@ -1548,6 +1548,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     public List<String> getAllKeys() {
         final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
                 Collections.singletonList(fullRange()));
+        logger.debug("rymDebug: this is get all keys");
 
         if (indexRanges.isEmpty())
             return Collections.emptyList();
@@ -1586,6 +1587,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         while (keys.iterator().hasNext()) {
             allKeys.add(keys.iterator().next());
         }
+        
+        logger.debug("rymDebug: this is get all keys successfully, key number is {}", allKeys.size());
         return allKeys;
     }
 
