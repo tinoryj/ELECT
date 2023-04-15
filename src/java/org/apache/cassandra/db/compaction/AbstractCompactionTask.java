@@ -33,12 +33,17 @@ import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.WrappedRunnable;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 public abstract class AbstractCompactionTask extends WrappedRunnable
 {
     protected final ColumnFamilyStore cfs;
     protected LifecycleTransaction transaction;
     protected boolean isUserDefined;
     protected OperationType compactionType;
+
+    private static final Logger logger = LoggerFactory.getLogger(AbstractCompactionTask.class);
+
 
     /**
      * @param cfs
@@ -120,6 +125,8 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     {
         try
         {
+            logger.debug("rymDebug: this is ActiveCompactionTask.execute");
+
             return executeInternal(activeCompactions, sourceKeys);
         }
         catch(FSDiskFullWriteError e)

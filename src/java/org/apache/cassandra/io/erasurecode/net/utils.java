@@ -24,7 +24,13 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class utils {
+    private static final Logger logger = LoggerFactory.getLogger(utils.class);
+
 
     public static class ByteObjectConversion<T> {
 
@@ -39,6 +45,7 @@ public class utils {
                 oos = new ObjectOutputStream(baos);
                 oos.writeObject(object);
                 bytes = baos.toByteArray();
+                logger.debug("rymDebug: get bytes size is {}", bytes.length);
                 return bytes;
             } catch (IOException e) {
                 // TODO Auto-generated catch block

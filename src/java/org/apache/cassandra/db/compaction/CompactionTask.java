@@ -261,11 +261,11 @@ public class CompactionTask extends AbstractCompactionTask {
                     // point of no return
                     newSStables = writer.finish();
 
-                    Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
-                    for (SSTableReader sst: allSStables) {
-                        logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
+                    // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
+                    for (SSTableReader sst: newSStables) {
+                        logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
                          stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
-                         cfName+RESET, StreamSupport.stream(allSStables.spliterator(), false).count());
+                         cfName+RESET, newSStables.size());
 
                     }
                 }
