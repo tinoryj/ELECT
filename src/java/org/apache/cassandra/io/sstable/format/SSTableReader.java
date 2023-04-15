@@ -1556,44 +1556,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             UnfilteredRowIterator rowIterator = scanner.next();
             allKeys.add(rowIterator.partitionKey().getRawKey(metadata()));
         }
-
-        // if (indexRanges.isEmpty())
-        //     return Collections.emptyList();
-        // Iterable<String> keys = new Iterable<String>() {
-        //     public Iterator<String> iterator() {
-        //         return new Iterator<String>() {
-        //             private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
-        //             private IndexesBounds current;
-        //             private int idx;
-
-        //             public boolean hasNext() {
-        //                 if (current == null || idx > current.upperPosition) {
-        //                     if (rangeIter.hasNext()) {
-        //                         current = rangeIter.next();
-        //                         idx = current.lowerPosition;
-        //                         return true;
-        //                     }
-        //                     return false;
-        //                 }
-
-        //                 return true;
-        //             }
-
-        //             public String next() {
-        //                 byte[] bytes = indexSummary.getKey(idx++);
-        //                 return decorateKey(ByteBuffer.wrap(bytes)).getRawKey(metadata());
-        //             }
-
-        //             public void remove() {
-        //                 throw new UnsupportedOperationException();
-        //             }
-        //         };
-        //     }
-        // };
-        // List<String> allKeys = new ArrayList<String>();
-        // while (keys.iterator().hasNext()) {
-        //     allKeys.add(keys.iterator().next());
-        // }
+        scanner.close();
         
         logger.debug("rymDebug: this is get all keys successfully, key number is {}", allKeys.size());
         return allKeys;
@@ -1608,43 +1571,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             UnfilteredRowIterator rowIterator = scanner.next();
             allKeys.add(rowIterator.partitionKey());
         }
-
-        // if (indexRanges.isEmpty())
-        //     return Collections.emptyList();
-        // Iterable<DecoratedKey> keys = new Iterable<DecoratedKey>() {
-        //     public Iterator<DecoratedKey> iterator() {
-        //         return new Iterator<DecoratedKey>() {
-        //             private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
-        //             private IndexesBounds current;
-        //             private int idx;
-
-        //             public boolean hasNext() {
-        //                 if (current == null || idx > current.upperPosition) {
-        //                     if (rangeIter.hasNext()) {
-        //                         current = rangeIter.next();
-        //                         idx = current.lowerPosition;
-        //                         return true;
-        //                     }
-        //                     return false;
-        //                 }
-
-        //                 return true;
-        //             }
-
-        //             public DecoratedKey next() {
-        //                 byte[] bytes = indexSummary.getKey(idx++);
-        //                 return decorateKey(ByteBuffer.wrap(bytes));
-        //             }
-
-        //             public void remove() {
-        //                 throw new UnsupportedOperationException();
-        //             }
-        //         };
-        //     }
-        // };
-        // while(keys.iterator().hasNext()) {
-        //     allKeys.add(keys.iterator().next());
-        // }
+        scanner.close();
         return allKeys;
     }
 

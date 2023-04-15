@@ -25,6 +25,8 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -219,10 +221,13 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
 
             // sync encoded data to parity nodes
-            ECParityNode.instance.distributeEcDataToParityNodes(parity, messages[0].parityNodes, parityHashCode);
+            ECParityNode ecParityNode = new ECParityNode(null, null, 0);
+            ecParityNode.distributeEcDataToParityNodes(parity, messages[0].parityNodes, parityHashCode);
 
             // Transform to ECMetadata and dispatch to related nodes
-            ECMetadata.instance.generateMetadata(messages, parity, parityHashCode);
+            ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
+                        new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
+            ecMetadata.generateMetadata(messages, parity, parityHashCode);
         }
 
     }
