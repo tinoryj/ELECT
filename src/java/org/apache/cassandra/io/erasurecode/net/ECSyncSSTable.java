@@ -64,19 +64,19 @@ public class ECSyncSSTable {
 
     public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) throws Exception {
         try {
-            
+            logger.debug("rymDebug: try to serialize allKey");
             this.sstSize = keyConverter.toByteArray(this.allKey).length;
             this.sstContent = new byte[this.sstSize];
             System.arraycopy(keyConverter.toByteArray(this.allKey), 0, this.sstContent, 0, this.sstSize);
+
+            logger.debug("rymDebug: ECSyncSSTable allKey num is {}", this.allKey.size());
+            // logger.debug("rymDebug: ECSyncSSTable key to bytes length is {}", converter.toByteArray(this.allKey).length);
+            logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstSize);
             // this.sstContent = Arrays.copyOf(converter.toByteArray(this.allKey), this.sstSize);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-
-        logger.debug("rymDebug: ECSyncSSTable allKey num is {}", this.allKey.size());
-        // logger.debug("rymDebug: ECSyncSSTable key to bytes length is {}", converter.toByteArray(this.allKey).length);
-        logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstSize);
         Message<ECSyncSSTable> message = null;
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
         if (replicaNodes != null) {
