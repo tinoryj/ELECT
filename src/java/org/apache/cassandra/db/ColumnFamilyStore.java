@@ -490,18 +490,18 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         List<String> allKeys = new ArrayList<>(sstable.getAllKeys()) ;
                         
                         String sstHashID = sstable.getSSTableHashID();
-                        List<InetAddressAndPort> relicaNodes = StorageService.
+                        List<InetAddressAndPort> replicaNodes = StorageService.
                                                                instance.getReplicaNodesWithPort(keyspaceName, cfName, key);
                         logger.debug("rymDebug: send sstables size {}, replicaNodes are {}, row num is {},allKeys num is {}", 
-                                     sstContent.remaining(), relicaNodes, sstable.getTotalRows(), allKeys.size());
+                                     sstContent.remaining(), replicaNodes, sstable.getTotalRows(), allKeys.size());
                         ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
-                                "", "", relicaNodes);
+                                "", "", replicaNodes);
                         // send selected sstable to parity nodes
                         ecMessage.sendSSTableToParity();
                         // send selected sstable to secondary nodes
                         // sstable.getScanner();
                         ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, "");
-                        ecSync.sendSSTableToSecondary(relicaNodes);
+                        ecSync.sendSSTableToSecondary(replicaNodes);
 
                     } catch (IOException e) {
                         logger.error("rymError: {}", e);

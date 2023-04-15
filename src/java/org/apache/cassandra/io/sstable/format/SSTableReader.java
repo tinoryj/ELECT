@@ -1546,93 +1546,105 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public List<String> getAllKeys() {
-        final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
-                Collections.singletonList(fullRange()));
+        // final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
+        //         Collections.singletonList(fullRange()));
         logger.debug("rymDebug: this is get all keys");
-
-        if (indexRanges.isEmpty())
-            return Collections.emptyList();
-        Iterable<String> keys = new Iterable<String>() {
-            public Iterator<String> iterator() {
-                return new Iterator<String>() {
-                    private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
-                    private IndexesBounds current;
-                    private int idx;
-
-                    public boolean hasNext() {
-                        if (current == null || idx > current.upperPosition) {
-                            if (rangeIter.hasNext()) {
-                                current = rangeIter.next();
-                                idx = current.lowerPosition;
-                                return true;
-                            }
-                            return false;
-                        }
-
-                        return true;
-                    }
-
-                    public String next() {
-                        byte[] bytes = indexSummary.getKey(idx++);
-                        return decorateKey(ByteBuffer.wrap(bytes)).getRawKey(metadata());
-                    }
-
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-                };
-            }
-        };
+        
+        ISSTableScanner scanner = this.getScanner();
         List<String> allKeys = new ArrayList<String>();
-        while (keys.iterator().hasNext()) {
-            allKeys.add(keys.iterator().next());
+        while(scanner.hasNext()) {
+            UnfilteredRowIterator rowIterator = scanner.next();
+            allKeys.add(rowIterator.partitionKey().getRawKey(metadata()));
         }
+
+        // if (indexRanges.isEmpty())
+        //     return Collections.emptyList();
+        // Iterable<String> keys = new Iterable<String>() {
+        //     public Iterator<String> iterator() {
+        //         return new Iterator<String>() {
+        //             private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
+        //             private IndexesBounds current;
+        //             private int idx;
+
+        //             public boolean hasNext() {
+        //                 if (current == null || idx > current.upperPosition) {
+        //                     if (rangeIter.hasNext()) {
+        //                         current = rangeIter.next();
+        //                         idx = current.lowerPosition;
+        //                         return true;
+        //                     }
+        //                     return false;
+        //                 }
+
+        //                 return true;
+        //             }
+
+        //             public String next() {
+        //                 byte[] bytes = indexSummary.getKey(idx++);
+        //                 return decorateKey(ByteBuffer.wrap(bytes)).getRawKey(metadata());
+        //             }
+
+        //             public void remove() {
+        //                 throw new UnsupportedOperationException();
+        //             }
+        //         };
+        //     }
+        // };
+        // List<String> allKeys = new ArrayList<String>();
+        // while (keys.iterator().hasNext()) {
+        //     allKeys.add(keys.iterator().next());
+        // }
         
         logger.debug("rymDebug: this is get all keys successfully, key number is {}", allKeys.size());
         return allKeys;
     }
 
     public List<DecoratedKey> getAllDecoratedKeys() {
-        final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
-                Collections.singletonList(fullRange()));
-
-        if (indexRanges.isEmpty())
-            return Collections.emptyList();
-        Iterable<DecoratedKey> keys = new Iterable<DecoratedKey>() {
-            public Iterator<DecoratedKey> iterator() {
-                return new Iterator<DecoratedKey>() {
-                    private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
-                    private IndexesBounds current;
-                    private int idx;
-
-                    public boolean hasNext() {
-                        if (current == null || idx > current.upperPosition) {
-                            if (rangeIter.hasNext()) {
-                                current = rangeIter.next();
-                                idx = current.lowerPosition;
-                                return true;
-                            }
-                            return false;
-                        }
-
-                        return true;
-                    }
-
-                    public DecoratedKey next() {
-                        byte[] bytes = indexSummary.getKey(idx++);
-                        return decorateKey(ByteBuffer.wrap(bytes));
-                    }
-
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-                };
-            }
-        };
+        // final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
+        //         Collections.singletonList(fullRange()));
+        ISSTableScanner scanner = this.getScanner();
         List<DecoratedKey> allKeys = new ArrayList<DecoratedKey>();
-        while(keys.iterator().hasNext()) {
-            allKeys.add(keys.iterator().next());
+        while(scanner.hasNext()) {
+            UnfilteredRowIterator rowIterator = scanner.next();
+            allKeys.add(rowIterator.partitionKey());
         }
+
+        // if (indexRanges.isEmpty())
+        //     return Collections.emptyList();
+        // Iterable<DecoratedKey> keys = new Iterable<DecoratedKey>() {
+        //     public Iterator<DecoratedKey> iterator() {
+        //         return new Iterator<DecoratedKey>() {
+        //             private Iterator<IndexesBounds> rangeIter = indexRanges.iterator();
+        //             private IndexesBounds current;
+        //             private int idx;
+
+        //             public boolean hasNext() {
+        //                 if (current == null || idx > current.upperPosition) {
+        //                     if (rangeIter.hasNext()) {
+        //                         current = rangeIter.next();
+        //                         idx = current.lowerPosition;
+        //                         return true;
+        //                     }
+        //                     return false;
+        //                 }
+
+        //                 return true;
+        //             }
+
+        //             public DecoratedKey next() {
+        //                 byte[] bytes = indexSummary.getKey(idx++);
+        //                 return decorateKey(ByteBuffer.wrap(bytes));
+        //             }
+
+        //             public void remove() {
+        //                 throw new UnsupportedOperationException();
+        //             }
+        //         };
+        //     }
+        // };
+        // while(keys.iterator().hasNext()) {
+        //     allKeys.add(keys.iterator().next());
+        // }
         return allKeys;
     }
 
