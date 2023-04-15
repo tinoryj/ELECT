@@ -49,7 +49,8 @@ public class ECSyncSSTable {
     public int sstSize;
     public final List<DecoratedKey> allKey;
     public final String sstHashID;
-    public static ByteObjectConversion<List<DecoratedKey>> converter = new ByteObjectConversion<List<DecoratedKey>>();
+    public static ByteObjectConversion<List<DecoratedKey>> keyConverter = new ByteObjectConversion<List<DecoratedKey>>();
+    public static ByteObjectConversion<List<InetAddressAndPort>> ipConverter = new ByteObjectConversion<List<InetAddressAndPort>>();
 
     
     public static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
@@ -57,22 +58,22 @@ public class ECSyncSSTable {
     public ECSyncSSTable(List<DecoratedKey> allKey, String sstHashID) {
         // this.sstContent = sstContent;
         // this.sstSize = sstContent.remaining();
-        this.allKey = allKey;
+        this.allKey = new ArrayList<>(allKey);
         this.sstHashID = sstHashID;
     }
 
     public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) throws Exception {
         try {
             
-            this.sstSize = converter.toByteArray(this.allKey).length;
+            this.sstSize = keyConverter.toByteArray(this.allKey).length;
             this.sstContent = new byte[this.sstSize];
-            System.arraycopy(converter.toByteArray(this.allKey), 0, this.sstContent, 0, this.sstSize);
+            System.arraycopy(keyConverter.toByteArray(this.allKey), 0, this.sstContent, 0, this.sstSize);
             // this.sstContent = Arrays.copyOf(converter.toByteArray(this.allKey), this.sstSize);
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        
+
         logger.debug("rymDebug: ECSyncSSTable allKey num is {}", this.allKey.size());
         // logger.debug("rymDebug: ECSyncSSTable key to bytes length is {}", converter.toByteArray(this.allKey).length);
         logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstSize);
@@ -109,7 +110,7 @@ public class ECSyncSSTable {
             in.readFully(sstContent);
             List<DecoratedKey> allKey = new ArrayList<DecoratedKey>();
             try {
-                allKey = converter.fromByteArray(sstContent);
+                allKey = keyConverter.fromByteArray(sstContent);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -129,10 +130,21 @@ public class ECSyncSSTable {
     }
 
     public static void main(String[] args) {
-        byte[] srcArray = new byte[]{1, 2, 3, 4};
-        byte[] destArray = new byte[srcArray.length];
-        System.arraycopy(srcArray, 0, destArray, 0, srcArray.length);
-        logger.debug("destArray is {}", destArray);
+
+        List<InetAddressAndPort> eps = new ArrayList<InetAddressAndPort>();
+        eps.add(FBUtilities.getBroadcastAddressAndPort());
+        try {
+            byte[] epsByte =  ipConverter.toByteArray(eps);
+            logger.debug("eps is {}, eps byte is {}, length is {}", eps, epsByte, epsByte.length);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        // byte[] srcArray = new byte[]{1, 2, 3, 4};
+        // byte[] destArray = new byte[srcArray.length];
+        // System.arraycopy(srcArray, 0, destArray, 0, srcArray.length);
+        // logger.debug("destArray is {}", destArray);
     }
 
 }
