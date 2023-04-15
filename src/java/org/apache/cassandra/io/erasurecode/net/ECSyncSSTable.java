@@ -64,7 +64,7 @@ public class ECSyncSSTable {
 
     public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) throws Exception {
         try {
-            logger.debug("rymDebug: try to serialize allKey");
+            logger.debug("rymDebug: try to serialize allKey, allKey num is {}, keys are {}", this.allKey.size(), this.allKey);
             this.sstSize = keyConverter.toByteArray(this.allKey).length;
             this.sstContent = new byte[this.sstSize];
             System.arraycopy(keyConverter.toByteArray(this.allKey), 0, this.sstContent, 0, this.sstSize);
