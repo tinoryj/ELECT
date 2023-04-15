@@ -71,6 +71,7 @@ public class ECSyncSSTable {
             // this.sstContent = new byte[this.sstSize];
             // this.sstContent = keyConverter.toByteArray(this.allKey);
             this.sstContent = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
+            this.sstSize = this.sstContent.length;
 
 
             logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstContent.length);
