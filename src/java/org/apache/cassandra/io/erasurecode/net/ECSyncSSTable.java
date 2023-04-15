@@ -74,8 +74,7 @@ public class ECSyncSSTable {
             // logger.debug("rymDebug: ECSyncSSTable key to bytes length is {}", converter.toByteArray(this.allKey).length);
             // this.sstContent = Arrays.copyOf(converter.toByteArray(this.allKey), this.sstSize);
         } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            logger.error("rymError: cannot get the bytes array from key!!!, error info {}", e);
         }
         Message<ECSyncSSTable> message = null;
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
@@ -97,8 +96,6 @@ public class ECSyncSSTable {
         public void serialize(ECSyncSSTable t, DataOutputPlus out, int version) throws IOException {
             out.writeUTF(t.sstHashID);
             out.writeInt(t.sstSize);
-            // byte[] buf = new byte[t.sstSize];
-            // t.sstContent.get(buf);
             out.write(t.sstContent);
         }
     

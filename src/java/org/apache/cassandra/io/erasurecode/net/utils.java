@@ -39,19 +39,19 @@ public class utils {
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ObjectOutputStream oos;
-            byte[] bytes = null;
 
             try {
+                logger.debug("rymDebug: start to transform");
                 oos = new ObjectOutputStream(baos);
                 oos.writeObject(object);
-                bytes = baos.toByteArray();
-                logger.debug("rymDebug: get bytes size is {}", bytes.length);
+                byte[] bytes = baos.toByteArray();
+                logger.debug("rymDebug: get bytes is {}", bytes);
                 return bytes;
             } catch (IOException e) {
                 // TODO Auto-generated catch block
-                e.printStackTrace();
+                logger.error("rymError: cannot serialize this fucking obj! error info {}", e);
             }
-            return bytes;
+            return null;
         }
     
         //convert byte array to object
