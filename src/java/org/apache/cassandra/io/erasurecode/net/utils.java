@@ -23,8 +23,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.List;
 
-
+import org.apache.cassandra.db.DecoratedKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +42,7 @@ public class utils {
             ObjectOutputStream oos;
 
             try {
-                logger.debug("rymDebug: start to transform");
+                logger.debug("rymDebug: start to transform, obj is {}, class is {}", object,object.getClass());
                 oos = new ObjectOutputStream(baos);
                 oos.writeObject(object);
                 byte[] bytes = baos.toByteArray();
