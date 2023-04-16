@@ -85,7 +85,7 @@ public class ECMetadata {
         for(ECMessage msg : messages) {
             String sstContentHash = msg.sstHashID;
             this.sstHashIdList.add(sstContentHash);
-            this.sstHashIdToReplicaMap.putIfAbsent(connectedSSTHash, msg.replicaNodes);
+            this.sstHashIdToReplicaMap.putIfAbsent(sstContentHash, msg.replicaNodes);
             //this.sstHashIdToReplicaMapStr += sstContentHash + "=" + msg.repEpsString + ";";
             connectedSSTHash += sstContentHash;
             this.primaryNodes.add(msg.replicaNodes.get(0));

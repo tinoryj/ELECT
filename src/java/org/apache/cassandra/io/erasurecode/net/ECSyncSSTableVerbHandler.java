@@ -42,9 +42,11 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         }
         StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
                                                          sourceKeys);
-        logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, received key num is {}", 
+        logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, received key num is {}, targetCfName is {}, sstHash is {}", 
                      message.from(),
                      StorageService.instance.globalSSTMap.size(), 
-                     message.payload.allKey.size());
+                     message.payload.allKey.size(),
+                     message.payload.targetCfName,
+                     message.payload.sstHashID);
     }
 }
