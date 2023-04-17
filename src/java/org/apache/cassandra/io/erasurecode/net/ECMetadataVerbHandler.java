@@ -219,17 +219,18 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         }
 
         // then search which sstable does the last key stored
-        if(mid > 0) {
+        int index = mid;
+        while (index<sstables.size() && last.compareTo(sstables.get(index).last)>0) {
+            rewriteSStables.add(sstables.get(index));
+            index++;
+        }
+
+        if (index < sstables.size() - 1) {
+            rewriteSStables.add(sstables.get(index + 1));
+        }
+
+        if(mid > 0 && rewriteSStables.size()>1) {
             rewriteSStables.add(sstables.get(mid - 1));
-        }
-
-        while (mid<sstables.size() && last.compareTo(sstables.get(mid).last)>0) {
-            rewriteSStables.add(sstables.get(mid));
-            mid++;
-        }
-
-        if (mid < sstables.size() - 1) {
-            rewriteSStables.add(sstables.get(mid + 1));
         }
 
         return rewriteSStables;
