@@ -417,7 +417,7 @@ public class CompactionManager implements CompactionManagerMBean {
         // List<Future<?>> futures = new ArrayList<>();
         LifecycleTransaction transaction = null;
         Future<?> future = null;
-        try (LifecycleTransaction txn = cfs.markRewriteSSTableCompacting(rewriteSSTables, operationType)) {
+        try (LifecycleTransaction txn = cfs.markAllCompacting(operationType)) {
             if (txn == null)
                 return AllSSTableOpStatus.UNABLE_TO_CANCEL;
 
