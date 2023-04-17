@@ -183,7 +183,7 @@ public class CompactionTask extends AbstractCompactionTask {
             }
             ssTableLoggerMsg.append("]");
 
-            logger.info("Compacting ({}) {}", taskId, ssTableLoggerMsg);
+            logger.info("Rewriting ({}) {}", taskId, ssTableLoggerMsg);
 
             RateLimiter limiter = CompactionManager.instance.getRateLimiter();
             long start = nanoTime();
@@ -193,6 +193,7 @@ public class CompactionTask extends AbstractCompactionTask {
             long inputSizeBytes;
             long timeSpentWritingKeys;
             long traversedKeys = 0;
+            int  originalSSTableNum = sstables.size();
 
             
             Collection<SSTableReader> newSStables;
@@ -265,9 +266,9 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     for (SSTableReader sst: newSStables) {
-                        logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
+                        logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, original sstable number is {}, new sstable number is {},",
                          stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
-                         cfName+RESET, newSStables.size());
+                         cfName+RESET, originalSSTableNum, newSStables.size());
 
                     }
                 }
@@ -400,13 +401,6 @@ public class CompactionTask extends AbstractCompactionTask {
 
             long[] mergedRowCounts;
             long totalSourceCQLRows;
-
-
-            /////////////////////////////////////////////////
-            // send force compaction request to replica nodes
-            // int oldSStLevel = actuallyCompact.iterator().next().getSSTableLevel();
-            // String ksName = cfs.keyspace.getName();
-            String cfName = cfs.name;
 
 
             int nowInSec = FBUtilities.nowInSeconds();
