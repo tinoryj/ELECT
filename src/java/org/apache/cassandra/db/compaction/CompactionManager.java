@@ -417,12 +417,44 @@ public class CompactionManager implements CompactionManagerMBean {
         // List<Future<?>> futures = new ArrayList<>();
         LifecycleTransaction transaction = null;
         Future<?> future = null;
-        try (LifecycleTransaction txn = cfs.markAllCompacting(operationType)) {
+        // try (LifecycleTransaction txn = cfs.markAllCompacting(operationType)) {
+        //     if (txn == null)
+        //         return AllSSTableOpStatus.UNABLE_TO_CANCEL;
+
+        //     Iterable<SSTableReader> sstables = Lists.newArrayList(operation.filterSSTables(txn));
+        //     if (Iterables.isEmpty(sstables)) {
+        //         logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
+        //         return AllSSTableOpStatus.SUCCESSFUL;
+        //     }
+
+        //     transaction = txn;
+        //     Callable<Object> callable = new Callable<Object>() {
+        //         @Override
+        //         public Object call() throws Exception
+        //         {
+        //             operation.execute(txn);
+        //             return this;
+        //         }
+        //     };
+        //     Future<?> fut = executor.submitIfRunning(callable, "paralell sstable operation");
+        //     if (!fut.isCancelled())
+        //         future = fut;
+        //     else
+        //         return AllSSTableOpStatus.ABORTED;
+
+        //     if (jobs > 0) {
+        //         Future<?> f = (Future<?>) FBUtilities.waitOnFuture(future);
+        //     }
+
+        //     assert txn.originals().isEmpty();
+        //     logger.info("Finished {} for {}.{} successfully", operationType, cfs.keyspace.getName(), cfs.getTableName());
+        //     return AllSSTableOpStatus.SUCCESSFUL;
+        try (LifecycleTransaction txn = cfs.getTracker().tryModify(rewriteSSTables, operationType)) {
             if (txn == null)
                 return AllSSTableOpStatus.UNABLE_TO_CANCEL;
 
-            Iterable<SSTableReader> sstables = Lists.newArrayList(operation.filterSSTables(txn));
-            if (Iterables.isEmpty(sstables)) {
+            
+            if (Iterables.isEmpty(rewriteSSTables)) {
                 logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
                 return AllSSTableOpStatus.SUCCESSFUL;
             }
@@ -589,8 +621,8 @@ public class CompactionManager implements CompactionManagerMBean {
                                     .equals(sstable.getCompressionMetadata().parameters))))
                 return false;
             
-            if(!sstables.contains(sstable))
-                return false;
+            // if(!sstables.contains(sstable))
+            //     return false;
 
             return true;
         }, jobs);
