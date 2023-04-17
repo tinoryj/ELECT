@@ -415,6 +415,7 @@ public class CompactionManager implements CompactionManagerMBean {
         logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
         LifecycleTransaction transaction = null;
         Future<?> future = null;
+
         try (LifecycleTransaction txn = cfs.getTracker().tryModify(rewriteSSTables, operationType)) {
             if (txn == null)
                 return AllSSTableOpStatus.UNABLE_TO_CANCEL;
@@ -439,6 +440,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 future = fut;
             else
                 return AllSSTableOpStatus.ABORTED;
+
 
             assert txn.originals().isEmpty();
             logger.info("Finished {} for {}.{} successfully", operationType, cfs.keyspace.getName(), cfs.getTableName());
@@ -575,7 +577,7 @@ public class CompactionManager implements CompactionManagerMBean {
                             (sstable.compression && metadata.params.compression
                                     .equals(sstable.getCompressionMetadata().parameters))))
                 return false;
-
+            
             return true;
         }, jobs);
     }
