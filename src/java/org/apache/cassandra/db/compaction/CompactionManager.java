@@ -413,8 +413,8 @@ public class CompactionManager implements CompactionManagerMBean {
             final OneSSTableOperation operation, int jobs, OperationType operationType)
             throws ExecutionException, InterruptedException {
         logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
-        LifecycleTransaction transaction = null;
-        Future<?> future = null;
+        List<LifecycleTransaction> transactions = new ArrayList<>();
+        List<Future<?>> futures = new ArrayList<>();
 
         try (LifecycleTransaction txn = cfs.getTracker().tryModify(rewriteSSTables, operationType)) {
             if (txn == null)
@@ -426,7 +426,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 return AllSSTableOpStatus.SUCCESSFUL;
             }
 
-            transaction = txn;
+            transactions.add(txn);
             Callable<Object> callable = new Callable<Object>() {
                 @Override
                 public Object call() throws Exception
@@ -435,13 +435,13 @@ public class CompactionManager implements CompactionManagerMBean {
                     return this;
                 }
             };
-            Future<?> fut = executor.submitIfRunning(callable, "paralell sstable operation");
+            Future<?> fut = executor.submitIfRunning(callable, "rewrite sstables");
             if (!fut.isCancelled())
-                future = fut;
+                futures.add(fut);
             else
                 return AllSSTableOpStatus.ABORTED;
 
-
+            FBUtilities.waitOnFutures(futures);
             assert txn.originals().isEmpty();
             logger.info("Finished {} for {}.{} successfully", operationType, cfs.keyspace.getName(), cfs.getTableName());
             return AllSSTableOpStatus.SUCCESSFUL;
@@ -450,11 +450,11 @@ public class CompactionManager implements CompactionManagerMBean {
             // wait on any unfinished futures to make sure we don't close an ongoing
             // transaction
             try {
-                FBUtilities.waitOnFuture(future);
+                FBUtilities.waitOnFutures(futures);
             } catch (Throwable t) {
                 // these are handled/logged in CompactionExecutor#afterExecute
             }
-            Throwable fail = Throwables.close(null, singleton(transaction));
+            Throwable fail = Throwables.close(null, transactions);
             if (fail != null)
                 logger.error("Failed to cleanup lifecycle transactions ({} for {}.{})", operationType,
                         cfs.keyspace.getName(), cfs.getTableName(), fail);
