@@ -235,28 +235,4 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
     }
 
-
-    public static void main(String[] args) {
-        int codeLength = 1000;
-        ByteBuffer data = ByteBuffer.allocateDirect(codeLength);
-        ByteBuffer src = ByteBuffer.allocateDirect(900);
-        data.put(src);
-        int remaining = codeLength - data.remaining();
-        logger.debug("rymDebug: remaining: {}, data.remaining {}", remaining, data.remaining());
-        if (data.remaining() > 0) {
-            byte[] zeros = new byte[data.remaining()];
-            data.put(zeros);
-        }
-        logger.debug("rymDebug: remaining: {}, capacity is {}, position is {}",
-                    data.remaining(),data.capacity(),data.position());
-
-        byte[] bb = { 10, 20, 30 };
-        ByteBuffer byteBuffer = ByteBuffer.wrap(bb);
-        logger.debug("rymDebug: remaining element is {}, capacity is {}, position is {}", 
-                    byteBuffer.remaining(), byteBuffer.capacity(), byteBuffer.position());
-
-    }
-
-
-
 }

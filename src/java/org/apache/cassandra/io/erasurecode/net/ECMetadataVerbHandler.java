@@ -162,7 +162,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     // delete the sstables and update the metadata
                     // rewrite the sstables, just delete the key ranges of M` which are matching those of M 
 
-                    logger.debug(RED+"rymDebug: many sstbales are involved, {} sstables need to rewrite!", rewriteSStables.size()+RESET);
+                    logger.debug("rymDebug: many sstbales are involved, {} sstables need to rewrite!", rewriteSStables.size());
                     try {
                         AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys, 
                             rewriteSStables, false, Long.MAX_VALUE, false, 1);
