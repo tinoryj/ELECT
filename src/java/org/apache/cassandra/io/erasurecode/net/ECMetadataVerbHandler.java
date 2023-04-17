@@ -52,6 +52,21 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
     private static final Logger logger = LoggerFactory.getLogger(ECMetadataVerbHandler.class);
 
+
+    // Reset
+    public static final String RESET = "\033[0m"; // Text Reset
+
+    // Regular Colors
+    public static final String WHITE = "\033[0;30m"; // WHITE
+    public static final String RED = "\033[0;31m"; // RED
+    public static final String GREEN = "\033[0;32m"; // GREEN
+    public static final String YELLOW = "\033[0;33m"; // YELLOW
+    public static final String BLUE = "\033[0;34m"; // BLUE
+    public static final String PURPLE = "\033[0;35m"; // PURPLE
+    public static final String CYAN = "\033[0;36m"; // CYAN
+    public static final String GREY = "\033[0;37m"; // GREY
+
+
     @Override
     public void doVerb(Message<ECMetadata> message) throws IOException {
         // Check if there were any forwarding headers in this message
@@ -102,7 +117,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     if(rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
                         // delete sstable if sstable Hash can be found 
                         rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
-                        logger.debug("rymDebug: get the match sstbales, delete it!");
+                        logger.debug(RED+"rymDebug: get the match sstbales, delete it!");
                     } else {
                         // a bit different, update sstable and delete it
                         if(first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size()-1))
@@ -113,7 +128,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             // TODO: need to consider rewrite sstables.
                             rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
                             rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
-                            logger.debug("rymDebug: M` missed keys in the middle, update and delete it!");
+                            logger.debug(RED+"rymDebug: M` missed keys in the middle, update and delete it!");
 
                         } else if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size()-1))
                                     && allKeys.size() >= updateKeys.size()) {
@@ -121,11 +136,11 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume that
                             // the compaction speed of secondary node is slower than primary node
                             rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
-                            logger.debug("rymDebug: M missed keys in the middle, delete it!");
+                            logger.debug(RED+"rymDebug: M missed keys in the middle, delete it!");
                         } else {
                             // M` missed some keys in the boundary,
                             // need to update the metadata
-                            logger.debug("rymDebug: need to rewrite sstables");
+                            logger.debug(RED+"rymDebug: need to rewrite sstables");
                             try {
                                 AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys, 
                                     rewriteSStables, false, Long.MAX_VALUE, false, 2);
@@ -147,7 +162,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     // delete the sstables and update the metadata
                     // rewrite the sstables, just delete the key ranges of M` which are matching those of M 
 
-                    logger.debug("rymDebug: many sstbales are involved, {} sstables need to rewrite!", rewriteSStables.size());
+                    logger.debug(RED+"rymDebug: many sstbales are involved, {} sstables need to rewrite!", rewriteSStables.size()+RESET);
                     try {
                         AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys, 
                             rewriteSStables, false, Long.MAX_VALUE, false, 1);
