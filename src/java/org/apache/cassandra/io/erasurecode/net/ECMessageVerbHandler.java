@@ -72,6 +72,13 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
      */
     @Override
     public void doVerb(Message<ECMessage> message) throws IOException {
+        // Check if there were any forwarding headers in this message
+        ForwardingInfo forwardTo = message.forwardTo();
+        if (forwardTo != null) {
+            forwardToLocalNodes(message, forwardTo);
+            logger.debug("rymDebug: this is a forwarding header");
+        }
+        
         ByteBuffer sstContent = message.payload.sstContent;
         int ec_data_num = message.payload.ecDataNum;
 
@@ -83,10 +90,6 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         logger.debug("rymDebug: get new message!!! message is from: {}, primaryNode is {}, parityNodes is {}",
          message.from(), message.payload.replicaNodes.get(0), message.payload.parityNodes);
 
-        // check if there were any forwarding headers in this message
-        ForwardingInfo forwardTo = message.forwardTo();
-        if (forwardTo != null)
-            forwardToLocalNodes(message, forwardTo);
 
         InetAddressAndPort primaryNode = message.payload.replicaNodes.get(0);
         // Once we have k different sstContent, do erasure coding locally

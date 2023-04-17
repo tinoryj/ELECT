@@ -484,7 +484,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 
                 if (duration >= latencyMilli && sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
                     logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}", sstable.getSSTableLevel());
-                    String key = ByteBufferUtil.bytesToHex(sstable.first.getKey());
+                    String key = sstable.first.getRawKey(sstable.metadata());
                     try {
                         ByteBuffer sstContent = sstable.getSSTContent();
                         List<String> allKeys = new ArrayList<>(sstable.getAllKeys()) ;
@@ -492,7 +492,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         String sstHashID = stringToHex(sstable.getSSTableHashID());
                         List<InetAddressAndPort> replicaNodes = StorageService.
                                                                instance.getReplicaNodesWithPort(keyspaceName, cfName, key);
-                        logger.debug("rymDebug: send sstables size {}, replicaNodes are {}, row num is {},allKeys num is {}", 
+                        logger.debug("rymDebug: send sstables size {}, first key is {}, replicaNodes are {}, row num is {},allKeys num is {}", 
                                      sstContent.remaining(), replicaNodes, sstable.getTotalRows(), allKeys.size());
                         ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
                                 "", "", replicaNodes);

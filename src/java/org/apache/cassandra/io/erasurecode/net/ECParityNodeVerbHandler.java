@@ -22,8 +22,12 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
+import org.apache.cassandra.net.ForwardingInfo;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.net.ParamType;
+import org.apache.cassandra.tracing.Tracing;
 
 import java.io.File;
 
@@ -44,6 +48,14 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
      */
     @Override
     public void doVerb(Message<ECParityNode> message) throws IOException {
+        
+        // Check if there were any forwarding headers in this message
+        ForwardingInfo forwardTo = message.forwardTo();
+        if (forwardTo != null) {
+            forwardToLocalNodes(message, forwardTo);
+            logger.debug("rymDebug: this is a forwarding header");
+        }
+        
         logger.debug("rymDebug: Received message: {}", message.payload.parityHash);
         try {
                 FileChannel fileChannel = FileChannel.open(Paths.get(parityCodeDir, message.payload.parityHash),
@@ -56,6 +68,24 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
                 logger.error("rymError: Perform erasure code error", e);
             }
     }
+
+    
+    private static void forwardToLocalNodes(Message<ECParityNode> originalMessage, ForwardingInfo forwardTo) {
+        Message.Builder<ECParityNode> builder = Message.builder(originalMessage)
+                .withParam(ParamType.RESPOND_TO, originalMessage.from())
+                .withoutParam(ParamType.FORWARD_TO);
+
+        boolean useSameMessageID = forwardTo.useSameMessageID(originalMessage.id());
+        // reuse the same Message if all ids are identical (as they will be for 4.0+
+        // node originated messages)
+        Message<ECParityNode> message = useSameMessageID ? builder.build() : null;
+
+        forwardTo.forEach((id, target) -> {
+            Tracing.trace("Enqueuing forwarded write to {}", target);
+            MessagingService.instance().send(useSameMessageID ? message : builder.withId(id).build(), target);
+        });
+    }
+
 
     public static void main(String[] args) {
         File parityCodeFile = new File(parityCodeDir + String.valueOf("parityCodeTest"));

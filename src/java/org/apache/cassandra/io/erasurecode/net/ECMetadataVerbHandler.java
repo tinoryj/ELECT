@@ -38,9 +38,9 @@ import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.CompactionManager.AllSSTableOpStatus;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
-import org.apache.cassandra.net.IVerbHandler;
-import org.apache.cassandra.net.Message;
+import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +54,13 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
     @Override
     public void doVerb(Message<ECMetadata> message) throws IOException {
+        // Check if there were any forwarding headers in this message
+        ForwardingInfo forwardTo = message.forwardTo();
+        if (forwardTo != null) {
+            forwardToLocalNodes(message, forwardTo);
+            logger.debug("rymDebug: this is a forwarding header");
+        }
+
         // receive metadata and record it to files (append)
         ecMetadatas.add(message.payload);
         logger.debug("rymDebug: received metadata: {}, {},{},{}", message.payload,
@@ -106,7 +113,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             // TODO: need to consider rewrite sstables.
                             rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
                             rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
-                            logger.debug("rymDebug: M` missed keys in the middle, delete and update it!");
+                            logger.debug("rymDebug: M` missed keys in the middle, update and delete it!");
 
                         } else if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size()-1))
                                     && allKeys.size() >= updateKeys.size()) {
@@ -140,10 +147,10 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     // delete the sstables and update the metadata
                     // rewrite the sstables, just delete the key ranges of M` which are matching those of M 
 
-                    logger.debug("rymDebug: many sstbales are involved, need to rewrite!");
+                    logger.debug("rymDebug: many sstbales are involved, {} sstables need to rewrite!", rewriteSStables.size());
                     try {
                         AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys, 
-                            rewriteSStables, false, Long.MAX_VALUE, false, 2);
+                            rewriteSStables, false, Long.MAX_VALUE, false, 1);
                         if(status != AllSSTableOpStatus.SUCCESSFUL)
                             printStatusCode(status.statusCode, cfs.name);
                     } catch (ExecutionException e) {
@@ -161,6 +168,22 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         }
 
+    }
+
+    private static void forwardToLocalNodes(Message<ECMetadata> originalMessage, ForwardingInfo forwardTo) {
+        Message.Builder<ECMetadata> builder = Message.builder(originalMessage)
+                .withParam(ParamType.RESPOND_TO, originalMessage.from())
+                .withoutParam(ParamType.FORWARD_TO);
+
+        boolean useSameMessageID = forwardTo.useSameMessageID(originalMessage.id());
+        // reuse the same Message if all ids are identical (as they will be for 4.0+
+        // node originated messages)
+        Message<ECMetadata> message = useSameMessageID ? builder.build() : null;
+
+        forwardTo.forEach((id, target) -> {
+            Tracing.trace("Enqueuing forwarded write to {}", target);
+            MessagingService.instance().send(useSameMessageID ? message : builder.withId(id).build(), target);
+        });
     }
 
     private static void printStatusCode(int statusCode, String cfName) {
@@ -185,7 +208,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             SSTableReader sstable = sstables.get(mid);
             if(sstable.first.compareTo(first)<=0 && 
                sstable.last.compareTo(first)>=0) {
-                rewriteSStables.add(sstable);
+                // rewriteSStables.add(sstable);
                 break;
             }
             else if (sstable.first.compareTo(first)<0) {
@@ -196,10 +219,19 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         }
 
         // then search which sstable does the last key stored
-        mid++;
+        if(mid > 0) {
+            rewriteSStables.add(sstables.get(mid - 1));
+        }
+
         while (mid<sstables.size() && last.compareTo(sstables.get(mid).last)>0) {
             rewriteSStables.add(sstables.get(mid));
+            mid++;
         }
+
+        if (mid < sstables.size() - 1) {
+            rewriteSStables.add(sstables.get(mid + 1));
+        }
+
         return rewriteSStables;
     }
 
