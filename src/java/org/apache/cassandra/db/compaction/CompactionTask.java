@@ -233,27 +233,26 @@ public class CompactionTask extends AbstractCompactionTask {
                     estimatedKeys = writer.estimatedKeys();
                     while (ci.hasNext()) {
                         traversedKeys++;
-                        UnfilteredRowIterator row1 = ci.next();
-                        UnfilteredRowIterator row2 = ci.next();
-                        if(row1.partitionKey() != row2.partitionKey()) {
+                        UnfilteredRowIterator row = ci.next();
+                        if(!row.partitionKey().equals(row.partitionKey())) {
                             logger.debug("rymDebug: Different! row1 is {}, row2 is {}", 
-                                row1.partitionKey().getRawKey(cfs.metadata()), row2.partitionKey().getRawKey(cfs.metadata()));
+                                row.partitionKey().getRawKey(cfs.metadata()), row.partitionKey().getRawKey(cfs.metadata()));
                         }
 
                         
-                        if(ci.next().partitionKey().compareTo(sourceKeys.get(0)) < 0 || 
-                            ci.next().partitionKey().compareTo(sourceKeys.get (0)) > 0) {
+                        if(row.partitionKey().compareTo(sourceKeys.get(0)) < 0 || 
+                            row.partitionKey().compareTo(sourceKeys.get (0)) > 0) {
                             // if the key is out of the range of the source keys, write it
-                            if (writer.append(ci.next()))
+                            if (writer.append(row))
                             {
                                 totalKeysWritten++;
                             }
                                 
                         } else {
-                            if(sourceKeys.indexOf(ci.next().partitionKey()) == -1) {
+                            if(sourceKeys.indexOf(row.partitionKey()) == -1) {
                                 // if the key is in the range of the source keys, but not contained
                                 // in the source keys, save it
-                                if (writer.append(ci.next())) {
+                                if (writer.append(row)) {
                                     totalKeysWritten++;
                                 }
                                     
@@ -274,8 +273,6 @@ public class CompactionTask extends AbstractCompactionTask {
                             lastCheckObsoletion = nanoTime();
                         }
                     }
-                    logger.debug("rymDebug: traversed keys is: {}, key is {}", 
-                        traversedKeys, ci.next().partitionKey().getRawKey(cfs.metadata()));
                     logger.debug("rymDebug: traversed keys num is {}, totalKeysWritten is {}",traversedKeys, totalKeysWritten);
                     timeSpentWritingKeys = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
 
