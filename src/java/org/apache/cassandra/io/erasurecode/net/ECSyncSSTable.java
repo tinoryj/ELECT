@@ -63,28 +63,24 @@ public class ECSyncSSTable {
         this.targetCfName = targetCfName;
     }
 
-    public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) throws Exception {
+    public void sendSSTableToSecondary(InetAddressAndPort rpn) throws Exception {
         try {
-            logger.debug("rymDebug: try to serialize allKey, allKey num is {}, keys are {}", this.allKey.size(), this.allKey);
-            logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
             this.sstContent = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
             this.sstSize = this.sstContent.length;
+            logger.debug("rymDebug: try to serialize allKey, allKey num is {}", this.allKey.size());
+            logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
 
 
-            logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstContent.length);
+            //logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstContent.length);
 
         } catch (Exception e) {
             logger.error("rymError: cannot get the bytes array from key!!!, error info {}", e);
         }
         Message<ECSyncSSTable> message = null;
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
-        if (replicaNodes != null) {
-            for(InetAddressAndPort node : replicaNodes) {
-                if(!node.equals(locaIP)) {
-                    message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
-                    MessagingService.instance().sendSSTContentWithoutCallback(message, node);
-                }
-            }
+        if (rpn != null && !rpn.equals(locaIP)) {
+            message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
+            MessagingService.instance().sendSSTContentWithoutCallback(message, rpn);
         } else {
             logger.debug("rymError: replicaNodes is null!!");
         }

@@ -73,6 +73,9 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.RateLimiter;
+
+import ch.qos.logback.core.pattern.parser.Node;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -503,7 +506,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         for (InetAddressAndPort rpn : replicaNodes) {
                             String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
                             ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, targetCfName);
-                            ecSync.sendSSTableToSecondary(replicaNodes);
+                            ecSync.sendSSTableToSecondary(rpn);
                         }
 
                     } catch (IOException e) {

@@ -132,7 +132,6 @@ public class ECCompaction {
 
         dos.flush();
 
-        // 从输入流中读取数据
         ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
         DataInputStream dis = new DataInputStream(bais);
 
