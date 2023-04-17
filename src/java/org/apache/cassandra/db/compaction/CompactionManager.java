@@ -421,7 +421,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 return AllSSTableOpStatus.UNABLE_TO_CANCEL;
 
             
-            if (Iterables.isEmpty(rewriteSSTables)) {
+            if (Iterables.isEmpty(txn.originals())) {
                 logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
                 return AllSSTableOpStatus.SUCCESSFUL;
             }
@@ -607,10 +607,10 @@ public class CompactionManager implements CompactionManagerMBean {
             public void execute(LifecycleTransaction txn) {
                 AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
                 task.setUserDefined(true);
-                task.setCompactionType(OperationType.UPGRADE_SSTABLES);
+                task.setCompactionType(OperationType.COMPACTION);
                 task.execute(active, sourceKeys);
             }
-        }, jobs, OperationType.UPGRADE_SSTABLES);
+        }, jobs, OperationType.COMPACTION);
     }
 
     /**
