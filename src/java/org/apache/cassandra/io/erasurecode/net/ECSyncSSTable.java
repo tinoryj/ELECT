@@ -58,8 +58,6 @@ public class ECSyncSSTable {
     public static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
     public ECSyncSSTable(List<String> allKey, String sstHashID, String targetCfName) {
-        // this.sstContent = sstContent;
-        // this.sstSize = sstContent.remaining();
         this.allKey = new ArrayList<>(allKey);
         this.sstHashID = sstHashID;
         this.targetCfName = targetCfName;
@@ -68,18 +66,13 @@ public class ECSyncSSTable {
     public void sendSSTableToSecondary(List<InetAddressAndPort> replicaNodes) throws Exception {
         try {
             logger.debug("rymDebug: try to serialize allKey, allKey num is {}, keys are {}", this.allKey.size(), this.allKey);
-            // this.sstSize = keyConverter.toByteArray(this.allKey).length;
             logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
-            // this.sstContent = new byte[this.sstSize];
-            // this.sstContent = keyConverter.toByteArray(this.allKey);
             this.sstContent = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
             this.sstSize = this.sstContent.length;
 
 
             logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstContent.length);
 
-            // logger.debug("rymDebug: ECSyncSSTable key to bytes length is {}", converter.toByteArray(this.allKey).length);
-            // this.sstContent = Arrays.copyOf(converter.toByteArray(this.allKey), this.sstSize);
         } catch (Exception e) {
             logger.error("rymError: cannot get the bytes array from key!!!, error info {}", e);
         }
