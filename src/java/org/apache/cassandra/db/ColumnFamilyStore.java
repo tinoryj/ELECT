@@ -500,8 +500,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         ecMessage.sendSSTableToParity();
                         // send selected sstable to secondary nodes
                         // sstable.getScanner();
-                        ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, "");
-                        ecSync.sendSSTableToSecondary(replicaNodes);
+                        for (InetAddressAndPort rpn : replicaNodes) {
+                            String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
+                            ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, targetCfName);
+                            ecSync.sendSSTableToSecondary(replicaNodes);
+                        }
 
                     } catch (IOException e) {
                         logger.error("rymError: {}", e);
