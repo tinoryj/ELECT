@@ -503,10 +503,14 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         ecMessage.sendSSTableToParity();
                         // send selected sstable to secondary nodes
                         // sstable.getScanner();
+                        
+                        InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
                         for (InetAddressAndPort rpn : replicaNodes) {
-                            String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                            ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, targetCfName);
-                            ecSync.sendSSTableToSecondary(rpn);
+                            if(!rpn.equals(locaIP)) {
+                                String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
+                                ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, targetCfName);
+                                ecSync.sendSSTableToSecondary(rpn);
+                            }
                         }
 
                     } catch (IOException e) {
