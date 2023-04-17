@@ -192,6 +192,7 @@ public class CompactionTask extends AbstractCompactionTask {
             long estimatedKeys = 0;
             long inputSizeBytes;
             long timeSpentWritingKeys;
+            long traversedKeys = 0;
 
             
             Collection<SSTableReader> newSStables;
@@ -228,7 +229,8 @@ public class CompactionTask extends AbstractCompactionTask {
                         throw new CompactionInterruptedException(ci.getCompactionInfo());
                     estimatedKeys = writer.estimatedKeys();
                     while (ci.hasNext()) {
-
+                        traversedKeys++;
+                        logger.debug("rymDebug: traversed keys are: {}", traversedKeys);
                         if(ci.next().partitionKey().compareTo(sourceKeys.get(0)) < 0 || 
                             ci.next().partitionKey().compareTo(sourceKeys.get (0)) > 0) {
                             // if the key is out of the range of the source keys, write it
