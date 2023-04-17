@@ -588,6 +588,9 @@ public class CompactionManager implements CompactionManagerMBean {
                             (sstable.compression && metadata.params.compression
                                     .equals(sstable.getCompressionMetadata().parameters))))
                 return false;
+            
+            if(!sstables.contains(sstable))
+                return false;
 
             return true;
         }, jobs);
@@ -601,7 +604,9 @@ public class CompactionManager implements CompactionManagerMBean {
         return parallelAllSSTableOperation(cfs, sstables, new OneSSTableOperation() {
             @Override
             public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
-                Iterator<SSTableReader> iter = sstables.iterator();
+                List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
+                Collections.sort(sortedSSTables, SSTableReader.sizeComparator.reversed());
+                Iterator<SSTableReader> iter = sortedSSTables.iterator();
                 while (iter.hasNext()) {
                     SSTableReader sstable = iter.next();
                     if (!sstableFilter.test(sstable)) {
@@ -609,7 +614,7 @@ public class CompactionManager implements CompactionManagerMBean {
                         iter.remove();
                     }
                 }
-                return sstables;
+                return sortedSSTables;
             }
 
             @Override
