@@ -339,6 +339,8 @@ public class CompactionTask extends AbstractCompactionTask {
         // The collection of sstables passed may be empty (but not null); even if
         // it is not empty, it may compact down to nothing if all rows are deleted.
         assert transaction != null;
+        Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
+        logger.debug("rymDebug:[Raw Compaction Strategy] rewrite {} sstables, original sstbales number is {}", sstables.size(), transaction.originals().size());
 
         if (transaction.originals().isEmpty())
             return;
@@ -454,12 +456,11 @@ public class CompactionTask extends AbstractCompactionTask {
                     newSStables = writer.finish();
 
                     Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
-                    for (SSTableReader sst: allSStables) {
-                        logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
-                         stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
-                         cfName+RESET, StreamSupport.stream(allSStables.spliterator(), false).count());
-
-                    }
+                    // for (SSTableReader sst: allSStables) {
+                    //     logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
+                    //      stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
+                    //      cfName+RESET, StreamSupport.stream(allSStables.spliterator(), false).count());
+                    // }
 
 
                 }
