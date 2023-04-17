@@ -373,6 +373,7 @@ public class StatsMetadata extends MetadataComponent {
         public void serialize(Version version, StatsMetadata component, DataOutputPlus out) throws IOException {
             if (version.hasHashID() && component.hashID != null) {
                 out.writeBytes(component.hashID);
+                logger.debug("rymDebug: StatsMetadata.serialize");
             }
             EstimatedHistogram.serializer.serialize(component.estimatedPartitionSize, out);
             EstimatedHistogram.serializer.serialize(component.estimatedCellPerPartitionCount, out);
@@ -440,6 +441,7 @@ public class StatsMetadata extends MetadataComponent {
                 in.readFully(buf, 0, 32);
                 hashID = new String(buf);
                 in.skipBytes(32);
+                logger.debug("rymDebug: StatsMetadata.deserialize {}");
             }
 
             EstimatedHistogram partitionSizes = EstimatedHistogram.serializer.deserialize(in);
