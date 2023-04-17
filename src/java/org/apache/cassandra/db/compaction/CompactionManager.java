@@ -409,18 +409,20 @@ public class CompactionManager implements CompactionManagerMBean {
     // [CASSANDRAEC]
     private AllSSTableOpStatus rewriteSSTables(final ColumnFamilyStore cfs, 
             final List<DecoratedKey> sourceKeys,
-            List<SSTableReader> rewriteSSTables, OperationType operationType)
+            List<SSTableReader> rewriteSSTables,
+            final OneSSTableOperation operation,
+            OperationType operationType)
             throws ExecutionException, InterruptedException {
         logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
         List<LifecycleTransaction> transactions = new ArrayList<>();
         List<Future<?>> futures = new ArrayList<>();
-
         try (LifecycleTransaction txn = cfs.getTracker().tryModify(rewriteSSTables, operationType)) {
             if (txn == null)
                 return AllSSTableOpStatus.UNABLE_TO_CANCEL;
 
+            rewriteSSTables = Lists.newArrayList(operation.filterSSTables(txn));
             
-            if (Iterables.isEmpty(txn.originals())) {
+            if (Iterables.isEmpty(rewriteSSTables)) {
                 logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
                 return AllSSTableOpStatus.SUCCESSFUL;
             }
@@ -642,31 +644,31 @@ public class CompactionManager implements CompactionManagerMBean {
             List<SSTableReader> sstables, 
             Predicate<SSTableReader> sstableFilter,
             int jobs) throws InterruptedException, ExecutionException {
-        return rewriteSSTables(cfs, sourceKeys, sstables, OperationType.COMPACTION);
-        // return parallelAllSSTableOperation(cfs, sstables, new OneSSTableOperation() {
-        //     @Override
-        //     public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
-        //         List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
-        //         Collections.sort(sortedSSTables, SSTableReader.sizeComparator.reversed());
-        //         Iterator<SSTableReader> iter = sortedSSTables.iterator();
-        //         while (iter.hasNext()) {
-        //             SSTableReader sstable = iter.next();
-        //             if (!sstableFilter.test(sstable)) {
-        //                 transaction.cancel(sstable);
-        //                 iter.remove();
-        //             }
-        //         }
-        //         return sortedSSTables;
-        //     }
+        // return rewriteSSTables(cfs, sourceKeys, sstables, OperationType.COMPACTION);
+        return rewriteSSTables(cfs, sourceKeys, sstables, new OneSSTableOperation() {
+            @Override
+            public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
+                List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
+                Collections.sort(sortedSSTables, SSTableReader.sizeComparator.reversed());
+                Iterator<SSTableReader> iter = sortedSSTables.iterator();
+                while (iter.hasNext()) {
+                    SSTableReader sstable = iter.next();
+                    if (!sstableFilter.test(sstable)) {
+                        transaction.cancel(sstable);
+                        iter.remove();
+                    }
+                }
+                return sortedSSTables;
+            }
 
-        //     @Override
-        //     public void execute(LifecycleTransaction txn) {
-        //         AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
-        //         task.setUserDefined(true);
-        //         task.setCompactionType(OperationType.COMPACTION);
-        //         task.execute(active, sourceKeys);
-        //     }
-        // }, jobs, OperationType.COMPACTION);
+            @Override
+            public void execute(LifecycleTransaction txn) {
+                AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
+                task.setUserDefined(true);
+                task.setCompactionType(OperationType.COMPACTION);
+                task.execute(active, sourceKeys);
+            }
+        }, OperationType.COMPACTION);
     }
 
     /**

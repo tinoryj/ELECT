@@ -1759,8 +1759,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final boolean skipIfCompressionMatches,
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite");
-        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables, skipIfCurrentVersion,
-                skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
+        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables);
     }
 
     public CompactionManager.AllSSTableOpStatus relocateSSTables(int jobs)
