@@ -51,6 +51,7 @@ import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
+import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
@@ -231,17 +232,18 @@ public class CompactionTask extends AbstractCompactionTask {
                     estimatedKeys = writer.estimatedKeys();
                     while (ci.hasNext()) {
                         traversedKeys++;
-                        logger.debug("rymDebug: traversed keys are: {}", traversedKeys);
-                        if(ci.next().partitionKey().compareTo(sourceKeys.get(0)) < 0 || 
-                            ci.next().partitionKey().compareTo(sourceKeys.get (0)) > 0) {
+                        // logger.debug("rymDebug: traversed keys are: {}", traversedKeys);
+                        UnfilteredRowIterator row = ci.next();
+                        if(row.partitionKey().compareTo(sourceKeys.get(0)) < 0 || 
+                            row.partitionKey().compareTo(sourceKeys.get (0)) > 0) {
                             // if the key is out of the range of the source keys, write it
-                            if (writer.append(ci.next()))
+                            if (writer.append(row))
                                 totalKeysWritten++;
                         } else {
-                            if(sourceKeys.indexOf(ci.next().partitionKey()) == -1) {
+                            if(sourceKeys.indexOf(row.partitionKey()) == -1) {
                                 // if the key is in the range of the source keys, but not contained
                                 // in the source keys, save it
-                                if (writer.append(ci.next()))
+                                if (writer.append(row))
                                     totalKeysWritten++;
                             }
                         }
@@ -266,9 +268,9 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     for (SSTableReader sst: newSStables) {
-                        logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, original sstable number is {}, new sstable number is {},",
+                        logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, original sstable number is {}, new sstable number is {}, total traversed keys nums is {}, saved keys is {},",
                          stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
-                         cfName+RESET, originalSSTableNum, newSStables.size());
+                         cfName+RESET, originalSSTableNum, newSStables.size(), traversedKeys, totalKeysWritten);
 
                     }
                 }
