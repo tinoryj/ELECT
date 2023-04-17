@@ -23,6 +23,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.rmi.server.Operation;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -2743,6 +2744,19 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             Iterable<SSTableReader> sstables = getLiveSSTables();
             sstables = AbstractCompactionStrategy.filterSuspectSSTables(sstables);
             LifecycleTransaction modifier = data.tryModify(sstables, operationType);
+            assert modifier != null : "something marked things compacting while compactions are disabled";
+            return modifier;
+        };
+
+        return runWithCompactionsDisabled(callable, false, false);
+    }
+
+    public LifecycleTransaction markRewriteSSTableCompacting(Iterable<SSTableReader> sstables, final OperationType operationType) {
+        Callable<LifecycleTransaction> callable = () -> {
+            assert data.getCompacting().isEmpty() : data.getCompacting();
+            // Iterable<SSTableReader> sstables = getLiveSSTables();
+            Iterable<SSTableReader> fileteredSSTables = AbstractCompactionStrategy.filterSuspectSSTables(sstables);
+            LifecycleTransaction modifier = data.tryModify(fileteredSSTables, operationType);
             assert modifier != null : "something marked things compacting while compactions are disabled";
             return modifier;
         };
