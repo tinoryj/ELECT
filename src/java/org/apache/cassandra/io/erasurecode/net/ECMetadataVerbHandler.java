@@ -126,7 +126,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             // suppose that the compaction speed of primary tree is faster than that of
                             // secondary, so the these missed keys should be deleted
                             // TODO: need to consider rewrite sstables.
-                            rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
+                            // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
                             rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
                             logger.debug(RED+"rymDebug: M` missed keys in the middle, update and delete it!");
 
@@ -153,7 +153,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
                             }
-                            rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
+                            // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
                         } 
 
                     }
