@@ -37,6 +37,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.Longs;
 import org.apache.cassandra.io.util.File;
 import org.slf4j.Logger;
@@ -570,18 +571,11 @@ public class CompactionStrategyManager implements INotificationConsumer {
         readLock.lock();
         try {
             if(repaired.first() instanceof LeveledCompactionStrategy) {
-                Set<SSTableReader> res = LeveledGenerations.instance.get(sstableLevel);
-                // int cnt = 0;
-                // for (AbstractCompactionStrategy strategy : getAllStrategies()) {
-                //     if(cnt==sstableLevel) {
-                //         res = ((LeveledCompactionStrategy) strategy).getSStablesForLevel(sstableLevel);
-                //         break;
-                //     }
-                //     cnt++;
-                // }
-                // if(cnt <= sstableLevel){
-                //     logger.debug("rymDebug: cannot reach level {}, the highest level is {}", sstableLevel, cnt);
-                // }
+                Set<SSTableReader> res = new HashSet<SSTableReader>();
+                for (AbstractCompactionStrategy strategy : getAllStrategies()) {
+                    res = Sets.union(res, ((LeveledCompactionStrategy) strategy).getSStablesForLevel(sstableLevel));
+                }
+                
                 return res;
             }
             
