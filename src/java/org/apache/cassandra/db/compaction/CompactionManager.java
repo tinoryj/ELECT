@@ -619,11 +619,12 @@ public class CompactionManager implements CompactionManagerMBean {
                         logger.warn(BLUE+"rymWarning: sstable {} is not qualified, cannot be rewritten!!!", sstable.getFilename()+RESET);
                         transaction.cancel(sstable);
                         iter.remove();
-                    } else if (compacting.contains(sstable)) {
-                        logger.warn(BLUE+"rymWarning: sstable {} is compacting, cannot be rewritten!!!", sstable.getFilename()+RESET);
-                        transaction.cancel(sstable);
-                        iter.remove();
-                    }
+                    } 
+                    // else if (compacting.contains(sstable)) {
+                    //     logger.warn(BLUE+"rymWarning: sstable {} is compacting, cannot be rewritten!!!", sstable.getFilename()+RESET);
+                    //     transaction.cancel(sstable);
+                    //     iter.remove();
+                    // }
                 }
                 return sortedSSTables;
             }

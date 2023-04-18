@@ -55,6 +55,7 @@ import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.service.ActiveRepairService;
@@ -201,7 +202,8 @@ public class CompactionTask extends AbstractCompactionTask {
             int  checkedSSTableNum = sstables.size();
 
             
-            Collection<SSTableReader> newSStables;
+            Collection<SSTableReader> headNewSStables;
+            Collection<SSTableReader> tailNewSStables;
 
             long[] mergedRowCounts;
             long totalSourceCQLRows;
@@ -222,7 +224,8 @@ public class CompactionTask extends AbstractCompactionTask {
                 long lastBytesScanned = 0;
 
                 activeCompactions.beginCompaction(ci);
-                try (CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables)) {
+                try (CompactionAwareWriter writer1 = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables);
+                     CompactionAwareWriter writer2 = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables)) {
                     // Note that we need to re-check this flag after calling beginCompaction above
                     // to avoid a window
                     // where the compaction does not exist in activeCompactions but the CSM gets
@@ -232,7 +235,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     // block until the below exception is thrown and the transaction is cancelled.
                     if (!controller.cfs.getCompactionStrategyManager().isActive())
                         throw new CompactionInterruptedException(ci.getCompactionInfo());
-                    estimatedKeys = writer.estimatedKeys();
+                    // estimatedKeys = writer.estimatedKeys();
                     while (ci.hasNext()) {
                         traversedKeys++;
                         UnfilteredRowIterator row = ci.next();
@@ -242,24 +245,18 @@ public class CompactionTask extends AbstractCompactionTask {
                         }
 
                         
-                        if(row.partitionKey().compareTo(sourceKeys.get(0)) < 0 || 
-                            row.partitionKey().compareTo(sourceKeys.get (sourceKeys.size()-1)) > 0) {
+                        if(row.partitionKey().compareTo(sourceKeys.get(0)) < 0) {
                             // if the key is out of the range of the source keys, write it
-                            if (writer.append(row))
+                            if (writer1.append(row))
                             {
                                 totalKeysWritten++;
                             }
                                 
-                        } else {
-                            if(sourceKeys.indexOf(row.partitionKey()) == -1) {
-                                // if the key is in the range of the source keys, but not contained
-                                // in the source keys, save it
-                                if (writer.append(row)) {
-                                    totalKeysWritten++;
-                                }
-                                    
+                        } else if (row.partitionKey().compareTo(sourceKeys.get (sourceKeys.size()-1)) > 0) {
+                            if(writer2.append(row)) {
+                                totalKeysWritten++;
                             }
-                        }
+                        } 
                         
 
                         long bytesScanned = scanners.getTotalBytesScanned();
@@ -280,15 +277,12 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // point of no return
                     // logger.debug("rymDebug: about writer, capacity is ");
-                    newSStables = writer.finish();
+                    headNewSStables = writer1.finish();
+                    tailNewSStables = writer2.finish();
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
-                    for (SSTableReader sst: newSStables) {
-                        logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstable number is {}, total traversed keys nums is {}, saved keys is {},",
-                         stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
-                         cfName+RESET, originalSSTableNum, checkedSSTableNum, newSStables.size(), traversedKeys, totalKeysWritten);
-
-                    }
+                    logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new head sstables number is {}, new tail sstables num is {}, total traversed keys nums is {}, saved keys is {},",
+                         cfName+RESET, originalSSTableNum, checkedSSTableNum, headNewSStables.size(), tailNewSStables.size(), traversedKeys, totalKeysWritten);
                 }
                 finally
                 {
@@ -306,18 +300,23 @@ public class CompactionTask extends AbstractCompactionTask {
             long durationInNano = nanoTime() - start;
             long dTime = TimeUnit.NANOSECONDS.toMillis(durationInNano);
             long startsize = inputSizeBytes;
-            long endsize = SSTableReader.getTotalBytes(newSStables);
+            long endsize = SSTableReader.getTotalBytes(headNewSStables) + SSTableReader.getTotalBytes(tailNewSStables);
             double ratio = (double) endsize / (double) startsize;
 
+            Collection<SSTableReader> newSSTables = new ArrayList<SSTableReader>();
+            newSSTables.addAll(headNewSStables);
+            newSSTables.addAll(tailNewSStables);
             StringBuilder newSSTableNames = new StringBuilder();
-            for (SSTableReader reader : newSStables)
+            for (SSTableReader reader : newSSTables) {
                 newSSTableNames.append(reader.descriptor.baseFilename()).append(",");
+            }
             long totalSourceRows = 0;
             for (int i = 0; i < mergedRowCounts.length; i++)
                 totalSourceRows += mergedRowCounts[i] * (i + 1);
 
             String mergeSummary = updateCompactionHistory(cfs.keyspace.getName(), cfs.getTableName(), mergedRowCounts,
                     startsize, endsize);
+            
 
             logger.info(String.format(
                     "Compacted (%s) %d sstables to [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
@@ -343,7 +342,7 @@ public class CompactionTask extends AbstractCompactionTask {
                         ((double) (totalKeysWritten - estimatedKeys) / totalKeysWritten));
             }
             cfs.getCompactionStrategyManager().compactionLogger.compaction(startTime, transaction.originals(),
-                    currentTimeMillis(), newSStables);
+                    currentTimeMillis(), newSSTables);
 
             // update the metrics
             cfs.metric.compactionBytesWritten.inc(endsize);
