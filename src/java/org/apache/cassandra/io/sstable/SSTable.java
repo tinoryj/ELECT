@@ -154,12 +154,19 @@ public abstract class SSTable {
     /**
      * @return true if the file was deleted
      */
-    public static boolean deleteComponentOnlyData(Descriptor desc) {
-        logger.info("Deleting sstable: {}", desc);
+    public static boolean deleteComponentOnlyData(Descriptor desc, String sstableHash) {
+        logger.info("Deleting sstable: {}, hash is {}", desc, sstableHash);
         // remove the DATA component first if it exists
-        FileUtils.deleteWithConfirm(desc.filenameFor(Component.DATA));
-        isDataRemovedByRedundancyTransionFlag = true;
+        try {
+            FileUtils.deleteWithConfirm(desc.filenameFor(Component.DATA));
+            isDataRemovedByRedundancyTransionFlag = true;
+            logger.info("Successful delete sstable: {}", desc);
+        } catch (Exception e) {
+            // TODO: handle exception
+        }
+        
         return true;
+        
     }
 
     public TableMetadata metadata() {

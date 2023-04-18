@@ -556,7 +556,7 @@ public class QueryProcessor implements QueryHandler
     {
         try
         {
-            logger.debug("rymDebug: the query string is {}", query);
+            // logger.debug("rymDebug: the query string is {}", query);
             Prepared prepared = prepareInternal(query);
             ResultMessage result = prepared.statement.execute(state, makeInternalOptionsWithNowInSec(prepared.statement, state.getNowInSeconds(), values, cl), nanoTime());
             if (result instanceof ResultMessage.Rows)

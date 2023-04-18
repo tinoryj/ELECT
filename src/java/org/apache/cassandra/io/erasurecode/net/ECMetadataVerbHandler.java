@@ -78,12 +78,12 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         // receive metadata and record it to files (append)
         ecMetadatas.add(message.payload);
-        logger.debug("rymDebug: received metadata: {}, {},{},{}", message.payload,
-                message.payload.sstHashIdList, message.payload.primaryNodes, message.payload.relatedNodes);
+        // logger.debug("rymDebug: received metadata: {}, {},{},{}", message.payload,
+        //         message.payload.sstHashIdList, message.payload.primaryNodes, message.payload.relatedNodes);
 
         Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap = message.payload.sstHashIdToReplicaMap;
 
-        logger.debug("rymDebug: got sstHashIdToReplicaMap: {} ", sstHashIdToReplicaMap);
+        // logger.debug("rymDebug: got sstHashIdToReplicaMap: {} ", sstHashIdToReplicaMap);
 
         InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();
         for (Map.Entry<String, List<InetAddressAndPort>> entry : sstHashIdToReplicaMap.entrySet()) {
@@ -113,12 +113,15 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     // M is the sstable from primary node, M` is the corresponding sstable of
                     // secondary node
                     // one to one
+                    if(rewriteSStables.isEmpty()) {
+                        logger.warn("rymWarnings: rewriteSStables is empty!");
+                    }
                     if (rewriteSStables.size() == 1) {
                         List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllDecoratedKeys();
 
                         if (rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
                             // delete sstable if sstable Hash can be found
-                            rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
+                            rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
                             logger.debug(RED + "rymDebug: get the match sstbales, delete it!");
                         } else {
                             // a bit different, update sstable and delete it
@@ -129,27 +132,27 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                 // secondary, so the these missed keys should be deleted
                                 // TODO: need to consider rewrite sstables.
                                 // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
-                                rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
-                                logger.debug(RED + "rymDebug: M` missed keys in the middle, update and delete it!");
+                                rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
+                                logger.debug(RED + "rymDebug: M' missed keys in the middle, update and delete it!");
 
                             } else if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))
                                     && allKeys.size() >= updateKeys.size()) {
                                 // M missed some keys in the middle, just delete it
                                 // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume
                                 // that the compaction speed of secondary node is slower than primary node
-                                rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
+                                rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
                                 logger.debug(RED + "rymDebug: M missed keys in the middle, delete it!");
                             } else {
                                 // M` missed some keys in the boundary,
                                 // need to update the metadata
-                                logger.debug(RED + "rymDebug: M` missed keys in the edge, update and delete it!");
-                                rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
+                                logger.debug(RED + "rymDebug: M' missed keys in the edge, update and delete it!");
+                                rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
                                 // TODO: write update statsmetadata and bloomfilter 
                                 // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
                             }
 
                         }
-                    } else {
+                    } else if (rewriteSStables.size()>1){
                         // many sstables are involved
                         // delete the sstables and update the metadata
                         // rewrite the sstables, just delete the key ranges of M` which are matching

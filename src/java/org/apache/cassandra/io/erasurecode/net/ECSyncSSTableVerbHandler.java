@@ -48,19 +48,19 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
             
 
         // collect sstcontent
-        logger.debug("rymDebug: this is ECSyncSSTableVerbHandler");
+        // logger.debug("rymDebug: this is ECSyncSSTableVerbHandler");
         List<DecoratedKey> sourceKeys = new ArrayList<DecoratedKey>();
         for(String key : message.payload.allKey) {
             sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", message.payload.targetCfName, key));
         }
         StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
                                                          sourceKeys);
-        logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, received key num is {}, targetCfName is {}, sstHash is {}", 
-                     message.from(),
-                     StorageService.instance.globalSSTMap.size(), 
-                     message.payload.allKey.size(),
-                     message.payload.targetCfName,
-                     message.payload.sstHashID);
+        // logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, received key num is {}, targetCfName is {}, sstHash is {}", 
+        //              message.from(),
+        //              StorageService.instance.globalSSTMap.size(), 
+        //              message.payload.allKey.size(),
+        //              message.payload.targetCfName,
+        //              message.payload.sstHashID);
     }
 
     private static void forwardToLocalNodes(Message<ECSyncSSTable> originalMessage, ForwardingInfo forwardTo) {

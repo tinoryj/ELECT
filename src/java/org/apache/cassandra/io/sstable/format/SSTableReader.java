@@ -732,10 +732,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    public void replaceDatabyECMetadata(ECMetadata message) {
+    public void replaceDatabyECMetadata(ECMetadata message, String sstableHash) {
 
         // delete sstable
-        deleteComponentOnlyData(descriptor);
+        deleteComponentOnlyData(descriptor, sstableHash);
 
         // write ECMetadata 
         File ecMetadataFile = new File(descriptor.filenameFor(Component.EC_METADATA));

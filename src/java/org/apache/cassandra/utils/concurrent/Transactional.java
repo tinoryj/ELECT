@@ -104,9 +104,6 @@ public interface Transactional extends AutoCloseable
          */
         protected abstract void doPrepare();
 
-        // [CASSANDRAEC]
-        protected abstract void doPrepareFirstPhase();
-
         /**
          * commit any effects of this transaction object graph, then cleanup; delegates first to doCommit, then to doCleanup
          */
@@ -221,6 +218,10 @@ public interface Transactional extends AutoCloseable
         // [CASSANDRAEC]
         public final void commitFirstPhase() {
             maybeFail(commitFirstPhase(null));
+        }
+
+        public void updateState(){
+            state = State.IN_PROGRESS;
         }
 
         public final State state()
