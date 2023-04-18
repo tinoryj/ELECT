@@ -1704,6 +1704,15 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return sstableMetadata.isReplicationTransferredToErasureCoding;
     }
 
+    public boolean SetIsReplicationTransferredToErasureCoding() {
+        sstableMetadata.isReplicationTransferredToErasureCoding = true;
+        if (sstableMetadata.isReplicationTransferredToErasureCoding) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public boolean intersects(Collection<Range<Token>> ranges) {
         Bounds<Token> range = new Bounds<>(first.getToken(), last.getToken());
         return Iterables.any(ranges, r -> r.intersects(range));

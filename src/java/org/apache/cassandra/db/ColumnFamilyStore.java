@@ -480,54 +480,59 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             if (!sstatbles.isEmpty()) {
                 logger.debug("rymDebug: get {} sstables from level {}", sstatbles.size(), level);
                 for (SSTableReader sstable : sstatbles) {
-                    logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},",
-                            sstable.getFilename(), sstable.getSSTableLevel(),
-                            DatabaseDescriptor.getCompactionThreshold());
-                    long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+                    if (!sstable.isReplicationTransferredToErasureCoding()) {
 
-                    long latencyMilli = latency * 60 * 1000;
+                        logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},",
+                                sstable.getFilename(), sstable.getSSTableLevel(),
+                                DatabaseDescriptor.getCompactionThreshold());
+                        long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 
-                    if (duration >= latencyMilli
-                            && sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                        logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                                sstable.getSSTableLevel());
-                        String key = sstable.first.getRawKey(sstable.metadata());
-                        try {
-                            ByteBuffer sstContent = sstable.getSSTContent();
-                            List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
+                        long latencyMilli = latency * 60 * 1000;
 
-                            String sstHashID = stringToHex(sstable.getSSTableHashID());
-                            List<InetAddressAndPort> replicaNodes = StorageService.instance
-                                    .getReplicaNodesWithPort(keyspaceName, cfName, key);
-                            logger.debug(
-                                    "rymDebug: send sstables size {}, first key is {}, replicaNodes are {}, row num is {},allKeys num is {}",
-                                    sstContent.remaining(), replicaNodes, sstable.getTotalRows(), allKeys.size());
-                            ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
-                                    "", "", replicaNodes);
-                            // send selected sstable to parity nodes
-                            ecMessage.sendSSTableToParity();
-                            // send selected sstable to secondary nodes
-                            // sstable.getScanner();
+                        if (duration >= latencyMilli
+                                && sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                            logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                                    sstable.getSSTableLevel());
+                            String key = sstable.first.getRawKey(sstable.metadata());
+                            try {
+                                ByteBuffer sstContent = sstable.getSSTContent();
+                                List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
 
-                            InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
-                            for (InetAddressAndPort rpn : replicaNodes) {
-                                if (!rpn.equals(locaIP)) {
-                                    String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                                    ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, targetCfName);
-                                    ecSync.sendSSTableToSecondary(rpn);
+                                String sstHashID = stringToHex(sstable.getSSTableHashID());
+                                List<InetAddressAndPort> replicaNodes = StorageService.instance
+                                        .getReplicaNodesWithPort(keyspaceName, cfName, key);
+                                logger.debug(
+                                        "rymDebug: send sstables size {}, first key is {}, replicaNodes are {}, row num is {},allKeys num is {}",
+                                        sstContent.remaining(), replicaNodes, sstable.getTotalRows(), allKeys.size());
+                                ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
+                                        "", "", replicaNodes);
+                                // send selected sstable to parity nodes
+                                ecMessage.sendSSTableToParity();
+                                // send selected sstable to secondary nodes
+                                // sstable.getScanner();
+
+                                InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
+                                for (InetAddressAndPort rpn : replicaNodes) {
+                                    if (!rpn.equals(locaIP)) {
+                                        String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
+                                        ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, targetCfName);
+                                        ecSync.sendSSTableToSecondary(rpn);
+                                    }
                                 }
-                            }
+                                
 
-                        } catch (IOException e) {
-                            logger.error("rymError: {}", e);
-                        } catch (Exception e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
+                            } catch (IOException e) {
+                                logger.error("rymError: {}", e);
+                            } catch (Exception e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
                         }
                     }
+                    sstable.SetIsReplicationTransferredToErasureCoding();
                 }
             } else {
-                logger.debug("rymDebug: cannot get sstables from level {}", sendSSTLevel);
+                logger.debug("rymDebug: cannot get sstables from level {}", level);
             }
         }
 

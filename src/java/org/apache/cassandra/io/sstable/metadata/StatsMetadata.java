@@ -85,7 +85,7 @@ public class StatsMetadata extends MetadataComponent {
     public final UUID originatingHostId;
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
-    public final boolean isReplicationTransferredToErasureCoding;
+    public boolean isReplicationTransferredToErasureCoding;
     public String hashID = null;
     // just holds the current encoding stats to avoid allocating - it is not
     // serialized
