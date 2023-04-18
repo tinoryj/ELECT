@@ -455,21 +455,21 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         setCompressionParameters(FBUtilities.fromJsonMap(options));
     }
 
-    public static Runnable getSendSSTRunnable (String keyspaceName, String cfName, int sendSSTLevel, int latency) {
-        return new SendSSTRunnable(keyspaceName, cfName, sendSSTLevel, latency);
+    public static Runnable getSendSSTRunnable (String keyspaceName, String cfName, int sendSSTLevel, int delay) {
+        return new SendSSTRunnable(keyspaceName, cfName, sendSSTLevel, delay);
     }
 
     private static class SendSSTRunnable implements Runnable {
         private final String keyspaceName;
         private final String cfName;
         private final int level;
-        private final int latency; // in minutes
+        private final int delay; // in minutes
 
-        SendSSTRunnable (String keyspaceName, String cfName, int level, int latency) {
+        SendSSTRunnable (String keyspaceName, String cfName, int level, int delay) {
             this.keyspaceName = keyspaceName;
             this.cfName = cfName;
             this.level = level;
-            this.latency = latency;
+            this.delay = delay;
         }
 
         @Override
@@ -487,9 +487,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 DatabaseDescriptor.getCompactionThreshold());
                         long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 
-                        long latencyMilli = latency * 60 * 1000;
+                        long delayMilli = delay * 60 * 1000;
 
-                        if (duration >= latencyMilli
+                        if (duration >= delayMilli
                                 && sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
                             logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
                                     sstable.getSSTableLevel());
