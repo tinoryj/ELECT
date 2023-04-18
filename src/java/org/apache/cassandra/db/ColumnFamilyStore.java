@@ -519,6 +519,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                         ecSync.sendSSTableToSecondary(rpn);
                                     }
                                 }
+                                sstable.SetIsReplicationTransferredToErasureCoding();
+                            
                             } catch (IOException e) {
                                 logger.error("rymError: {}", e);
                             } catch (Exception e) {
@@ -526,7 +528,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 e.printStackTrace();
                             }
                         }
-                        sstable.SetIsReplicationTransferredToErasureCoding();
                     }
                 }
             } else {
