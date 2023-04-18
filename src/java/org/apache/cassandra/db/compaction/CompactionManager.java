@@ -117,6 +117,19 @@ public class CompactionManager implements CompactionManagerMBean {
     public static final int NO_GC = Integer.MIN_VALUE;
     public static final int GC_ALL = Integer.MAX_VALUE;
 
+    // Reset
+    public static final String RESET = "\033[0m"; // Text Reset
+
+    // Regular Colors
+    public static final String WHITE = "\033[0;30m"; // WHITE
+    public static final String RED = "\033[0;31m"; // RED
+    public static final String GREEN = "\033[0;32m"; // GREEN
+    public static final String YELLOW = "\033[0;33m"; // YELLOW
+    public static final String BLUE = "\033[0;34m"; // BLUE
+    public static final String PURPLE = "\033[0;35m"; // PURPLE
+    public static final String CYAN = "\033[0;36m"; // CYAN
+    public static final String GREY = "\033[0;37m"; // GREY
+
     static {
         instance = new CompactionManager();
 
@@ -604,11 +617,11 @@ public class CompactionManager implements CompactionManagerMBean {
                 while (iter.hasNext()) {
                     SSTableReader sstable = iter.next();
                     if (!sstableFilter.test(sstable)) {
-                        logger.warn("rymWarning: sstable {} is not qualified, cannot be rewritten!!!", sstable.getFilename());
+                        logger.warn(BLUE+"rymWarning: sstable {} is not qualified, cannot be rewritten!!!", sstable.getFilename()+RESET);
                         transaction.cancel(sstable);
                         iter.remove();
                     } else if (compacting.contains(sstable)) {
-                        logger.warn("rymWarning: sstable {} is compacting, cannot be rewritten!!!", sstable.getFilename());
+                        logger.warn(BLUE+"rymWarning: sstable {} is compacting, cannot be rewritten!!!", sstable.getFilename()+RESET);
                         transaction.cancel(sstable);
                         iter.remove();
                     }

@@ -141,6 +141,8 @@ public class CompactionTask extends AbstractCompactionTask {
         // it is not empty, it may compact down to nothing if all rows are deleted.
         assert transaction != null;
         Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
+        
+        int originalSSTableNum = sstables.size();
 
         logger.debug("rymDebug: rewrite {} sstables, original sstbales number is {}", sstables.size(), transaction.originals().size());
 
@@ -168,6 +170,7 @@ public class CompactionTask extends AbstractCompactionTask {
             assert !Iterables.any(sstables, new Predicate<SSTableReader>() {
                 @Override
                 public boolean apply(SSTableReader sstable) {
+                    logger.debug("rymDebug: attempting to read sstables from {}, but got from cf {}", sstable.descriptor.cfname, cfs.name);
                     return !sstable.descriptor.cfname.equals(cfs.name);
                 }
             });
@@ -195,7 +198,7 @@ public class CompactionTask extends AbstractCompactionTask {
             long inputSizeBytes;
             long timeSpentWritingKeys;
             long traversedKeys = 0;
-            int  originalSSTableNum = sstables.size();
+            int  checkedSSTableNum = sstables.size();
 
             
             Collection<SSTableReader> newSStables;
@@ -241,7 +244,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
                         
                         if(row.partitionKey().compareTo(sourceKeys.get(0)) < 0 || 
-                            row.partitionKey().compareTo(sourceKeys.get (0)) > 0) {
+                            row.partitionKey().compareTo(sourceKeys.get (sourceKeys.size()-1)) > 0) {
                             // if the key is out of the range of the source keys, write it
                             if (writer.append(row))
                             {
@@ -282,9 +285,9 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     for (SSTableReader sst: newSStables) {
-                        logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, original sstable number is {}, new sstable number is {}, total traversed keys nums is {}, saved keys is {},",
+                        logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstable number is {}, total traversed keys nums is {}, saved keys is {},",
                          stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
-                         cfName+RESET, originalSSTableNum, newSStables.size(), traversedKeys, totalKeysWritten);
+                         cfName+RESET, originalSSTableNum, checkedSSTableNum, newSStables.size(), traversedKeys, totalKeysWritten);
 
                     }
                 }
