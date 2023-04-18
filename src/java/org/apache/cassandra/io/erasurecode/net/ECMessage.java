@@ -142,8 +142,8 @@ public final class ECMessage {
         // get all live nodes
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
 
-        logger.debug("rymDebug: All living nodes are {}", liveEndpoints);
-        logger.debug("rymDebug: ecMessage.replicaNodes is {}", ecMessage.replicaNodes);
+        // logger.debug("rymDebug: All living nodes are {}", liveEndpoints);
+        // logger.debug("rymDebug: ecMessage.replicaNodes is {}", ecMessage.replicaNodes);
 
         // select parity nodes from live nodes, suppose all nodes work healthy
         int n = liveEndpoints.size();
@@ -163,7 +163,7 @@ public final class ECMessage {
                 startIndex++;
             }
         }
-        logger.debug("rymDebug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
+        // logger.debug("rymDebug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
 
     }
 
@@ -172,7 +172,7 @@ public final class ECMessage {
         @Override
         public void serialize(ECMessage ecMessage, DataOutputPlus out, int version) throws IOException {
             // TODO: reduce (de)serialize cost
-            logger.debug("rymDebug: [Load] the length of sstContent buffer is: {}" , ecMessage.sstSize);
+            // logger.debug("rymDebug: [Load] the length of sstContent buffer is: {}" , ecMessage.sstSize);
             // logger.debug("rymDebug: [Load] the size of = {}" , sizeofLong(ecMessage.sstContent));
             // out.writeUTF(ecMessage.sstContent);
             out.writeUTF(ecMessage.sstHashID);
@@ -185,7 +185,7 @@ public final class ECMessage {
             byte[] buf = new byte[ecMessage.sstSize];
             ecMessage.sstContent.get(buf);
             out.write(buf);
-            logger.debug("rymDebug: [serialize] write successfully", buf.length);
+            // logger.debug("rymDebug: [serialize] write successfully", buf.length);
         }
 
         @Override
@@ -200,15 +200,15 @@ public final class ECMessage {
 
 
 
-            logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
-            , sstHashID,ks, cf,repEpsString,parityNodesString);
+            // logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
+            // , sstHashID,ks, cf,repEpsString,parityNodesString);
 
             int sstSize = in.readInt();
             byte[] buf = new byte[sstSize];
             in.readFully(buf);
             ByteBuffer sstContent = ByteBuffer.wrap(buf);
 
-            logger.debug("rymDebug: deserialize.sstSize is {}, sstContent length is {}", sstSize, sstContent.remaining());
+            // logger.debug("rymDebug: deserialize.sstSize is {}, sstContent length is {}", sstSize, sstContent.remaining());
 
             List<InetAddressAndPort> replicaNodes = new ArrayList<InetAddressAndPort>();
             for (String ep : repEpsString.split(",")) {
@@ -222,10 +222,10 @@ public final class ECMessage {
         @Override
         public long serializedSize(ECMessage ecMessage, int version) {
 
-            logger.debug("rymDebug: serializedSize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
-            , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
-            logger.debug("rymDebug: [Cacl] the length of sstContent.size is: {}" , ecMessage.sstSize);
-            logger.debug("rymDebug: [Cacl] the ecMessage.sstContent.remaining() = {}" , ecMessage.sstContent.remaining());
+            // logger.debug("rymDebug: serializedSize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
+            // , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
+            // logger.debug("rymDebug: [Cacl] the length of sstContent.size is: {}" , ecMessage.sstSize);
+            // logger.debug("rymDebug: [Cacl] the ecMessage.sstContent.remaining() = {}" , ecMessage.sstContent.remaining());
             long size = ecMessage.sstSize + sizeof(ecMessage.sstSize) +
                         sizeof(ecMessage.sstHashID) + 
                         sizeof(ecMessage.keyspace) + 

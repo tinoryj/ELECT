@@ -1587,8 +1587,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
      */
     public ISSTableScanner getScanner(Range<Token> range) {
         
-        logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner7",
-                     this.getColumnFamilyName(), this.getSSTableLevel());
+        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner7",
+        //              this.getColumnFamilyName(), this.getSSTableLevel());
         if (range == null)
             return getScanner();
         return getScanner(Collections.singletonList(range));

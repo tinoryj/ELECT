@@ -101,8 +101,8 @@ public class BigTableReader extends SSTableReader
      */
     public ISSTableScanner getScanner()
     {
-        logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner8",
-                     this.getColumnFamilyName(), this.getSSTableLevel());
+        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner8",
+        //              this.getColumnFamilyName(), this.getSSTableLevel());
 
         return BigTableScanner.getScanner(this);
     }

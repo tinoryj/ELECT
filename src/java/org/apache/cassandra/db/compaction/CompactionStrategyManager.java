@@ -580,8 +580,7 @@ public class CompactionStrategyManager implements INotificationConsumer {
                     cnt++;
                 }
                 if(cnt!=sstableLevel){
-                    logger.error("rymError: cannot reach level {}, the most closed is {}",sstableLevel, cnt);
-                    throw new IllegalStateException();
+                    logger.debug("rymDebug: cannot reach level {}, the highest level is {}", sstableLevel, cnt);
                 }
                 return res;
             }
@@ -816,8 +815,8 @@ public class CompactionStrategyManager implements INotificationConsumer {
         maybeReloadDiskBoundaries();
         List<ISSTableScanner> scanners = new ArrayList<>(sstables.size());
         readLock.lock();
-        logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner3",
-                     sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
+        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner3",
+        //              sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
         try {
             List<GroupedSSTableContainer> sstableGroups = groupSSTables(sstables);
 
@@ -838,8 +837,8 @@ public class CompactionStrategyManager implements INotificationConsumer {
             Collection<Range<Token>> ranges) {
         while (true) {
             try {
-                logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner2",
-                     sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
+                // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner2",
+                //      sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
                 return maybeGetScanners(sstables, ranges);
             } catch (ConcurrentModificationException e) {
                 logger.debug("SSTable repairedAt/pendingRepaired values changed while getting scanners");
@@ -848,8 +847,8 @@ public class CompactionStrategyManager implements INotificationConsumer {
     }
 
     public AbstractCompactionStrategy.ScannerList getScanners(Collection<SSTableReader> sstables) {
-        logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner1",
-                     sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
+        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner1",
+        //              sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
         return getScanners(sstables, null);
     }
 
