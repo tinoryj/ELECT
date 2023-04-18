@@ -71,6 +71,7 @@ public interface Transactional extends AutoCloseable
             IN_PROGRESS,
             READY_TO_COMMIT,
             COMMITTED,
+            COMMITTED_FIRST_PHASE,
             ABORTED;
         }
 
@@ -103,6 +104,9 @@ public interface Transactional extends AutoCloseable
          */
         protected abstract void doPrepare();
 
+        // [CASSANDRAEC]
+        protected abstract void doPrepareFirstPhase();
+
         /**
          * commit any effects of this transaction object graph, then cleanup; delegates first to doCommit, then to doCleanup
          */
@@ -113,6 +117,17 @@ public interface Transactional extends AutoCloseable
             accumulate = doCommit(accumulate);
             accumulate = doPostCleanup(accumulate);
             state = State.COMMITTED;
+            return accumulate;
+        }
+
+        // [CASSANDRAEC]
+        public final Throwable commitFirstPhase(Throwable accumulate)
+        {
+            if (state != State.READY_TO_COMMIT)
+                throw new IllegalStateException("Cannot commit unless READY_TO_COMMIT; state is " + state);
+            accumulate = doCommit(accumulate);
+            accumulate = doPostCleanup(accumulate);
+            state = State.COMMITTED_FIRST_PHASE;
             return accumulate;
         }
 
@@ -181,6 +196,14 @@ public interface Transactional extends AutoCloseable
             return this;
         }
 
+        // [CASSANDRAEC]
+        public Object finishFirstPhase()
+        {
+            prepareToCommit();
+            commitFirstPhase();
+            return this;
+        }
+
         // convenience method wrapping abort, and throwing any exception encountered
         // only of use to (and to be used by) outer-most object in a transactional graph
         public final void abort()
@@ -193,6 +216,11 @@ public interface Transactional extends AutoCloseable
         public final void commit()
         {
             maybeFail(commit(null));
+        }
+
+        // [CASSANDRAEC]
+        public final void commitFirstPhase() {
+            maybeFail(commitFirstPhase(null));
         }
 
         public final State state()

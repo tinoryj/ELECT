@@ -115,6 +115,11 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         return sstableWriter.finished();
     }
 
+    public Collection<SSTableReader> finishFirstPhase() {
+        super.finishFirstPhase();
+        return sstableWriter.finishedFirstPhase();
+    }
+
     /**
      * estimated number of keys we should write
      */

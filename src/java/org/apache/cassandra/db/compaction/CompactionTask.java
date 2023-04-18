@@ -202,8 +202,10 @@ public class CompactionTask extends AbstractCompactionTask {
             int  checkedSSTableNum = sstables.size();
 
             
+            Collection<SSTableReader> newSSTables = new ArrayList<SSTableReader>();
             Collection<SSTableReader> headNewSStables;
             Collection<SSTableReader> tailNewSStables;
+            Collection<SSTableReader> rewrittenSStables;
 
             long[] mergedRowCounts;
             long totalSourceCQLRows;
@@ -256,7 +258,7 @@ public class CompactionTask extends AbstractCompactionTask {
                             if(writer2.append(row)) {
                                 totalKeysWritten++;
                             }
-                        } 
+                        }
                         
 
                         long bytesScanned = scanners.getTotalBytesScanned();
@@ -277,8 +279,9 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // point of no return
                     // logger.debug("rymDebug: about writer, capacity is ");
-                    headNewSStables = writer1.finish();
+                    headNewSStables = writer1.finishFirstPhase();
                     tailNewSStables = writer2.finish();
+                    // TODO: re-create sstable reader from ecmetadata 
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new head sstables number is {}, new tail sstables num is {}, total traversed keys nums is {}, saved keys is {},",
@@ -303,7 +306,6 @@ public class CompactionTask extends AbstractCompactionTask {
             long endsize = SSTableReader.getTotalBytes(headNewSStables) + SSTableReader.getTotalBytes(tailNewSStables);
             double ratio = (double) endsize / (double) startsize;
 
-            Collection<SSTableReader> newSSTables = new ArrayList<SSTableReader>();
             newSSTables.addAll(headNewSStables);
             newSSTables.addAll(tailNewSStables);
             StringBuilder newSSTableNames = new StringBuilder();

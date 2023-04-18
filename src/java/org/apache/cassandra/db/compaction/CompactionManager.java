@@ -612,7 +612,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
                 Collections.sort(sortedSSTables, SSTableReader.sizeComparator.reversed());
                 Iterator<SSTableReader> iter = sortedSSTables.iterator();
-                final Set<SSTableReader> compacting = cfs.getTracker().getCompacting();
+                // final Set<SSTableReader> compacting = cfs.getTracker().getCompacting();
                 while (iter.hasNext()) {
                     SSTableReader sstable = iter.next();
                     if (!sstableFilter.test(sstable)) {
