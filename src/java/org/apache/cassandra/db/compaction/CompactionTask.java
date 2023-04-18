@@ -222,8 +222,7 @@ public class CompactionTask extends AbstractCompactionTask {
                 long lastBytesScanned = 0;
 
                 activeCompactions.beginCompaction(ci);
-                try (CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction,
-                        sstables)) {
+                try (CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables)) {
                     // Note that we need to re-check this flag after calling beginCompaction above
                     // to avoid a window
                     // where the compaction does not exist in activeCompactions but the CSM gets
