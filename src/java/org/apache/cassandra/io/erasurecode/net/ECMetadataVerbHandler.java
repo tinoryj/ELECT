@@ -134,34 +134,23 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                             } else if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))
                                     && allKeys.size() >= updateKeys.size()) {
-                                // M missed some keys int the middle, just delete it
+                                // M missed some keys in the middle, just delete it
                                 // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume
-                                // that
-                                // the compaction speed of secondary node is slower than primary node
+                                // that the compaction speed of secondary node is slower than primary node
                                 rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
                                 logger.debug(RED + "rymDebug: M missed keys in the middle, delete it!");
                             } else {
                                 // M` missed some keys in the boundary,
                                 // need to update the metadata
-                                logger.debug(RED + "rymDebug: need to rewrite sstables");
-                                try {
-                                    AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys,
-                                            rewriteSStables, false, Long.MAX_VALUE, false, 2);
-                                    if (status != AllSSTableOpStatus.SUCCESSFUL)
-                                        printStatusCode(status.statusCode, cfs.name);
-                                } catch (ExecutionException e) {
-                                    // TODO Auto-generated catch block
-                                    e.printStackTrace();
-                                } catch (InterruptedException e) {
-                                    // TODO Auto-generated catch block
-                                    e.printStackTrace();
-                                }
+                                logger.debug(RED + "rymDebug: M` missed keys in the edge, update and delete it!");
+                                rewriteSStables.get(0).replaceDatabyECMetadata(message.payload);
+                                // TODO: write update statsmetadata and bloomfilter 
                                 // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
                             }
 
                         }
                     } else {
-                        // one to many: many sstables are involved
+                        // many sstables are involved
                         // delete the sstables and update the metadata
                         // rewrite the sstables, just delete the key ranges of M` which are matching
                         // those of M
@@ -171,6 +160,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         try {
                             AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys,
                                     rewriteSStables, false, Long.MAX_VALUE, false, 1);
+                            // TODO: write ec_metadata 
+
                             if (status != AllSSTableOpStatus.SUCCESSFUL)
                                 printStatusCode(status.statusCode, cfs.name);
                         } catch (ExecutionException e) {
@@ -244,18 +235,16 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         }
 
         // then search which sstable does the last key stored
-        int index = mid;
-        while (index<sstables.size() && last.compareTo(sstables.get(index).last)>0) {
-            rewriteSStables.add(sstables.get(index));
-            index++;
+        int tail = mid + 1;
+        while (tail < sstables.size() && last.compareTo(sstables.get(tail).first)>=0) {
+            rewriteSStables.add(sstables.get(tail));
+            tail++;
         }
 
-        if (index < sstables.size() - 1) {
-            rewriteSStables.add(sstables.get(index + 1));
-        }
-
-        if(mid > 0 && rewriteSStables.size()>1) {
-            rewriteSStables.add(sstables.get(mid - 1));
+        int head = mid - 1;
+        if(head >= 0 && (rewriteSStables.size() > 1 || first.compareTo(sstables.get(head).last)<=0)) {
+            rewriteSStables.add(sstables.get(head));
+            head--;
         }
 
         return rewriteSStables;

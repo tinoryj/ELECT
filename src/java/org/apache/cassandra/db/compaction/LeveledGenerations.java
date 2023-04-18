@@ -54,7 +54,8 @@ class LeveledGenerations
     private static final Logger logger = LoggerFactory.getLogger(LeveledGenerations.class);
     private final boolean strictLCSChecksTest = Boolean.getBoolean(Config.PROPERTY_PREFIX + "test.strict_lcs_checks");
     // It includes L0, i.e. we support [L0 - L8] levels
-    static final int MAX_LEVEL_COUNT = 9;
+    // TODO: changed
+    static final int MAX_LEVEL_COUNT = 3;
 
     /**
      * This map is used to track the original NORMAL instances of sstables

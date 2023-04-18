@@ -429,18 +429,17 @@ public class CompactionManager implements CompactionManagerMBean {
         logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
         List<LifecycleTransaction> transactions = new ArrayList<>();
         List<Future<?>> futures = new ArrayList<>();
-        try (LifecycleTransaction compacting = cfs.markRewriteSSTableCompacting(rewriteSSTables, operationType)) {
-            if (compacting == null)
+        try (LifecycleTransaction txn = cfs.getTracker().tryModify(rewriteSSTables, operationType)) {
+            if (txn == null)
                 return AllSSTableOpStatus.UNABLE_TO_CANCEL;
 
-            rewriteSSTables = Lists.newArrayList(operation.filterSSTables(compacting));
+            rewriteSSTables = Lists.newArrayList(operation.filterSSTables(txn));
             
             if (Iterables.isEmpty(rewriteSSTables)) {
                 logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
                 return AllSSTableOpStatus.SUCCESSFUL;
             }
 
-            final LifecycleTransaction txn = cfs.getTracker().tryModify(rewriteSSTables, operationType);
             transactions.add(txn);
             Callable<Object> callable = new Callable<Object>() {
                 @Override
