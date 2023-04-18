@@ -627,11 +627,10 @@ public class CompactionTask extends AbstractCompactionTask {
         boolean isReplicationTransferredToErasureCoding = sstables.iterator().next()
                 .isReplicationTransferredToErasureCoding();
         // TODO: unmask
-        // if (!Iterables.all(sstables, sstable -> sstable
-        //         .isReplicationTransferredToErasureCoding() == isReplicationTransferredToErasureCoding)) {
-        //     throw new RuntimeException(
-        //             "Attempting to compact replication transferred sstables with non transient sstables");
-        // }
+        if (!Iterables.all(sstables, (sstable -> (sstable.isReplicationTransferredToErasureCoding() == isReplicationTransferredToErasureCoding && !sstable.getColumnFamilyName().equals("usertable") )))) {
+            throw new RuntimeException(
+                    "Attempting to compact replication transferred sstables with non transient sstables");
+        }
 
         return isReplicationTransferredToErasureCoding;
     }

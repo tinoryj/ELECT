@@ -526,8 +526,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 e.printStackTrace();
                             }
                         }
+                        sstable.SetIsReplicationTransferredToErasureCoding();
                     }
-                    sstable.SetIsReplicationTransferredToErasureCoding();
                 }
             } else {
                 logger.debug("rymDebug: cannot get sstables from level {}", level);
