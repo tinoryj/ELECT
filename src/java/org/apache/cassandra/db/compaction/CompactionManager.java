@@ -416,17 +416,18 @@ public class CompactionManager implements CompactionManagerMBean {
         logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
         List<LifecycleTransaction> transactions = new ArrayList<>();
         List<Future<?>> futures = new ArrayList<>();
-        try (LifecycleTransaction txn = cfs.getTracker().tryModify(rewriteSSTables, operationType)) {
-            if (txn == null)
+        try (LifecycleTransaction compacting = cfs.markRewriteSSTableCompacting(rewriteSSTables, operationType)) {
+            if (compacting == null)
                 return AllSSTableOpStatus.UNABLE_TO_CANCEL;
 
-            rewriteSSTables = Lists.newArrayList(operation.filterSSTables(txn));
+            rewriteSSTables = Lists.newArrayList(operation.filterSSTables(compacting));
             
             if (Iterables.isEmpty(rewriteSSTables)) {
                 logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
                 return AllSSTableOpStatus.SUCCESSFUL;
             }
 
+            final LifecycleTransaction txn = cfs.getTracker().tryModify(rewriteSSTables, operationType);
             transactions.add(txn);
             Callable<Object> callable = new Callable<Object>() {
                 @Override
@@ -581,6 +582,7 @@ public class CompactionManager implements CompactionManagerMBean {
                             (sstable.compression && metadata.params.compression
                                     .equals(sstable.getCompressionMetadata().parameters))))
                 return false;
+
             
             return true;
         }, jobs);
@@ -598,9 +600,15 @@ public class CompactionManager implements CompactionManagerMBean {
                 List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
                 Collections.sort(sortedSSTables, SSTableReader.sizeComparator.reversed());
                 Iterator<SSTableReader> iter = sortedSSTables.iterator();
+                final Set<SSTableReader> compacting = cfs.getTracker().getCompacting();
                 while (iter.hasNext()) {
                     SSTableReader sstable = iter.next();
                     if (!sstableFilter.test(sstable)) {
+                        logger.warn("rymWarning: sstable {} is not qualified, cannot be rewritten!!!", sstable.getFilename());
+                        transaction.cancel(sstable);
+                        iter.remove();
+                    } else if (compacting.contains(sstable)) {
+                        logger.warn("rymWarning: sstable {} is compacting, cannot be rewritten!!!", sstable.getFilename());
                         transaction.cancel(sstable);
                         iter.remove();
                     }

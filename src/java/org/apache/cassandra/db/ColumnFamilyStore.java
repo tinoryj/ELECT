@@ -462,13 +462,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     private static class SendSSTRunnable implements Runnable {
         private final String keyspaceName;
         private final String cfName;
-        private final int sendSSTLevel;
+        private final int level;
         private final int latency; // in minutes
 
-        SendSSTRunnable (String keyspaceName, String cfName, int sendSSTLevel, int latency) {
+        SendSSTRunnable (String keyspaceName, String cfName, int level, int latency) {
             this.keyspaceName = keyspaceName;
             this.cfName = cfName;
-            this.sendSSTLevel = sendSSTLevel;
+            this.level = level;
             this.latency = latency;
         }
 
@@ -476,9 +476,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         public void run() {
 
             ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
-            Set<SSTableReader> ssTableReaders = cfs.getSSTableForLevel(sendSSTLevel);
-            if (!ssTableReaders.isEmpty()) {
-                for (SSTableReader sstable : ssTableReaders) {
+            Set<SSTableReader> sstatbles = cfs.getSSTableForLevel(level);
+            if (!sstatbles.isEmpty()) {
+                logger.debug("rymDebug: get {} sstables from level {}", sstatbles.size(), level);
+                for (SSTableReader sstable : sstatbles) {
                     logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},",
                             sstable.getFilename(), sstable.getSSTableLevel(),
                             DatabaseDescriptor.getCompactionThreshold());
