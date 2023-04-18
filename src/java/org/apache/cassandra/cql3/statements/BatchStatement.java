@@ -574,21 +574,6 @@ public class BatchStatement implements CQLStatement
         int nowInSeconds = batchOptions.getNowInSeconds(queryState);
 
         for (IMutation mutation : getMutations(queryState.getClientState(), batchOptions, true, timestamp, nowInSeconds, queryStartNanoTime)){
-            if(mutation.getKeyspaceName().equals("ycsb")) {
-                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "receivedBatch";
-                    try {
-                        FileWriter writer = new FileWriter("logs/" + fileName, true);
-                        BufferedWriter buffer = new BufferedWriter(writer);
-                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-                        buffer.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-    
-                }
-            }
             mutation.apply();
         }
         return null;

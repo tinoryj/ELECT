@@ -475,21 +475,6 @@ public class Keyspace {
 
         String keyspaceName = mutation.getKeyspaceName();
         if (keyspaceName.equals("ycsb")) {
-            if(keyspaceName.equals("ycsb")) {
-                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "receivedKeyRemote";
-                    try {
-                        FileWriter writer = new FileWriter("logs/" + fileName, true);
-                        BufferedWriter buffer = new BufferedWriter(writer);
-                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-                        buffer.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-    
-                }
-            }
 
             return applyInternalYCSB(mutation, writeCommitLog, updateIndexes, true, true,
                                     new AsyncPromise<>());
@@ -506,21 +491,6 @@ public class Keyspace {
 
         String keyspaceName = mutation.getKeyspaceName();
         if (keyspaceName.equals("ycsb")) {
-            if (keyspaceName.equals("ycsb")) {
-                for (PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "receivedKeyRemoteUnknown";
-                    try {
-                        FileWriter writer = new FileWriter("logs/" + fileName, true);
-                        BufferedWriter buffer = new BufferedWriter(writer);
-                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-                        buffer.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-
-                }
-            }
 
             return applyInternalYCSB(mutation, writeCommitLog, updateIndexes, isDroppable, isDeferrable,
                     new AsyncPromise<>());
@@ -563,21 +533,21 @@ public class Keyspace {
             boolean isDroppable) {
         String keyspaceName = mutation.getKeyspaceName();
         if (keyspaceName.equals("ycsb")) {
-            if(keyspaceName.equals("ycsb")) {
-                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "receivedkeyLocal";
-                    try {
-                        FileWriter writer = new FileWriter("logs/" + fileName, true);
-                        BufferedWriter buffer = new BufferedWriter(writer);
-                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-                        buffer.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
+            // if(keyspaceName.equals("ycsb")) {
+            //     for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+            //         String fileName = "receivedkeyLocal";
+            //         try {
+            //             FileWriter writer = new FileWriter("logs/" + fileName, true);
+            //             BufferedWriter buffer = new BufferedWriter(writer);
+            //             buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+            //             buffer.close();
+            //         } catch (IOException e) {
+            //             // TODO Auto-generated catch block
+            //             e.printStackTrace();
+            //         }
     
-                }
-            }
+            //     }
+            // }
 
             applyInternalYCSB(mutation, makeDurable, updateIndexes, isDroppable, false, null);
         } else {

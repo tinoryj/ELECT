@@ -676,21 +676,6 @@ public abstract class ModificationStatement implements CQLStatement.SingleKeyspa
         int nowInSeconds = options.getNowInSeconds(queryState);
         for (IMutation mutation : getMutations(queryState.getClientState(), options, true, timestamp, nowInSeconds, queryStartNanoTime))
         {
-            if(mutation.getKeyspaceName().equals("ycsb")) {
-                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "receivedModification";
-                    try {
-                        FileWriter writer = new FileWriter("logs/" + fileName, true);
-                        BufferedWriter buffer = new BufferedWriter(writer);
-                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-                        buffer.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-    
-                }
-            }
             mutation.apply();
         }
         return null;

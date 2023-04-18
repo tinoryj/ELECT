@@ -61,22 +61,6 @@ public class MutationVerbHandler implements IVerbHandler<Mutation>
         counter.compute(message.from(), (k, v) -> v == null ? 1 : v + 1);
         try
         {
-            if(message.payload.getKeyspaceName().equals("ycsb")) {
-                for(PartitionUpdate upd : message.payload.getPartitionUpdates()) {
-                    String fileName = "receivedRemoteMutations";
-                    try {
-                        FileWriter writer = new FileWriter("logs/" + fileName, true);
-                        BufferedWriter buffer = new BufferedWriter(writer);
-                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) +
-                        message.from().toString() + ": " + counter.get(message.from()) + "\n");
-                        buffer.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-    
-                }
-            }
             message.payload.applyFuture().addCallback(o -> respond(message, respondToAddress), wto -> failed());
         }
         catch (WriteTimeoutException wto)

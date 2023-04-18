@@ -506,22 +506,6 @@ public class BatchlogManager implements BatchlogManagerMBean
                                                                         ConsistencyLevel.ONE, liveRemoteOnly.pending(), liveRemoteOnly.all(), liveRemoteOnly.all(), liveRemoteOnly.all());
             ReplayWriteResponseHandler<Mutation> handler = new ReplayWriteResponseHandler<>(replicaPlan, mutation, nanoTime());
 
-            if(mutation.getKeyspaceName().equals("ycsb")) {
-                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "sendBatchLog";
-                    try {
-                        FileWriter writer = new FileWriter("logs/" + fileName, true);
-                        BufferedWriter buffer = new BufferedWriter(writer);
-                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-                        buffer.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-    
-                }
-            }
-
 
             Message<Mutation> message = Message.outWithFlag(MUTATION_REQ, mutation, MessageFlag.CALL_BACK_ON_FAILURE);
             for (Replica replica : liveRemoteOnly.all())
