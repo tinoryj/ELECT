@@ -102,10 +102,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             recvQueues.get(primaryNode).add(message.payload);
         }
         
-        logger.debug("rymDebug: recvQueues is {}", recvQueues);
+        // logger.debug("rymDebug: recvQueues is {}", recvQueues);
 
         if(recvQueues.size()>=message.payload.ecDataNum) {
-            logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
+            // logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
             ECMessage tmpArray[] = new ECMessage[message.payload.ecDataNum];
             //traverse the recvQueues
             int i = 0;
