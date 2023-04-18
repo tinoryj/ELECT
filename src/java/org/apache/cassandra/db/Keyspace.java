@@ -456,7 +456,7 @@ public class Keyspace {
 
             if (keyspaceName.equals("ycsb")) {
                 globalNodeIDtoCFIDMap.put(globalNodeIDtoCFIDMap.size(), metadata.id);
-                logger.debug("rymDebug: globalNodeIDtoCFIDMap is {}", globalNodeIDtoCFIDMap);
+                // logger.debug("rymDebug: globalNodeIDtoCFIDMap is {}", globalNodeIDtoCFIDMap);
             }
             
             // CFS mbean instantiation will error out before we hit this, but in case that

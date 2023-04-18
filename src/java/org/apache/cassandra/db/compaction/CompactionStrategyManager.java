@@ -570,18 +570,18 @@ public class CompactionStrategyManager implements INotificationConsumer {
         readLock.lock();
         try {
             if(repaired.first() instanceof LeveledCompactionStrategy) {
-                Set<SSTableReader> res = new HashSet<SSTableReader>();
-                int cnt = 0;
-                for (AbstractCompactionStrategy strategy : getAllStrategies()) {
-                    if(cnt==sstableLevel) {
-                        res = ((LeveledCompactionStrategy) strategy).getSStablesForLevel(sstableLevel);
-                        break;
-                    }
-                    cnt++;
-                }
-                if(cnt!=sstableLevel){
-                    logger.debug("rymDebug: cannot reach level {}, the highest level is {}", sstableLevel, cnt);
-                }
+                Set<SSTableReader> res = LeveledGenerations.instance.get(sstableLevel);
+                // int cnt = 0;
+                // for (AbstractCompactionStrategy strategy : getAllStrategies()) {
+                //     if(cnt==sstableLevel) {
+                //         res = ((LeveledCompactionStrategy) strategy).getSStablesForLevel(sstableLevel);
+                //         break;
+                //     }
+                //     cnt++;
+                // }
+                // if(cnt <= sstableLevel){
+                //     logger.debug("rymDebug: cannot reach level {}, the highest level is {}", sstableLevel, cnt);
+                // }
                 return res;
             }
             

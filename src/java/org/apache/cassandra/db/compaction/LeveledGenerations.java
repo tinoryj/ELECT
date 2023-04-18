@@ -74,6 +74,8 @@ class LeveledGenerations
     // note that since l0 is broken out, levels[0] represents L1:
     private final TreeSet<SSTableReader> [] levels = new TreeSet[MAX_LEVEL_COUNT - 1];
 
+    public static LeveledGenerations instance = new LeveledGenerations();
+
     private static final Comparator<SSTableReader> nonL0Comparator = (o1, o2) -> {
         int cmp = SSTableReader.sstableComparator.compare(o1, o2);
         if (cmp == 0)

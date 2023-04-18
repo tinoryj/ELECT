@@ -464,59 +464,6 @@ public class CompactionManager implements CompactionManagerMBean {
                         cfs.keyspace.getName(), cfs.getTableName(), fail);
         }
     }
-    // private AllSSTableOpStatus parallelAllSSTableOperation(final ColumnFamilyStore cfs, 
-    //         // final List<DecoratedKey> sourceKeys,
-    //         List<SSTableReader> rewriteSSTables,
-    //         final OneSSTableOperation operation, int jobs, OperationType operationType)
-    //         throws ExecutionException, InterruptedException {
-    //     logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
-    //     List<LifecycleTransaction> transactions = new ArrayList<>();
-    //     List<Future<?>> futures = new ArrayList<>();
-
-    //     try (LifecycleTransaction txn = cfs.getTracker().tryModify(rewriteSSTables, operationType)) {
-    //         if (txn == null)
-    //             return AllSSTableOpStatus.UNABLE_TO_CANCEL;
-
-            
-    //         if (Iterables.isEmpty(txn.originals())) {
-    //             logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
-    //             return AllSSTableOpStatus.SUCCESSFUL;
-    //         }
-
-    //         transactions.add(txn);
-    //         Callable<Object> callable = new Callable<Object>() {
-    //             @Override
-    //             public Object call() throws Exception
-    //             {
-    //                 operation.execute(txn);
-    //                 return this;
-    //             }
-    //         };
-    //         Future<?> fut = executor.submitIfRunning(callable, "rewrite sstables");
-    //         if (!fut.isCancelled())
-    //             futures.add(fut);
-    //         else
-    //             return AllSSTableOpStatus.ABORTED;
-
-    //         FBUtilities.waitOnFutures(futures);
-    //         assert txn.originals().isEmpty();
-    //         logger.info("Finished {} for {}.{} successfully", operationType, cfs.keyspace.getName(), cfs.getTableName());
-    //         return AllSSTableOpStatus.SUCCESSFUL;
-
-    //     } finally {
-    //         // wait on any unfinished futures to make sure we don't close an ongoing
-    //         // transaction
-    //         try {
-    //             FBUtilities.waitOnFutures(futures);
-    //         } catch (Throwable t) {
-    //             // these are handled/logged in CompactionExecutor#afterExecute
-    //         }
-    //         Throwable fail = Throwables.close(null, transactions);
-    //         if (fail != null)
-    //             logger.error("Failed to cleanup lifecycle transactions ({} for {}.{})", operationType,
-    //                     cfs.keyspace.getName(), cfs.getTableName(), fail);
-    //     }
-    // }
 
     private static interface OneSSTableOperation {
         Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction);

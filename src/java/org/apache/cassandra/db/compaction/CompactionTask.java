@@ -467,7 +467,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     // point of no return
                     newSStables = writer.finish();
 
-                    Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
+                    // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     // for (SSTableReader sst: allSStables) {
                     //     logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
                     //      stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
