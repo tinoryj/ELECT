@@ -371,6 +371,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         logger.debug("rymDebug: finishedFirstPhase, state is {}", state());
         assert state() == State.COMMITTED_FIRST_PHASE || state() == State.READY_TO_COMMIT || state() == State.COMMITTED;
         updateState();
+        logger.debug("rymDebug: updated state is {}", state());
         return preparedForCommit;
     }
 
