@@ -274,9 +274,6 @@ public class CompactionTask extends AbstractCompactionTask {
                             keysInRange++;
                         }
 
-                        if(!isSwitchWriter) {
-                            logger.warn("rymWarning: task {} did not switch writer!", taskId);
-                        }
                         
 
                         long bytesScanned = scanners.getTotalBytesScanned();
@@ -292,6 +289,11 @@ public class CompactionTask extends AbstractCompactionTask {
                             lastCheckObsoletion = nanoTime();
                         }
                     }
+
+                    if(!isSwitchWriter) {
+                        logger.warn("rymWarning: task {} did not switch writer!", taskId);
+                    }
+                    
                     // logger.debug("rymDebug: traversed keys num is {}, totalKeysWritten is {}",traversedKeys, totalKeysWritten);
                     timeSpentWritingKeys = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
 
