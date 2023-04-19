@@ -201,6 +201,10 @@ public class CompactionTask extends AbstractCompactionTask {
             long traversedKeys = 0;
             int  checkedSSTableNum = sstables.size();
 
+            for (SSTableReader sstable : sstables) {
+                logger.debug("rymDebug: rewrite sstable name is {}, sstable level is {}", sstable.getFilename(), sstable.getSSTableLevel());
+            }
+
             
             Collection<SSTableReader> newSSTables = new ArrayList<SSTableReader>();
             Collection<SSTableReader> headNewSStables;

@@ -158,7 +158,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         // rewrite the sstables, just delete the key ranges of M` which are matching
                         // those of M
 
-                        logger.debug("rymDebug: many sstbales are involved, {} sstables need to rewrite!",
+                        logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!",
                                 rewriteSStables.size());
                         try {
                             AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys,
@@ -240,12 +240,18 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // then search which sstable does the last key stored
         int tail = mid + 1;
         while (tail < sstables.size() && last.compareTo(sstables.get(tail).first)>=0) {
+            if(sstables.get(tail).getSSTableLevel() != DatabaseDescriptor.getCompactionThreshold())
+                logger.warn("rymWarnings: sstable level {} is not equal to threshold {}", 
+                    sstables.get(tail).getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
             rewriteSStables.add(sstables.get(tail));
             tail++;
         }
 
         int head = mid - 1;
         if(head >= 0 && (rewriteSStables.size() > 1 || first.compareTo(sstables.get(head).last)<=0)) {
+            if(sstables.get(head).getSSTableLevel() != DatabaseDescriptor.getCompactionThreshold())
+                logger.warn("rymWarnings: sstable level {} is not equal to threshold {}", 
+                    sstables.get(head).getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
             rewriteSStables.add(sstables.get(head));
             head--;
         }
