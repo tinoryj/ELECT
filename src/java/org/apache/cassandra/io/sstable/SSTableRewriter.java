@@ -400,6 +400,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         if (!keepOriginals)
             transaction.obsoleteOriginals();
 
+        transaction.updateState();
         transaction.prepareToCommit();
     }
 

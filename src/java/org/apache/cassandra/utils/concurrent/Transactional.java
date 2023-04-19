@@ -253,4 +253,7 @@ public interface Transactional extends AutoCloseable
 
     // close() does not throw
     public void close();
+
+    // [CASSANDRAEC]
+    public void updateState();
 }
