@@ -20,6 +20,7 @@ package org.apache.cassandra.db.compaction.writers;
 import java.util.Set;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.RowIndexEntry;
 import org.apache.cassandra.db.SerializationHeader;
@@ -66,6 +67,35 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter {
     @Override
     @SuppressWarnings("resource")
     public boolean realAppend(UnfilteredRowIterator partition) {
+        RowIndexEntry rie = sstableWriter.append(partition);
+        partitionsWritten++;
+        long totalWrittenInCurrentWriter = sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten();
+        if (totalWrittenInCurrentWriter > maxSSTableSize) {
+            totalWrittenInLevel += totalWrittenInCurrentWriter;
+            if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel, levelFanoutSize, maxSSTableSize)) {
+                totalWrittenInLevel = 0;
+                // logger.debug("[Tinoryj] current total written in level: {}, current level = {}", totalWrittenInLevel, currentLevel);
+                currentLevel++;
+            }
+            switchCompactionLocation(sstableDirectory);
+        }
+        return rie != null;
+
+    }
+
+    // [CASSANDRAEC]
+    public boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter) {
+
+        if (isSwitchWriter) {
+            totalWrittenInLevel += sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten();
+            // if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel, levelFanoutSize, maxSSTableSize)) {
+            //     totalWrittenInLevel = 0;
+            //     // logger.debug("[Tinoryj] current total written in level: {}, current level = {}", totalWrittenInLevel, currentLevel);
+            //     currentLevel++;
+            // }
+            switchCompactionLocation(sstableDirectory);
+        }
+
         RowIndexEntry rie = sstableWriter.append(partition);
         partitionsWritten++;
         long totalWrittenInCurrentWriter = sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten();

@@ -428,4 +428,10 @@ public class SequentialWriter extends BufferedDataOutputStreamPlus implements Tr
             this.pointer = pointer;
         }
     }
+
+    @Override
+    public void updateState() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'updateState'");
+    }
 }

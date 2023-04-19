@@ -399,10 +399,38 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
 
         if (!keepOriginals)
             transaction.obsoleteOriginals();
-
-        transaction.updateState();
+        // [CASSANDRAEC]
+        // transaction.updateState();
         transaction.prepareToCommit();
     }
+
+    // // [CASSANDRAEC]
+    // protected void doPrepareFirstPhase()
+    // {
+    //     switchWriter(null);
+
+    //     if (throwEarly)
+    //         throw new RuntimeException("exception thrown early in finish, for testing");
+
+    //     // No early open to finalize and replace
+    //     for (SSTableWriter writer : writers)
+    //     {
+    //         assert writer.getFilePointer() > 0;
+    //         writer.setRepairedAt(repairedAt).setOpenResult(true).prepareToCommit();
+    //         SSTableReader reader = writer.finished();
+    //         transaction.update(reader, false);
+    //         preparedForCommit.add(reader);
+    //     }
+    //     transaction.checkpoint();
+
+    //     if (throwLate)
+    //         throw new RuntimeException("exception thrown after all sstables finished, for testing");
+
+    //     if (!keepOriginals)
+    //         transaction.obsoleteOriginals();
+
+    //     transaction.prepareToCommit();
+    // }
 
     public void throwDuringPrepare(boolean earlyException)
     {

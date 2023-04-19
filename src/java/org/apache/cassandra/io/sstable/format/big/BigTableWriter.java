@@ -644,4 +644,10 @@ public class BigTableWriter extends SSTableWriter {
             return accumulate;
         }
     }
+
+    @Override
+    public void updateState() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'updateState'");
+    }
 }

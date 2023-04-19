@@ -201,15 +201,17 @@ public class CompactionTask extends AbstractCompactionTask {
             long traversedKeys = 0;
             int  checkedSSTableNum = sstables.size();
 
+            boolean isSwitchWriter = false;
+
             for (SSTableReader sstable : sstables) {
                 logger.debug("rymDebug: rewrite sstable name is {}, sstable level is {}", sstable.getFilename(), sstable.getSSTableLevel());
             }
 
             
             Collection<SSTableReader> newSSTables = new ArrayList<SSTableReader>();
-            Collection<SSTableReader> headNewSStables;
-            Collection<SSTableReader> tailNewSStables;
-            Collection<SSTableReader> rewrittenSStables;
+            // Collection<SSTableReader> headNewSStables;
+            // Collection<SSTableReader> tailNewSStables;
+            // Collection<SSTableReader> rewrittenSStables;
 
             long[] mergedRowCounts;
             long totalSourceCQLRows;
@@ -230,8 +232,8 @@ public class CompactionTask extends AbstractCompactionTask {
                 long lastBytesScanned = 0;
 
                 activeCompactions.beginCompaction(ci);
-                try (CompactionAwareWriter writer1 = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables);
-                     CompactionAwareWriter writer2 = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables)) {
+                try (// CompactionAwareWriter writer1 = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables);
+                     CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables)) {
                     // Note that we need to re-check this flag after calling beginCompaction above
                     // to avoid a window
                     // where the compaction does not exist in activeCompactions but the CSM gets
@@ -250,16 +252,19 @@ public class CompactionTask extends AbstractCompactionTask {
                                 row.partitionKey().getRawKey(cfs.metadata()), row.partitionKey().getRawKey(cfs.metadata()));
                         }
 
-                        
-                        if(row.partitionKey().compareTo(sourceKeys.get(0)) < 0) {
-                            // if the key is out of the range of the source keys, write it
-                            if (writer1.append(row))
-                            {
-                                totalKeysWritten++;
+                        if(row.partitionKey().compareTo(sourceKeys.get(sourceKeys.size() - 1)) > 0) {
+                            if(!isSwitchWriter) {
+                                isSwitchWriter = true;
+                                if(writer.append(row, isSwitchWriter)) {
+                                    totalKeysWritten++;
+                                }
+                            } else {
+                                if(writer.append(row, false)) {
+                                    totalKeysWritten++;
+                                }
                             }
-                                
-                        } else if (row.partitionKey().compareTo(sourceKeys.get (sourceKeys.size()-1)) > 0) {
-                            if(writer2.append(row)) {
+                        } else if (row.partitionKey().compareTo(sourceKeys.get(0)) < 0) {
+                            if(writer.append(row, false)) {
                                 totalKeysWritten++;
                             }
                         }
@@ -283,13 +288,14 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // point of no return
                     // logger.debug("rymDebug: about writer, capacity is ");
-                    headNewSStables = writer1.finishFirstPhase();
-                    tailNewSStables = writer2.finish();
+                    // headNewSStables = writer1.finishFirstPhase();
+                    // tailNewSStables = writer2.finish();
+                    newSSTables = writer.finish();
                     // TODO: re-create sstable reader from ecmetadata 
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new head sstables number is {}, new tail sstables num is {}, total traversed keys nums is {}, saved keys is {},",
-                         cfName+RESET, originalSSTableNum, checkedSSTableNum, headNewSStables.size(), tailNewSStables.size(), traversedKeys, totalKeysWritten);
+                         cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), traversedKeys, totalKeysWritten);
                 }
                 finally
                 {
@@ -307,11 +313,11 @@ public class CompactionTask extends AbstractCompactionTask {
             long durationInNano = nanoTime() - start;
             long dTime = TimeUnit.NANOSECONDS.toMillis(durationInNano);
             long startsize = inputSizeBytes;
-            long endsize = SSTableReader.getTotalBytes(headNewSStables) + SSTableReader.getTotalBytes(tailNewSStables);
+            long endsize = SSTableReader.getTotalBytes(newSSTables);
             double ratio = (double) endsize / (double) startsize;
 
-            newSSTables.addAll(headNewSStables);
-            newSSTables.addAll(tailNewSStables);
+            // newSSTables.addAll(headNewSStables);
+            // newSSTables.addAll(tailNewSStables);
             StringBuilder newSSTableNames = new StringBuilder();
             for (SSTableReader reader : newSSTables) {
                 newSSTableNames.append(reader.descriptor.baseFilename()).append(",");

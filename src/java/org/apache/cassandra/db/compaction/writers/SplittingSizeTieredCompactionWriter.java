@@ -120,4 +120,10 @@ public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter {
     protected long getExpectedWriteSize() {
         return Math.round(totalSize * ratios[currentRatioIndex]);
     }
+
+    @Override
+    protected boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'realAppend'");
+    }
 }

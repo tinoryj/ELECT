@@ -238,4 +238,10 @@ public class BigTableZeroCopyWriter extends SSTable implements SSTableMultiWrite
             throw new FSWriteError(e, writer.getPath());
         }
     }
+
+    @Override
+    public void updateState() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'updateState'");
+    }
 }

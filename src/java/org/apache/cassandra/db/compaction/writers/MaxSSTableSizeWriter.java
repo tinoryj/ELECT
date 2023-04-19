@@ -109,4 +109,10 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
     protected long getExpectedWriteSize() {
         return Math.min(maxSSTableSize, super.getExpectedWriteSize());
     }
+
+    @Override
+    protected boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'realAppend'");
+    }
 }
