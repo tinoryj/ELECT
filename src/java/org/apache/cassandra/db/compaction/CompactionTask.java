@@ -205,7 +205,8 @@ public class CompactionTask extends AbstractCompactionTask {
             boolean isSwitchWriter = false;
 
             for (SSTableReader sstable : sstables) {
-                logger.debug("rymDebug: rewrite sstable name is {}, sstable level is {}", sstable.getFilename(), sstable.getSSTableLevel());
+                logger.debug("rymDebug: rewrite sstable name is {}, sstable level is {}, task id is {}", 
+                    sstable.getFilename(), sstable.getSSTableLevel(), taskId);
             }
 
             
@@ -259,7 +260,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                 if(writer.append(row, isSwitchWriter)) {
                                     totalKeysWritten++;
                                 }
-                                logger.debug("rymDebug: switched a new writer");
+                                logger.debug("rymDebug: switched a new writer, task id is {}", taskId);
                             } else {
                                 if(writer.append(row, false)) {
                                     totalKeysWritten++;
@@ -271,6 +272,10 @@ public class CompactionTask extends AbstractCompactionTask {
                             }
                         } else {
                             keysInRange++;
+                        }
+
+                        if(!isSwitchWriter) {
+                            logger.warn("rymWarning: task {} did not switch writer!", taskId);
                         }
                         
 
@@ -287,7 +292,7 @@ public class CompactionTask extends AbstractCompactionTask {
                             lastCheckObsoletion = nanoTime();
                         }
                     }
-                    logger.debug("rymDebug: traversed keys num is {}, totalKeysWritten is {}",traversedKeys, totalKeysWritten);
+                    // logger.debug("rymDebug: traversed keys num is {}, totalKeysWritten is {}",traversedKeys, totalKeysWritten);
                     timeSpentWritingKeys = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
 
                     // point of no return
@@ -298,8 +303,8 @@ public class CompactionTask extends AbstractCompactionTask {
                     // TODO: re-create sstable reader from ecmetadata 
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
-                    logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, total traversed keys nums is {}, saved keys is {}, keys num in range is {}, source keys num is {}",
-                         cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), traversedKeys, totalKeysWritten, keysInRange, sourceKeys.size());
+                    logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! task id is {},  cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, total traversed keys nums is {}, saved keys is {}, keys num in range is {}, source keys num is {}",
+                        taskId, cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), traversedKeys, totalKeysWritten, keysInRange, sourceKeys.size());
                 }
                 finally
                 {
