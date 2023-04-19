@@ -523,9 +523,10 @@ public class CompactionTask extends AbstractCompactionTask {
                     startsize, endsize);
 
             logger.info(String.format(
-                    "Compacted (%s) %d sstables to [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
+                    "Compacted (%s) %d sstables to %d [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
                     taskId,
                     transaction.originals().size(),
+                    newSStables.size(),
                     newSSTableNames.toString(),
                     getLevel(),
                     FBUtilities.prettyPrintMemory(startsize),
