@@ -434,7 +434,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 return AllSSTableOpStatus.UNABLE_TO_CANCEL;
 
             rewriteSSTables = Lists.newArrayList(operation.filterSSTables(txn));
-            
+            int originalRewriteSSTablesNum = rewriteSSTables.size();
             if (Iterables.isEmpty(rewriteSSTables)) {
                 logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
                 return AllSSTableOpStatus.SUCCESSFUL;
@@ -459,8 +459,11 @@ public class CompactionManager implements CompactionManagerMBean {
                 return AllSSTableOpStatus.ABORTED;
 
             FBUtilities.waitOnFutures(futures);
-            assert txn.originals().isEmpty();
-            logger.info("Finished {} for {}.{} successfully", operationType, cfs.keyspace.getName(), cfs.getTableName());
+            if(txn.originals().isEmpty()) {
+                logger.info("Finished rewrite {} sstables successfully!", originalRewriteSSTablesNum);
+            } else {
+                logger.warn(BLUE+"Still remaining {} sstables in this transaction {}", txn.originals().size()+RESET, txn.opId());
+            }
             return AllSSTableOpStatus.SUCCESSFUL;
 
         } finally {

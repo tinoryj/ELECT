@@ -133,7 +133,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                 // TODO: need to consider rewrite sstables.
                                 // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
                                 rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
-                                logger.debug(RED + "rymDebug: M' missed keys in the middle, update and delete it!");
+                                logger.debug(RED + "rymDebug: M1 missed keys in the middle, update and delete it!");
 
                             } else if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))
                                     && allKeys.size() >= updateKeys.size()) {
@@ -145,7 +145,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             } else {
                                 // M` missed some keys in the boundary,
                                 // need to update the metadata
-                                logger.debug(RED + "rymDebug: M' missed keys in the edge, update and delete it!");
+                                logger.debug(RED + "rymDebug: M1 missed keys in the edge, update and delete it!");
                                 rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
                                 // TODO: write update statsmetadata and bloomfilter 
                                 // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);

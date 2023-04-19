@@ -258,6 +258,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                 if(writer.append(row, isSwitchWriter)) {
                                     totalKeysWritten++;
                                 }
+                                logger.debug("rymDebug: switched a new writer");
                             } else {
                                 if(writer.append(row, false)) {
                                     totalKeysWritten++;
@@ -294,8 +295,8 @@ public class CompactionTask extends AbstractCompactionTask {
                     // TODO: re-create sstable reader from ecmetadata 
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
-                    logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, total traversed keys nums is {}, saved keys is {},",
-                         cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), traversedKeys, totalKeysWritten);
+                    logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, total traversed keys nums is {}, saved keys is {}, source keys num is {}",
+                         cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), traversedKeys, totalKeysWritten, sourceKeys.size());
                 }
                 finally
                 {
