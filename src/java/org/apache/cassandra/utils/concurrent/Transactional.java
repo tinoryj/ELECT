@@ -156,12 +156,14 @@ public interface Transactional extends AutoCloseable
         }
 
         // if we are committed or aborted, then we are done; otherwise abort
+        // [CASSANDRAEC]
         public final void close()
         {
             switch (state)
             {
                 case COMMITTED:
                 case ABORTED:
+                case COMMITTED_FIRST_PHASE:
                     break;
                 default:
                     abort();
@@ -220,6 +222,7 @@ public interface Transactional extends AutoCloseable
             maybeFail(commitFirstPhase(null));
         }
 
+        // [CASSANDRAEC]
         public void updateState(){
             state = State.IN_PROGRESS;
         }

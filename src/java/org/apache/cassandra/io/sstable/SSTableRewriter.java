@@ -22,6 +22,10 @@ import java.util.*;
 
 import com.google.common.annotations.VisibleForTesting;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.cassandra.cache.InstrumentingCache;
 import org.apache.cassandra.cache.KeyCacheKey;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -54,6 +58,8 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
 {
     @VisibleForTesting
     public static boolean disableEarlyOpeningForTests = false;
+    
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractTransactional.class);
 
     private final long preemptiveOpenInterval;
     private final long maxAge;
@@ -359,9 +365,10 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         return preparedForCommit;
     }
 
-    
+    // [CASSANDRAEC]
     public List<SSTableReader> finishedFirstPhase()
     {
+        logger.debug("rymDebug: finishedFirstPhase, state is {}", state());
         assert state() == State.COMMITTED_FIRST_PHASE || state() == State.READY_TO_COMMIT;
         updateState();
         return preparedForCommit;
