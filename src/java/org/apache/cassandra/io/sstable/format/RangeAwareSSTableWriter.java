@@ -200,9 +200,9 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter {
         finishedWriters.forEach(SSTableMultiWriter::close);
     }
 
-    @Override
-    public void updateState() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'updateState'");
-    }
+    // @Override
+    // public void updateState() {
+    //     // TODO Auto-generated method stub
+    //     throw new UnsupportedOperationException("Unimplemented method 'updateState'");
+    // }
 }

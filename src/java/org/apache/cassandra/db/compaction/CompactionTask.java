@@ -199,6 +199,7 @@ public class CompactionTask extends AbstractCompactionTask {
             long inputSizeBytes;
             long timeSpentWritingKeys;
             long traversedKeys = 0;
+            long keysInRange = 0;
             int  checkedSSTableNum = sstables.size();
 
             boolean isSwitchWriter = false;
@@ -268,6 +269,8 @@ public class CompactionTask extends AbstractCompactionTask {
                             if(writer.append(row, false)) {
                                 totalKeysWritten++;
                             }
+                        } else {
+                            keysInRange++;
                         }
                         
 
@@ -295,8 +298,8 @@ public class CompactionTask extends AbstractCompactionTask {
                     // TODO: re-create sstable reader from ecmetadata 
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
-                    logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, total traversed keys nums is {}, saved keys is {}, source keys num is {}",
-                         cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), traversedKeys, totalKeysWritten, sourceKeys.size());
+                    logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, total traversed keys nums is {}, saved keys is {}, keys num in range is {}, source keys num is {}",
+                         cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), traversedKeys, totalKeysWritten, keysInRange, sourceKeys.size());
                 }
                 finally
                 {
@@ -332,7 +335,7 @@ public class CompactionTask extends AbstractCompactionTask {
             
 
             logger.info(String.format(
-                    "Compacted (%s) %d sstables to [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
+                    "Rewritten (%s) %d sstables to [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
                     taskId,
                     transaction.originals().size(),
                     newSSTableNames.toString(),

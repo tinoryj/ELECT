@@ -110,9 +110,9 @@ public class SimpleSSTableMultiWriter implements SSTableMultiWriter {
         return new SimpleSSTableMultiWriter(writer, lifecycleNewTracker);
     }
 
-    @Override
-    public void updateState() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'updateState'");
-    }
+    // @Override
+    // public void updateState() {
+    //     // TODO Auto-generated method stub
+    //     throw new UnsupportedOperationException("Unimplemented method 'updateState'");
+    // }
 }

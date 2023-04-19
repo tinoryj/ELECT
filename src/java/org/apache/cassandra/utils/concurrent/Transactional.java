@@ -230,9 +230,9 @@ public interface Transactional extends AutoCloseable
         }
 
         // [CASSANDRAEC]
-        public void updateState(){
-            state = State.IN_PROGRESS;
-        }
+        // public void updateState(){
+        //     state = State.IN_PROGRESS;
+        // }
 
         public final State state()
         {
@@ -255,5 +255,5 @@ public interface Transactional extends AutoCloseable
     public void close();
 
     // [CASSANDRAEC]
-    public void updateState();
+    // public void updateState();
 }
