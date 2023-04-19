@@ -445,10 +445,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 @Override
                 public Object call() throws Exception
                 {
-                    AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
-                    task.setUserDefined(true);
-                    task.setCompactionType(operationType);
-                    task.execute(active, sourceKeys);
+                    operation.execute(txn);
                     return this;
                 }
             };
