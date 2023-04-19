@@ -59,7 +59,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
     @VisibleForTesting
     public static boolean disableEarlyOpeningForTests = false;
     
-    protected static final Logger logger = LoggerFactory.getLogger(AbstractTransactional.class);
+    protected static final Logger logger = LoggerFactory.getLogger(SSTableRewriter.class);
 
     private final long preemptiveOpenInterval;
     private final long maxAge;
@@ -369,7 +369,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
     public List<SSTableReader> finishedFirstPhase()
     {
         logger.debug("rymDebug: finishedFirstPhase, state is {}", state());
-        assert state() == State.COMMITTED_FIRST_PHASE || state() == State.READY_TO_COMMIT;
+        assert state() == State.COMMITTED_FIRST_PHASE || state() == State.READY_TO_COMMIT || state() == State.COMMITTED;
         updateState();
         return preparedForCommit;
     }
