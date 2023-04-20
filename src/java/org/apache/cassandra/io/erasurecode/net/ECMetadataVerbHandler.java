@@ -104,6 +104,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
 
                     // use binary search to find related sstables
+                    // TODO: somtimes cannot get 
                     List<DecoratedKey> updateKeys = StorageService.instance.globalSSTMap.get(sstableHash);
                     DecoratedKey first = updateKeys.get(0);
                     DecoratedKey last = updateKeys.get(updateKeys.size() - 1);
