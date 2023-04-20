@@ -178,8 +178,8 @@ public class StatsMetadata extends MetadataComponent {
                         this.hashID = sb.toString();
                     }
 
-                    logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash length is {}",
-                        this.hashID, this.hashID.length());
+                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash length is {}",
+                    //     this.hashID, this.hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
                     logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
@@ -394,8 +394,8 @@ public class StatsMetadata extends MetadataComponent {
             if (version.hasHashID() && component.hashID != null) {
                 Boolean isHashIDExist = true;
                 if(TypeSizes.sizeof(component.hashID) != 32) {
-                    logger.debug("[Tinoryj] HashID size is not 32, HashID size is {}, HashID is {}",
-                     TypeSizes.sizeof(component.hashID), component.hashID);
+                    logger.debug("[Tinoryj] HashID size is not 32, HashID size is {}, length is {}, HashID is {}.",
+                     TypeSizes.sizeof(component.hashID), component.hashID.length(), component.hashID);
                 }
                 out.writeBoolean(isHashIDExist);
                 out.writeBytes(component.hashID);
@@ -408,6 +408,7 @@ public class StatsMetadata extends MetadataComponent {
             EstimatedHistogram.serializer.serialize(component.estimatedCellPerPartitionCount, out);
             CommitLogPosition.serializer
                     .serialize(component.commitLogIntervals.upperBound().orElse(CommitLogPosition.NONE), out);
+            out.writeLong(component.creationTimestamp);
             out.writeLong(component.minTimestamp);
             out.writeLong(component.maxTimestamp);
             out.writeInt(component.minLocalDeletionTime);
@@ -471,10 +472,12 @@ public class StatsMetadata extends MetadataComponent {
                 in.readFully(buf, 0, 32);
                 hashIDRawStr = new String(buf);
                 logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
+                in.skipBytes(32);
             } else {
                 hashIDRawStr = null;
                 logger.debug("[Tinoryj]: could not found hashID from the sstable!!!");
             }
+            // TODO
 
             EstimatedHistogram partitionSizes = EstimatedHistogram.serializer.deserialize(in);
 
