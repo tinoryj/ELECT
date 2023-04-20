@@ -164,8 +164,8 @@ public class StatsMetadata extends MetadataComponent {
                     MessageDigest digest = MessageDigest.getInstance("SHA-256");
                     byte[] hash = digest.digest(bytes);
                     this.hashID = new String(hash);
-                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}",
-                    // hashID);
+                    logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash length is {}",
+                        hashID, hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
                     logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
