@@ -482,9 +482,14 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 for (SSTableReader sstable : sstatbles) {
                     if (!sstable.isReplicationTransferredToErasureCoding()) {
 
-                        logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {},",
+                        logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
                                 sstable.getFilename(), sstable.getSSTableLevel(),
-                                DatabaseDescriptor.getCompactionThreshold());
+                                DatabaseDescriptor.getCompactionThreshold(),
+                                sstable.descriptor.ksname,
+                                sstable.descriptor.cfname,
+                                sstable.descriptor.version,
+                                sstable.descriptor.id,
+                                sstable.descriptor);
                         long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 
                         long delayMilli = delay * 60 * 1000;

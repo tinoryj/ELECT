@@ -25,45 +25,14 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.List;
 
-import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.io.sstable.Descriptor;
+import org.apache.cassandra.io.util.File;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class utils {
     private static final Logger logger = LoggerFactory.getLogger(utils.class);
-
-
-    // public static class ByteObjectConversion<T> {
-
-    //     // convert object to byte array
-    //     public byte[] toByteArray(T object) throws Exception {
-
-    //         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    //         ObjectOutputStream oos;
-
-    //         try {
-    //             logger.debug("rymDebug: start to transform, obj is {}, class is {}", object,object.getClass());
-    //             oos = new ObjectOutputStream(baos);
-    //             oos.writeObject(object);
-    //             byte[] bytes = baos.toByteArray();
-    //             logger.debug("rymDebug: get bytes is {}", bytes);
-    //             return bytes;
-    //         } catch (IOException e) {
-    //             // TODO Auto-generated catch block
-    //             logger.error("rymError: cannot serialize this fucking obj! error info {}", e);
-    //         }
-    //         return null;
-    //     }
-    
-    //     //convert byte array to object
-    //     public T fromByteArray(byte[] bytes) throws Exception {
-    //         try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-    //              ObjectInputStream ois = new ObjectInputStream(bis)) {
-    //             return (T) ois.readObject();
-    //         }
-    //     }
 
     public static class ByteObjectConversion {
         public static byte[] objectToByteArray(Serializable obj) throws Exception {
@@ -86,5 +55,17 @@ public class utils {
             return obj;
         }
     }
+
+    public static void main(String[] args) {
+        // SSTableMetadataViewer metawriter = new SSTableMetadataViewer(false, false, Integer.MAX_VALUE, TimeUnit.MICROSECONDS, System.out);
+        
+        String fname = System.getProperty("user.dir")+"/data/data/nb-1712-big-Data.db";
+        File sstable = new File(fname);
+        logger.info("absolutePath is {}, path is {}, parentPath is {}, parent is {}",
+         sstable.absolutePath(), sstable.path(), sstable.parentPath(),sstable.parent());
+        Descriptor desc = Descriptor.fromFilename(fname);
+        logger.info("read from {}, desc is {}, version is {}, format type is {}", fname, desc.id, desc.version, desc.formatType);
+    }
+
 
 }
