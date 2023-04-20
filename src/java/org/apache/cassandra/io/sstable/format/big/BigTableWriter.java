@@ -471,7 +471,22 @@ public class BigTableWriter extends SSTableWriter {
                 try {
                     MessageDigest digest = MessageDigest.getInstance("SHA-256");
                     byte[] hash = digest.digest(bytes);
-                    hashID = new String(hash);
+                    // hashID = new String(hash);
+
+                    int hashSize = 32;
+                    StringBuilder sb = new StringBuilder();
+                    for (byte b : hash) {
+                        sb.append(String.format("%02x", b));
+                    }
+                    if (sb.length() > hashSize) {
+                        hashID = sb.substring(0, hashSize);
+                    } else {
+                        while (sb.length() < hashSize) {
+                            sb.append("0");
+                        }
+                        hashID = sb.toString();
+                    }
+
                     logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash length is {}",
                      hashID, hashID.length());
                 } catch (NoSuchAlgorithmException e) {
