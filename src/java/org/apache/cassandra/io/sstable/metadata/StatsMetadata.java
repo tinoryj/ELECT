@@ -379,6 +379,9 @@ public class StatsMetadata extends MetadataComponent {
         public void serialize(Version version, StatsMetadata component, DataOutputPlus out) throws IOException {
             if (version.hasHashID() && component.hashID != null) {
                 Boolean isHashIDExist = true;
+                if(TypeSizes.sizeof(component.hashID) != 32) {
+                    logger.debug("[Tinoryj] HashID size is not 32, HashID size is {}", TypeSizes.sizeof(component.hashID));
+                }
                 out.writeBoolean(isHashIDExist);
                 out.writeBytes(component.hashID);
                 logger.debug("[Tinoryj] Write real HashID {}", component.hashID);

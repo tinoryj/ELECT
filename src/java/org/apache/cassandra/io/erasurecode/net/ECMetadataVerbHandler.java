@@ -125,6 +125,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
                             logger.debug(RED + "rymDebug: get the match sstbales, delete it!");
                         } else {
+                            logger.warn("rymWarning: get unexpected sstables num");
                             // a bit different, update sstable and delete it
                             if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))
                                     && allKeys.size() < updateKeys.size()) {
@@ -256,6 +257,11 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             rewriteSStables.add(sstables.get(head));
             head--;
         }
+
+        if(head >= 0) 
+            rewriteSStables.add(sstables.get(head));
+        if(tail < sstables.size()) 
+            rewriteSStables.add(sstables.get(tail));
 
         return rewriteSStables;
     }
