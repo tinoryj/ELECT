@@ -394,7 +394,8 @@ public class StatsMetadata extends MetadataComponent {
             if (version.hasHashID() && component.hashID != null) {
                 Boolean isHashIDExist = true;
                 if(TypeSizes.sizeof(component.hashID) != 32) {
-                    logger.debug("[Tinoryj] HashID size is not 32, HashID size is {}", TypeSizes.sizeof(component.hashID));
+                    logger.debug("[Tinoryj] HashID size is not 32, HashID size is {}, HashID is {}",
+                     TypeSizes.sizeof(component.hashID), component.hashID);
                 }
                 out.writeBoolean(isHashIDExist);
                 out.writeBytes(component.hashID);
