@@ -398,19 +398,23 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     }
 
                     for (SSTableReader sstable : view.sstables) {
+                        if (sstable.isReplicationTransferredToErasureCoding()) {
+                            logger.debug(
+                                    "Skip the sstable {} during search because it is transferred to erasure coding",
+                                    sstable.getFilename());
+                            continue;
+                        }
+
                         @SuppressWarnings("resource") // We close on exception and on closing the result returned by
                                                       // this
                                                       // method
-                        if(sstable.isReplicationTransferredToErasureCoding()){
-                            // TODO[Tinoryj]: filter out metadata SSTables.
-                            continue;
-                        }
+
                         UnfilteredPartitionIterator iter = sstable.partitionIterator(columnFilter(), dataRange(),
                                 readCountUpdater);
                         inputCollector.addSSTableIterator(sstable,
                                 RTBoundValidator.validate(iter, RTBoundValidator.Stage.SSTABLE, false));
-                        
-                        if (!sstable.isRepaired())
+                        // [Tinoryj] Check the isReplicationTransferredToErasureCoding
+                        if (!sstable.isRepaired() && !sstable.isReplicationTransferredToErasureCoding())
                             controller.updateMinOldestUnrepairedTombstone(sstable.getMinLocalDeletionTime());
                     }
                     // iterators can be empty for offline tools

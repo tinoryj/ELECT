@@ -144,34 +144,36 @@ public class StatsMetadata extends MetadataComponent {
     }
 
     public Boolean setupHashIDIfMissed(String fileName) {
-        if (this.hashID == null){
+        if (this.hashID == null) {
             try (DataInputStream dataFileReadForHash = new DataInputStream(
-                new FileInputStream(fileName))) {
-            long fileLength = new File(fileName).length();
-            byte[] bytes = new byte[(int) fileLength];
-            dataFileReadForHash.readFully(bytes);
-            dataFileReadForHash.close();
-            // logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
-            // generate hash based on the bytes buffer
-            try {
-                MessageDigest digest = MessageDigest.getInstance("SHA-256");
-                byte[] hash = digest.digest(bytes);
-                this.hashID = new String(hash);
-                // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}", hashID);
-            } catch (NoSuchAlgorithmException e) {
+                    new FileInputStream(fileName))) {
+                long fileLength = new File(fileName).length();
+                byte[] bytes = new byte[(int) fileLength];
+                dataFileReadForHash.readFully(bytes);
+                dataFileReadForHash.close();
+                // logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
+                // generate hash based on the bytes buffer
+                try {
+                    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                    byte[] hash = digest.digest(bytes);
+                    this.hashID = new String(hash);
+                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}",
+                    // hashID);
+                } catch (NoSuchAlgorithmException e) {
+                    this.hashID = null;
+                    logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
+                    e.printStackTrace();
+                }
+            } catch (IOException e) {
                 this.hashID = null;
-                logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
+                logger.debug("[Tinoryj]: Could not read SSTable {}", fileName);
                 e.printStackTrace();
+                return false;
             }
-        } catch (IOException e) {
-            this.hashID = null;
-            logger.debug("[Tinoryj]: Could not read SSTable {}", fileName);
-            e.printStackTrace();
-            return false;
-        }
         }
         return true;
     }
+
     /**
      * @param gcBefore gc time in seconds
      * @return estimated droppable tombstone ratio at given gcBefore time.
@@ -354,16 +356,26 @@ public class StatsMetadata extends MetadataComponent {
                     size += UUIDSerializer.serializer.serializedSize(component.originatingHostId,
                             version.correspondingMessagingVersion());
             }
-
+            // size of hashID.
             if (version.hasHashID() && component.hashID != null) {
-                size += 32;
+                Boolean isHashIDExist = true;
+                size += (32 + TypeSizes.sizeof(isHashIDExist));
+            } else {
+                Boolean isHashIDExist = false;
+                size += TypeSizes.sizeof(isHashIDExist);
             }
             return size;
         }
 
         public void serialize(Version version, StatsMetadata component, DataOutputPlus out) throws IOException {
             if (version.hasHashID() && component.hashID != null) {
+                Boolean isHashIDExist = true;
+                out.writeBoolean(isHashIDExist);
                 out.writeBytes(component.hashID);
+                logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
+            } else {
+                Boolean isHashIDExist = false;
+                out.writeBoolean(isHashIDExist);
             }
             EstimatedHistogram.serializer.serialize(component.estimatedPartitionSize, out);
             EstimatedHistogram.serializer.serialize(component.estimatedCellPerPartitionCount, out);
@@ -424,12 +436,17 @@ public class StatsMetadata extends MetadataComponent {
         }
 
         public StatsMetadata deserialize(Version version, DataInputPlus in) throws IOException {
-            String hashID = null;
-            if (version.hasHashID()) {
+
+            String hashIDRawStr;
+            Boolean hashIDExistFlag = in.readBoolean();
+            if (hashIDExistFlag == true) {
                 byte[] buf = new byte[32];
                 in.readFully(buf, 0, 32);
-                hashID = new String(buf);
-                in.skipBytes(32);
+                hashIDRawStr = new String(buf);
+                logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
+            } else {
+                hashIDRawStr = null;
+                logger.debug("[Tinoryj]: could not found hashID from the sstable!!!");
             }
 
             EstimatedHistogram partitionSizes = EstimatedHistogram.serializer.deserialize(in);
@@ -533,7 +550,7 @@ public class StatsMetadata extends MetadataComponent {
                     pendingRepair,
                     isTransient,
                     isReplicationTransferredToErasureCoding,
-                    hashID);
+                    hashIDRawStr);
         }
     }
 }
