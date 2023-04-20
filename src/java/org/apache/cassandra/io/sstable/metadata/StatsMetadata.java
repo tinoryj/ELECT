@@ -49,10 +49,6 @@ import org.apache.cassandra.utils.streamhist.TombstoneHistogram;
 import org.apache.cassandra.utils.UUIDSerializer;
 import org.apache.cassandra.io.util.*;
 import org.apache.cassandra.utils.*;
-import static org.apache.cassandra.utils.FBUtilities.now;
-
-import java.time.temporal.ChronoField;
-
 
 /**
  * SSTable metadata that always stay on heap.
@@ -66,7 +62,6 @@ public class StatsMetadata extends MetadataComponent {
     public final EstimatedHistogram estimatedPartitionSize;
     public final EstimatedHistogram estimatedCellPerPartitionCount;
     public final IntervalSet<CommitLogPosition> commitLogIntervals;
-    public final long creationTimestamp;
     public final long minTimestamp;
     public final long maxTimestamp;
     public final int minLocalDeletionTime;
@@ -85,7 +80,7 @@ public class StatsMetadata extends MetadataComponent {
     public final UUID originatingHostId;
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
-    public boolean isReplicationTransferredToErasureCoding;
+    public final boolean isReplicationTransferredToErasureCoding;
     public String hashID = null;
     // just holds the current encoding stats to avoid allocating - it is not
     // serialized
@@ -94,7 +89,6 @@ public class StatsMetadata extends MetadataComponent {
     public StatsMetadata(EstimatedHistogram estimatedPartitionSize,
             EstimatedHistogram estimatedCellPerPartitionCount,
             IntervalSet<CommitLogPosition> commitLogIntervals,
-            long creationTimestamp,
             long minTimestamp,
             long maxTimestamp,
             int minLocalDeletionTime,
@@ -118,7 +112,6 @@ public class StatsMetadata extends MetadataComponent {
         this.estimatedPartitionSize = estimatedPartitionSize;
         this.estimatedCellPerPartitionCount = estimatedCellPerPartitionCount;
         this.commitLogIntervals = commitLogIntervals;
-        this.creationTimestamp = creationTimestamp;
         this.minTimestamp = minTimestamp;
         this.maxTimestamp = maxTimestamp;
         this.minLocalDeletionTime = minLocalDeletionTime;
@@ -151,34 +144,36 @@ public class StatsMetadata extends MetadataComponent {
     }
 
     public Boolean setupHashIDIfMissed(String fileName) {
-        if (this.hashID == null){
+        if (this.hashID == null) {
             try (DataInputStream dataFileReadForHash = new DataInputStream(
-                new FileInputStream(fileName))) {
-            long fileLength = new File(fileName).length();
-            byte[] bytes = new byte[(int) fileLength];
-            dataFileReadForHash.readFully(bytes);
-            dataFileReadForHash.close();
-            // logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
-            // generate hash based on the bytes buffer
-            try {
-                MessageDigest digest = MessageDigest.getInstance("SHA-256");
-                byte[] hash = digest.digest(bytes);
-                this.hashID = new String(hash);
-                // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}", hashID);
-            } catch (NoSuchAlgorithmException e) {
+                    new FileInputStream(fileName))) {
+                long fileLength = new File(fileName).length();
+                byte[] bytes = new byte[(int) fileLength];
+                dataFileReadForHash.readFully(bytes);
+                dataFileReadForHash.close();
+                // logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
+                // generate hash based on the bytes buffer
+                try {
+                    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                    byte[] hash = digest.digest(bytes);
+                    this.hashID = new String(hash);
+                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}",
+                    // hashID);
+                } catch (NoSuchAlgorithmException e) {
+                    this.hashID = null;
+                    logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
+                    e.printStackTrace();
+                }
+            } catch (IOException e) {
                 this.hashID = null;
-                logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
+                logger.debug("[Tinoryj]: Could not read SSTable {}", fileName);
                 e.printStackTrace();
+                return false;
             }
-        } catch (IOException e) {
-            this.hashID = null;
-            logger.debug("[Tinoryj]: Could not read SSTable {}", fileName);
-            e.printStackTrace();
-            return false;
-        }
         }
         return true;
     }
+
     /**
      * @param gcBefore gc time in seconds
      * @return estimated droppable tombstone ratio at given gcBefore time.
@@ -205,7 +200,6 @@ public class StatsMetadata extends MetadataComponent {
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
-                now().getLong(ChronoField.MILLI_OF_SECOND),
                 minTimestamp,
                 maxTimestamp,
                 minLocalDeletionTime,
@@ -233,7 +227,6 @@ public class StatsMetadata extends MetadataComponent {
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
-                now().getLong(ChronoField.MILLI_OF_SECOND),
                 minTimestamp,
                 maxTimestamp,
                 minLocalDeletionTime,
@@ -323,7 +316,7 @@ public class StatsMetadata extends MetadataComponent {
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedCellPerPartitionCount);
             size += CommitLogPosition.serializer
                     .serializedSize(component.commitLogIntervals.upperBound().orElse(CommitLogPosition.NONE));
-            size += 8 + 8 + 8 + 4 + 4 + 4 + 4 + 8 + 8; // creation timestamp, mix/max timestamp(long), min/maxLocalDeletionTime(int), min/max
+            size += 8 + 8 + 4 + 4 + 4 + 4 + 8 + 8; // mix/max timestamp(long), min/maxLocalDeletionTime(int), min/max
                                                    // TTL, compressionRatio(double), repairedAt (long)
             size += TombstoneHistogram.serializer.serializedSize(component.estimatedTombstoneDropTime);
             size += TypeSizes.sizeof(component.sstableLevel);
@@ -363,23 +356,31 @@ public class StatsMetadata extends MetadataComponent {
                     size += UUIDSerializer.serializer.serializedSize(component.originatingHostId,
                             version.correspondingMessagingVersion());
             }
-
+            // size of hashID.
             if (version.hasHashID() && component.hashID != null) {
-                size += 32;
+                Boolean isHashIDExist = true;
+                size += (32 + TypeSizes.sizeof(isHashIDExist));
+            } else {
+                Boolean isHashIDExist = false;
+                size += TypeSizes.sizeof(isHashIDExist);
             }
             return size;
         }
 
         public void serialize(Version version, StatsMetadata component, DataOutputPlus out) throws IOException {
             if (version.hasHashID() && component.hashID != null) {
+                Boolean isHashIDExist = true;
+                out.writeBoolean(isHashIDExist);
                 out.writeBytes(component.hashID);
-                // logger.debug("rymDebug: StatsMetadata.serialize");
+                logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
+            } else {
+                Boolean isHashIDExist = false;
+                out.writeBoolean(isHashIDExist);
             }
             EstimatedHistogram.serializer.serialize(component.estimatedPartitionSize, out);
             EstimatedHistogram.serializer.serialize(component.estimatedCellPerPartitionCount, out);
             CommitLogPosition.serializer
                     .serialize(component.commitLogIntervals.upperBound().orElse(CommitLogPosition.NONE), out);
-            out.writeLong(component.creationTimestamp);
             out.writeLong(component.minTimestamp);
             out.writeLong(component.maxTimestamp);
             out.writeInt(component.minLocalDeletionTime);
@@ -435,13 +436,17 @@ public class StatsMetadata extends MetadataComponent {
         }
 
         public StatsMetadata deserialize(Version version, DataInputPlus in) throws IOException {
-            String hashID = null;
-            if (version.hasHashID()) {
+
+            String hashIDRawStr;
+            Boolean hashIDExistFlag = in.readBoolean();
+            if (hashIDExistFlag == true) {
                 byte[] buf = new byte[32];
                 in.readFully(buf, 0, 32);
-                hashID = new String(buf);
-                in.skipBytes(32);
-                // logger.debug("rymDebug: StatsMetadata.deserialize {}");
+                hashIDRawStr = new String(buf);
+                logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
+            } else {
+                hashIDRawStr = null;
+                logger.debug("[Tinoryj]: could not found hashID from the sstable!!!");
             }
 
             EstimatedHistogram partitionSizes = EstimatedHistogram.serializer.deserialize(in);
@@ -467,7 +472,6 @@ public class StatsMetadata extends MetadataComponent {
 
             CommitLogPosition commitLogLowerBound = CommitLogPosition.NONE, commitLogUpperBound;
             commitLogUpperBound = CommitLogPosition.serializer.deserialize(in);
-            long creationTimestamp = in.readLong();
             long minTimestamp = in.readLong();
             long maxTimestamp = in.readLong();
             int minLocalDeletionTime = in.readInt();
@@ -527,7 +531,6 @@ public class StatsMetadata extends MetadataComponent {
             return new StatsMetadata(partitionSizes,
                     columnCounts,
                     commitLogIntervals,
-                    creationTimestamp,
                     minTimestamp,
                     maxTimestamp,
                     minLocalDeletionTime,
@@ -547,7 +550,7 @@ public class StatsMetadata extends MetadataComponent {
                     pendingRepair,
                     isTransient,
                     isReplicationTransferredToErasureCoding,
-                    hashID);
+                    hashIDRawStr);
         }
     }
 }
