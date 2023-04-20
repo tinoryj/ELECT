@@ -22,10 +22,10 @@ import java.util.UUID;
 
 import org.apache.cassandra.utils.vint.VIntCoding;
 
-public final class TypeSizes
-{
+public final class TypeSizes {
 
-    private TypeSizes(){}
+    private TypeSizes() {
+    }
 
     public static final int BOOL_SIZE = 1;
     public static final int BYTE_SIZE = 1;
@@ -35,29 +35,24 @@ public final class TypeSizes
     public static final int FLOAT_SIZE = 4;
     public static final int DOUBLE_SIZE = 8;
     public static final int UUID_SIZE = 16;
-    
 
     /** assumes UTF8 */
-    public static int sizeof(String value)
-    {
+    public static int sizeof(String value) {
         int length = encodedUTF8Length(value);
         assert length <= Short.MAX_VALUE;
         return sizeof((short) length) + length;
     }
-    
-    public static long sizeofLong(String value)
-    {
+
+    public static long sizeofLong(String value) {
         long length = encodedUTF8Length(value);
         assert length <= Long.MAX_VALUE;
         return sizeof((long) length) + length;
     }
 
-    public static int encodedUTF8Length(String st)
-    {
+    public static int encodedUTF8Length(String st) {
         int strlen = st.length();
         int utflen = 0;
-        for (int i = 0; i < strlen; i++)
-        {
+        for (int i = 0; i < strlen; i++) {
             int c = st.charAt(i);
             if ((c >= 0x0001) && (c <= 0x007F))
                 utflen++;
@@ -69,76 +64,62 @@ public final class TypeSizes
         return utflen;
     }
 
-    public static int sizeofWithShortLength(ByteBuffer value)
-    {
+    public static int sizeofWithShortLength(ByteBuffer value) {
         return sizeof((short) value.remaining()) + value.remaining();
     }
 
-    public static int sizeofWithLength(ByteBuffer value)
-    {
+    public static int sizeofWithLength(ByteBuffer value) {
         return sizeof(value.remaining()) + value.remaining();
     }
 
-    public static int sizeofWithVIntLength(ByteBuffer value)
-    {
+    public static int sizeofWithVIntLength(ByteBuffer value) {
         return sizeofUnsignedVInt(value.remaining()) + value.remaining();
     }
 
-    @SuppressWarnings("unused")
-    public static int sizeof(boolean value)
-    {
+    public static int sizeof(boolean value) {
         return BOOL_SIZE;
     }
 
     @SuppressWarnings("unused")
-    public static int sizeof(byte value)
-    {
+    public static int sizeof(byte value) {
         return BYTE_SIZE;
     }
 
     @SuppressWarnings("unused")
-    public static int sizeof(short value)
-    {
+    public static int sizeof(short value) {
         return SHORT_SIZE;
     }
 
     @SuppressWarnings("unused")
-    public static int sizeof(int value)
-    {
+    public static int sizeof(int value) {
         return INT_SIZE;
     }
 
     @SuppressWarnings("unused")
-    public static int sizeof(long value)
-    {
+    public static int sizeof(long value) {
         return LONG_SIZE;
     }
 
     @SuppressWarnings("unused")
-    public static int sizeof(float value)
-    {
+    public static int sizeof(float value) {
         return FLOAT_SIZE;
     }
 
     @SuppressWarnings("unused")
-    public static int sizeof(double value)
-    {
+    public static int sizeof(double value) {
         return DOUBLE_SIZE;
     }
 
     @SuppressWarnings("unused")
-    public static int sizeof(UUID value)
-    {
+    public static int sizeof(UUID value) {
         return UUID_SIZE;
     }
 
-    public static int sizeofVInt(long value)
-    {
+    public static int sizeofVInt(long value) {
         return VIntCoding.computeVIntSize(value);
     }
 
-    public static int sizeofUnsignedVInt(long value)
-    {
+    public static int sizeofUnsignedVInt(long value) {
         return VIntCoding.computeUnsignedVIntSize(value);
     }
 }

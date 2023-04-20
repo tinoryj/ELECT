@@ -33,16 +33,13 @@ import org.apache.cassandra.tracing.Tracing;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
-public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand>
-{
+public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
     public static final ReadCommandVerbHandler instance = new ReadCommandVerbHandler();
 
     private static final Logger logger = LoggerFactory.getLogger(ReadCommandVerbHandler.class);
 
-    public void doVerb(Message<ReadCommand> message)
-    {
-        if (StorageService.instance.isBootstrapMode())
-        {
+    public void doVerb(Message<ReadCommand> message) {
+        if (StorageService.instance.isBootstrapMode()) {
             throw new RuntimeException("Cannot service reads while bootstrapping!");
         }
 
@@ -51,19 +48,17 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand>
         MessageParams.reset();
 
         long timeout = message.expiresAtNanos() - message.createdAtNanos();
-        command.setMonitoringTime(message.createdAtNanos(), message.isCrossNode(), timeout, DatabaseDescriptor.getSlowQueryTimeout(NANOSECONDS));
+        command.setMonitoringTime(message.createdAtNanos(), message.isCrossNode(), timeout,
+                DatabaseDescriptor.getSlowQueryTimeout(NANOSECONDS));
 
         if (message.trackWarnings())
             command.trackWarnings();
 
         ReadResponse response;
         try (ReadExecutionController controller = command.executionController(message.trackRepairedData());
-             UnfilteredPartitionIterator iterator = command.executeLocally(controller))
-        {
+                UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
             response = command.createResponse(iterator, controller.getRepairedDataInfo());
-        }
-        catch (RejectException e)
-        {
+        } catch (RejectException e) {
             if (!command.isTrackingWarnings())
                 throw e;
 
@@ -78,10 +73,10 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand>
             return;
         }
 
-        if (!command.complete())
-        {
+        if (!command.complete()) {
             Tracing.trace("Discarding partial response to {} (timed out)", message.from());
-            MessagingService.instance().metrics.recordDroppedMessage(message, message.elapsedSinceCreated(NANOSECONDS), NANOSECONDS);
+            MessagingService.instance().metrics.recordDroppedMessage(message, message.elapsedSinceCreated(NANOSECONDS),
+                    NANOSECONDS);
             return;
         }
 
@@ -91,8 +86,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand>
         MessagingService.instance().send(reply, message.from());
     }
 
-    private void validateTransientStatus(Message<ReadCommand> message)
-    {
+    private void validateTransientStatus(Message<ReadCommand> message) {
         ReadCommand command = message.payload;
         if (command.metadata().isVirtual())
             return;
@@ -104,24 +98,23 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand>
             token = ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken();
 
         Replica replica = Keyspace.open(command.metadata().keyspace)
-                                  .getReplicationStrategy()
-                                  .getLocalReplicaFor(token);
+                .getReplicationStrategy()
+                .getLocalReplicaFor(token);
 
-        if (replica == null)
-        {
+        if (replica == null) {
             logger.warn("Received a read request from {} for a range that is not owned by the current replica {}.",
-                        message.from(),
-                        command);
+                    message.from(),
+                    command);
             return;
         }
 
-        if (!command.acceptsTransient() && replica.isTransient())
-        {
-            MessagingService.instance().metrics.recordDroppedMessage(message, message.elapsedSinceCreated(NANOSECONDS), NANOSECONDS);
+        if (!command.acceptsTransient() && replica.isTransient()) {
+            MessagingService.instance().metrics.recordDroppedMessage(message, message.elapsedSinceCreated(NANOSECONDS),
+                    NANOSECONDS);
             throw new InvalidRequestException(String.format("Attempted to serve %s data request from %s node in %s",
-                                                            command.acceptsTransient() ? "transient" : "full",
-                                                            replica.isTransient() ? "transient" : "full",
-                                                            this));
+                    command.acceptsTransient() ? "transient" : "full",
+                    replica.isTransient() ? "transient" : "full",
+                    this));
         }
     }
 }
