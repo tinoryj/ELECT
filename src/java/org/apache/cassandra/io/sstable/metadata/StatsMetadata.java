@@ -50,6 +50,10 @@ import org.apache.cassandra.utils.UUIDSerializer;
 import org.apache.cassandra.io.util.*;
 import org.apache.cassandra.utils.*;
 
+import static org.apache.cassandra.utils.FBUtilities.now;
+
+import java.time.temporal.ChronoField;
+
 /**
  * SSTable metadata that always stay on heap.
  */
@@ -62,6 +66,7 @@ public class StatsMetadata extends MetadataComponent {
     public final EstimatedHistogram estimatedPartitionSize;
     public final EstimatedHistogram estimatedCellPerPartitionCount;
     public final IntervalSet<CommitLogPosition> commitLogIntervals;
+    public final long creationTimestamp;
     public final long minTimestamp;
     public final long maxTimestamp;
     public final int minLocalDeletionTime;
@@ -80,7 +85,7 @@ public class StatsMetadata extends MetadataComponent {
     public final UUID originatingHostId;
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
-    public final boolean isReplicationTransferredToErasureCoding;
+    public boolean isReplicationTransferredToErasureCoding;
     public String hashID = null;
     // just holds the current encoding stats to avoid allocating - it is not
     // serialized
@@ -89,6 +94,7 @@ public class StatsMetadata extends MetadataComponent {
     public StatsMetadata(EstimatedHistogram estimatedPartitionSize,
             EstimatedHistogram estimatedCellPerPartitionCount,
             IntervalSet<CommitLogPosition> commitLogIntervals,
+            long creationTimestamp,
             long minTimestamp,
             long maxTimestamp,
             int minLocalDeletionTime,
@@ -112,6 +118,7 @@ public class StatsMetadata extends MetadataComponent {
         this.estimatedPartitionSize = estimatedPartitionSize;
         this.estimatedCellPerPartitionCount = estimatedCellPerPartitionCount;
         this.commitLogIntervals = commitLogIntervals;
+        this.creationTimestamp = creationTimestamp;
         this.minTimestamp = minTimestamp;
         this.maxTimestamp = maxTimestamp;
         this.minLocalDeletionTime = minLocalDeletionTime;
@@ -200,6 +207,7 @@ public class StatsMetadata extends MetadataComponent {
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
                 minTimestamp,
                 maxTimestamp,
                 minLocalDeletionTime,
@@ -227,6 +235,7 @@ public class StatsMetadata extends MetadataComponent {
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
                 minTimestamp,
                 maxTimestamp,
                 minLocalDeletionTime,
@@ -531,6 +540,7 @@ public class StatsMetadata extends MetadataComponent {
             return new StatsMetadata(partitionSizes,
                     columnCounts,
                     commitLogIntervals,
+                    now().getLong(ChronoField.MILLI_OF_SECOND),
                     minTimestamp,
                     maxTimestamp,
                     minLocalDeletionTime,
