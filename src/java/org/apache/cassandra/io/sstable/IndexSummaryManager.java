@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.CompactionInterruptedException;
 import org.apache.cassandra.db.compaction.CompactionManager;
@@ -124,6 +125,12 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
             protected void runMayThrow() throws Exception
             {
                 redistributeSummaries();
+            }
+
+            @Override
+            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
         }, initialDelay, resizeIntervalInMinutes, TimeUnit.MINUTES);
     }

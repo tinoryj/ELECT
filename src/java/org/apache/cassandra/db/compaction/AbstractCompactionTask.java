@@ -18,11 +18,13 @@
 package org.apache.cassandra.db.compaction;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.io.FSDiskFullWriteError;
@@ -31,12 +33,17 @@ import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.WrappedRunnable;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 public abstract class AbstractCompactionTask extends WrappedRunnable
 {
     protected final ColumnFamilyStore cfs;
     protected LifecycleTransaction transaction;
     protected boolean isUserDefined;
     protected OperationType compactionType;
+
+    private static final Logger logger = LoggerFactory.getLogger(AbstractCompactionTask.class);
+
 
     /**
      * @param cfs
@@ -110,9 +117,35 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
             transaction.close();
         }
     }
+
+    /**
+     * [CASSANDRAEC] executes the task and unmarks sstables compacting
+     */
+    public int execute(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys)
+    {
+        try
+        {
+            logger.debug("rymDebug: this is ActiveCompactionTask.execute");
+
+            return executeInternal(activeCompactions, sourceKeys);
+        }
+        catch(FSDiskFullWriteError e)
+        {
+            RuntimeException cause = new RuntimeException("Converted from FSDiskFullWriteError: " + e.getMessage());
+            cause.setStackTrace(e.getStackTrace());
+            throw new RuntimeException("Throwing new Runtime to bypass exception handler when disk is full", cause);
+        }
+        finally
+        {
+            transaction.close();
+        }
+    }
+
     public abstract CompactionAwareWriter getCompactionAwareWriter(ColumnFamilyStore cfs, Directories directories, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables);
 
     protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions);
+    
+    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys);
 
     public AbstractCompactionTask setUserDefined(boolean isUserDefined)
     {

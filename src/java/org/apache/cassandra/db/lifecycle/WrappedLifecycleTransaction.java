@@ -113,4 +113,10 @@ public class WrappedLifecycleTransaction implements ILifecycleTransaction
     {
         return delegate.isOffline();
     }
+
+    // @Override
+    // public void updateState() {
+    //     // TODO Auto-generated method stub
+    //     throw new UnsupportedOperationException("Unimplemented method 'updateState'");
+    // }
 }

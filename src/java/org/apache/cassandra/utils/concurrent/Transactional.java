@@ -21,6 +21,10 @@ package org.apache.cassandra.utils.concurrent;
 import static org.apache.cassandra.utils.Throwables.maybeFail;
 import static org.apache.cassandra.utils.Throwables.merge;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * An abstraction for Transactional behaviour. An object implementing this interface has a lifetime
  * of the following pattern:
@@ -71,8 +75,11 @@ public interface Transactional extends AutoCloseable
             IN_PROGRESS,
             READY_TO_COMMIT,
             COMMITTED,
+            COMMITTED_FIRST_PHASE,
             ABORTED;
         }
+        
+        protected static final Logger logger = LoggerFactory.getLogger(AbstractTransactional.class);
 
         private State state = State.IN_PROGRESS;
 
@@ -116,6 +123,18 @@ public interface Transactional extends AutoCloseable
             return accumulate;
         }
 
+        // [CASSANDRAEC]
+        public final Throwable commitFirstPhase(Throwable accumulate)
+        {
+            if (state != State.READY_TO_COMMIT)
+                throw new IllegalStateException("Cannot commit unless READY_TO_COMMIT; state is " + state);
+            accumulate = doCommit(accumulate);
+            accumulate = doPostCleanup(accumulate);
+            logger.debug("rymDebug: commit first phase is done, state is {}",state());
+            state = State.COMMITTED_FIRST_PHASE;
+            return accumulate;
+        }
+
         /**
          * rollback any effects of this transaction object graph; delegates first to doCleanup, then to doAbort
          */
@@ -144,12 +163,14 @@ public interface Transactional extends AutoCloseable
         }
 
         // if we are committed or aborted, then we are done; otherwise abort
+        // [CASSANDRAEC]
         public final void close()
         {
             switch (state)
             {
                 case COMMITTED:
                 case ABORTED:
+                case COMMITTED_FIRST_PHASE:
                     break;
                 default:
                     abort();
@@ -181,6 +202,14 @@ public interface Transactional extends AutoCloseable
             return this;
         }
 
+        // [CASSANDRAEC]
+        public Object finishFirstPhase()
+        {
+            prepareToCommit();
+            commitFirstPhase();
+            return this;
+        }
+
         // convenience method wrapping abort, and throwing any exception encountered
         // only of use to (and to be used by) outer-most object in a transactional graph
         public final void abort()
@@ -194,6 +223,16 @@ public interface Transactional extends AutoCloseable
         {
             maybeFail(commit(null));
         }
+
+        // [CASSANDRAEC]
+        public final void commitFirstPhase() {
+            maybeFail(commitFirstPhase(null));
+        }
+
+        // [CASSANDRAEC]
+        // public void updateState(){
+        //     state = State.IN_PROGRESS;
+        // }
 
         public final State state()
         {
@@ -214,4 +253,7 @@ public interface Transactional extends AutoCloseable
 
     // close() does not throw
     public void close();
+
+    // [CASSANDRAEC]
+    // public void updateState();
 }

@@ -53,6 +53,7 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -549,6 +550,12 @@ public class RepairRunnable implements Runnable, ProgressEventNotifier, RepairNo
                     si = si == 0 ? 1 : 0;
                     seen[si].clear();
                 }
+            }
+
+            @Override
+            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
         });
     }

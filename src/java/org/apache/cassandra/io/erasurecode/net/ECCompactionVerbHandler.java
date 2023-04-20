@@ -28,9 +28,13 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.net.ForwardingInfo;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.net.ParamType;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +51,12 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
 
     @Override
     public void doVerb(Message<ECCompaction> message) throws IOException {
+
+        // Check if there were any forwarding headers in this message
+        ForwardingInfo forwardTo = message.forwardTo();
+        if (forwardTo != null)
+            forwardToLocalNodes(message, forwardTo);
+
         String sstHash = message.payload.sstHash;
         String ksName = message.payload.ksName;
         String cfName = message.payload.cfName;
@@ -77,6 +87,22 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+
+    private static void forwardToLocalNodes(Message<ECCompaction> originalMessage, ForwardingInfo forwardTo) {
+        Message.Builder<ECCompaction> builder = Message.builder(originalMessage)
+                .withParam(ParamType.RESPOND_TO, originalMessage.from())
+                .withoutParam(ParamType.FORWARD_TO);
+
+        boolean useSameMessageID = forwardTo.useSameMessageID(originalMessage.id());
+        // reuse the same Message if all ids are identical (as they will be for 4.0+
+        // node originated messages)
+        Message<ECCompaction> message = useSameMessageID ? builder.build() : null;
+
+        forwardTo.forEach((id, target) -> {
+            Tracing.trace("Enqueuing forwarded write to {}", target);
+            MessagingService.instance().send(useSameMessageID ? message : builder.withId(id).build(), target);
+        });
     }
 
 }

@@ -83,6 +83,7 @@ public class CompactionIterator extends CompactionInfo.Holder implements Unfilte
     private long bytesRead;
     private long totalSourceCQLRows;
 
+
     /*
      * counters for merged rows.
      * array index represents (number of merged rows - 1), so index 0 is counter for no merge (1 row),

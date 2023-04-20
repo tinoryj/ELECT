@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.compaction.AbstractPendingRepairTest;
 import org.apache.cassandra.db.compaction.CompactionController;
 import org.apache.cassandra.db.compaction.CompactionInfo;
@@ -423,6 +424,12 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
                         Runnable r = new WrappedRunnable() {
                             protected void runMayThrow() {
                                 throw new CompactionInterruptedException("antiCompactionExceptionTest");
+                            }
+
+                            @Override
+                            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                                // TODO Auto-generated method stub
+                                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                             }
                         };
                         return es.submit(r);

@@ -25,6 +25,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Iterables;
@@ -48,7 +50,9 @@ import org.apache.cassandra.concurrent.ScheduledExecutorPlus;
 import org.apache.cassandra.concurrent.ScheduledExecutors;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.filter.ColumnFilter;
+import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.rows.Cell;
 import org.apache.cassandra.db.rows.EncodingStats;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
@@ -711,10 +715,27 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return sstableMetadata.hashID();
     }
 
-    public void replaceDatabyECMetadata(ECMetadata message) {
+    public void updateBloomFilter(ColumnFamilyStore cfs, List<DecoratedKey> allKeys) throws IOException {
+        long allKeysNum = allKeys.size();
+        IFilter newBf;
+        
+        newBf = FilterFactory.getFilter(allKeysNum, metadata.get().params.bloomFilterFpChance);
+        for (DecoratedKey key : allKeys) {
+            newBf.add(key);
+        }
+        try (LifecycleTransaction txn = cfs.getTracker().tryModify(this, OperationType.UPGRADE_SSTABLES)) {
+            txn.update(this.cloneAndReplace(newBf),
+                    true);
+            txn.checkpoint();
+            txn.finish();
+        }
+
+    }
+
+    public void replaceDatabyECMetadata(ECMetadata message, String sstableHash) {
 
         // delete sstable
-        deleteComponentOnlyData(descriptor);
+        deleteComponentOnlyData(descriptor, sstableHash);
 
         // write ECMetadata 
         File ecMetadataFile = new File(descriptor.filenameFor(Component.EC_METADATA));
@@ -1524,6 +1545,40 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return isSuspect.get();
     }
 
+    public List<String> getAllKeys() {
+        // final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
+        //         Collections.singletonList(fullRange()));
+        logger.debug("rymDebug: this is get all keys");
+        
+        ISSTableScanner scanner = this.getScanner();
+        List<String> allKeys = new ArrayList<String>();
+        while(scanner.hasNext()) {
+            UnfilteredRowIterator rowIterator = scanner.next();
+            allKeys.add(rowIterator.partitionKey().getRawKey(metadata()));
+        }
+        scanner.close();
+        
+        logger.debug("rymDebug: this is get all keys successfully, key number is {}", allKeys.size());
+        return allKeys;
+    }
+
+    public List<DecoratedKey> getAllDecoratedKeys() {
+        // final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
+        //         Collections.singletonList(fullRange()));
+        ISSTableScanner scanner = this.getScanner();
+        List<DecoratedKey> allKeys = new ArrayList<DecoratedKey>();
+        while(scanner.hasNext()) {
+            UnfilteredRowIterator rowIterator = scanner.next();
+            allKeys.add(rowIterator.partitionKey());
+        }
+        scanner.close();
+        return allKeys;
+    }
+
+    public Range<Token> fullRange() {
+        return new Range<>(first.getToken(), last.getToken());
+    }
+
     /**
      * Direct I/O SSTableScanner over a defined range of tokens.
      *
@@ -1531,6 +1586,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
      * @return A Scanner for seeking over the rows of the SSTable.
      */
     public ISSTableScanner getScanner(Range<Token> range) {
+        
+        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner7",
+        //              this.getColumnFamilyName(), this.getSSTableLevel());
         if (range == null)
             return getScanner();
         return getScanner(Collections.singletonList(range));
@@ -1646,6 +1704,15 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return sstableMetadata.isReplicationTransferredToErasureCoding;
     }
 
+    public boolean SetIsReplicationTransferredToErasureCoding() {
+        sstableMetadata.isReplicationTransferredToErasureCoding = true;
+        if (sstableMetadata.isReplicationTransferredToErasureCoding) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public boolean intersects(Collection<Range<Token>> ranges) {
         Bounds<Token> range = new Bounds<>(first.getToken(), last.getToken());
         return Iterables.any(ranges, r -> r.intersects(range));
@@ -1732,6 +1799,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     public double getCompressionRatio() {
         return sstableMetadata.compressionRatio;
+    }
+
+    public long getCreationTimeStamp() {
+        return sstableMetadata.creationTimestamp;
     }
 
     public long getMinTimestamp() {

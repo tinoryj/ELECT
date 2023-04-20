@@ -54,7 +54,8 @@ class LeveledGenerations
     private static final Logger logger = LoggerFactory.getLogger(LeveledGenerations.class);
     private final boolean strictLCSChecksTest = Boolean.getBoolean(Config.PROPERTY_PREFIX + "test.strict_lcs_checks");
     // It includes L0, i.e. we support [L0 - L8] levels
-    static final int MAX_LEVEL_COUNT = 9;
+    // TODO: changed
+    static final int MAX_LEVEL_COUNT = 3;
 
     /**
      * This map is used to track the original NORMAL instances of sstables
@@ -73,6 +74,8 @@ class LeveledGenerations
     private static long lastOverlapCheck = nanoTime();
     // note that since l0 is broken out, levels[0] represents L1:
     private final TreeSet<SSTableReader> [] levels = new TreeSet[MAX_LEVEL_COUNT - 1];
+
+    public static LeveledGenerations instance = new LeveledGenerations();
 
     private static final Comparator<SSTableReader> nonL0Comparator = (o1, o2) -> {
         int cmp = SSTableReader.sstableComparator.compare(o1, o2);
@@ -157,6 +160,7 @@ class LeveledGenerations
             if (before != null && before.last.compareTo(sstable.first) >= 0 ||
                 after != null && after.first.compareTo(sstable.last) <= 0)
             {
+                logger.debug("rymDebug: sstable {}, level is {}, task id is  need to be sent to L0", sstable.getFilename(),sstable.getSSTableLevel());
                 sendToL0(sstable);
             }
             else
@@ -242,6 +246,13 @@ class LeveledGenerations
         builder.addAll(l0);
         for (Set<SSTableReader> sstables : levels)
             builder.addAll(sstables);
+        return builder.build();
+    }
+
+    Set<SSTableReader> sstablesForLevel(int level) {
+        ImmutableSet.Builder<SSTableReader> builder = ImmutableSet.builder();
+        // note that since l0 is broken out, levels[0] represents L1:
+        builder.addAll(levels[level-1]);
         return builder.build();
     }
 

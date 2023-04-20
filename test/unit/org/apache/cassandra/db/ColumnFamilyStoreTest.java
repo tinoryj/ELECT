@@ -173,6 +173,12 @@ public class ColumnFamilyStoreTest
                 Iterator<Cell<?>> iter = toCheck.cells().iterator();
                 assert(Iterators.size(iter) == 0);
             }
+
+            @Override
+            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
         };
 
         reTest(cfs, r);

@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.db;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.List;

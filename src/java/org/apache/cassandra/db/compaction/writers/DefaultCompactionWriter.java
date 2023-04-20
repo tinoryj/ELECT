@@ -83,4 +83,10 @@ public class DefaultCompactionWriter extends CompactionAwareWriter {
     public long estimatedKeys() {
         return estimatedTotalKeys;
     }
+
+    @Override
+    protected boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'realAppend'");
+    }
 }

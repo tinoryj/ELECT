@@ -41,6 +41,7 @@ import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.SystemKeyspace;
@@ -312,6 +313,12 @@ public class CommitLogReplayer implements CommitLogReadHandler
                         Keyspace.open(newPUCollector.getKeyspaceName()).apply(newPUCollector.build(), false, true, false);
                         commitLogReplayer.keyspacesReplayed.add(keyspace);
                     }
+                }
+
+                @Override
+                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
             };
             return Stage.MUTATION.submit(runnable, serializedSize);

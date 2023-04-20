@@ -32,6 +32,7 @@ import com.datastax.driver.core.exceptions.WriteTimeoutException;
 import org.apache.cassandra.Util;
 import org.apache.cassandra.batchlog.BatchlogManager;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.utils.WrappedRunnable;
 
@@ -87,6 +88,12 @@ public class ViewLongTest extends ViewAbstractParameterizedTest
                     {
                         throw new RuntimeException(e);
                     }
+                }
+
+                @Override
+                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
             });
             t.start();

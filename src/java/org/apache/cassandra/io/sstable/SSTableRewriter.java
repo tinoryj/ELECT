@@ -22,6 +22,10 @@ import java.util.*;
 
 import com.google.common.annotations.VisibleForTesting;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.cassandra.cache.InstrumentingCache;
 import org.apache.cassandra.cache.KeyCacheKey;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -54,6 +58,8 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
 {
     @VisibleForTesting
     public static boolean disableEarlyOpeningForTests = false;
+    
+    protected static final Logger logger = LoggerFactory.getLogger(SSTableRewriter.class);
 
     private final long preemptiveOpenInterval;
     private final long maxAge;
@@ -348,6 +354,8 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
      */
     public List<SSTableReader> finish()
     {
+        // updateState();
+        logger.debug("rymDebug: updated state is {}", state());
         super.finish();
         return finished();
     }
@@ -356,6 +364,15 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
     public List<SSTableReader> finished()
     {
         assert state() == State.COMMITTED || state() == State.READY_TO_COMMIT;
+        return preparedForCommit;
+    }
+
+    // [CASSANDRAEC]
+    public List<SSTableReader> finishedFirstPhase()
+    {
+        logger.debug("rymDebug: finishedFirstPhase, state is {}", state());
+        assert state() == State.COMMITTED_FIRST_PHASE || state() == State.READY_TO_COMMIT || state() == State.COMMITTED;
+        // logger.debug("rymDebug: updated state is {}", state());
         return preparedForCommit;
     }
 
@@ -382,9 +399,38 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
 
         if (!keepOriginals)
             transaction.obsoleteOriginals();
-
+        // [CASSANDRAEC]
+        // transaction.updateState();
         transaction.prepareToCommit();
     }
+
+    // // [CASSANDRAEC]
+    // protected void doPrepareFirstPhase()
+    // {
+    //     switchWriter(null);
+
+    //     if (throwEarly)
+    //         throw new RuntimeException("exception thrown early in finish, for testing");
+
+    //     // No early open to finalize and replace
+    //     for (SSTableWriter writer : writers)
+    //     {
+    //         assert writer.getFilePointer() > 0;
+    //         writer.setRepairedAt(repairedAt).setOpenResult(true).prepareToCommit();
+    //         SSTableReader reader = writer.finished();
+    //         transaction.update(reader, false);
+    //         preparedForCommit.add(reader);
+    //     }
+    //     transaction.checkpoint();
+
+    //     if (throwLate)
+    //         throw new RuntimeException("exception thrown after all sstables finished, for testing");
+
+    //     if (!keepOriginals)
+    //         transaction.obsoleteOriginals();
+
+    //     transaction.prepareToCommit();
+    // }
 
     public void throwDuringPrepare(boolean earlyException)
     {

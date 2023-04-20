@@ -115,6 +115,11 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         return sstableWriter.finished();
     }
 
+    public Collection<SSTableReader> finishFirstPhase() {
+        super.finishFirstPhase();
+        return sstableWriter.finishedFirstPhase();
+    }
+
     /**
      * estimated number of keys we should write
      */
@@ -133,6 +138,12 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         return realAppend(partition);
     }
 
+    // [CASSANDRAEC]
+    public final boolean append(UnfilteredRowIterator partition, boolean isSwitchWriter) {
+        maybeSwitchWriter(partition.partitionKey());
+        return realAppend(partition, isSwitchWriter);
+    }
+
     @Override
     protected Throwable doPostCleanup(Throwable accumulate) {
         sstableWriter.close();
@@ -140,6 +151,9 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     }
 
     protected abstract boolean realAppend(UnfilteredRowIterator partition);
+
+    // [CASSANDRAEC]
+    protected abstract boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter);
 
     /**
      * Guaranteed to be called before the first call to realAppend.
@@ -168,7 +182,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
                     locations.get(locationIndex));
         switchCompactionLocation(locations.get(locationIndex));
     }
-
+    
     /**
      * Implementations of this method should finish the current sstable writer and
      * start writing to this directory.

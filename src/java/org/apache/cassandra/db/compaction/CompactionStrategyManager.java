@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -34,7 +35,9 @@ import java.util.stream.Collectors;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.Longs;
 import org.apache.cassandra.io.util.File;
 import org.slf4j.Logger;
@@ -46,6 +49,7 @@ import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.DiskBoundaries;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.compaction.AbstractStrategyHolder.TaskSupplier;
+import org.apache.cassandra.db.compaction.CompactionLogger.Strategy;
 import org.apache.cassandra.db.compaction.PendingRepairManager.CleanupTask;
 import org.apache.cassandra.db.lifecycle.LifecycleNewTracker;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -73,6 +77,7 @@ import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.TimeUUID;
+import org.psjava.formula.geometry.StraightOrder;
 
 import static org.apache.cassandra.db.compaction.AbstractStrategyHolder.GroupedSSTableContainer;
 
@@ -561,6 +566,25 @@ public class CompactionStrategyManager implements INotificationConsumer {
         return null;
     }
 
+    public Set<SSTableReader> getSSTableForLevel(int sstableLevel) {
+        maybeReloadDiskBoundaries();
+        readLock.lock();
+        try {
+            if(repaired.first() instanceof LeveledCompactionStrategy) {
+                Set<SSTableReader> res = new HashSet<SSTableReader>();
+                for (AbstractCompactionStrategy strategy : getAllStrategies()) {
+                    res = Sets.union(res, ((LeveledCompactionStrategy) strategy).getSStablesForLevel(sstableLevel));
+                }
+                
+                return res;
+            }
+            
+        } finally {
+            readLock.unlock();
+        }
+        return null;
+    }
+
     public long[] getPerLevelSizeBytes() {
         readLock.lock();
         try {
@@ -785,6 +809,8 @@ public class CompactionStrategyManager implements INotificationConsumer {
         maybeReloadDiskBoundaries();
         List<ISSTableScanner> scanners = new ArrayList<>(sstables.size());
         readLock.lock();
+        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner3",
+        //              sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
         try {
             List<GroupedSSTableContainer> sstableGroups = groupSSTables(sstables);
 
@@ -805,6 +831,8 @@ public class CompactionStrategyManager implements INotificationConsumer {
             Collection<Range<Token>> ranges) {
         while (true) {
             try {
+                // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner2",
+                //      sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
                 return maybeGetScanners(sstables, ranges);
             } catch (ConcurrentModificationException e) {
                 logger.debug("SSTable repairedAt/pendingRepaired values changed while getting scanners");
@@ -813,6 +841,8 @@ public class CompactionStrategyManager implements INotificationConsumer {
     }
 
     public AbstractCompactionStrategy.ScannerList getScanners(Collection<SSTableReader> sstables) {
+        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner1",
+        //              sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
         return getScanners(sstables, null);
     }
 

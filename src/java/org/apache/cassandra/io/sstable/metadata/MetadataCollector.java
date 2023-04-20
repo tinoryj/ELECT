@@ -45,6 +45,11 @@ import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.streamhist.TombstoneHistogram;
 import org.apache.cassandra.utils.streamhist.StreamingTombstoneHistogramBuilder;
 
+
+import static org.apache.cassandra.utils.FBUtilities.now;
+
+import java.time.temporal.ChronoField;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +76,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
         return new StatsMetadata(defaultPartitionSizeHistogram(),
                 defaultCellPerPartitionCountHistogram(),
                 IntervalSet.empty(),
+                now().getLong(ChronoField.MILLI_OF_SECOND),
                 Long.MIN_VALUE,
                 Long.MAX_VALUE,
                 Integer.MAX_VALUE,
@@ -264,6 +270,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
         components.put(MetadataType.STATS, new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
                 timestampTracker.min(),
                 timestampTracker.max(),
                 localDeletionTimeTracker.min(),

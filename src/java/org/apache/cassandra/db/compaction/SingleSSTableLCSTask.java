@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.db.compaction;
 
+import java.util.List;
 import java.util.Set;
 import java.io.File;
 
@@ -25,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -93,5 +95,17 @@ public class SingleSSTableLCSTask extends AbstractCompactionTask {
         transaction.cancel(sstable);
         transaction.prepareToCommit();
         transaction.commit();
+    }
+
+    @Override
+    protected int executeInternal(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'executeInternal'");
+    }
+
+    @Override
+    protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
     }
 }

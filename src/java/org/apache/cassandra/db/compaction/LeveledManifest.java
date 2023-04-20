@@ -40,6 +40,7 @@ import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.Pair;
+import org.gridkit.jvmtool.event.GenericEvent;
 
 import static org.apache.cassandra.db.compaction.LeveledGenerations.MAX_LEVEL_COUNT;
 
@@ -410,6 +411,10 @@ public class LeveledManifest {
 
     public synchronized Set<SSTableReader> getSSTables() {
         return generations.allSSTables();
+    }
+
+    public synchronized Set<SSTableReader> getSSTablesForLevel(int level) {
+        return generations.sstablesForLevel(level);
     }
 
     private static Set<SSTableReader> overlapping(Collection<SSTableReader> candidates,

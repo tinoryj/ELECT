@@ -143,21 +143,6 @@ public class CounterMutation implements IMutation
                 resultBuilder.add(processModifications(upd));
 
             Mutation result = resultBuilder.build();
-            if(result.getKeyspaceName().equals("ycsb")) {
-                for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                    String fileName = "receivedCounter";
-                    try {
-                        FileWriter writer = new FileWriter("logs/" + fileName, true);
-                        BufferedWriter buffer = new BufferedWriter(writer);
-                        buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-                        buffer.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-    
-                }
-            }
             result.apply();
             return result;
         }

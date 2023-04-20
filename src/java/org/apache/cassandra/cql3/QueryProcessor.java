@@ -265,23 +265,25 @@ public class QueryProcessor implements QueryHandler
             String ks = tableStatement.keyspace();
             String tn = tableStatement.tableName;
             if(ks.equals("ycsb")) {
-                logger.debug("rymDebug: this CreateTableStatement is belong to ks ycsb");
+                // logger.debug("rymDebug: this CreateTableStatement is belong to ks ycsb");
                 if(options.getConsistency() == ConsistencyLevel.NODE_LOCAL) {
-                    logger.debug("rymDebug: consistency level is equal to local, use processNodeLocalStatement()");
+                    // logger.debug("rymDebug: consistency level is equal to local, use processNodeLocalStatement()");
                 } else {
-                    logger.debug("rymDebug: consistency level is node equal, use statement.execute()");
-                    int rf = Keyspace.open(tableStatement.keyspace()).getMetadata().params.replication.getReplicationFactor();
-                    logger.debug("rymDebug: replica factor is {}", rf);
-                    for(int i=1; i < 3; i++) {
+                    // logger.debug("rymDebug: consistency level is node equal, use statement.execute()");
+                    // int rf = Keyspace.open(tableStatement.keyspace()).getMetadata().params.replication.getReplicationFactor();
+                    // logger.debug("rymDebug: replica factor is {}", rf);
+                    // TODO: get correct replication factor
+                    int rf = 3;
+                    for(int i=1; i < rf; i++) {
                         String tableName = tn + Integer.toString(i);
                         CreateTableStatement ts = tableStatement.copyObjects(tableName);
-                        logger.debug("rymDebug: create table {}, new table statement is {}", tableName, ts);
+                        // logger.debug("rymDebug: create table {}, new table statement is {}", tableName, ts);
                         ResultMessage rs = ts.execute(queryState, options, queryStartNanoTime);
-                        logger.debug("rymDebug: create new table {}, result is {}", tableName, rs);
+                        // logger.debug("rymDebug: create new table {}, result is {}", tableName, rs);
                     }
                 }
             } else {
-                logger.debug("rymDebug: this CreateTableStatement is not belong to ycsb, it belongs to {}", ks);
+                // logger.debug("rymDebug: this CreateTableStatement is not belong to ycsb, it belongs to {}", ks);
             }
         }
         return result == null ? new ResultMessage.Void() : result;
@@ -554,7 +556,7 @@ public class QueryProcessor implements QueryHandler
     {
         try
         {
-            logger.debug("rymDebug: the query string is {}", query);
+            // logger.debug("rymDebug: the query string is {}", query);
             Prepared prepared = prepareInternal(query);
             ResultMessage result = prepared.statement.execute(state, makeInternalOptionsWithNowInSec(prepared.statement, state.getNowInSeconds(), values, cl), nanoTime());
             if (result instanceof ResultMessage.Rows)

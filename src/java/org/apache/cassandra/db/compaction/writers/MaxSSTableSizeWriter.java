@@ -109,4 +109,13 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
     protected long getExpectedWriteSize() {
         return Math.min(maxSSTableSize, super.getExpectedWriteSize());
     }
+
+    @Override
+    protected boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter) {
+        RowIndexEntry rie = sstableWriter.append(partition);
+        if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize || isSwitchWriter) {
+            switchCompactionLocation(sstableDirectory);
+        }
+        return rie != null;
+    }
 }

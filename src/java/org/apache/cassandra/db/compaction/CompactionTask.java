@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.LogRecord;
 import java.util.stream.StreamSupport;
 
 import com.google.common.base.Predicate;
@@ -50,8 +52,10 @@ import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
+import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.service.ActiveRepairService;
@@ -108,6 +112,13 @@ public class CompactionTask extends AbstractCompactionTask {
         return transaction.originals().size();
     }
 
+    // [CASSANDRAEC]
+    protected int executeInternal(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys) {
+        this.activeCompactions = activeCompactions == null ? ActiveCompactionsTracker.NOOP : activeCompactions;
+        run(sourceKeys);
+        return transaction.originals().size();
+    }
+
     public boolean reduceScopeForLimitedSpace(Set<SSTableReader> nonExpiredSSTables, long expectedSize) {
         if (partialCompactionsAcceptable() && transaction.originals().size() > 1) {
             // Try again w/o the largest one.
@@ -125,6 +136,249 @@ public class CompactionTask extends AbstractCompactionTask {
         return false;
     }
 
+    // [CASSANDRAEC] rewrite the sstables
+    protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+        // The collection of sstables passed may be empty (but not null); even if
+        // it is not empty, it may compact down to nothing if all rows are deleted.
+        assert transaction != null;
+        Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
+        
+        int originalSSTableNum = sstables.size();
+
+        logger.debug("rymDebug: rewrite {} sstables, original sstbales number is {}", sstables.size(), transaction.originals().size());
+
+        if (sstables.isEmpty())
+            return;
+
+        // Note that the current compaction strategy, is not necessarily the one this
+        // task was created under.
+        // This should be harmless; see comments to CFS.maybeReloadCompactionStrategy.
+        CompactionStrategyManager strategy = cfs.getCompactionStrategyManager();
+
+        if (DatabaseDescriptor.isSnapshotBeforeCompaction()) {
+            Instant creationTime = now();
+            cfs.snapshotWithoutMemtable(creationTime.toEpochMilli() + "-compact-" + cfs.name, creationTime);
+        }
+
+        try (CompactionController controller = getCompactionController(sstables)) {
+
+            // final Set<SSTableReader> fullyExpiredSSTables = controller.getFullyExpiredSSTables();
+
+            // select SSTables to compact based on available disk space.
+            // buildCompactionCandidatesForAvailableDiskSpace(fullyExpiredSSTables);
+
+            // sanity check: all sstables must belong to the same cfs
+            assert !Iterables.any(sstables, new Predicate<SSTableReader>() {
+                @Override
+                public boolean apply(SSTableReader sstable) {
+                    logger.debug("rymDebug: attempting to read sstables from {}, but got from cf {}", sstable.descriptor.cfname, cfs.name);
+                    return !sstable.descriptor.cfname.equals(cfs.name);
+                }
+            });
+
+            TimeUUID taskId = transaction.opId();
+
+            // new sstables from flush can be added during a compaction, but only the
+            // compaction can remove them,
+            // so in our single-threaded compaction world this is a valid way of determining
+            // if we're compacting
+            // all the sstables (that existed when we started)
+            StringBuilder ssTableLoggerMsg = new StringBuilder("[");
+            for (SSTableReader sstr : sstables) {
+                ssTableLoggerMsg.append(String.format("%s:level=%d, ", sstr.getFilename(), sstr.getSSTableLevel()));
+            }
+            ssTableLoggerMsg.append("]");
+
+            logger.info("Rewriting ({}) {}", taskId, ssTableLoggerMsg);
+
+            RateLimiter limiter = CompactionManager.instance.getRateLimiter();
+            long start = nanoTime();
+            long startTime = currentTimeMillis();
+            long totalKeysWritten = 0;
+            long estimatedKeys = 0;
+            long inputSizeBytes;
+            long timeSpentWritingKeys;
+            long traversedKeys = 0;
+            long keysInRange = 0;
+            long headKeysNum = 0;
+            long tailKeysNum = 0;
+            int  checkedSSTableNum = sstables.size();
+
+            boolean isSwitchWriter = false;
+
+            for (SSTableReader sstable : sstables) {
+                logger.debug("rymDebug: rewrite sstable name is {}, sstable level is {}, task id is {}", 
+                    sstable.getFilename(), sstable.getSSTableLevel(), taskId);
+            }
+
+            
+            Collection<SSTableReader> newSSTables = new ArrayList<SSTableReader>();
+            // Collection<SSTableReader> headNewSStables;
+            // Collection<SSTableReader> tailNewSStables;
+            // Collection<SSTableReader> rewrittenSStables;
+
+            long[] mergedRowCounts;
+            long totalSourceCQLRows;
+            String cfName = cfs.name;
+
+
+            int nowInSec = FBUtilities.nowInSeconds();
+            try (Refs<SSTableReader> refs = Refs.ref(sstables);
+                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(sstables);
+                    CompactionIterator ci = new CompactionIterator(compactionType, scanners.scanners, controller,
+                            nowInSec, taskId)) {
+                long lastCheckObsoletion = start;
+                inputSizeBytes = scanners.getTotalCompressedSize();
+                double compressionRatio = scanners.getCompressionRatio();
+                if (compressionRatio == MetadataCollector.NO_COMPRESSION_RATIO)
+                    compressionRatio = 1.0;
+
+                long lastBytesScanned = 0;
+
+                activeCompactions.beginCompaction(ci);
+                try (// CompactionAwareWriter writer1 = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables);
+                     CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables)) {
+                    // Note that we need to re-check this flag after calling beginCompaction above
+                    // to avoid a window
+                    // where the compaction does not exist in activeCompactions but the CSM gets
+                    // paused.
+                    // We already have the sstables marked compacting here so
+                    // CompactionManager#waitForCessation will
+                    // block until the below exception is thrown and the transaction is cancelled.
+                    if (!controller.cfs.getCompactionStrategyManager().isActive())
+                        throw new CompactionInterruptedException(ci.getCompactionInfo());
+                    // estimatedKeys = writer.estimatedKeys();
+                    while (ci.hasNext()) {
+                        traversedKeys++;
+                        UnfilteredRowIterator row = ci.next();
+                        if(!row.partitionKey().equals(row.partitionKey())) {
+                            logger.debug("rymDebug: Different! row1 is {}, row2 is {}", 
+                                row.partitionKey().getRawKey(cfs.metadata()), row.partitionKey().getRawKey(cfs.metadata()));
+                        }
+
+                        if(row.partitionKey().compareTo(sourceKeys.get(sourceKeys.size() - 1)) > 0) {
+                            if(!isSwitchWriter) {
+                                isSwitchWriter = true;
+                                if(writer.append(row, isSwitchWriter)) {
+                                    // totalKeysWritten++;
+                                    tailKeysNum++;
+                                }
+                                logger.debug("rymDebug: switched a new writer, task id is {}", taskId);
+                            } else {
+                                if(writer.append(row, false)) {
+                                    // totalKeysWritten++;
+                                    tailKeysNum++;
+                                }
+                            }
+                        } else if (row.partitionKey().compareTo(sourceKeys.get(0)) < 0) {
+                            if(writer.append(row, false)) {
+                                // totalKeysWritten++;
+                                headKeysNum++;
+                            }
+                        } else {
+                            keysInRange++;
+                        }
+
+                        
+
+                        long bytesScanned = scanners.getTotalBytesScanned();
+
+                        // Rate limit the scanners, and account for compression
+                        CompactionManager.compactionRateLimiterAcquire(limiter, bytesScanned, lastBytesScanned,
+                                compressionRatio);
+
+                        lastBytesScanned = bytesScanned;
+
+                        if (nanoTime() - lastCheckObsoletion > TimeUnit.MINUTES.toNanos(1L)) {
+                            controller.maybeRefreshOverlaps();
+                            lastCheckObsoletion = nanoTime();
+                        }
+                    }
+
+                    totalKeysWritten = headKeysNum + tailKeysNum;
+
+                    if(!isSwitchWriter) {
+                        logger.warn("rymWarning: task {} did not switch writer!", taskId);
+                    }
+                    
+                    // logger.debug("rymDebug: traversed keys num is {}, totalKeysWritten is {}",traversedKeys, totalKeysWritten);
+                    timeSpentWritingKeys = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
+
+                    // point of no return
+                    // logger.debug("rymDebug: about writer, capacity is ");
+                    // headNewSStables = writer1.finishFirstPhase();
+                    // tailNewSStables = writer2.finish();
+                    newSSTables = writer.finish();
+                    // TODO: re-create sstable reader from ecmetadata 
+
+                    // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
+                    logger.debug(YELLOW+"rymDebug: Rewrite is done!!!! task id is {},  cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, head keys num is {}, tail keys num is {}, total traversed keys nums is {}, saved keys is {}, keys num in range is {}, source keys num is {}",
+                        taskId, cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), headKeysNum, tailKeysNum, traversedKeys, totalKeysWritten, keysInRange, sourceKeys.size());
+                }
+                finally
+                {
+                    activeCompactions.finishCompaction(ci);
+                    mergedRowCounts = ci.getMergedRowCounts();
+                    totalSourceCQLRows = ci.getTotalSourceCQLRows();
+                }
+            }
+
+            if (transaction.isOffline())
+                return;
+
+            // log a bunch of statistics about the result and save to system table
+            // compaction_history
+            long durationInNano = nanoTime() - start;
+            long dTime = TimeUnit.NANOSECONDS.toMillis(durationInNano);
+            long startsize = inputSizeBytes;
+            long endsize = SSTableReader.getTotalBytes(newSSTables);
+            double ratio = (double) endsize / (double) startsize;
+
+            // newSSTables.addAll(headNewSStables);
+            // newSSTables.addAll(tailNewSStables);
+            StringBuilder newSSTableNames = new StringBuilder();
+            for (SSTableReader reader : newSSTables) {
+                newSSTableNames.append(reader.descriptor.baseFilename()).append(",");
+            }
+            long totalSourceRows = 0;
+            for (int i = 0; i < mergedRowCounts.length; i++)
+                totalSourceRows += mergedRowCounts[i] * (i + 1);
+
+            String mergeSummary = updateCompactionHistory(cfs.keyspace.getName(), cfs.getTableName(), mergedRowCounts,
+                    startsize, endsize);
+            
+
+            logger.info(String.format(
+                    "Rewritten (%s) %d sstables to [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
+                    taskId,
+                    transaction.originals().size(),
+                    newSSTableNames.toString(),
+                    getLevel(),
+                    FBUtilities.prettyPrintMemory(startsize),
+                    FBUtilities.prettyPrintMemory(endsize),
+                    (int) (ratio * 100),
+                    dTime,
+                    FBUtilities.prettyPrintMemoryPerSecond(startsize, durationInNano),
+                    FBUtilities.prettyPrintMemoryPerSecond(endsize, durationInNano),
+                    (int) totalSourceCQLRows / (TimeUnit.NANOSECONDS.toSeconds(durationInNano) + 1),
+                    totalSourceRows,
+                    totalKeysWritten,
+                    mergeSummary,
+                    timeSpentWritingKeys));
+            if (logger.isTraceEnabled()) {
+                logger.trace("CF Total Bytes Compacted: {}",
+                        FBUtilities.prettyPrintMemory(CompactionTask.addToTotalBytesCompacted(endsize)));
+                logger.trace("Actual #keys: {}, Estimated #keys:{}, Err%: {}", totalKeysWritten, estimatedKeys,
+                        ((double) (totalKeysWritten - estimatedKeys) / totalKeysWritten));
+            }
+            cfs.getCompactionStrategyManager().compactionLogger.compaction(startTime, transaction.originals(),
+                    currentTimeMillis(), newSSTables);
+
+            // update the metrics
+            cfs.metric.compactionBytesWritten.inc(endsize);
+        }
+    }
+
     /**
      * For internal use and testing only. The rest of the system should go through
      * the submit* methods,
@@ -135,6 +389,8 @@ public class CompactionTask extends AbstractCompactionTask {
         // The collection of sstables passed may be empty (but not null); even if
         // it is not empty, it may compact down to nothing if all rows are deleted.
         assert transaction != null;
+        Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
+        logger.debug("rymDebug:[Raw Compaction Strategy] rewrite {} sstables, original sstbales number is {}", sstables.size(), transaction.originals().size());
 
         if (transaction.originals().isEmpty())
             return;
@@ -194,48 +450,6 @@ public class CompactionTask extends AbstractCompactionTask {
             long totalSourceCQLRows;
 
 
-            /////////////////////////////////////////////////
-            // send force compaction request to replica nodes
-            // int oldSStLevel = actuallyCompact.iterator().next().getSSTableLevel();
-            String ksName = cfs.keyspace.getName();
-            String cfName = cfs.name;
-            // logger.debug("rymDebug: sstLevel is {}, candidate number is {}, threshold is: {}",
-            // oldSStLevel, actuallyCompact.size(), DatabaseDescriptor.getCompactionThreshold() - 1);
-            // if (ksName.equals("ycsb") && cfName.equals("usertable")) {
-            //     for (SSTableReader ssTableReader : actuallyCompact) {
-            //         if (ssTableReader.getSSTableLevel() == DatabaseDescriptor.getCompactionThreshold() - 1) {
-
-            //             logger.debug("rymDebug: send force compaction requests, sstlevel is {}", ssTableReader.getSSTableLevel());
-            //             // String keyspace = ssTableReader.getKeyspaceName();
-            //             // String cfName = ssTableReader.getColumnFamilyName();
-            //             String key = ByteBufferUtil.bytesToHex(ssTableReader.first.getKey());
-            //             // DecoratedKey fistKey = ssTableReader.first;
-            //             // String startToken =
-            //             // ssTableReader.metadata().partitioner.getMinimumToken().toString();
-            //             // String endToken =
-            //             // ssTableReader.metadata().partitioner.getMaximumToken().toString();
-            //             String startToken = ssTableReader.first.getToken().toString();
-            //             String endToken = ssTableReader.last.getToken().toString();
-
-            //             // get sstHash
-            //             String sstHash = ssTableReader.getSSTableHashID();
-
-            //             // get replica nodes
-            //             List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(ksName, cfName, key);
-            //             logger.debug("rymDebug: task is send force compaction message, replica nodes {}, cfName",
-            //                     replicaNodes);
-            //             // ECCompaction ecCompaction = new ECCompaction(sstHash, keyspace, cfName,
-            //             // startToken, endToken);
-            //             ECCompaction ecCompaction = new ECCompaction(sstHash, ksName, cfName, key, startToken, endToken);
-            //             // send compaction message to replica nodes
-            //             ecCompaction.synchronizeCompaction(replicaNodes);
-
-            //         }
-            //     }
-            // }
-            ////////////////////////////////////////////////
-
-
             int nowInSec = FBUtilities.nowInSeconds();
             try (Refs<SSTableReader> refs = Refs.ref(actuallyCompact);
                     AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(actuallyCompact);
@@ -284,13 +498,12 @@ public class CompactionTask extends AbstractCompactionTask {
                     // point of no return
                     newSStables = writer.finish();
 
-                    Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
-                    for (SSTableReader sst: allSStables) {
-                        logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
-                         stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
-                         cfName+RESET, StreamSupport.stream(allSStables.spliterator(), false).count());
-
-                    }
+                    // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
+                    // for (SSTableReader sst: allSStables) {
+                    //     logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
+                    //      stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
+                    //      cfName+RESET, StreamSupport.stream(allSStables.spliterator(), false).count());
+                    // }
 
 
                 }
@@ -324,9 +537,10 @@ public class CompactionTask extends AbstractCompactionTask {
                     startsize, endsize);
 
             logger.info(String.format(
-                    "Compacted (%s) %d sstables to [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
+                    "Compacted (%s) %d sstables to %d [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
                     taskId,
                     transaction.originals().size(),
+                    newSStables.size(),
                     newSSTableNames.toString(),
                     getLevel(),
                     FBUtilities.prettyPrintMemory(startsize),
@@ -441,9 +655,8 @@ public class CompactionTask extends AbstractCompactionTask {
 
         boolean isReplicationTransferredToErasureCoding = sstables.iterator().next()
                 .isReplicationTransferredToErasureCoding();
-
-        if (!Iterables.all(sstables, sstable -> sstable
-                .isReplicationTransferredToErasureCoding() == isReplicationTransferredToErasureCoding)) {
+        // TODO: unmask
+        if (!Iterables.all(sstables, (sstable -> (sstable.isReplicationTransferredToErasureCoding() == isReplicationTransferredToErasureCoding )))) {
             throw new RuntimeException(
                     "Attempting to compact replication transferred sstables with non transient sstables");
         }
