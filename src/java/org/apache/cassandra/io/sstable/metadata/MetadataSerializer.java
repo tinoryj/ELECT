@@ -140,6 +140,7 @@ public class MetadataSerializer implements IMetadataSerializer {
         int length = (int) in.bytesRemaining();
 
         int count = in.readInt();
+        logger.debug("rymDebug: Metadataserializer, length is {}, count is {}", length, count);
         updateChecksumInt(crc, count);
         maybeValidateChecksum(crc, in, descriptor);
 
@@ -181,7 +182,7 @@ public class MetadataSerializer implements IMetadataSerializer {
 
             crc.reset();
             crc.update(buffer);
-            // maybeValidateChecksum(crc, in, descriptor);
+            maybeValidateChecksum(crc, in, descriptor);
             try (DataInputBuffer dataInputBuffer = new DataInputBuffer(buffer)) {
                 components.put(type, type.serializer.deserialize(descriptor.version, dataInputBuffer));
             }

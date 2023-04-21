@@ -25,20 +25,28 @@ import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.index.Index.Indexer;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
+import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.sstable.Descriptor;
+import org.apache.cassandra.io.sstable.metadata.MetadataComponent;
+import org.apache.cassandra.io.sstable.metadata.MetadataType;
 import org.apache.cassandra.io.util.File;
+import org.apache.cassandra.io.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,13 +159,40 @@ public class ECNetutils {
     public static void main(String[] args) {
         // SSTableMetadataViewer metawriter = new SSTableMetadataViewer(false, false, Integer.MAX_VALUE, TimeUnit.MICROSECONDS, System.out);
         
-        String fname = System.getProperty("user.dir")+"/data/data/nb-1712-big-Data.db";
+        String fname = System.getProperty("user.dir")+"/data/data/nb-1712-big-Statistics.db";
         File sstable = new File(fname);
-        logger.info("absolutePath is {}, path is {}, parentPath is {}, parent is {}",
-         sstable.absolutePath(), sstable.path(), sstable.parentPath(),sstable.parent());
+        // logger.info("absolutePath is {}, path is {}, parentPath is {}, parent is {}",
+        //  sstable.absolutePath(), sstable.path(), sstable.parentPath(),sstable.parent());
         Descriptor desc = Descriptor.fromFilename(fname);
-        logger.info("read from {}, desc is {}, id is {}, version is {}, format type is {}, TOC file name is {}",
-         fname, desc, desc.id, desc.version, desc.formatType, desc.filenameFor(Component.TOC));
+        // logger.info("read from {}, desc is {}, id is {}, version is {}, format type is {}, TOC file name is {}",
+        //  fname, desc, desc.id, desc.version, desc.formatType, desc.filenameFor(Component.TOC));
+
+
+        // read Statistics.db
+        EnumSet<MetadataType> types = EnumSet.of(MetadataType.VALIDATION, MetadataType.STATS, MetadataType.HEADER);
+
+        Map<MetadataType, MetadataComponent> sstableMetadata;
+        try {
+            sstableMetadata = desc.getMetadataSerializer().deserialize(desc, types);
+            logger.info("statsmetadata is {}", sstableMetadata.toString());
+        } catch (Throwable t) {
+            throw new CorruptSSTableException(t, desc.filenameFor(Component.STATS));
+        }
+
+
+        // try {
+        //     byte[] data = Files.readAllBytes(Paths.get(fname));
+        //     logger.info("data length is {}, content is {}", data.length, data);
+        // } catch (IOException e) {
+        //     // TODO Auto-generated catch block
+        //     e.printStackTrace();
+        // }
+
+        // 使用IndexHelper类来解析Statistics.db文件
+        // Indexer info = Indexer.deserializeIndexInfo(data, 0);
+
+
+        // 打印Statistics.db文件的元数据信息
     }
 
 
