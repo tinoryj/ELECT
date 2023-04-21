@@ -30,6 +30,7 @@ import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.SSTablesInBytesConverter;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -57,6 +58,8 @@ public class ECSyncSSTable {
     public byte[] allKeysInBytes;
     public int allKeysInBytesSize;
 
+    //private static SSTablesInBytesConverter converter = new SSTablesInBytesConverter();
+
     
     // public static ByteObjectConversion<List<DecoratedKey>> keyConverter = new ByteObjectConversion<List<DecoratedKey>>();
     // public static ByteObjectConversion<List<InetAddressAndPort>> ipConverter = new ByteObjectConversion<List<InetAddressAndPort>>();
@@ -64,7 +67,7 @@ public class ECSyncSSTable {
     
     public static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
-    public static class SSTablesInBytes{
+    public static class SSTablesInBytes implements Serializable {
         // all keys of Data.db in String
         //public final List<String> allKey;
         // Filter.db in bytes
@@ -164,6 +167,24 @@ public class ECSyncSSTable {
     
         }
     
+    }
+
+    public static void main(String[] args) {
+        byte[] test1 = new byte[] {1,2,3};
+        byte[] test2 = new byte[] {4,5,6};
+        byte[] test3 = new byte[] {7,8,9};
+
+        SSTablesInBytes test = new SSTablesInBytes(test1, test2, test3);
+
+        byte[] res;
+        try {
+            // res = converter.toByteArray(test);
+            res = ByteObjectConversion.objectToByteArray((Serializable) test);
+            logger.info("rymDebug: res length is {}", res.length);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            logger.error("error info : {}", e);
+        }
     }
     
 }

@@ -35,6 +35,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.util.File;
@@ -67,6 +68,23 @@ public class ECNetutils {
             bis.close();
             ois.close();
             return obj;
+        }
+    }
+
+    public static class SSTablesInBytesConverter {
+
+        public static byte[] toByteArray(SSTablesInBytes sstables) throws IOException {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(baos);
+            oos.writeObject(sstables);
+            oos.flush();
+            return baos.toByteArray();
+        }
+    
+        public static SSTablesInBytes fromByteArray(byte[] bytes) throws IOException, ClassNotFoundException {
+            ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+            ObjectInputStream ois = new ObjectInputStream(bais);
+            return (SSTablesInBytes) ois.readObject();
         }
     }
 
