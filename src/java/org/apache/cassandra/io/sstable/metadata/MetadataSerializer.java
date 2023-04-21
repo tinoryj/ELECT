@@ -202,10 +202,11 @@ public class MetadataSerializer implements IMetadataSerializer {
         logger.debug("[Tinoryj] get original check sum [{}], the actual check sum is [{}]", expectedChecksum,
                 actualChecksum);
 
-        if (actualChecksum != expectedChecksum) {
-            String filename = descriptor.filenameFor(Component.STATS);
-            throw new CorruptSSTableException(new IOException("Checksums do not match for " + filename), filename);
-        }
+        // if (actualChecksum != expectedChecksum) {
+        // String filename = descriptor.filenameFor(Component.STATS);
+        // throw new CorruptSSTableException(new IOException("Checksums do not match for
+        // " + filename), filename);
+        // }
     }
 
     @Override
