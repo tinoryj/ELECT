@@ -195,8 +195,6 @@ import static org.apache.cassandra.utils.Throwables.maybeFail;
 import static org.apache.cassandra.utils.Throwables.merge;
 import static org.apache.cassandra.utils.concurrent.CountDownLatch.newCountDownLatch;
 
-
-
 public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner {
     private static final Logger logger = LoggerFactory.getLogger(ColumnFamilyStore.class);
 
@@ -455,7 +453,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         setCompressionParameters(FBUtilities.fromJsonMap(options));
     }
 
-    public static Runnable getSendSSTRunnable (String keyspaceName, String cfName, int sendSSTLevel, int delay) {
+    public static Runnable getSendSSTRunnable(String keyspaceName, String cfName, int sendSSTLevel, int delay) {
         return new SendSSTRunnable(keyspaceName, cfName, sendSSTLevel, delay);
     }
 
@@ -465,7 +463,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         private final int level;
         private final int delay; // in minutes
 
-        SendSSTRunnable (String keyspaceName, String cfName, int level, int delay) {
+        SendSSTRunnable(String keyspaceName, String cfName, int level, int delay) {
             this.keyspaceName = keyspaceName;
             this.cfName = cfName;
             this.level = level;
@@ -482,7 +480,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 for (SSTableReader sstable : sstatbles) {
                     if (!sstable.isReplicationTransferredToErasureCoding()) {
 
-                        logger.debug("rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
+                        logger.debug(
+                                "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
                                 sstable.getFilename(), sstable.getSSTableLevel(),
                                 DatabaseDescriptor.getCompactionThreshold(),
                                 sstable.descriptor.ksname,
@@ -525,7 +524,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     }
                                 }
                                 // sstable.SetIsReplicationTransferredToErasureCoding();
-                            
+
                             } catch (IOException e) {
                                 logger.error("rymError: {}", e);
                             } catch (Exception e) {
@@ -545,7 +544,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             StringBuilder hex = new StringBuilder(bytes.length * 2);
             for (byte b : bytes) {
                 hex.append(Character.forDigit((b >> 4) & 0xF, 16))
-                   .append(Character.forDigit((b & 0xF), 16));
+                        .append(Character.forDigit((b & 0xF), 16));
             }
             return hex.toString();
         }
@@ -1768,14 +1767,15 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     // rewrite the sstables based on the source decorated keys
-    public CompactionManager.AllSSTableOpStatus sstablesRewrite(final List<DecoratedKey> sourceKeys, 
+    public CompactionManager.AllSSTableOpStatus sstablesRewrite(final List<DecoratedKey> sourceKeys,
             List<SSTableReader> sstables,
             final boolean skipIfCurrentVersion,
             final long skipIfNewerThanTimestamp,
             final boolean skipIfCompressionMatches,
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite");
-        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables, skipIfCurrentVersion,
+        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables,
+                skipIfCurrentVersion,
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 
@@ -2767,7 +2767,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         return runWithCompactionsDisabled(callable, false, false);
     }
 
-    public LifecycleTransaction markRewriteSSTableCompacting(Iterable<SSTableReader> sstables, final OperationType operationType) {
+    public LifecycleTransaction markRewriteSSTableCompacting(Iterable<SSTableReader> sstables,
+            final OperationType operationType) {
         Callable<LifecycleTransaction> callable = () -> {
             assert data.getCompacting().isEmpty() : data.getCompacting();
             // Iterable<SSTableReader> sstables = getLiveSSTables();
@@ -2814,14 +2815,16 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
     public boolean isAutoCompactionDisabled() {
         // if (!this.name.equals("usertable")){
-        //     logger.debug("[Tinoryj] check isAutoCompactionDisabled, returning {} for cfs name = {}", !this.compactionStrategyManager.isEnabled(), this.name);
-        //     return true;
+        // logger.debug("[Tinoryj] check isAutoCompactionDisabled, returning {} for cfs
+        // name = {}", !this.compactionStrategyManager.isEnabled(), this.name);
+        // return true;
         // }else {
-        //     logger.debug("[Tinoryj] check isAutoCompactionDisabled, returning {} for cfs name = {}", !this.compactionStrategyManager.isEnabled(), this.name);
-        //     return !this.compactionStrategyManager.isEnabled();
+        // logger.debug("[Tinoryj] check isAutoCompactionDisabled, returning {} for cfs
+        // name = {}", !this.compactionStrategyManager.isEnabled(), this.name);
+        // return !this.compactionStrategyManager.isEnabled();
         // }
         return !this.compactionStrategyManager.isEnabled();
-        
+
     }
 
     /*
