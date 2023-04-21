@@ -2195,6 +2195,7 @@ public class StorageProxy implements StorageProxyMBean {
         }
 
         protected void runMayThrow() {
+            logger.debug("[Tinoryj] touch read run may throw in storage proxy");
             try {
                 MessageParams.reset();
 
