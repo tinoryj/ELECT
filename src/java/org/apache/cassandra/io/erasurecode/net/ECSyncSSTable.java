@@ -87,9 +87,9 @@ public class ECSyncSSTable {
     };
 
     public ECSyncSSTable(String sstHashID, String targetCfName, List<String> allKey, SSTablesInBytes sstInBytes) {
-        this.allKey = new ArrayList<>(allKey);
         this.sstHashID = sstHashID;
         this.targetCfName = targetCfName;
+        this.allKey = new ArrayList<>(allKey);
         this.sstInBytes = sstInBytes;
     }
 
@@ -145,7 +145,7 @@ public class ECSyncSSTable {
            
             try {
                 // allKey = keyConverter.fromByteArray(sstContent);
-                allKey = (List<String>) ByteObjectConversion.byteArrayToObject(sstContent);
+                allKey = (List<String>) ByteObjectConversion.byteArrayToObject(allKeysInBytes);
                 SSTablesInBytes sstInBytes = (SSTablesInBytes) ByteObjectConversion.byteArrayToObject(sstContent);
                 
                 return new ECSyncSSTable(sstHashID, targetCfName, allKey, sstInBytes);
@@ -181,9 +181,14 @@ public class ECSyncSSTable {
             // res = converter.toByteArray(test);
             res = ByteObjectConversion.objectToByteArray((Serializable) test);
             logger.info("rymDebug: res length is {}", res.length);
+            SSTablesInBytes sstInBytes = (SSTablesInBytes) ByteObjectConversion.byteArrayToObject(res);
+            logger.info("rymDebug: sstable in bytes filter {}, index {}, statistics {}", sstInBytes.sstFilter, sstInBytes.sstIndex, sstInBytes.sstStats);
         } catch (IOException e) {
             // TODO Auto-generated catch block
             logger.error("error info : {}", e);
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
     }
     
