@@ -126,7 +126,7 @@ public class ECSyncSSTable {
             out.writeUTF(t.targetCfName);
             out.writeInt(t.sstSize);
             out.write(t.sstContent);
-            out.write(t.allKeysInBytesSize);
+            out.writeInt(t.allKeysInBytesSize);
             out.write(t.allKeysInBytes);
         }
     
