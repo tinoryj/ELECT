@@ -29,7 +29,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.marshal.ByteArrayAccessor;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.io.IVersionedSerializer;
-import org.apache.cassandra.io.erasurecode.net.utils.ByteObjectConversion;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -46,28 +46,57 @@ import static org.apache.cassandra.db.TypeSizes.sizeof;
 
 public class ECSyncSSTable {
     public static final Serializer serializer = new Serializer();
-    public byte[] sstContent;
-    public int sstSize;
     public final List<String> allKey;
     public final String sstHashID;
     public final String targetCfName;
+    
+    public final SSTablesInBytes sstInBytes;
+
+    public byte[] sstContent;
+    public int sstSize;
+    public byte[] allKeysInBytes;
+    public int allKeysInBytesSize;
+
+    
     // public static ByteObjectConversion<List<DecoratedKey>> keyConverter = new ByteObjectConversion<List<DecoratedKey>>();
     // public static ByteObjectConversion<List<InetAddressAndPort>> ipConverter = new ByteObjectConversion<List<InetAddressAndPort>>();
 
     
     public static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
-    public ECSyncSSTable(List<String> allKey, String sstHashID, String targetCfName) {
+    public static class SSTablesInBytes{
+        // all keys of Data.db in String
+        //public final List<String> allKey;
+        // Filter.db in bytes
+        public final byte[] sstFilter;
+        // Index.db in bytes
+        public final byte[] sstIndex;
+        // Statistics.db in bytes
+        public final byte[] sstStats;
+
+        public SSTablesInBytes(byte[] sstFilter, byte[] sstIndex, byte[] sstStats) 
+        {
+            //this.allKey = allKey;
+            this.sstFilter = sstFilter;
+            this.sstIndex = sstIndex;
+            this.sstStats = sstStats;
+        }
+    };
+
+    public ECSyncSSTable(String sstHashID, String targetCfName, List<String> allKey, SSTablesInBytes sstInBytes) {
         this.allKey = new ArrayList<>(allKey);
         this.sstHashID = sstHashID;
         this.targetCfName = targetCfName;
+        this.sstInBytes = sstInBytes;
     }
 
     public void sendSSTableToSecondary(InetAddressAndPort rpn) throws Exception {
         try {
-            this.sstContent = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
+            this.sstContent = ByteObjectConversion.objectToByteArray((Serializable) this.sstInBytes);
             this.sstSize = this.sstContent.length;
-            logger.debug("rymDebug: try to serialize allKey, allKey num is {}", this.allKey.size());
+            this.allKeysInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
+            this.allKeysInBytesSize = this.allKeysInBytes.length;
+            // logger.debug("rymDebug: try to serialize allKey, allKey num is {}", this.allKey.size());
             logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
 
 
@@ -94,6 +123,8 @@ public class ECSyncSSTable {
             out.writeUTF(t.targetCfName);
             out.writeInt(t.sstSize);
             out.write(t.sstContent);
+            out.write(t.allKeysInBytesSize);
+            out.write(t.allKeysInBytes);
         }
     
         @Override
@@ -103,22 +134,32 @@ public class ECSyncSSTable {
             int sstSize = in.readInt();
             byte[] sstContent = new byte[sstSize];
             in.readFully(sstContent);
+            int allKeysInBytesSize = in.readInt();
+            byte[] allKeysInBytes = new byte[allKeysInBytesSize];
+            in.readFully(allKeysInBytes);
+
             List<String> allKey = new ArrayList<String>();
+           
             try {
                 // allKey = keyConverter.fromByteArray(sstContent);
                 allKey = (List<String>) ByteObjectConversion.byteArrayToObject(sstContent);
+                SSTablesInBytes sstInBytes = (SSTablesInBytes) ByteObjectConversion.byteArrayToObject(sstContent);
+                
+                return new ECSyncSSTable(sstHashID, targetCfName, allKey, sstInBytes);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
-                e.printStackTrace();
+                logger.error("ERROR: get sstables in bytes error!");
             }
             // ByteBuffer sstContent = ByteBuffer.wrap(buf);
-
-            return new ECSyncSSTable(allKey, sstHashID, targetCfName);
+            return null;
+            
         }
     
         @Override
         public long serializedSize(ECSyncSSTable t, int version) {
-            long size = t.sstSize + sizeof(t.sstSize) + sizeof(t.sstHashID) + sizeof(t.targetCfName);
+            long size = t.sstSize + sizeof(t.sstSize) +
+                        t.allKeysInBytesSize + sizeof(t.allKeysInBytesSize) +
+                        sizeof(t.sstHashID) + sizeof(t.targetCfName);
             return size;
     
         }

@@ -17,10 +17,15 @@
  */
 package org.apache.cassandra.io.sstable.format;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -66,6 +71,8 @@ import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.compress.CompressionMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.io.sstable.metadata.*;
 import org.apache.cassandra.io.util.*;
@@ -386,6 +393,59 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             metadata = Schema.instance.getTableMetadataRef(descriptor.ksname, descriptor.cfname);
         }
         return open(descriptor, metadata);
+    }
+
+    // [CASSANDRAEC]
+    public static SSTableReader openECSSTable(ECMetadata message, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
+        // TODO: modify the sstables, e.g. TOC.txt
+
+        // Get a correct generation id
+        SSTableId ecSSTableId = cfs.sstableIdGenerator.get();
+        String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
+        String dataParentDir = ECNetutils.getDataDir() + "ycsb/";
+        Optional<Path> directory = ECNetutils.findDirectoryByPrefix(Paths.get(dataParentDir), cfs.name);
+        String dataDir = cfs.getDirectories().toString();
+
+        String dataPrefixDir = directory.get().toString();
+        logger.debug("rymDebug: get data directory {} (by cfs) and {} (by prefix) for cf {}", dataDir, dataPrefixDir, cfs.name);
+      
+        List<String> sstables = List.of("Filter.db", "Index.db", "Statistics.db");
+        logger.debug("rymDebug: get sstable id {} for ecMetadata!", ecSSTableId);
+        for (String sst : sstables) {
+            String sourceFileName = dataForRewriteDir + fileNamePrefix + sst;
+            String destFileName = dataDir + "nb-" + ecSSTableId + "-big-" + sst;
+            Path sourcePath = Paths.get(sourceFileName);
+            Path destPath = Paths.get(destFileName);
+            Files.move(sourcePath, destPath);
+        }
+
+        // Write a TOC.txt file and rename other files
+        String tocFileName = dataDir + "nb-" + ecSSTableId + "-big-TOC.txt";
+        List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt");
+        Path tocFile = Paths.get(tocFileName);
+        Files.write(tocFile, lines);
+
+        // get descriptor from toc file name
+        Descriptor desc = Descriptor.fromFilename(tocFileName);
+        // write ECMetadata
+        File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
+        if (ecMetadataFile.exists())
+            FileUtils.deleteWithConfirm(ecMetadataFile);
+
+        try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
+
+            byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) message);
+            ByteBufferUtil.writeWithLength(ByteBuffer.wrap(buffer), oStream);
+
+        } catch (IOException e) {
+            logger.error("Cannot save SSTable ecMetadataFile: ", e);
+
+            // corrupted hence delete it and let it load it now.
+            if (ecMetadataFile.exists())
+                FileUtils.deleteWithConfirm(ecMetadataFile);
+        }
+
+        return open(desc);
     }
 
     public static SSTableReader open(Descriptor desc, TableMetadataRef metadata) {
@@ -732,7 +792,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    public void replaceDatabyECMetadata(ECMetadata message, String sstableHash) {
+    public void replaceDatabyECMetadata(ECMetadata message, String sstableHash, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
 
         // delete sstable
         deleteComponentOnlyData(descriptor, sstableHash);
@@ -742,11 +802,12 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         if (ecMetadataFile.exists())
             FileUtils.deleteWithConfirm(ecMetadataFile);
         
+        byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) message);
+        
         try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
             
             // IndexSummary.serializer.serialize(summary, oStream);
             ByteBufferUtil.writeWithLength(first.getKey(), oStream);
-            ByteBufferUtil.writeWithLength(last.getKey(), oStream);
         } catch (IOException e) {
             logger.error("Cannot save SSTable ecMetadataFile: ", e);
 

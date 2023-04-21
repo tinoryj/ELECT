@@ -125,7 +125,9 @@ import org.apache.cassandra.index.transactions.UpdateTransaction;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTable;
@@ -310,7 +312,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     public final OpOrder readOrdering = new OpOrder();
 
     /* This is used to generate the next index for a SSTable */
-    private final Supplier<? extends SSTableId> sstableIdGenerator;
+    public final Supplier<? extends SSTableId> sstableIdGenerator;
 
     public final SecondaryIndexManager indexManager;
     public final TableViews viewManager;
@@ -517,10 +519,17 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 // sstable.getScanner();
 
                                 InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
+                                // read file here
+                                byte[] filterFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
+                                byte[] indexFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
+                                byte[] statsFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
+                                
+                                SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile);
+
                                 for (InetAddressAndPort rpn : replicaNodes) {
                                     if (!rpn.equals(locaIP)) {
                                         String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                                        ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, targetCfName);
+                                        ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys, sstInBytes);
                                         ecSync.sendSSTableToSecondary(rpn);
                                     }
                                 }

@@ -1,0 +1,146 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.cassandra.io.erasurecode.net;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.io.sstable.Component;
+import org.apache.cassandra.io.sstable.Descriptor;
+import org.apache.cassandra.io.util.File;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class ECNetutils {
+    private static final Logger logger = LoggerFactory.getLogger(ECNetutils.class);
+    
+    private static final String dataForRewriteDir = System.getProperty("user.dir")+"/data/tmp/";
+    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
+    private static final String dataDir = System.getProperty("user.dir")+"/data/data/";
+
+    public static class ByteObjectConversion {
+        public static byte[] objectToByteArray(Serializable obj) throws IOException {
+            logger.debug("rymDebug: start to transform");
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(bos);
+            oos.writeObject(obj);
+            oos.flush();
+            oos.close();
+            bos.close();
+            return bos.toByteArray();
+        }
+
+        public static Object byteArrayToObject(byte[] bytes) throws Exception {
+            ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+            ObjectInputStream ois = new ObjectInputStream(bis);
+            Object obj = ois.readObject();
+            bis.close();
+            ois.close();
+            return obj;
+        }
+    }
+
+    public static class DecoratedKeyComparator implements Comparator<DecoratedKey>
+    {
+        public int compare(DecoratedKey o1, DecoratedKey o2)
+        {
+            return o2.compareTo(o1);
+        }
+    };
+
+    public static String getDataForRewriteDir() {
+        return dataForRewriteDir;
+    }
+
+    public static String getParityCodeDir() {
+        return parityCodeDir;
+    }
+
+    public static String getDataDir() {
+        return parityCodeDir;
+    }
+
+    public static byte[] readBytesFromFile(String fileName) throws IOException
+    {
+        // String fileName = descriptor.filenameFor(Component.DATA);
+        File file = new File(fileName);
+        long fileLength = file.length();
+        FileInputStream fileStream = new FileInputStream(fileName);
+        byte[] buffer = new byte[(int)fileLength];
+        int offset = 0;
+        int numRead = 0;
+        while (offset < buffer.length && (numRead = fileStream.read(buffer, offset, buffer.length - offset)) >= 0) {
+            offset += numRead;
+        }
+        if (offset != buffer.length) {
+            throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
+        }
+        fileStream.close();
+        return buffer;
+        // return ByteBuffer.wrap(buffer);
+    }
+
+    public static void writeBytesToFile(String fileName, byte[] buffer) throws IOException
+    {
+        try (FileOutputStream outputStream = new FileOutputStream(fileName)) {
+            outputStream.write(buffer);
+        } catch (Exception e) {
+            logger.error("rymError: failed to write bytes to file, {}", e);
+        }
+    }
+
+
+    public static Optional<Path> findDirectoryByPrefix(Path parentDirectory, String prefix) throws IOException {
+        return Files.list(parentDirectory)
+                .filter(path -> Files.isDirectory(path))
+                .filter(path -> path.getFileName().toString().startsWith(prefix))
+                .findFirst();
+    }
+
+
+
+
+    public static void main(String[] args) {
+        // SSTableMetadataViewer metawriter = new SSTableMetadataViewer(false, false, Integer.MAX_VALUE, TimeUnit.MICROSECONDS, System.out);
+        
+        String fname = System.getProperty("user.dir")+"/data/data/nb-1712-big-Data.db";
+        File sstable = new File(fname);
+        logger.info("absolutePath is {}, path is {}, parentPath is {}, parent is {}",
+         sstable.absolutePath(), sstable.path(), sstable.parentPath(),sstable.parent());
+        Descriptor desc = Descriptor.fromFilename(fname);
+        logger.info("read from {}, desc is {}, id is {}, version is {}, format type is {}, TOC file name is {}",
+         fname, desc, desc.id, desc.version, desc.formatType, desc.filenameFor(Component.TOC));
+    }
+
+
+}

@@ -36,6 +36,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.CompactionManager.AllSSTableOpStatus;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.*;
@@ -99,90 +100,98 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 List<SSTableReader> sstables = new ArrayList<>(cfs.getSSTableForLevel(DatabaseDescriptor.getCompactionThreshold()));
                 if (!sstables.isEmpty()) {
                     Collections.sort(sstables, new SSTableReaderComparator());
-
                     // rewrite the most similar sstables
                     List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
 
                     // use binary search to find related sstables
                     // TODO: somtimes cannot get 
-                    List<DecoratedKey> updateKeys = StorageService.instance.globalSSTMap.get(sstableHash);
-                    DecoratedKey first = updateKeys.get(0);
-                    DecoratedKey last = updateKeys.get(updateKeys.size() - 1);
-                    rewriteSStables = getRewriteSSTables(sstables, first, last);
+                    // List<DecoratedKey> updateKeys = StorageService.instance.globalSSTMap.get(sstableHash);
+                    DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
+                    if (dataForRewrite != null) {
+                        String fileNamePrefix = dataForRewrite.fileNamePrefix;
+                        List<DecoratedKey> updateKeys = dataForRewrite.sourceKeys;
+                        DecoratedKey first = updateKeys.get(0);
+                        DecoratedKey last = updateKeys.get(updateKeys.size() - 1);
+                        rewriteSStables = getRewriteSSTables(sstables, first, last);
+                        // rewrite and update the sstables
+                        // M is the sstable from primary node, M` is the corresponding sstable of
+                        // secondary node
+                        // one to one
+                        if (rewriteSStables.isEmpty()) {
+                            logger.warn("rymWarnings: rewriteSStables is empty!");
+                        }
 
-                    // rewrite and update the sstables
-                    // M is the sstable from primary node, M` is the corresponding sstable of
-                    // secondary node
-                    // one to one
-                    if(rewriteSStables.isEmpty()) {
-                        logger.warn("rymWarnings: rewriteSStables is empty!");
-                    }
-                    if (rewriteSStables.size() == 1) {
-                        List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllDecoratedKeys();
+                        SSTableReader ecSSTable = SSTableReader.openECSSTable(message.payload, cfs, fileNamePrefix);
+                        logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}", ecSSTable.getFilename());
 
-                        if (rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
-                            // delete sstable if sstable Hash can be found
-                            rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
-                            logger.debug(RED + "rymDebug: get the match sstbales, delete it!");
-                        } else {
-                            logger.warn("rymWarning: get unexpected sstables num");
-                            // a bit different, update sstable and delete it
-                            if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))
-                                    && allKeys.size() < updateKeys.size()) {
-                                // M` missed some keys in the middle, update metadata and delete M`,
-                                // suppose that the compaction speed of primary tree is faster than that of
-                                // secondary, so the these missed keys should be deleted
-                                // TODO: need to consider rewrite sstables.
-                                // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
-                                rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
-                                logger.debug(RED + "rymDebug: M1 missed keys in the middle, update and delete it!");
+                        if (rewriteSStables.size() == 1) {
+                            List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllDecoratedKeys();
 
-                            } else if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))
-                                    && allKeys.size() >= updateKeys.size()) {
-                                // M missed some keys in the middle, just delete it
-                                // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume
-                                // that the compaction speed of secondary node is slower than primary node
-                                rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
-                                logger.debug(RED + "rymDebug: M missed keys in the middle, delete it!");
+                            if (rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
+                                // delete sstable if sstable Hash can be found
+                                // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash, cfs, fileNamePrefix);
+                                logger.debug(RED + "rymDebug: get the match sstbales, delete it!");
                             } else {
-                                // M` missed some keys in the boundary,
-                                // need to update the metadata
-                                logger.debug(RED + "rymDebug: M1 missed keys in the edge, update and delete it!");
-                                rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash);
-                                // TODO: write update statsmetadata and bloomfilter 
-                                // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
+                                logger.warn("rymWarning: get unexpected sstables num");
+                                // a bit different, update sstable and delete it
+                                if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))
+                                        && allKeys.size() < updateKeys.size()) {
+                                    // M` missed some keys in the middle, update metadata and delete M`,
+                                    // suppose that the compaction speed of primary tree is faster than that of
+                                    // secondary, so the these missed keys should be deleted
+                                    // TODO: need to consider rewrite sstables.
+                                    // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
+                                    
+                                    // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash, cfs, fileNamePrefix);
+                                    logger.debug(RED + "rymDebug: M1 missed keys in the middle, update and delete it!");
+
+                                } else if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))
+                                        && allKeys.size() >= updateKeys.size()) {
+                                    // M missed some keys in the middle, just delete it
+                                    // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume
+                                    // that the compaction speed of secondary node is slower than primary node
+                                    // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash, cfs, fileNamePrefix);
+                                    logger.debug(RED + "rymDebug: M missed keys in the middle, delete it!");
+                                } else {
+                                    // M` missed some keys in the boundary,
+                                    // need to update the metadata
+                                    logger.debug(RED + "rymDebug: M1 missed keys in the edge, update and delete it!");
+                                    // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash, cfs, fileNamePrefix);
+                                    // TODO: write update statsmetadata and bloomfilter
+                                    // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
+                                }
+
                             }
+                        } else if (rewriteSStables.size() > 1) {
+                            // many sstables are involved
+                            // delete the sstables and update the metadata
+                            // rewrite the sstables, just delete the key ranges of M` which are matching
+                            // those of M
 
+                            logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!",
+                                    rewriteSStables.size());
+                            try {
+                                AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys,
+                                        rewriteSStables, false, Long.MAX_VALUE, false, 1);
+                                // TODO: write ec_metadata
+
+                                if (status != AllSSTableOpStatus.SUCCESSFUL)
+                                    printStatusCode(status.statusCode, cfs.name);
+                            } catch (ExecutionException e) {
+                                e.printStackTrace();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
                         }
-                    } else if (rewriteSStables.size()>1){
-                        // many sstables are involved
-                        // delete the sstables and update the metadata
-                        // rewrite the sstables, just delete the key ranges of M` which are matching
-                        // those of M
 
-                        logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!",
-                                rewriteSStables.size());
-                        try {
-                            AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys,
-                                    rewriteSStables, false, Long.MAX_VALUE, false, 1);
-                            // TODO: write ec_metadata 
-
-                            if (status != AllSSTableOpStatus.SUCCESSFUL)
-                                printStatusCode(status.statusCode, cfs.name);
-                        } catch (ExecutionException e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
-                        } catch (InterruptedException e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
-                        }
+                        StorageService.instance.globalSSTMap.remove(sstableHash);
+                    } else {
+                        logger.warn("rymWarning: cannot get rewrite data of {}", sstableHash);
                     }
-
-                    StorageService.instance.globalSSTMap.remove(sstableHash);
 
                 } else {
                     logger.info("rymDebug: cannot replace the existing sstables yet, as {} is lower than {}",
-                                 cfName, DatabaseDescriptor.getCompactionThreshold());
+                            cfName, DatabaseDescriptor.getCompactionThreshold());
                 }
 
             }
