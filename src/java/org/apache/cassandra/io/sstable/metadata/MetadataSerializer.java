@@ -140,6 +140,7 @@ public class MetadataSerializer implements IMetadataSerializer {
         int length = (int) in.bytesRemaining();
 
         int count = in.readInt();
+        logger.debug("[Tinoryj] read check sum total number = {}", count);
         updateChecksumInt(crc, count);
         maybeValidateChecksum(crc, in, descriptor);
 
@@ -153,6 +154,7 @@ public class MetadataSerializer implements IMetadataSerializer {
 
             offsets[i] = in.readInt();
             updateChecksumInt(crc, offsets[i]);
+            logger.debug("[Tinoryj] read check sum ordinals[{}] = {}, offsets[{}] = {}", i, ordinals[i], i, offsets[i]);
         }
         maybeValidateChecksum(crc, in, descriptor);
 
@@ -165,7 +167,8 @@ public class MetadataSerializer implements IMetadataSerializer {
          */
 
         MetadataType[] allMetadataTypes = MetadataType.values();
-
+        logger.debug("[Tinoryj] Target process metadata type number = {}, include {}", allMetadataTypes.length,
+                allMetadataTypes);
         Map<MetadataType, MetadataComponent> components = new EnumMap<>(MetadataType.class);
 
         for (int i = 0; i < count; i++) {
@@ -175,7 +178,7 @@ public class MetadataSerializer implements IMetadataSerializer {
                 in.skipBytes(lengths[i]);
                 continue;
             }
-
+            logger.debug("[Tinoryj] Process metadata type = {}", type);
             byte[] buffer = new byte[isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]];
             in.readFully(buffer);
 
@@ -196,6 +199,8 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         int actualChecksum = (int) crc.getValue();
         int expectedChecksum = in.readInt();
+        logger.debug("[Tinoryj] get original check sum [{}], the actual check sum is [{}]", expectedChecksum,
+                actualChecksum);
 
         if (actualChecksum != expectedChecksum) {
             String filename = descriptor.filenameFor(Component.STATS);
