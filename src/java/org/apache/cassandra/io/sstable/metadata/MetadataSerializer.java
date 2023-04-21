@@ -200,6 +200,7 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         if (actualChecksum != expectedChecksum) {
             String filename = descriptor.filenameFor(Component.STATS);
+            logger.error("rymError: actual checksum is {}, expected checksum is {}, file name is {}", actualChecksum, expectedChecksum, filename);
             throw new CorruptSSTableException(new IOException("Checksums do not match for " + filename), filename);
         }
     }
