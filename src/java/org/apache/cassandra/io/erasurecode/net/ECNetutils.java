@@ -87,7 +87,7 @@ public class ECNetutils {
     }
 
     public static String getDataDir() {
-        return parityCodeDir;
+        return dataDir;
     }
 
     public static byte[] readBytesFromFile(String fileName) throws IOException

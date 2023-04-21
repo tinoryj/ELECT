@@ -119,6 +119,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         // one to one
                         if (rewriteSStables.isEmpty()) {
                             logger.warn("rymWarnings: rewriteSStables is empty!");
+                            continue;
                         }
 
                         SSTableReader ecSSTable = SSTableReader.openECSSTable(message.payload, cfs, fileNamePrefix);
