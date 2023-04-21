@@ -421,7 +421,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         // Write a TOC.txt file and rename other files
         String tocFileName = dataDir + "/nb-" + ecSSTableId + "-big-TOC.txt";
-        List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt");
+        List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt", "EC.db");
         Path tocFile = Paths.get(tocFileName);
         Files.write(tocFile, lines);
 
@@ -444,6 +444,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             if (ecMetadataFile.exists())
                 FileUtils.deleteWithConfirm(ecMetadataFile);
         }
+        
 
         return open(desc);
     }
