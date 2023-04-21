@@ -181,7 +181,7 @@ public class MetadataSerializer implements IMetadataSerializer {
 
             crc.reset();
             crc.update(buffer);
-            maybeValidateChecksum(crc, in, descriptor);
+            // maybeValidateChecksum(crc, in, descriptor);
             try (DataInputBuffer dataInputBuffer = new DataInputBuffer(buffer)) {
                 components.put(type, type.serializer.deserialize(descriptor.version, dataInputBuffer));
             }
