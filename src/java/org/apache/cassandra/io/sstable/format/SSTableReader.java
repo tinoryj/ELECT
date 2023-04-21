@@ -404,23 +404,23 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
         String dataParentDir = ECNetutils.getDataDir() + "ycsb/";
         Optional<Path> directory = ECNetutils.findDirectoryByPrefix(Paths.get(dataParentDir), cfs.name);
-        String dataDir = cfs.getDirectories().toString();
+        // String dataDir = cfs.getDirectories().toString();
 
-        String dataPrefixDir = directory.get().toString();
-        logger.debug("rymDebug: get data directory {} (by cfs) and {} (by prefix) for cf {}", dataDir, dataPrefixDir, cfs.name);
+        String dataDir = directory.get().toString();
+        logger.debug("rymDebug: get data directory  {} (by prefix) for cf {}", dataDir, cfs.name);
       
         List<String> sstables = List.of("Filter.db", "Index.db", "Statistics.db");
         logger.debug("rymDebug: get sstable id {} for ecMetadata!", ecSSTableId);
         for (String sst : sstables) {
             String sourceFileName = dataForRewriteDir + fileNamePrefix + sst;
-            String destFileName = dataDir + "nb-" + ecSSTableId + "-big-" + sst;
+            String destFileName = dataDir + "/nb-" + ecSSTableId + "-big-" + sst;
             Path sourcePath = Paths.get(sourceFileName);
             Path destPath = Paths.get(destFileName);
             Files.move(sourcePath, destPath);
         }
 
         // Write a TOC.txt file and rename other files
-        String tocFileName = dataDir + "nb-" + ecSSTableId + "-big-TOC.txt";
+        String tocFileName = dataDir + "/nb-" + ecSSTableId + "-big-TOC.txt";
         List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt");
         Path tocFile = Paths.get(tocFileName);
         Files.write(tocFile, lines);
