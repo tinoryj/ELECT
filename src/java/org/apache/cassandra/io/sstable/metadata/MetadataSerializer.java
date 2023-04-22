@@ -84,6 +84,9 @@ public class MetadataSerializer implements IMetadataSerializer {
             out.writeInt(lastPosition);
             updateChecksumInt(crc, lastPosition);
             int size = type.serializer.serializedSize(version, component);
+            if (type == MetadataType.STATS) {
+                size = size * 2;
+            }
             lastPosition += size + (checksum ? CHECKSUM_LENGTH : 0);
             sizes.put(type, size);
         }
