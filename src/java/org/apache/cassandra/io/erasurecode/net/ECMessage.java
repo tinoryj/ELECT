@@ -29,6 +29,7 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -69,7 +70,7 @@ public final class ECMessage {
     public List<InetAddressAndPort> replicaNodes;
     public List<InetAddressAndPort> parityNodes;
 
-    private static int GLOBAL_COUNTER = 0;
+    private static AtomicInteger GLOBAL_COUNTER = new AtomicInteger(0);
     public String repEpsString;
     public String parityNodesString;
 
@@ -113,7 +114,7 @@ public final class ECMessage {
 
         // create a Message for sstContent
         Message<ECMessage> message = null;
-        GLOBAL_COUNTER++;
+        // GLOBAL_COUNTER++;
 
         getTargetEdpoints(this);
 
@@ -150,7 +151,7 @@ public final class ECMessage {
         InetAddressAndPort primaryNode = ecMessage.replicaNodes.get(0);
         int primaryNodeIndex = liveEndpoints.indexOf(primaryNode);
 
-        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER % ecMessage.ecDataNum+1))%n);
+        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER.getAndIncrement() % ecMessage.ecDataNum+1))%n);
         for (int i = startIndex; i < ecMessage.ecParityNum+startIndex; i++) {
             int index = i%n;
             if(index==primaryNodeIndex) {
