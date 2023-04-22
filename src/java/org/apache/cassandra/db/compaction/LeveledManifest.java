@@ -302,7 +302,7 @@ public class LeveledManifest {
 
         // [CASSANDRAEC]
         for(SSTableReader sstable : candidates) {
-            if(sstable.isReplicationTransferredToErasureCoding()) {
+            if(!sstable.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
                 candidates.remove(sstable);
             }
         }
