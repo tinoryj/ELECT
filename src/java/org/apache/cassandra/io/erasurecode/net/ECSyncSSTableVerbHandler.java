@@ -18,9 +18,11 @@
 
 package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.DecoratedKeyComparator;
@@ -40,7 +42,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     public static final ECSyncSSTableVerbHandler instance = new ECSyncSSTableVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECSyncSSTableVerbHandler.class);
 
-    private static int GLOBAL_COUNTER = 0;
+    private static AtomicInteger GLOBAL_COUNTER = new AtomicInteger(0);
 
 
 
@@ -80,9 +82,11 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
 
         // Get sstales in byte.
         // TODO: save the recieved data to a certain location based on the keyspace name and cf name
+        String hostName = InetAddress.getLocalHost().getHostName();
+        int fileCount = GLOBAL_COUNTER.getAndIncrement();
         String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
-        // the full name is user.dir/data/tmp/${COUNTER}-XXX.db
-        String tmpFileName = dataForRewriteDir + String.valueOf(GLOBAL_COUNTER) + "-";
+        // the full name is user.dir/data/tmp/${HostName}-${COUNTER}-XXX.db
+        String tmpFileName = dataForRewriteDir + hostName + "-" + String.valueOf(fileCount) + "-";
         String filterFileName = tmpFileName + "Filter.db";
         ECNetutils.writeBytesToFile(filterFileName, sstInBytes.sstFilter);
         String indexFileName = tmpFileName + "Index.db";
@@ -92,10 +96,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
 
         StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
                                                          new DataForRewrite(sourceKeys, String.valueOf(GLOBAL_COUNTER) + "-"));
-        GLOBAL_COUNTER++;
-        if(GLOBAL_COUNTER == Integer.MAX_VALUE) {
-            GLOBAL_COUNTER = 0;
-        }
+    
 
 
         // logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, received key num is {}, targetCfName is {}, sstHash is {}", 
@@ -121,5 +122,9 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
             Tracing.trace("Enqueuing forwarded write to {}", target);
             MessagingService.instance().send(useSameMessageID ? message : builder.withId(id).build(), target);
         });
+    }
+    public static void main(String[] args) throws Exception {
+        String hostName = InetAddress.getLocalHost().getHostName();
+        logger.debug(hostName);
     }
 }

@@ -179,6 +179,20 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     private static final ScheduledExecutorPlus syncExecutor = initSyncExecutor();
 
+
+        // Reset
+        public static final String RESET = "\033[0m"; // Text Reset
+
+        // Regular Colors
+        public static final String WHITE = "\033[0;30m"; // WHITE
+        public static final String RED = "\033[0;31m"; // RED
+        public static final String GREEN = "\033[0;32m"; // GREEN
+        public static final String YELLOW = "\033[0;33m"; // YELLOW
+        public static final String BLUE = "\033[0;34m"; // BLUE
+        public static final String PURPLE = "\033[0;35m"; // PURPLE
+        public static final String CYAN = "\033[0;36m"; // CYAN
+        public static final String GREY = "\033[0;37m"; // GREY
+
     private static ScheduledExecutorPlus initSyncExecutor() {
         if (DatabaseDescriptor.isClientOrToolInitialized())
             return null;
@@ -417,7 +431,12 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             String destFileName = dataDir + "/nb-" + ecSSTableId + "-big-" + sst;
             Path sourcePath = Paths.get(sourceFileName);
             Path destPath = Paths.get(destFileName);
-            Files.move(sourcePath, destPath);
+            if(Files.exists(sourcePath)) {
+                Files.move(sourcePath, destPath);
+            } else {
+                throw new IOException("No such a path for "+sourceFileName);
+            }
+            
         }
 
         // Write a TOC.txt file and rename other files
@@ -601,7 +620,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             if (sstable.getKeyCache() != null)
                 logger.trace("key cache contains {}/{} keys", sstable.getKeyCache().size(),
                         sstable.getKeyCache().getCapacity());
-
+            if(components.contains(Component.EC_METADATA)) {
+                logger.info(RESET+"Open EC SSTables successfully! {}", sstable.getFilename()+YELLOW);
+            }
             return sstable;
         } catch (Throwable t) {
             sstable.selfRef().release();
