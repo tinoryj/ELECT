@@ -19,9 +19,12 @@
 package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.DecoratedKeyComparator;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.net.ForwardingInfo;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
@@ -36,25 +39,65 @@ import org.slf4j.LoggerFactory;
 public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     public static final ECSyncSSTableVerbHandler instance = new ECSyncSSTableVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECSyncSSTableVerbHandler.class);
+
+    private static int GLOBAL_COUNTER = 0;
+
+
+
+    public static class DataForRewrite {
+        public final List<DecoratedKey> sourceKeys;
+        // public final SSTablesInBytes sstInBytes;
+        public String fileNamePrefix;
+
+        public DataForRewrite(List<DecoratedKey> sourceKeys, String fileNamePrefix) {
+            this.sourceKeys = sourceKeys;
+            // this.sstInBytes = sstInBytes;
+            this.fileNamePrefix = fileNamePrefix;
+        }
+    }
+
     @Override
     public void doVerb(Message<ECSyncSSTable> message) throws IOException {
-        
+        // logger.debug("rymDebug: this is ECSyncSSTableVerbHandler");
         // Check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
             forwardToLocalNodes(message, forwardTo);
             logger.debug("rymDebug: this is a forwarding header");
-        }
-            
+        }  
 
         // collect sstcontent
-        // logger.debug("rymDebug: this is ECSyncSSTableVerbHandler");
+        List<String> allKey = message.payload.allKey;
+        SSTablesInBytes sstInBytes = message.payload.sstInBytes;
+        String cfName = message.payload.targetCfName;
+
+        // Get all keys 
         List<DecoratedKey> sourceKeys = new ArrayList<DecoratedKey>();
-        for(String key : message.payload.allKey) {
-            sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", message.payload.targetCfName, key));
+        for(String key : allKey) {
+            sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
         }
+        Collections.sort(sourceKeys, new DecoratedKeyComparator());
+
+        // Get sstales in byte.
+        // TODO: save the recieved data to a certain location based on the keyspace name and cf name
+        String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
+        // the full name is user.dir/data/tmp/${COUNTER}-XXX.db
+        String tmpFileName = dataForRewriteDir + String.valueOf(GLOBAL_COUNTER) + "-";
+        String filterFileName = tmpFileName + "Filter.db";
+        ECNetutils.writeBytesToFile(filterFileName, sstInBytes.sstFilter);
+        String indexFileName = tmpFileName + "Index.db";
+        ECNetutils.writeBytesToFile(indexFileName, sstInBytes.sstIndex);
+        String statsFileName = tmpFileName + "Statistics.db";
+        ECNetutils.writeBytesToFile(statsFileName, sstInBytes.sstStats);
+
         StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
-                                                         sourceKeys);
+                                                         new DataForRewrite(sourceKeys, String.valueOf(GLOBAL_COUNTER) + "-"));
+        GLOBAL_COUNTER++;
+        if(GLOBAL_COUNTER == Integer.MAX_VALUE) {
+            GLOBAL_COUNTER = 0;
+        }
+
+
         // logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, received key num is {}, targetCfName is {}, sstHash is {}", 
         //              message.from(),
         //              StorageService.instance.globalSSTMap.size(), 
@@ -62,6 +105,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         //              message.payload.targetCfName,
         //              message.payload.sstHashID);
     }
+
 
     private static void forwardToLocalNodes(Message<ECSyncSSTable> originalMessage, ForwardingInfo forwardTo) {
         Message.Builder<ECSyncSSTable> builder = Message.builder(originalMessage)

@@ -98,13 +98,13 @@ public class SingleSSTableLCSTask extends AbstractCompactionTask {
     }
 
     @Override
-    protected int executeInternal(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys) {
+    protected int executeInternal(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'executeInternal'");
     }
 
     @Override
-    protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+    protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
     }

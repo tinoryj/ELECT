@@ -153,4 +153,10 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
         return create(cfs, desc, keyCount, repairedAt, pendingRepair, isTransient,
                 isReplicationTransferredToErasureCoding, 0, header);
     }
+
+    @Override
+    protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
+    }
 }

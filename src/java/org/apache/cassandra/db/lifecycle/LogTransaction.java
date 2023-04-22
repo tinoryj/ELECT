@@ -549,4 +549,10 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
             }
         }
     }
+
+    @Override
+    protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
+    }
 }

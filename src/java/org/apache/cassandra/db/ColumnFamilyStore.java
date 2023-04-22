@@ -125,7 +125,9 @@ import org.apache.cassandra.index.transactions.UpdateTransaction;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTable;
@@ -308,7 +310,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     public final OpOrder readOrdering = new OpOrder();
 
     /* This is used to generate the next index for a SSTable */
-    private final Supplier<? extends SSTableId> sstableIdGenerator;
+    public final Supplier<? extends SSTableId> sstableIdGenerator;
 
     public final SecondaryIndexManager indexManager;
     public final TableViews viewManager;
@@ -516,10 +518,17 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 // sstable.getScanner();
 
                                 InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
+                                // read file here
+                                byte[] filterFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
+                                byte[] indexFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
+                                byte[] statsFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
+                                
+                                SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile);
+
                                 for (InetAddressAndPort rpn : replicaNodes) {
                                     if (!rpn.equals(locaIP)) {
                                         String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                                        ECSyncSSTable ecSync = new ECSyncSSTable(allKeys, sstHashID, targetCfName);
+                                        ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys, sstInBytes);
                                         ecSync.sendSSTableToSecondary(rpn);
                                     }
                                 }
@@ -1411,7 +1420,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 }
 
                 @Override
-                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1769,14 +1778,25 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     // rewrite the sstables based on the source decorated keys
     public CompactionManager.AllSSTableOpStatus sstablesRewrite(final List<DecoratedKey> sourceKeys,
             List<SSTableReader> sstables,
+            SSTableReader ecSSTable,
+            final LifecycleTransaction txn,
             final boolean skipIfCurrentVersion,
             final long skipIfNewerThanTimestamp,
             final boolean skipIfCompressionMatches,
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite");
+
         return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables,
                 skipIfCurrentVersion,
+
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
+    }
+
+    // [CASSANDRAEC]
+    public void replaceSSTable(SSTableReader ecSSTable, final LifecycleTransaction txn) {
+        // notify sstable changes to view and leveled generation
+        // unmark sstable compacting status
+        maybeFail(txn.commitEC(null, ecSSTable));
     }
 
     public CompactionManager.AllSSTableOpStatus relocateSSTables(int jobs)

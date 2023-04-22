@@ -172,6 +172,7 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         int count = in.readInt();
         logger.debug("[Tinoryj] read check sum total number = {}, total length is = {}", count, length);
+
         updateChecksumInt(crc, count);
         maybeValidateChecksum(crc, in, descriptor);
 
@@ -216,7 +217,7 @@ public class MetadataSerializer implements IMetadataSerializer {
 
             crc.reset();
             crc.update(buffer);
-            maybeValidateChecksum(crc, in, descriptor);
+            maybeValidateChecksum(crc, in, descriptor, type);
             try (DataInputBuffer dataInputBuffer = new DataInputBuffer(buffer)) {
                 components.put(type, type.serializer.deserialize(descriptor.version, dataInputBuffer));
             }
@@ -242,6 +243,7 @@ public class MetadataSerializer implements IMetadataSerializer {
                     "[Tinoryj] SUCCESS!!! get original check sum [{}], the actual check sum is [{}], file name = {}, actual file size = {}",
                     expectedChecksum,
                     actualChecksum, filename, (new File(filename)).length());
+
         }
         return;
         // if (actualChecksum != expectedChecksum) {
@@ -249,6 +251,23 @@ public class MetadataSerializer implements IMetadataSerializer {
         // throw new CorruptSSTableException(new IOException("Checksums do not match for
         // " + filename), filename);
         // }
+    }
+
+    private static void maybeValidateChecksum(CRC32 crc, FileDataInput in, Descriptor descriptor, MetadataType type) throws IOException {
+        if (!descriptor.version.hasMetadataChecksum())
+            return;
+
+        int actualChecksum = (int) crc.getValue();
+        int expectedChecksum = in.readInt();
+
+        String filename = descriptor.filenameFor(Component.STATS);
+        if (actualChecksum != expectedChecksum) {
+            logger.error("rymError: actual checksum is {}, expected checksum is {}, check type is {}, file name is {}",
+             actualChecksum, expectedChecksum, type, filename);
+            throw new CorruptSSTableException(new IOException("Checksums do not match for " + filename), filename);
+        }else if (!filename.contains("usertable-")){
+            logger.info("rymInfo: file name {} for type {} checksum is correct", filename, type);
+        }
     }
 
     @Override

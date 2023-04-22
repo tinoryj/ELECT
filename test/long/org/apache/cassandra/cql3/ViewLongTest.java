@@ -34,6 +34,7 @@ import org.apache.cassandra.batchlog.BatchlogManager;
 import org.apache.cassandra.concurrent.NamedThreadFactory;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.WrappedRunnable;
 
 public class ViewLongTest extends ViewAbstractParameterizedTest
@@ -91,7 +92,7 @@ public class ViewLongTest extends ViewAbstractParameterizedTest
                 }
 
                 @Override
-                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }

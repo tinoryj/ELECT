@@ -113,9 +113,9 @@ public class CompactionTask extends AbstractCompactionTask {
     }
 
     // [CASSANDRAEC]
-    protected int executeInternal(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys) {
+    protected int executeInternal(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) {
         this.activeCompactions = activeCompactions == null ? ActiveCompactionsTracker.NOOP : activeCompactions;
-        run(sourceKeys);
+        run(sourceKeys, ecSSTable);
         return transaction.originals().size();
     }
 
@@ -137,7 +137,7 @@ public class CompactionTask extends AbstractCompactionTask {
     }
 
     // [CASSANDRAEC] rewrite the sstables
-    protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+    protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
         // The collection of sstables passed may be empty (but not null); even if
         // it is not empty, it may compact down to nothing if all rows are deleted.
         assert transaction != null;

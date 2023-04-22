@@ -106,8 +106,10 @@ import org.apache.cassandra.dht.Token.TokenFactory;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.gms.*;
 import org.apache.cassandra.hints.HintsService;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
 import org.apache.cassandra.io.sstable.SSTableLoader;
 import org.apache.cassandra.io.sstable.format.SSTableFormat;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.VersionAndType;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.PathUtils;
@@ -179,7 +181,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public static final int RING_DELAY_MILLIS = getRingDelay(); // delay after which we assume ring has stablized
     public static final int SCHEMA_DELAY_MILLIS = getSchemaDelay();
 
-    public Map<String, List<DecoratedKey>> globalSSTMap = new HashMap<String, List<DecoratedKey>>();
+    // public Map<String, List<DecoratedKey>> globalSSTMap = new HashMap<String, List<DecoratedKey>>();
+    public Map<String, DataForRewrite> globalSSTMap = new HashMap<String, DataForRewrite>();
 
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 
@@ -776,7 +779,7 @@ public class StorageService extends NotificationBroadcasterSupport
             }
 
             @Override
-            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+            protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

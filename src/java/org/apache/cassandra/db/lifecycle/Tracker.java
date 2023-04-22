@@ -437,6 +437,25 @@ public class Tracker
         return accumulate;
     }
 
+    // [CASSANDRAEC]
+    Throwable notifySSTablesChanged(Collection<SSTableReader> removed, Collection<SSTableReader> added, OperationType compactionType, Throwable accumulate, SSTableReader ecSStable)
+    {
+        added.add(ecSStable);
+        INotification notification = new SSTableListChangedNotification(added, removed, compactionType);
+        for (INotificationConsumer subscriber : subscribers)
+        {
+            try
+            {
+                subscriber.handleNotification(notification, this);
+            }
+            catch (Throwable t)
+            {
+                accumulate = merge(accumulate, t);
+            }
+        }
+        return accumulate;
+    }
+
     Throwable notifyAdded(Iterable<SSTableReader> added, boolean isInitialSSTables, Memtable memtable, Throwable accumulate)
     {
         INotification notification;

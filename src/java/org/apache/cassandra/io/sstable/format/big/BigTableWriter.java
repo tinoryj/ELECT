@@ -526,6 +526,12 @@ public class BigTableWriter extends SSTableWriter {
             accumulate = dataFile.abort(accumulate);
             return accumulate;
         }
+
+        @Override
+        protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
+        }
     }
 
     private void writeMetadata(Descriptor desc, Map<MetadataType, MetadataComponent> components) {
@@ -658,6 +664,12 @@ public class BigTableWriter extends SSTableWriter {
             accumulate = bf.close(accumulate);
             accumulate = builder.close(accumulate);
             return accumulate;
+        }
+
+        @Override
+        protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
         }
     }
 

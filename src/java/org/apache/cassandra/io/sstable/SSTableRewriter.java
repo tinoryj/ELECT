@@ -206,6 +206,16 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         return accumulate;
     }
 
+    // [CASSANDRAEC]
+    @Override
+    protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+        for (SSTableWriter writer : writers)
+            accumulate = writer.commit(accumulate);
+
+        accumulate = transaction.commitEC(accumulate, ecSSTable);
+        return accumulate;
+    }
+
     /**
      * Replace the readers we are rewriting with cloneWithNewStart, reclaiming any page cache that is no longer
      * needed, and transferring any key cache entries over to the new reader, expiring them from the old. if reset
@@ -367,15 +377,6 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         return preparedForCommit;
     }
 
-    // [CASSANDRAEC]
-    public List<SSTableReader> finishedFirstPhase()
-    {
-        logger.debug("rymDebug: finishedFirstPhase, state is {}", state());
-        assert state() == State.COMMITTED_FIRST_PHASE || state() == State.READY_TO_COMMIT || state() == State.COMMITTED;
-        // logger.debug("rymDebug: updated state is {}", state());
-        return preparedForCommit;
-    }
-
     protected void doPrepare()
     {
         switchWriter(null);
@@ -399,38 +400,9 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
 
         if (!keepOriginals)
             transaction.obsoleteOriginals();
-        // [CASSANDRAEC]
-        // transaction.updateState();
+
         transaction.prepareToCommit();
     }
-
-    // // [CASSANDRAEC]
-    // protected void doPrepareFirstPhase()
-    // {
-    //     switchWriter(null);
-
-    //     if (throwEarly)
-    //         throw new RuntimeException("exception thrown early in finish, for testing");
-
-    //     // No early open to finalize and replace
-    //     for (SSTableWriter writer : writers)
-    //     {
-    //         assert writer.getFilePointer() > 0;
-    //         writer.setRepairedAt(repairedAt).setOpenResult(true).prepareToCommit();
-    //         SSTableReader reader = writer.finished();
-    //         transaction.update(reader, false);
-    //         preparedForCommit.add(reader);
-    //     }
-    //     transaction.checkpoint();
-
-    //     if (throwLate)
-    //         throw new RuntimeException("exception thrown after all sstables finished, for testing");
-
-    //     if (!keepOriginals)
-    //         transaction.obsoleteOriginals();
-
-    //     transaction.prepareToCommit();
-    // }
 
     public void throwDuringPrepare(boolean earlyException)
     {

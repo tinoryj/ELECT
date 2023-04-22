@@ -99,6 +99,11 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     }
 
     @Override
+    protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+        return sstableWriter.commitEC(accumulate, ecSSTable);
+    }
+
+    @Override
     protected void doPrepare() {
         sstableWriter.prepareToCommit();
     }
@@ -115,9 +120,10 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         return sstableWriter.finished();
     }
 
-    public Collection<SSTableReader> finishFirstPhase() {
-        super.finishFirstPhase();
-        return sstableWriter.finishedFirstPhase();
+    // [CASSANDRAEC]
+    public Collection<SSTableReader> finish(SSTableReader ecSSTable) {
+        super.finish(ecSSTable);
+        return sstableWriter.finished();
     }
 
     /**
@@ -150,6 +156,13 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         return super.doPostCleanup(accumulate);
     }
 
+    // [CASSANDRAEC]
+    @Override
+    protected Throwable doPostCleanup(Throwable accumulate, SSTableReader ecSSTable) {
+        sstableWriter.close();
+        return super.doPostCleanup(accumulate);
+    }
+    
     protected abstract boolean realAppend(UnfilteredRowIterator partition);
 
     // [CASSANDRAEC]
