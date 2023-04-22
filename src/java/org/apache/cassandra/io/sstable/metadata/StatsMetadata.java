@@ -178,8 +178,9 @@ public class StatsMetadata extends MetadataComponent {
                         this.hashID = sb.toString();
                     }
 
-                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash length is {}",
-                    //     this.hashID, this.hashID.length());
+                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash
+                    // length is {}",
+                    // this.hashID, this.hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
                     logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
@@ -386,12 +387,11 @@ public class StatsMetadata extends MetadataComponent {
 
         public void serialize(Version version, StatsMetadata component, DataOutputPlus out) throws IOException {
             if (version.hasHashID() && component.hashID != null) {
-                Boolean isHashIDExist = true;
-                out.writeBoolean(isHashIDExist);
                 out.writeBytes(component.hashID);
                 logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
             } else {
-                byte [] placeHolder = new byte[32];
+                byte[] placeHolder = new byte[32];
+                Arrays.fill(placeHolder, (byte) 0);
                 String placeHolderStr = placeHolder.toString();
                 out.writeBytes(placeHolderStr);
                 logger.debug("[Tinoryj] Write fake HashID place holder");
@@ -570,5 +570,5 @@ public class StatsMetadata extends MetadataComponent {
                     hashIDRawStr);
         }
     }
-    
+
 }

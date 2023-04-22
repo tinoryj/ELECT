@@ -71,7 +71,9 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         // build and write toc
         int lastPosition = 4 + (8 * sortedComponents.size()) + (checksum ? 2 * CHECKSUM_LENGTH : 0);
+        // Debug-tinoryj
         logger.debug("[Tinoryj] gen CRC lastPosition = {}", lastPosition);
+        // ----------------
         Map<MetadataType, Integer> sizes = new EnumMap<>(MetadataType.class);
         for (MetadataComponent component : sortedComponents) {
             MetadataType type = component.getType();
@@ -84,12 +86,8 @@ public class MetadataSerializer implements IMetadataSerializer {
             int size = type.serializer.serializedSize(version, component);
             lastPosition += size + (checksum ? CHECKSUM_LENGTH : 0);
             sizes.put(type, size);
-            logger.debug("[Tinoryj] gen CRC position for metadata type = {}, type in int = {}, size = {}", type,
-                    type.ordinal(),
-                    size);
         }
         maybeWriteChecksum(crc, out, version);
-
         // serialize components
         for (MetadataComponent component : sortedComponents) {
             byte[] bytes;
@@ -103,8 +101,11 @@ public class MetadataSerializer implements IMetadataSerializer {
             crc.update(bytes);
             maybeWriteChecksum(crc, out, version);
             MetadataType type = component.getType();
-            logger.debug("[Tinoryj] gen CRC for metadata type = {}, type in int = {}, crc = {}", type, type.ordinal(),
-                    (int) crc.getValue());
+            logger.debug(
+                    "[Tinoryj] gen CRC for metadata type = {}, type in int = [{}], crc = [{}], the serialized size = {}, the generated serialized size = {}",
+                    type,
+                    type.ordinal(),
+                    (int) crc.getValue(), bytes.length, sizes.get(component.getType()));
         }
     }
 
@@ -186,7 +187,8 @@ public class MetadataSerializer implements IMetadataSerializer {
                 in.skipBytes(lengths[i]);
                 continue;
             }
-            logger.debug("[Tinoryj] Process metadata type = {}", type);
+            logger.debug("[Tinoryj] Process metadata type = {}, length = {}", type,
+                    isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]);
             byte[] buffer = new byte[isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]];
             in.readFully(buffer);
 
@@ -207,10 +209,16 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         int actualChecksum = (int) crc.getValue();
         int expectedChecksum = in.readInt();
+        String filename = descriptor.filenameFor(Component.STATS);
         if (actualChecksum != expectedChecksum) {
-            logger.debug("[Tinoryj] ERROR!!! get original check sum [{}], the actual check sum is [{}]",
+            logger.debug("[Tinoryj] ERROR!!! get original check sum [{}], the actual check sum is [{}], file name = {}",
                     expectedChecksum,
-                    actualChecksum);
+                    actualChecksum, filename);
+        } else {
+            logger.debug(
+                    "[Tinoryj] SUCCESS!!! get original check sum [{}], the actual check sum is [{}], file name = {}",
+                    expectedChecksum,
+                    actualChecksum, filename);
         }
         return;
         // if (actualChecksum != expectedChecksum) {
