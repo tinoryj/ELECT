@@ -659,6 +659,8 @@ public class CompactionTask extends AbstractCompactionTask {
                 .isReplicationTransferredToErasureCoding();
         if (!Iterables.all(sstables, (sstable -> (!sstable.getColumnFamilyName().equals("usertable") ||
                                              (sstable.isReplicationTransferredToErasureCoding() == isReplicationTransferredToErasureCoding ))))) {
+            logger.debug("isReplicationTransferredToErasureCoding {}, (sstable.isReplicationTransferredToErasureCoding() is {}",
+            isReplicationTransferredToErasureCoding,  sstable.isReplicationTransferredToErasureCoding());
             throw new RuntimeException(
                     "Attempting to compact replication transferred sstables with non transient sstables");
         }

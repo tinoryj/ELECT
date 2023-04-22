@@ -78,7 +78,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         for(String key : allKey) {
             sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
         }
-        Collections.sort(sourceKeys, new DecoratedKeyComparator());
+        // Collections.sort(sourceKeys, new DecoratedKeyComparator());
 
         // Get sstales in byte.
         // TODO: save the recieved data to a certain location based on the keyspace name and cf name
