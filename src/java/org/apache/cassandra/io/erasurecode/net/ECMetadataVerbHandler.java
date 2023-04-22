@@ -147,6 +147,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                 cfs.replaceSSTable(ecSSTable, updateTxn);
                                 logger.debug(RED + "rymDebug: M or M1 missed some keys in the middle, update sstable!");
                             } else {
+                                cfs.replaceSSTable(ecSSTable, updateTxn);
                                 logger.warn("rymWarning: get unexpected sstables num");
                             }
                         } else if (rewriteSStables.size() > 1) {
