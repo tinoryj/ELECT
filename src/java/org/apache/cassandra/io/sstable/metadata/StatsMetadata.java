@@ -463,7 +463,7 @@ public class StatsMetadata extends MetadataComponent {
             in.readFully(buf, 0, 32);
             hashIDRawStr = new String(buf);
             logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
-            in.skipBytes(32);
+            // in.skipBytes(32);
 
             EstimatedHistogram partitionSizes = EstimatedHistogram.serializer.deserialize(in);
 
