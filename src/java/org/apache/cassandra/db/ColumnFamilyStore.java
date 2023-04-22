@@ -522,8 +522,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 byte[] filterFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
                                 byte[] indexFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
                                 byte[] statsFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
+                                byte[] summaryFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.SUMMARY));
                                 
-                                SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile);
+                                SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile, summaryFile);
 
                                 for (InetAddressAndPort rpn : replicaNodes) {
                                     if (!rpn.equals(locaIP)) {
