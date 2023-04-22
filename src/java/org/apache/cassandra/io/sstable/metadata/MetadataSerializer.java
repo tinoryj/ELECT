@@ -95,10 +95,19 @@ public class MetadataSerializer implements IMetadataSerializer {
                 component.getType().serializer.serialize(version, component, dob);
                 bytes = dob.getData();
             }
-            out.write(bytes);
-
+            if (bytes.length != sizes.get(component.getType())) {
+                logger.debug(
+                        "[Tinoryj] the component = {}, generated serialized size = {}, the actual get serialized size = {}",
+                        component.getType(),
+                        sizes.get(component.getType()),
+                        bytes.length);
+            }
+            byte[] byteCutToSize = new byte[sizes.get(component.getType())];
+            System.arraycopy(byteCutToSize, 0, bytes, 0, sizes.get(component.getType()));
+            out.write(byteCutToSize);
             crc.reset();
-            crc.update(bytes);
+            crc.update(byteCutToSize);
+
             maybeWriteChecksum(crc, out, version);
             MetadataType type = component.getType();
             logger.debug(

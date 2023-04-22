@@ -336,6 +336,8 @@ public class StatsMetadata extends MetadataComponent {
 
         public int serializedSize(Version version, StatsMetadata component) throws IOException {
             int size = 0;
+            // size of hashID.
+            size += 32;
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedPartitionSize);
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedCellPerPartitionCount);
             size += CommitLogPosition.serializer
@@ -380,8 +382,6 @@ public class StatsMetadata extends MetadataComponent {
                     size += UUIDSerializer.serializer.serializedSize(component.originatingHostId,
                             version.correspondingMessagingVersion());
             }
-            // size of hashID.
-            size += 32;
             return size;
         }
 
@@ -453,6 +453,7 @@ public class StatsMetadata extends MetadataComponent {
                     out.writeByte(0);
                 }
             }
+            logger.debug("[Tinoryj] serialize stats metadata actual size = {}", out.toString().length());
         }
 
         public StatsMetadata deserialize(Version version, DataInputPlus in) throws IOException {
