@@ -299,6 +299,15 @@ public class LeveledManifest {
             // small in L0.
             return l0Compaction;
         }
+
+        // [CASSANDRAEC]
+        for(SSTableReader sstable : candidates) {
+            if(!sstable.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
+                candidates.remove(sstable);
+            }
+        }
+
+
         return new CompactionCandidate(candidates, getNextLevel(candidates), maxSSTableSizeInBytes);
     }
 

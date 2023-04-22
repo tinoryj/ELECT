@@ -462,6 +462,9 @@ public class CompactionManager implements CompactionManagerMBean {
             FBUtilities.waitOnFutures(futures);
             if(txn.originals().isEmpty()) {
                 logger.info("Finished rewrite {} sstables successfully!", originalRewriteSSTablesNum);
+                for(SSTableReader sstable : txn.originals()) {
+                    txn.cancel(sstable);
+                }
             } else {
                 logger.warn(BLUE+"Still remaining {} sstables in this transaction {}", txn.originals().size()+RESET, txn.opId());
             }

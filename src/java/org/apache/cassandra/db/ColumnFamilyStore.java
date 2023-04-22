@@ -533,7 +533,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                         ecSync.sendSSTableToSecondary(rpn);
                                     }
                                 }
-                                // sstable.SetIsReplicationTransferredToErasureCoding();
+                                sstable.SetIsReplicationTransferredToErasureCoding();
 
                             } catch (IOException e) {
                                 logger.error("rymError: {}", e);

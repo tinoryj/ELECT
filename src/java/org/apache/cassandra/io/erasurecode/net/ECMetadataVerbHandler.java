@@ -127,6 +127,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                         // TODO: mark this sstable COMPACTION
                         SSTableReader ecSSTable = SSTableReader.openECSSTable(message.payload, cfs, fileNamePrefix);
+                        ecSSTable.SetIsReplicationTransferredToErasureCoding();
                         logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}", ecSSTable.getFilename());
                         final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(rewriteSStables, OperationType.COMPACTION);
 
