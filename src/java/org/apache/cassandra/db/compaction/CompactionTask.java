@@ -445,12 +445,6 @@ public class CompactionTask extends AbstractCompactionTask {
 
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
 
-            for(SSTableReader sstable : actuallyCompact) {
-                if(sstable.isReplicationTransferredToErasureCoding()) {
-                    transaction.cancel(sstable);
-                }
-                actuallyCompact.remove(sstable);
-            }
 
             Collection<SSTableReader> newSStables;
 
@@ -663,7 +657,8 @@ public class CompactionTask extends AbstractCompactionTask {
 
         boolean isReplicationTransferredToErasureCoding = sstables.iterator().next()
                 .isReplicationTransferredToErasureCoding();
-        if (!Iterables.all(sstables, (sstable -> (sstable.isReplicationTransferredToErasureCoding() == isReplicationTransferredToErasureCoding )))) {
+        if (!Iterables.all(sstables, (sstable -> (!sstable.getColumnFamilyName().equals("usertable") ||
+                                             (sstable.isReplicationTransferredToErasureCoding() == isReplicationTransferredToErasureCoding ))))) {
             throw new RuntimeException(
                     "Attempting to compact replication transferred sstables with non transient sstables");
         }
