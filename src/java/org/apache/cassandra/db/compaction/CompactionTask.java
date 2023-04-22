@@ -444,6 +444,14 @@ public class CompactionTask extends AbstractCompactionTask {
             long timeSpentWritingKeys;
 
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
+
+            for(SSTableReader sstable : actuallyCompact) {
+                if(sstable.isReplicationTransferredToErasureCoding()) {
+                    transaction.cancel(sstable);
+                }
+                actuallyCompact.remove(sstable);
+            }
+
             Collection<SSTableReader> newSStables;
 
             long[] mergedRowCounts;
