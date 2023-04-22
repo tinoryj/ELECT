@@ -424,7 +424,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         String dataDir = directory.get().toString();
         logger.debug("rymDebug: get data directory  {} (by prefix) for cf {}", dataDir, cfs.name);
       
-        List<String> sstables = List.of("Filter.db", "Index.db", "Statistics.db");
+        List<String> sstables = List.of("Filter.db", "Index.db", "Statistics.db", "Summary.db");
         logger.debug("rymDebug: get sstable id {} for ecMetadata!", ecSSTableId);
         for (String sst : sstables) {
             String sourceFileName = dataForRewriteDir + fileNamePrefix + sst;
@@ -441,7 +441,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         // Write a TOC.txt file and rename other files
         String tocFileName = dataDir + "/nb-" + ecSSTableId + "-big-TOC.txt";
-        List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt", "EC.db");
+        List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt", "EC.db", "Summary.db");
         Path tocFile = Paths.get(tocFileName);
         Files.write(tocFile, lines);
 

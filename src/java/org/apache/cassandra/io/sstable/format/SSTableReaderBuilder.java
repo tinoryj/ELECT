@@ -500,7 +500,7 @@ public abstract class SSTableReaderBuilder {
 
                     throw t;
                 }
-            } else if (Files.exists(Paths.get(descriptor.filenameFor(Component.DATA)))) {
+            } else if (Files.exists(Paths.get(descriptor.filenameFor(Component.EC_METADATA)))) {
                 // No data file, this sst may be changed to ec metadata
                 logger.debug("[Tinoryj] Find only ec metadata path = {}", descriptor.filenameFor(Component.EC_METADATA));
                 try (FileHandle.Builder ibuilder = new FileHandle.Builder(

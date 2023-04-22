@@ -76,13 +76,16 @@ public class ECSyncSSTable {
         public final byte[] sstIndex;
         // Statistics.db in bytes
         public final byte[] sstStats;
+        // Summary.db in bytes
+        public final byte[] sstSummary;
 
-        public SSTablesInBytes(byte[] sstFilter, byte[] sstIndex, byte[] sstStats) 
+        public SSTablesInBytes(byte[] sstFilter, byte[] sstIndex, byte[] sstStats, byte[] sstSummary) 
         {
             //this.allKey = allKey;
             this.sstFilter = sstFilter;
             this.sstIndex = sstIndex;
             this.sstStats = sstStats;
+            this.sstSummary = sstSummary;
         }
     };
 
@@ -169,28 +172,28 @@ public class ECSyncSSTable {
     
     }
 
-    public static void main(String[] args) {
-        byte[] test1 = new byte[] {1,2,3};
-        byte[] test2 = new byte[] {4,5,6};
-        byte[] test3 = new byte[] {7,8,9};
+    // public static void main(String[] args) {
+    //     byte[] test1 = new byte[] {1,2,3};
+    //     byte[] test2 = new byte[] {4,5,6};
+    //     byte[] test3 = new byte[] {7,8,9};
 
-        SSTablesInBytes test = new SSTablesInBytes(test1, test2, test3);
+    //     SSTablesInBytes test = new SSTablesInBytes(test1, test2, test3);
 
-        byte[] res;
-        try {
-            // res = converter.toByteArray(test);
-            res = ByteObjectConversion.objectToByteArray((Serializable) test);
-            logger.info("rymDebug: res length is {}", res.length);
-            SSTablesInBytes sstInBytes = (SSTablesInBytes) ByteObjectConversion.byteArrayToObject(res);
-            logger.info("rymDebug: sstable in bytes filter {}, index {}, statistics {}", sstInBytes.sstFilter, sstInBytes.sstIndex, sstInBytes.sstStats);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            logger.error("error info : {}", e);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
+    //     byte[] res;
+    //     try {
+    //         // res = converter.toByteArray(test);
+    //         res = ByteObjectConversion.objectToByteArray((Serializable) test);
+    //         logger.info("rymDebug: res length is {}", res.length);
+    //         SSTablesInBytes sstInBytes = (SSTablesInBytes) ByteObjectConversion.byteArrayToObject(res);
+    //         logger.info("rymDebug: sstable in bytes filter {}, index {}, statistics {}", sstInBytes.sstFilter, sstInBytes.sstIndex, sstInBytes.sstStats);
+    //     } catch (IOException e) {
+    //         // TODO Auto-generated catch block
+    //         logger.error("error info : {}", e);
+    //     } catch (Exception e) {
+    //         // TODO Auto-generated catch block
+    //         e.printStackTrace();
+    //     }
+    // }
     
 }
 

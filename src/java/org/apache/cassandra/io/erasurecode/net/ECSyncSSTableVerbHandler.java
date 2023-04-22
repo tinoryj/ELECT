@@ -94,6 +94,8 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         ECNetutils.writeBytesToFile(indexFileName, sstInBytes.sstIndex);
         String statsFileName = tmpFileName + "Statistics.db";
         ECNetutils.writeBytesToFile(statsFileName, sstInBytes.sstStats);
+        String summaryFileName = tmpFileName + "Summary.db";
+        ECNetutils.writeBytesToFile(summaryFileName, sstInBytes.sstSummary);
 
         StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
                                                          new DataForRewrite(sourceKeys, fileNamePrefix));
