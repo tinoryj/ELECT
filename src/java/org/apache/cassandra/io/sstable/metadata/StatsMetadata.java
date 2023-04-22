@@ -453,7 +453,6 @@ public class StatsMetadata extends MetadataComponent {
                     out.writeByte(0);
                 }
             }
-            logger.debug("[Tinoryj] serialize stats metadata actual size = {}", out.toString().length());
         }
 
         public StatsMetadata deserialize(Version version, DataInputPlus in) throws IOException {
