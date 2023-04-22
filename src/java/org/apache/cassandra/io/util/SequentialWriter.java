@@ -437,7 +437,7 @@ public class SequentialWriter extends BufferedDataOutputStreamPlus implements Tr
     }
 
     @Override
-    public Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable) {
+    public Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'commitEC'");
     }

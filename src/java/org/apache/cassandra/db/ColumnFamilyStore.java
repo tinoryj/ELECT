@@ -1796,7 +1796,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     public void replaceSSTable(SSTableReader ecSSTable, final LifecycleTransaction txn) {
         // notify sstable changes to view and leveled generation
         // unmark sstable compacting status
-        maybeFail(txn.commitEC(null, ecSSTable));
+        maybeFail(txn.commitEC(null, ecSSTable, false));
     }
 
     public CompactionManager.AllSSTableOpStatus relocateSSTables(int jobs)

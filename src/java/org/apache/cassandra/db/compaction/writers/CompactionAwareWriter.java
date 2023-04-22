@@ -100,7 +100,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
 
     @Override
     protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
-        return sstableWriter.commitEC(accumulate, ecSSTable);
+        return sstableWriter.commitEC(accumulate, ecSSTable, true);
     }
 
     @Override

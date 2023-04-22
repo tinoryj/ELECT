@@ -129,8 +129,11 @@ public interface Transactional extends AutoCloseable
         }
 
         // [CASSANDRAEC]
-        public final Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable)
+        public final Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite)
         {
+            if(!isRewrite) {
+                state = State.READY_TO_COMMIT;
+            }
             if (state != State.READY_TO_COMMIT)
                 throw new IllegalStateException("Cannot commit unless READY_TO_COMMIT; state is " + state);
             accumulate = doCommit(accumulate, ecSSTable);
@@ -231,7 +234,7 @@ public interface Transactional extends AutoCloseable
         // [CASSANDRAEC]
         public final void commitEC(SSTableReader ecSSTable)
         {
-            maybeFail(commitEC(null, ecSSTable));
+            maybeFail(commitEC(null, ecSSTable, true));
         }
 
 
@@ -253,7 +256,7 @@ public interface Transactional extends AutoCloseable
     Throwable commit(Throwable accumulate);
 
     // [CASSANDRAEC]
-    Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable);
+    Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite);
 
     // release any resources, then rollback all state changes (unless commit() has already been invoked)
     Throwable abort(Throwable accumulate);

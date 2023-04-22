@@ -212,7 +212,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         for (SSTableWriter writer : writers)
             accumulate = writer.commit(accumulate);
 
-        accumulate = transaction.commitEC(accumulate, ecSSTable);
+        accumulate = transaction.commitEC(accumulate, ecSSTable, true);
         return accumulate;
     }
 
