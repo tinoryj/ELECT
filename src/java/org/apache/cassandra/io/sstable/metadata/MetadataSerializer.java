@@ -84,9 +84,9 @@ public class MetadataSerializer implements IMetadataSerializer {
             out.writeInt(lastPosition);
             updateChecksumInt(crc, lastPosition);
             int size = type.serializer.serializedSize(version, component);
-            if (type == MetadataType.STATS) {
-                size = size * 2;
-            }
+            // if (type == MetadataType.STATS) {
+            // size = size * 2;
+            // }
             lastPosition += size + (checksum ? CHECKSUM_LENGTH : 0);
             sizes.put(type, size);
         }
@@ -171,7 +171,7 @@ public class MetadataSerializer implements IMetadataSerializer {
         int length = (int) in.bytesRemaining();
 
         int count = in.readInt();
-        logger.debug("[Tinoryj] read check sum total number = {}", count);
+        logger.debug("[Tinoryj] read check sum total number = {}, total length is = {}", count, length);
         updateChecksumInt(crc, count);
         maybeValidateChecksum(crc, in, descriptor);
 

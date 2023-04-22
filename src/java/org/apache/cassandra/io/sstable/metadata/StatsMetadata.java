@@ -342,8 +342,10 @@ public class StatsMetadata extends MetadataComponent {
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedCellPerPartitionCount);
             size += CommitLogPosition.serializer
                     .serializedSize(component.commitLogIntervals.upperBound().orElse(CommitLogPosition.NONE));
-            size += 8 + 8 + 4 + 4 + 4 + 4 + 8 + 8; // mix/max timestamp(long), min/maxLocalDeletionTime(int), min/max
-                                                   // TTL, compressionRatio(double), repairedAt (long)
+            size += 8 + 8 + 8 + 4 + 4 + 4 + 4 + 8 + 8; // creationTimestamp/ mix/max timestamp(long),
+                                                       // min/maxLocalDeletionTime(int),
+                                                       // min/max
+                                                       // TTL, compressionRatio(double), repairedAt (long)
             size += TombstoneHistogram.serializer.serializedSize(component.estimatedTombstoneDropTime);
             size += TypeSizes.sizeof(component.sstableLevel);
             // min column names
@@ -482,6 +484,7 @@ public class StatsMetadata extends MetadataComponent {
 
             CommitLogPosition commitLogLowerBound = CommitLogPosition.NONE, commitLogUpperBound;
             commitLogUpperBound = CommitLogPosition.serializer.deserialize(in);
+            long creationTimestamp = in.readLong();
             long minTimestamp = in.readLong();
             long maxTimestamp = in.readLong();
             int minLocalDeletionTime = in.readInt();
@@ -551,7 +554,7 @@ public class StatsMetadata extends MetadataComponent {
             return new StatsMetadata(partitionSizes,
                     columnCounts,
                     commitLogIntervals,
-                    now().getLong(ChronoField.MILLI_OF_SECOND),
+                    creationTimestamp,
                     minTimestamp,
                     maxTimestamp,
                     minLocalDeletionTime,
