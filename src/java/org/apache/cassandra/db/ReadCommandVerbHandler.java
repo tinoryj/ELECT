@@ -92,10 +92,15 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             return;
         Token token;
 
-        if (command instanceof SinglePartitionReadCommand)
+        if (command instanceof SinglePartitionReadCommand) {
             token = ((SinglePartitionReadCommand) command).partitionKey().getToken();
-        else
+            logger.debug("[Tinoryj] touch SinglePartitionReadCommand, token is {}, the partition key is {}",
+                    token, ((SinglePartitionReadCommand) command).partitionKey().toString());
+        } else {
             token = ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken();
+            logger.debug("[Tinoryj] touch PartitionRangeReadCommand, token is {}",
+                    token);
+        }
 
         Replica replica = Keyspace.open(command.metadata().keyspace)
                 .getReplicationStrategy()

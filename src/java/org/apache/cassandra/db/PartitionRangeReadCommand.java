@@ -400,7 +400,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     for (SSTableReader sstable : view.sstables) {
                         if (sstable.isReplicationTransferredToErasureCoding()) {
                             logger.debug(
-                                    "Skip the sstable {} during search because it is transferred to erasure coding",
+                                    "Skip the metadata sstable {} during search because it is transferred to erasure coding",
                                     sstable.getFilename());
                             continue;
                         }
@@ -420,7 +420,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     // iterators can be empty for offline tools
                     if (inputCollector.isEmpty())
                         return EmptyIterators.unfilteredPartition(metadata());
-
+                    // [Tinoryj] Read to collect all possible kv pairs done
                     return checkCacheFilter(
                             UnfilteredPartitionIterators.mergeLazily(
                                     inputCollector.finalizeIterators(cfs, nowInSec(),

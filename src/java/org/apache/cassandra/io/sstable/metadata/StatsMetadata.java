@@ -178,8 +178,9 @@ public class StatsMetadata extends MetadataComponent {
                         this.hashID = sb.toString();
                     }
 
-                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash length is {}",
-                    //     this.hashID, this.hashID.length());
+                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash
+                    // length is {}",
+                    // this.hashID, this.hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
                     logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
@@ -335,12 +336,16 @@ public class StatsMetadata extends MetadataComponent {
 
         public int serializedSize(Version version, StatsMetadata component) throws IOException {
             int size = 0;
+            // size of hashID.
+            size += 32;
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedPartitionSize);
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedCellPerPartitionCount);
             size += CommitLogPosition.serializer
                     .serializedSize(component.commitLogIntervals.upperBound().orElse(CommitLogPosition.NONE));
-            size += 8 + 8 + 4 + 4 + 4 + 4 + 8 + 8; // mix/max timestamp(long), min/maxLocalDeletionTime(int), min/max
-                                                   // TTL, compressionRatio(double), repairedAt (long)
+            size += 8 + 8 + 8 + 4 + 4 + 4 + 4 + 8 + 8; // creationTimestamp/ mix/max timestamp(long),
+                                                       // min/maxLocalDeletionTime(int),
+                                                       // min/max
+                                                       // TTL, compressionRatio(double), repairedAt (long)
             size += TombstoneHistogram.serializer.serializedSize(component.estimatedTombstoneDropTime);
             size += TypeSizes.sizeof(component.sstableLevel);
             // min column names
@@ -379,23 +384,11 @@ public class StatsMetadata extends MetadataComponent {
                     size += UUIDSerializer.serializer.serializedSize(component.originatingHostId,
                             version.correspondingMessagingVersion());
             }
-            // size of hashID.
-            size += 32;
             return size;
         }
 
         public void serialize(Version version, StatsMetadata component, DataOutputPlus out) throws IOException {
-            if (version.hasHashID() && component.hashID != null) {
-                Boolean isHashIDExist = true;
-                out.writeBoolean(isHashIDExist);
-                out.writeBytes(component.hashID);
-                logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
-            } else {
-                byte [] placeHolder = new byte[32];
-                String placeHolderStr = placeHolder.toString();
-                out.writeBytes(placeHolderStr);
-                logger.debug("[Tinoryj] Write fake HashID place holder");
-            }
+
             EstimatedHistogram.serializer.serialize(component.estimatedPartitionSize, out);
             EstimatedHistogram.serializer.serialize(component.estimatedCellPerPartitionCount, out);
             CommitLogPosition.serializer
@@ -453,17 +446,20 @@ public class StatsMetadata extends MetadataComponent {
                     out.writeByte(0);
                 }
             }
+
+            if (version.hasHashID() && component.hashID != null) {
+                out.writeBytes(component.hashID);
+                logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
+            } else {
+                byte[] placeHolder = new byte[32];
+                Arrays.fill(placeHolder, (byte) 0);
+                String placeHolderStr = placeHolder.toString();
+                out.writeBytes(placeHolderStr);
+                logger.debug("[Tinoryj] Write fake HashID place holder");
+            }
         }
 
         public StatsMetadata deserialize(Version version, DataInputPlus in) throws IOException {
-
-            String hashIDRawStr;
-
-            byte[] buf = new byte[32];
-            in.readFully(buf, 0, 32);
-            hashIDRawStr = new String(buf);
-            logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
-            in.skipBytes(32);
 
             EstimatedHistogram partitionSizes = EstimatedHistogram.serializer.deserialize(in);
 
@@ -488,6 +484,7 @@ public class StatsMetadata extends MetadataComponent {
 
             CommitLogPosition commitLogLowerBound = CommitLogPosition.NONE, commitLogUpperBound;
             commitLogUpperBound = CommitLogPosition.serializer.deserialize(in);
+            long creationTimestamp = in.readLong();
             long minTimestamp = in.readLong();
             long maxTimestamp = in.readLong();
             int minLocalDeletionTime = in.readInt();
@@ -544,10 +541,20 @@ public class StatsMetadata extends MetadataComponent {
             if (version.hasOriginatingHostId() && in.readByte() != 0)
                 originatingHostId = UUIDSerializer.serializer.deserialize(in, 0);
 
+            String hashIDRawStr;
+
+            byte[] buf = new byte[32];
+            for (int i = 0; i < 32; i++) {
+                buf[i] = in.readByte();
+            }
+            hashIDRawStr = new String(buf);
+            logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
+            // in.skipBytes(32);
+
             return new StatsMetadata(partitionSizes,
                     columnCounts,
                     commitLogIntervals,
-                    now().getLong(ChronoField.MILLI_OF_SECOND),
+                    creationTimestamp,
                     minTimestamp,
                     maxTimestamp,
                     minLocalDeletionTime,
@@ -570,5 +577,5 @@ public class StatsMetadata extends MetadataComponent {
                     hashIDRawStr);
         }
     }
-    
+
 }

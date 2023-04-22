@@ -174,7 +174,6 @@ import static org.apache.commons.lang3.StringUtils.join;
 
 public class StorageProxy implements StorageProxyMBean {
 
-
     // Reset
     public static final String RESET = "\033[0m"; // Text Reset
 
@@ -187,10 +186,6 @@ public class StorageProxy implements StorageProxyMBean {
     public static final String PURPLE = "\033[0;35m"; // PURPLE
     public static final String CYAN = "\033[0;36m"; // CYAN
     public static final String GREY = "\033[0;37m"; // GREY
-
-
-
-
 
     public static final String MBEAN_NAME = "org.apache.cassandra.db:type=StorageProxy";
     private static final Logger logger = LoggerFactory.getLogger(StorageProxy.class);
@@ -1487,23 +1482,19 @@ public class StorageProxy implements StorageProxyMBean {
          * The following is ECMessage test code
          */
 
-        
         // String ks = mutation.getKeyspaceName();
-        // String table = mutation.getTableName(mutation.getTableIds().iterator().next());
+        // String table =
+        // mutation.getTableName(mutation.getTableIds().iterator().next());
         // String key = mutation.getKeyName();
         // ECMessage ecMessage = new ECMessage(mutation.toString(), ks, table, key, "",
-        //         "");
+        // "");
         // logger.debug("rymDebug: the test message is: {}", ecMessage);
         // try {
-        //     ecMessage.sendSelectedSSTables();
+        // ecMessage.sendSelectedSSTables();
         // } catch (Exception e) {
-        //     // TODO Auto-generated catch block
-        //     e.printStackTrace();
+        // // TODO Auto-generated catch block
+        // e.printStackTrace();
         // }
-
-
-
-
 
         ////////////////////////////////////////////////////////////////////////////////
         // this dc replicas:
@@ -1518,11 +1509,12 @@ public class StorageProxy implements StorageProxyMBean {
         Collection<Replica> endpointsToHint = null;
 
         List<InetAddressAndPort> backPressureHosts = null;
-        
 
-        //logger.debug(BLUE+"rymDebug: get replica destinations: {}", plan.contacts().endpointList()+RESET);
+        // logger.debug(BLUE+"rymDebug: get replica destinations: {}",
+        // plan.contacts().endpointList()+RESET);
         for (Replica destination : plan.contacts()) {
-            // logger.debug(YELLOW+"rymDebug: get replica destinations: {}", destination.endpoint()+RESET);
+            // logger.debug(YELLOW+"rymDebug: get replica destinations: {}",
+            // destination.endpoint()+RESET);
             checkHintOverload(destination);
 
             if (plan.isAlive(destination)) {
@@ -1573,40 +1565,40 @@ public class StorageProxy implements StorageProxyMBean {
             }
         }
 
-        if (endpointsToHint != null){
+        if (endpointsToHint != null) {
             // if(keyspaceName.equals("ycsb")) {
-            //     for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-            //         String fileName = "endpointsToHint";
-            //         try {
-            //             FileWriter writer = new FileWriter("logs/" + fileName, true);
-            //             BufferedWriter buffer = new BufferedWriter(writer);
-            //             buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-            //             buffer.close();
-            //         } catch (IOException e) {
-            //             // TODO Auto-generated catch block
-            //             e.printStackTrace();
-            //         }
-    
-            //     }
+            // for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+            // String fileName = "endpointsToHint";
+            // try {
+            // FileWriter writer = new FileWriter("logs/" + fileName, true);
+            // BufferedWriter buffer = new BufferedWriter(writer);
+            // buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+            // buffer.close();
+            // } catch (IOException e) {
+            // // TODO Auto-generated catch block
+            // e.printStackTrace();
+            // }
+
+            // }
             // }
             submitHint(mutation, EndpointsForToken.copyOf(mutation.key().getToken(), endpointsToHint), responseHandler);
         }
 
         if (insertLocal) {
             // if(keyspaceName.equals("ycsb")) {
-            //     for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-            //         String fileName = "sendKeysLocal";
-            //         try {
-            //             FileWriter writer = new FileWriter("logs/" + fileName, true);
-            //             BufferedWriter buffer = new BufferedWriter(writer);
-            //             buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-            //             buffer.close();
-            //         } catch (IOException e) {
-            //             // TODO Auto-generated catch block
-            //             e.printStackTrace();
-            //         }
-    
-            //     }
+            // for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+            // String fileName = "sendKeysLocal";
+            // try {
+            // FileWriter writer = new FileWriter("logs/" + fileName, true);
+            // BufferedWriter buffer = new BufferedWriter(writer);
+            // buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+            // buffer.close();
+            // } catch (IOException e) {
+            // // TODO Auto-generated catch block
+            // e.printStackTrace();
+            // }
+
+            // }
             // }
 
             Preconditions.checkNotNull(localReplica);
@@ -1614,28 +1606,33 @@ public class StorageProxy implements StorageProxyMBean {
         }
 
         if (localDc != null) {
-            for (Replica destination : localDc){
+            for (Replica destination : localDc) {
                 // if(keyspaceName.equals("ycsb")) {
-                //     for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-                //         String fileName = "sendKeysRemote";
-                //         try {
-                //             FileWriter writer = new FileWriter("logs/" + fileName, true);
-                //             BufferedWriter buffer = new BufferedWriter(writer);
-                //             buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-                //             buffer.close();
-                //         } catch (IOException e) {
-                //             // TODO Auto-generated catch block
-                //             e.printStackTrace();
-                //         }
-                        
-                //         String key = upd.partitionKey().getRawKey(upd.metadata());
-                //         List<InetAddressAndPort> eps = StorageService.instance.getReplicaNodesWithPort(keyspaceName, upd.metadata().name, key);
-                //         if(!eps.contains(destination.endpoint())||eps.indexOf(destination.endpoint())==0) {
-                //             // logger.debug(RED+"rymDebug: destination [{}] is wrong, correct is {} key is {}, local address is {}",
-                //             //                destination.endpoint()+RESET, eps+RESET, key, FBUtilities.getBroadcastAddressAndPort()+RESET);
-                //         }
-        
-                //     }
+                // for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                // String fileName = "sendKeysRemote";
+                // try {
+                // FileWriter writer = new FileWriter("logs/" + fileName, true);
+                // BufferedWriter buffer = new BufferedWriter(writer);
+                // buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                // buffer.close();
+                // } catch (IOException e) {
+                // // TODO Auto-generated catch block
+                // e.printStackTrace();
+                // }
+
+                // String key = upd.partitionKey().getRawKey(upd.metadata());
+                // List<InetAddressAndPort> eps =
+                // StorageService.instance.getReplicaNodesWithPort(keyspaceName,
+                // upd.metadata().name, key);
+                // if(!eps.contains(destination.endpoint())||eps.indexOf(destination.endpoint())==0)
+                // {
+                // // logger.debug(RED+"rymDebug: destination [{}] is wrong, correct is {} key
+                // is {}, local address is {}",
+                // // destination.endpoint()+RESET, eps+RESET, key,
+                // FBUtilities.getBroadcastAddressAndPort()+RESET);
+                // }
+
+                // }
                 // }
                 MessagingService.instance().sendWriteWithCallback(message, destination, responseHandler, true);
             }
@@ -2190,9 +2187,15 @@ public class StorageProxy implements StorageProxyMBean {
             this.command = command;
             this.handler = handler;
             this.trackRepairedStatus = trackRepairedStatus;
+            if (command instanceof SinglePartitionReadCommand) {
+                logger.debug("[Tinoryj] touch SinglePartitionReadCommand in storage proxy");
+            } else {
+                logger.debug("[Tinoryj] touch PartitionRangeReadCommand in storage proxy");
+            }
         }
 
         protected void runMayThrow() {
+            logger.debug("[Tinoryj] touch read run may throw in storage proxy");
             try {
                 MessageParams.reset();
 

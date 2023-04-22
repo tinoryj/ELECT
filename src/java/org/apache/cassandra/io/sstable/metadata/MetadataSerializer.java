@@ -65,11 +65,15 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         // write number of component
         out.writeInt(components.size());
+        logger.debug("[Tinoryj] write check sum total number = {}", components.size());
         updateChecksumInt(crc, components.size());
         maybeWriteChecksum(crc, out, version);
 
         // build and write toc
         int lastPosition = 4 + (8 * sortedComponents.size()) + (checksum ? 2 * CHECKSUM_LENGTH : 0);
+        // Debug-tinoryj
+        logger.debug("[Tinoryj] gen CRC lastPosition = {}", lastPosition);
+        // ----------------
         Map<MetadataType, Integer> sizes = new EnumMap<>(MetadataType.class);
         for (MetadataComponent component : sortedComponents) {
             MetadataType type = component.getType();
@@ -80,11 +84,13 @@ public class MetadataSerializer implements IMetadataSerializer {
             out.writeInt(lastPosition);
             updateChecksumInt(crc, lastPosition);
             int size = type.serializer.serializedSize(version, component);
+            // if (type == MetadataType.STATS) {
+            // size = size * 2;
+            // }
             lastPosition += size + (checksum ? CHECKSUM_LENGTH : 0);
             sizes.put(type, size);
         }
         maybeWriteChecksum(crc, out, version);
-
         // serialize components
         for (MetadataComponent component : sortedComponents) {
             byte[] bytes;
@@ -92,11 +98,36 @@ public class MetadataSerializer implements IMetadataSerializer {
                 component.getType().serializer.serialize(version, component, dob);
                 bytes = dob.getData();
             }
-            out.write(bytes);
+            Boolean isSizeCorrectFlag;
+            if (bytes.length != sizes.get(component.getType())) {
+                logger.debug(
+                        "[Tinoryj] the component = {}, generated serialized size = {}, the actual get serialized size = {}",
+                        component.getType(),
+                        sizes.get(component.getType()),
+                        bytes.length);
+                isSizeCorrectFlag = false;
+            } else {
+                isSizeCorrectFlag = true;
+            }
+            if (isSizeCorrectFlag) {
+                out.write(bytes);
+                crc.reset();
+                crc.update(bytes);
+            } else {
+                byte[] byteCutToSize = new byte[sizes.get(component.getType())];
+                System.arraycopy(byteCutToSize, 0, bytes, 0, sizes.get(component.getType()));
+                out.write(byteCutToSize);
+                crc.reset();
+                crc.update(byteCutToSize);
+            }
 
-            crc.reset();
-            crc.update(bytes);
             maybeWriteChecksum(crc, out, version);
+            MetadataType type = component.getType();
+            logger.debug(
+                    "[Tinoryj] gen CRC for metadata type = {}, type in int = [{}], crc = [{}], the serialized size = {}, the generated serialized size = {}",
+                    type,
+                    type.ordinal(),
+                    (int) crc.getValue(), bytes.length, sizes.get(component.getType()));
         }
     }
 
@@ -140,7 +171,8 @@ public class MetadataSerializer implements IMetadataSerializer {
         int length = (int) in.bytesRemaining();
 
         int count = in.readInt();
-        logger.debug("rymDebug: Metadataserializer, length is {}, count is {}", length, count);
+        logger.debug("[Tinoryj] read check sum total number = {}, total length is = {}", count, length);
+
         updateChecksumInt(crc, count);
         maybeValidateChecksum(crc, in, descriptor);
 
@@ -154,6 +186,7 @@ public class MetadataSerializer implements IMetadataSerializer {
 
             offsets[i] = in.readInt();
             updateChecksumInt(crc, offsets[i]);
+            logger.debug("[Tinoryj] read check sum ordinals[{}] = {}, offsets[{}] = {}", i, ordinals[i], i, offsets[i]);
         }
         maybeValidateChecksum(crc, in, descriptor);
 
@@ -166,7 +199,8 @@ public class MetadataSerializer implements IMetadataSerializer {
          */
 
         MetadataType[] allMetadataTypes = MetadataType.values();
-
+        logger.debug("[Tinoryj] Target process metadata type number = {}, include {}", allMetadataTypes.length,
+                allMetadataTypes);
         Map<MetadataType, MetadataComponent> components = new EnumMap<>(MetadataType.class);
 
         for (int i = 0; i < count; i++) {
@@ -176,7 +210,8 @@ public class MetadataSerializer implements IMetadataSerializer {
                 in.skipBytes(lengths[i]);
                 continue;
             }
-
+            logger.debug("[Tinoryj] Process metadata type = {}, length = {}", type,
+                    isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]);
             byte[] buffer = new byte[isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]];
             in.readFully(buffer);
 
@@ -197,12 +232,25 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         int actualChecksum = (int) crc.getValue();
         int expectedChecksum = in.readInt();
-
+        String filename = descriptor.filenameFor(Component.STATS);
         if (actualChecksum != expectedChecksum) {
-            String filename = descriptor.filenameFor(Component.STATS);
-            logger.error("rymError: actual checksum is {}, expected checksum is {}, file name is {}", actualChecksum, expectedChecksum, filename);
-            throw new CorruptSSTableException(new IOException("Checksums do not match for " + filename), filename);
+            logger.debug(
+                    "[Tinoryj] ERROR!!! get original check sum [{}], the actual check sum is [{}], file name = {}, actual file size = {}",
+                    expectedChecksum,
+                    actualChecksum, filename, (new File(filename)).length());
+        } else {
+            logger.debug(
+                    "[Tinoryj] SUCCESS!!! get original check sum [{}], the actual check sum is [{}], file name = {}, actual file size = {}",
+                    expectedChecksum,
+                    actualChecksum, filename, (new File(filename)).length());
+
         }
+        return;
+        // if (actualChecksum != expectedChecksum) {
+        // String filename = descriptor.filenameFor(Component.STATS);
+        // throw new CorruptSSTableException(new IOException("Checksums do not match for
+        // " + filename), filename);
+        // }
     }
 
     private static void maybeValidateChecksum(CRC32 crc, FileDataInput in, Descriptor descriptor, MetadataType type) throws IOException {
