@@ -59,6 +59,7 @@ import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.RepairException;
 import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.EndpointsForRange;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.Replica;
@@ -553,7 +554,7 @@ public class RepairRunnable implements Runnable, ProgressEventNotifier, RepairNo
             }
 
             @Override
-            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+            protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

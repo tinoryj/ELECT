@@ -121,13 +121,13 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     /**
      * [CASSANDRAEC] executes the task and unmarks sstables compacting
      */
-    public int execute(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys)
+    public int execute(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys, SSTableReader ecSSTable)
     {
         try
         {
             logger.debug("rymDebug: this is ActiveCompactionTask.execute");
 
-            return executeInternal(activeCompactions, sourceKeys);
+            return executeInternal(activeCompactions, sourceKeys, ecSSTable);
         }
         catch(FSDiskFullWriteError e)
         {
@@ -145,7 +145,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
 
     protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions);
     
-    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys);
+    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys, SSTableReader ecSSTable);
 
     public AbstractCompactionTask setUserDefined(boolean isUserDefined)
     {

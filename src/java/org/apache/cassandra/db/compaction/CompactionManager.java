@@ -423,13 +423,15 @@ public class CompactionManager implements CompactionManagerMBean {
     private AllSSTableOpStatus rewriteSSTables(final ColumnFamilyStore cfs, 
             final List<DecoratedKey> sourceKeys,
             List<SSTableReader> rewriteSSTables,
+            SSTableReader ecSSTable,
+            final LifecycleTransaction txn,
             final OneSSTableOperation operation,
             OperationType operationType)
             throws ExecutionException, InterruptedException {
         logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
         List<LifecycleTransaction> transactions = new ArrayList<>();
         List<Future<?>> futures = new ArrayList<>();
-        try (LifecycleTransaction txn = cfs.getTracker().tryModify(rewriteSSTables, operationType)) {
+        try (txn) {
             if (txn == null)
                 return AllSSTableOpStatus.UNABLE_TO_CANCEL;
 
@@ -569,11 +571,13 @@ public class CompactionManager implements CompactionManagerMBean {
     public AllSSTableOpStatus performSSTableRewrite(final ColumnFamilyStore cfs,
             final List<DecoratedKey> sourceKeys, 
             List<SSTableReader> sstables,
+            SSTableReader ecSSTable,
+            final LifecycleTransaction txn,
             final boolean skipIfCurrentVersion,
             final long skipIfOlderThanTimestamp,
             final boolean skipIfCompressionMatches,
             int jobs) throws InterruptedException, ExecutionException {
-        return performSSTableRewrite(cfs, sourceKeys, sstables, (sstable) -> {
+        return performSSTableRewrite(cfs, sourceKeys, sstables, ecSSTable, txn, (sstable) -> {
             // TODO: check this filter
 
             // Skip if descriptor version matches current version
@@ -603,10 +607,12 @@ public class CompactionManager implements CompactionManagerMBean {
     public AllSSTableOpStatus performSSTableRewrite(final ColumnFamilyStore cfs,
             final List<DecoratedKey> sourceKeys, 
             List<SSTableReader> sstables, 
+            SSTableReader ecSSTable,
+            final LifecycleTransaction updateTxn,
             Predicate<SSTableReader> sstableFilter,
             int jobs) throws InterruptedException, ExecutionException {
         // return rewriteSSTables(cfs, sourceKeys, sstables, OperationType.COMPACTION);
-        return rewriteSSTables(cfs, sourceKeys, sstables, new OneSSTableOperation() {
+        return rewriteSSTables(cfs, sourceKeys, sstables, ecSSTable, updateTxn, new OneSSTableOperation() {
             @Override
             public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
                 List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
@@ -634,7 +640,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
                 task.setUserDefined(true);
                 task.setCompactionType(OperationType.COMPACTION);
-                task.execute(active, sourceKeys);
+                task.execute(active, sourceKeys, ecSSTable);
             }
         }, OperationType.COMPACTION);
     }
@@ -856,7 +862,7 @@ public class CompactionManager implements CompactionManagerMBean {
             }
 
             @Override
-            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+            protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
@@ -1045,7 +1051,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 }
 
                 @Override
-                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1090,7 +1096,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 }
 
                 @Override
-                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1270,7 +1276,7 @@ public class CompactionManager implements CompactionManagerMBean {
             }
 
             @Override
-            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+            protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

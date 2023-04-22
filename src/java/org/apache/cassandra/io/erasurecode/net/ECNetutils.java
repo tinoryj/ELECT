@@ -199,7 +199,7 @@ public class ECNetutils {
         int value1 = dataIn.readInt();
         int value2 = dataIn.readInt();
         
-        logger.debug("read value1 {}, value2 {}", value1, value2);
+        logger.debug(" read value1 {}, value2 {}", value1, value2);
 
 
     }

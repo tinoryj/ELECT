@@ -557,6 +557,18 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         return accumulate;
     }
 
+    // [CASSANDRAEC]
+    private Throwable unmarkCompacting(Set<SSTableReader> unmark, Throwable accumulate, SSTableReader ecSSTable)
+    {
+        unmark.add(ecSSTable);
+        accumulate = tracker.apply(updateCompacting(unmark, emptySet()), accumulate);
+        // when the CFS is invalidated, it will call unreferenceSSTables().  However, unreferenceSSTables only deals
+        // with sstables that aren't currently being compacted.  If there are ongoing compactions that finish or are
+        // interrupted after the CFS is invalidated, those sstables need to be unreferenced as well, so we do that here.
+        accumulate = tracker.dropSSTablesIfInvalid(accumulate);
+        return accumulate;
+    }
+
     // convenience method for callers that know only one sstable is involved in the transaction
     public SSTableReader onlyOne()
     {
@@ -691,5 +703,39 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
     public String toString()
     {
         return originals.toString();
+    }
+
+    @Override
+    protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+        
+        assert staged.isEmpty() : "must be no actions introduced between prepareToCommit and a commit";
+
+        if (logger.isTraceEnabled())
+            logger.trace("Committing transaction over {} staged: {}, logged: {}", originals, staged, logged);
+
+        // accumulate must be null if we have been used correctly, so fail immediately if it is not
+        maybeFail(accumulate);
+
+        // transaction log commit failure means we must abort; safe commit is not possible
+        maybeFail(log.commit(null));
+
+        // this is now the point of no return; we cannot safely rollback, so we ignore exceptions until we're done
+        // we restore state by obsoleting our obsolete files, releasing our references to them, and updating our size
+        // and notification status for the obsolete and new files
+
+        accumulate = markObsolete(obsoletions, accumulate);
+        accumulate = tracker.updateSizeTracking(logged.obsolete, logged.update, accumulate);
+        accumulate = runOnCommitHooks(accumulate);
+        accumulate = release(selfRefs(logged.obsolete), accumulate);
+        accumulate = tracker.notifySSTablesChanged(originals, logged.update, log.type(), accumulate, ecSSTable);
+
+        return accumulate;
+    }
+
+    @Override
+    protected Throwable doPostCleanup(Throwable accumulate, SSTableReader ecSSTable)
+    {
+        log.close();
+        return unmarkCompacting(marked, accumulate, ecSSTable);
     }
 }

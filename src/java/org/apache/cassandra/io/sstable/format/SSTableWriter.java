@@ -327,6 +327,14 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
         }
     }
 
+    public final Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable) {
+        try {
+            return txnProxy.commitEC(accumulate, ecSSTable);
+        } finally {
+            observers.forEach(SSTableFlushObserver::complete);
+        }
+    }
+
     public final Throwable abort(Throwable accumulate) {
         return txnProxy.abort(accumulate);
     }

@@ -200,6 +200,12 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter {
         finishedWriters.forEach(SSTableMultiWriter::close);
     }
 
+    @Override
+    public Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'commitEC'");
+    }
+
     // @Override
     // public void updateState() {
     //     // TODO Auto-generated method stub

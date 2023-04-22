@@ -1421,7 +1421,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 }
 
                 @Override
-                protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+                protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1779,13 +1779,22 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     // rewrite the sstables based on the source decorated keys
     public CompactionManager.AllSSTableOpStatus sstablesRewrite(final List<DecoratedKey> sourceKeys, 
             List<SSTableReader> sstables,
+            SSTableReader ecSSTable,
+            final LifecycleTransaction txn,
             final boolean skipIfCurrentVersion,
             final long skipIfNewerThanTimestamp,
             final boolean skipIfCompressionMatches,
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite");
-        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables, skipIfCurrentVersion,
+        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables, ecSSTable, txn, skipIfCurrentVersion,
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
+    }
+
+    // [CASSANDRAEC]
+    public void replaceSSTable(SSTableReader ecSSTable, final LifecycleTransaction txn) {
+        // notify sstable changes to view and leveled generation
+        // unmark sstable compacting status
+        maybeFail(txn.commitEC(null, ecSSTable));
     }
 
     public CompactionManager.AllSSTableOpStatus relocateSSTables(int jobs)

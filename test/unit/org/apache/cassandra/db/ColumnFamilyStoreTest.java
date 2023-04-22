@@ -175,7 +175,7 @@ public class ColumnFamilyStoreTest
             }
 
             @Override
-            protected void runMayThrow(List<DecoratedKey> sourceKeys) throws Exception {
+            protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

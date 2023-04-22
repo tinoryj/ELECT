@@ -150,6 +150,12 @@ public class LogTransactionTest extends AbstractTransactionalTest {
             void assertCommitted() throws Exception {
                 assertFiles(dataFolder.path(), new HashSet<>(sstableNew.getAllFilePaths()));
             }
+
+            @Override
+            protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
+            }
         }
 
         final Transaction txn;

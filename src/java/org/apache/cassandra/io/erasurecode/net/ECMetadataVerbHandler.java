@@ -35,7 +35,10 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.CompactionManager.AllSSTableOpStatus;
+import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
+import org.apache.cassandra.db.lifecycle.Tracker;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -122,8 +125,10 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             continue;
                         }
 
+                        // TODO: mark this sstable COMPACTION
                         SSTableReader ecSSTable = SSTableReader.openECSSTable(message.payload, cfs, fileNamePrefix);
                         logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}", ecSSTable.getFilename());
+                        final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(rewriteSStables, OperationType.COMPACTION);
 
                         if (rewriteSStables.size() == 1) {
                             List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllDecoratedKeys();
@@ -131,37 +136,17 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             if (rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
                                 // delete sstable if sstable Hash can be found
                                 // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash, cfs, fileNamePrefix);
+                                cfs.replaceSSTable(ecSSTable, updateTxn);
                                 logger.debug(RED + "rymDebug: get the match sstbales, delete it!");
+                            } else if(first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))) {
+                                // Case1: M missed some keys in the middle, just delete M`
+                                // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume
+                                // that the compaction speed of secondary node is slower than primary node
+                                // Case2: M` missed some keys in the middle,  need to update the metadata
+                                cfs.replaceSSTable(ecSSTable, updateTxn);
+                                logger.debug(RED + "rymDebug: M or M1 missed some keys in the middle, update sstable!");
                             } else {
                                 logger.warn("rymWarning: get unexpected sstables num");
-                                // a bit different, update sstable and delete it
-                                if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))
-                                        && allKeys.size() < updateKeys.size()) {
-                                    // M` missed some keys in the middle, update metadata and delete M`,
-                                    // suppose that the compaction speed of primary tree is faster than that of
-                                    // secondary, so the these missed keys should be deleted
-                                    // TODO: need to consider rewrite sstables.
-                                    // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
-                                    
-                                    // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash, cfs, fileNamePrefix);
-                                    logger.debug(RED + "rymDebug: M1 missed keys in the middle, update and delete it!");
-
-                                } else if (first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))
-                                        && allKeys.size() >= updateKeys.size()) {
-                                    // M missed some keys in the middle, just delete it
-                                    // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume
-                                    // that the compaction speed of secondary node is slower than primary node
-                                    // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash, cfs, fileNamePrefix);
-                                    logger.debug(RED + "rymDebug: M missed keys in the middle, delete it!");
-                                } else {
-                                    // M` missed some keys in the boundary,
-                                    // need to update the metadata
-                                    logger.debug(RED + "rymDebug: M1 missed keys in the edge, update and delete it!");
-                                    // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash, cfs, fileNamePrefix);
-                                    // TODO: write update statsmetadata and bloomfilter
-                                    // rewriteSStables.get(0).updateBloomFilter(cfs, updateKeys);
-                                }
-
                             }
                         } else if (rewriteSStables.size() > 1) {
                             // many sstables are involved
@@ -173,9 +158,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                     rewriteSStables.size());
                             try {
                                 AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys,
-                                        rewriteSStables, false, Long.MAX_VALUE, false, 1);
-                                // TODO: write ec_metadata
-
+                                        rewriteSStables, ecSSTable, updateTxn, false, Long.MAX_VALUE, false, 1);
                                 if (status != AllSSTableOpStatus.SUCCESSFUL)
                                     printStatusCode(status.statusCode, cfs.name);
                             } catch (ExecutionException e) {
