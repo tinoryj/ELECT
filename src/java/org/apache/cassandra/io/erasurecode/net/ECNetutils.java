@@ -20,6 +20,8 @@ package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
@@ -156,28 +158,28 @@ public class ECNetutils {
 
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         // SSTableMetadataViewer metawriter = new SSTableMetadataViewer(false, false, Integer.MAX_VALUE, TimeUnit.MICROSECONDS, System.out);
         
-        String fname = System.getProperty("user.dir")+"/data/data/nb-1712-big-Statistics.db";
-        File sstable = new File(fname);
+        // String fname = System.getProperty("user.dir")+"/data/data/nb-1712-big-Statistics.db";
+        // File sstable = new File(fname);
         // logger.info("absolutePath is {}, path is {}, parentPath is {}, parent is {}",
         //  sstable.absolutePath(), sstable.path(), sstable.parentPath(),sstable.parent());
-        Descriptor desc = Descriptor.fromFilename(fname);
+        // Descriptor desc = Descriptor.fromFilename(fname);
         // logger.info("read from {}, desc is {}, id is {}, version is {}, format type is {}, TOC file name is {}",
         //  fname, desc, desc.id, desc.version, desc.formatType, desc.filenameFor(Component.TOC));
 
 
         // read Statistics.db
-        EnumSet<MetadataType> types = EnumSet.of(MetadataType.VALIDATION, MetadataType.STATS, MetadataType.HEADER);
+        // EnumSet<MetadataType> types = EnumSet.of(MetadataType.VALIDATION, MetadataType.STATS, MetadataType.HEADER);
 
-        Map<MetadataType, MetadataComponent> sstableMetadata;
-        try {
-            sstableMetadata = desc.getMetadataSerializer().deserialize(desc, types);
-            logger.info("statsmetadata is {}", sstableMetadata.toString());
-        } catch (Throwable t) {
-            throw new CorruptSSTableException(t, desc.filenameFor(Component.STATS));
-        }
+        // Map<MetadataType, MetadataComponent> sstableMetadata;
+        // try {
+        //     sstableMetadata = desc.getMetadataSerializer().deserialize(desc, types);
+        //     logger.info("statsmetadata is {}", sstableMetadata.toString());
+        // } catch (Throwable t) {
+        //     throw new CorruptSSTableException(t, desc.filenameFor(Component.STATS));
+        // }
 
 
         // try {
@@ -188,11 +190,18 @@ public class ECNetutils {
         //     e.printStackTrace();
         // }
 
-        // 使用IndexHelper类来解析Statistics.db文件
-        // Indexer info = Indexer.deserializeIndexInfo(data, 0);
+        byte[] bytes = {0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02};
 
 
-        // 打印Statistics.db文件的元数据信息
+        ByteArrayInputStream in = new ByteArrayInputStream(bytes);
+        DataInput dataIn = new DataInputStream(in);
+
+        int value1 = dataIn.readInt();
+        int value2 = dataIn.readInt();
+        
+        logger.debug("read value1 {}, value2 {}", value1, value2);
+
+
     }
 
 
