@@ -386,16 +386,7 @@ public class StatsMetadata extends MetadataComponent {
         }
 
         public void serialize(Version version, StatsMetadata component, DataOutputPlus out) throws IOException {
-            if (version.hasHashID() && component.hashID != null) {
-                out.writeBytes(component.hashID);
-                logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
-            } else {
-                byte[] placeHolder = new byte[32];
-                Arrays.fill(placeHolder, (byte) 0);
-                String placeHolderStr = placeHolder.toString();
-                out.writeBytes(placeHolderStr);
-                logger.debug("[Tinoryj] Write fake HashID place holder");
-            }
+
             EstimatedHistogram.serializer.serialize(component.estimatedPartitionSize, out);
             EstimatedHistogram.serializer.serialize(component.estimatedCellPerPartitionCount, out);
             CommitLogPosition.serializer
@@ -453,17 +444,20 @@ public class StatsMetadata extends MetadataComponent {
                     out.writeByte(0);
                 }
             }
+
+            if (version.hasHashID() && component.hashID != null) {
+                out.writeBytes(component.hashID);
+                logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
+            } else {
+                byte[] placeHolder = new byte[32];
+                Arrays.fill(placeHolder, (byte) 0);
+                String placeHolderStr = placeHolder.toString();
+                out.writeBytes(placeHolderStr);
+                logger.debug("[Tinoryj] Write fake HashID place holder");
+            }
         }
 
         public StatsMetadata deserialize(Version version, DataInputPlus in) throws IOException {
-
-            String hashIDRawStr;
-
-            byte[] buf = new byte[32];
-            in.readFully(buf, 0, 32);
-            hashIDRawStr = new String(buf);
-            logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
-            // in.skipBytes(32);
 
             EstimatedHistogram partitionSizes = EstimatedHistogram.serializer.deserialize(in);
 
@@ -543,6 +537,16 @@ public class StatsMetadata extends MetadataComponent {
             UUID originatingHostId = null;
             if (version.hasOriginatingHostId() && in.readByte() != 0)
                 originatingHostId = UUIDSerializer.serializer.deserialize(in, 0);
+
+            String hashIDRawStr;
+
+            byte[] buf = new byte[32];
+            for (int i = 0; i < 32; i++) {
+                buf[i] = in.readByte();
+            }
+            hashIDRawStr = new String(buf);
+            logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
+            // in.skipBytes(32);
 
             return new StatsMetadata(partitionSizes,
                     columnCounts,
