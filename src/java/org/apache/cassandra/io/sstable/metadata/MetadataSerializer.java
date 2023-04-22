@@ -65,11 +65,13 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         // write number of component
         out.writeInt(components.size());
+        logger.debug("[Tinoryj] write check sum total number = {}", components.size());
         updateChecksumInt(crc, components.size());
         maybeWriteChecksum(crc, out, version);
 
         // build and write toc
         int lastPosition = 4 + (8 * sortedComponents.size()) + (checksum ? 2 * CHECKSUM_LENGTH : 0);
+        logger.debug("[Tinoryj] gen CRC lastPosition = {}", lastPosition);
         Map<MetadataType, Integer> sizes = new EnumMap<>(MetadataType.class);
         for (MetadataComponent component : sortedComponents) {
             MetadataType type = component.getType();
@@ -82,6 +84,9 @@ public class MetadataSerializer implements IMetadataSerializer {
             int size = type.serializer.serializedSize(version, component);
             lastPosition += size + (checksum ? CHECKSUM_LENGTH : 0);
             sizes.put(type, size);
+            logger.debug("[Tinoryj] gen CRC position for metadata type = {}, type in int = {}, size = {}", type,
+                    type.ordinal(),
+                    size);
         }
         maybeWriteChecksum(crc, out, version);
 
@@ -97,6 +102,9 @@ public class MetadataSerializer implements IMetadataSerializer {
             crc.reset();
             crc.update(bytes);
             maybeWriteChecksum(crc, out, version);
+            MetadataType type = component.getType();
+            logger.debug("[Tinoryj] gen CRC for metadata type = {}, type in int = {}, crc = {}", type, type.ordinal(),
+                    (int) crc.getValue());
         }
     }
 
@@ -199,9 +207,12 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         int actualChecksum = (int) crc.getValue();
         int expectedChecksum = in.readInt();
-        logger.debug("[Tinoryj] get original check sum [{}], the actual check sum is [{}]", expectedChecksum,
-                actualChecksum);
-
+        if (actualChecksum != expectedChecksum) {
+            logger.debug("[Tinoryj] ERROR!!! get original check sum [{}], the actual check sum is [{}]",
+                    expectedChecksum,
+                    actualChecksum);
+        }
+        return;
         // if (actualChecksum != expectedChecksum) {
         // String filename = descriptor.filenameFor(Component.STATS);
         // throw new CorruptSSTableException(new IOException("Checksums do not match for
