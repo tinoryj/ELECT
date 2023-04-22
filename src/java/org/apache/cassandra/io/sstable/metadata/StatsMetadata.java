@@ -183,12 +183,12 @@ public class StatsMetadata extends MetadataComponent {
                     // this.hashID, this.hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
-                    logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
+                    // logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
                     e.printStackTrace();
                 }
             } catch (IOException e) {
                 this.hashID = null;
-                logger.debug("[Tinoryj]: Could not read SSTable {}", fileName);
+                // logger.debug("[Tinoryj]: Could not read SSTable {}", fileName);
                 e.printStackTrace();
                 return false;
             }
@@ -449,13 +449,13 @@ public class StatsMetadata extends MetadataComponent {
 
             if (version.hasHashID() && component.hashID != null) {
                 out.writeBytes(component.hashID);
-                logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
+                // logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
             } else {
                 byte[] placeHolder = new byte[32];
                 Arrays.fill(placeHolder, (byte) 0);
                 String placeHolderStr = placeHolder.toString();
                 out.writeBytes(placeHolderStr);
-                logger.debug("[Tinoryj] Write fake HashID place holder");
+                // logger.debug("[Tinoryj] Write fake HashID place holder");
             }
         }
 
@@ -548,7 +548,7 @@ public class StatsMetadata extends MetadataComponent {
                 buf[i] = in.readByte();
             }
             hashIDRawStr = new String(buf);
-            logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
+            // logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
             // in.skipBytes(32);
 
             return new StatsMetadata(partitionSizes,

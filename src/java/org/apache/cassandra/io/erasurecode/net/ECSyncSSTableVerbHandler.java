@@ -86,7 +86,8 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         int fileCount = GLOBAL_COUNTER.getAndIncrement();
         String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
         // the full name is user.dir/data/tmp/${HostName}-${COUNTER}-XXX.db
-        String tmpFileName = dataForRewriteDir + hostName + "-" + String.valueOf(fileCount) + "-";
+        String fileNamePrefix = hostName + "-" + String.valueOf(fileCount) + "-";
+        String tmpFileName = dataForRewriteDir + fileNamePrefix;
         String filterFileName = tmpFileName + "Filter.db";
         ECNetutils.writeBytesToFile(filterFileName, sstInBytes.sstFilter);
         String indexFileName = tmpFileName + "Index.db";
@@ -95,7 +96,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         ECNetutils.writeBytesToFile(statsFileName, sstInBytes.sstStats);
 
         StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
-                                                         new DataForRewrite(sourceKeys, String.valueOf(GLOBAL_COUNTER) + "-"));
+                                                         new DataForRewrite(sourceKeys, fileNamePrefix));
     
 
 
