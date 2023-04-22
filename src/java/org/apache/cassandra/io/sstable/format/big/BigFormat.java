@@ -169,8 +169,8 @@ public class BigFormat implements SSTableFormat {
             hasIsTransient = version.compareTo("na") >= 0;
             hasIsReplicationTransferredToErasureCoding = version.compareTo("na") >= 0;
             hasHashID = version.compareTo("na") >= 0;
-            // hasMetadataChecksum = version.compareTo("na") >= 0;
-            hasMetadataChecksum = false;
+            hasMetadataChecksum = version.compareTo("na") >= 0;
+            // hasMetadataChecksum = false;
             hasOldBfFormat = version.compareTo("na") < 0;
         }
 

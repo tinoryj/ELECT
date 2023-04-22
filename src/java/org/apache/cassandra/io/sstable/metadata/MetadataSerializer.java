@@ -102,11 +102,11 @@ public class MetadataSerializer implements IMetadataSerializer {
                         sizes.get(component.getType()),
                         bytes.length);
             }
-            // byte[] byteCutToSize = new byte[sizes.get(component.getType())];
-            // System.arraycopy(byteCutToSize, 0, bytes, 0, sizes.get(component.getType()));
-            // out.write(byteCutToSize);
-            // crc.reset();
-            // crc.update(byteCutToSize);
+            byte[] byteCutToSize = new byte[sizes.get(component.getType())];
+            System.arraycopy(byteCutToSize, 0, bytes, 0, sizes.get(component.getType()));
+            out.write(byteCutToSize);
+            crc.reset();
+            crc.update(byteCutToSize);
 
             out.write(bytes);
             crc.reset();
