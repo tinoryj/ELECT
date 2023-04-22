@@ -160,14 +160,15 @@ class LeveledGenerations {
             SSTableReader after = level.ceiling(sstable);
             SSTableReader before = level.floor(sstable);
 
-            if (before != null && before.last.compareTo(sstable.first) >= 0 ||
-                    after != null && after.first.compareTo(sstable.last) <= 0) {
-                logger.debug("rymDebug: sstable {}, level is {}, task id is  need to be sent to L0",
-                        sstable.getFilename(), sstable.getSSTableLevel());
-                sendToL0(sstable);
-            } else {
-                level.add(sstable);
-            }
+            // if (before != null && before.last.compareTo(sstable.first) >= 0 ||
+            //         after != null && after.first.compareTo(sstable.last) <= 0) {
+            //     logger.debug("rymDebug: sstable {}, level is {}, task id is  need to be sent to L0",
+            //             sstable.getFilename(), sstable.getSSTableLevel());
+            //     sendToL0(sstable);
+            // } else {
+            //     level.add(sstable);
+            // }
+            level.add(sstable);
         }
         maybeVerifyLevels();
     }

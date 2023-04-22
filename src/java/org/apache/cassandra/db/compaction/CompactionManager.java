@@ -18,6 +18,8 @@
 package org.apache.cassandra.db.compaction;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -597,6 +599,10 @@ public class CompactionManager implements CompactionManagerMBean {
                     ((!sstable.compression && !metadata.params.compression.isEnabled()) ||
                             (sstable.compression && metadata.params.compression
                                     .equals(sstable.getCompressionMetadata().parameters))))
+                return false;
+            
+            // Skip if sstable contain EC_Metadata
+            if(Files.exists(Paths.get(sstable.descriptor.filenameFor(Component.EC_METADATA))))
                 return false;
 
             
