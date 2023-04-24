@@ -36,6 +36,7 @@ import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureEncoder;
 import org.apache.cassandra.io.erasurecode.NativeRSEncoder;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.ForwardingInfo;
 import org.apache.cassandra.net.IVerbHandler;
@@ -228,8 +229,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             ecParityNode.distributeEcDataToParityNodes(parity, messages[0].parityNodes, parityHashCode);
 
             // Transform to ECMetadata and dispatch to related nodes
-            ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
-                        new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
+            // ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
+            //             new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
+            ECMetadata ecMetadata = new ECMetadata("", new ECMetadataContent("", "", new ArrayList<String>(),new ArrayList<String>(),
+                                                   new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>()));
             ecMetadata.generateMetadata(messages, parity, parityHashCode);
         }
 

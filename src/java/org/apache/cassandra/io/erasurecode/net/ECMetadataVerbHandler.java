@@ -85,7 +85,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // logger.debug("rymDebug: received metadata: {}, {},{},{}", message.payload,
         //         message.payload.sstHashIdList, message.payload.primaryNodes, message.payload.relatedNodes);
 
-        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap = message.payload.sstHashIdToReplicaMap;
+        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap = message.payload.ecMetadataContent.sstHashIdToReplicaMap;
 
         // logger.debug("rymDebug: got sstHashIdToReplicaMap: {} ", sstHashIdToReplicaMap);
 
@@ -93,9 +93,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         for (Map.Entry<String, List<InetAddressAndPort>> entry : sstHashIdToReplicaMap.entrySet()) {
             String sstableHash = entry.getKey();
             if (!localIP.equals(entry.getValue().get(0)) && entry.getValue().contains(localIP)) {
-                String ks = message.payload.keyspace;
+                String ks = message.payload.ecMetadataContent.keyspace;
                 int index = entry.getValue().indexOf(localIP);
-                String cfName = message.payload.cfName + index;
+                String cfName = message.payload.ecMetadataContent.cfName + index;
                 
                 ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
 
