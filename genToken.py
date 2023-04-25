@@ -1,6 +1,4 @@
 import sys
-import numpy as np
-np.set_printoptions(suppress=True, threshold=np.inf)
 
 if len(sys.argv) != 3:
     print ("Usage: python genToken.py num_nodes num_tokens")
