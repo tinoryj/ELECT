@@ -480,69 +480,83 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             if (!sstatbles.isEmpty()) {
                 logger.debug("rymDebug: get {} sstables from level {}", sstatbles.size(), level);
                 for (SSTableReader sstable : sstatbles) {
-                    if (!sstable.isReplicationTransferredToErasureCoding()) {
+                    if (sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                        if (!sstable.isReplicationTransferredToErasureCoding()) {
 
-                        logger.debug(
-                                "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
-                                sstable.getFilename(), sstable.getSSTableLevel(),
-                                DatabaseDescriptor.getCompactionThreshold(),
-                                sstable.descriptor.ksname,
-                                sstable.descriptor.cfname,
-                                sstable.descriptor.version,
-                                sstable.descriptor.id,
-                                sstable.descriptor);
-                        long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+                            logger.debug(
+                                    "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
+                                    sstable.getFilename(), sstable.getSSTableLevel(),
+                                    DatabaseDescriptor.getCompactionThreshold(),
+                                    sstable.descriptor.ksname,
+                                    sstable.descriptor.cfname,
+                                    sstable.descriptor.version,
+                                    sstable.descriptor.id,
+                                    sstable.descriptor);
+                            long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 
-                        long delayMilli = delay * 60 * 1000;
+                            long delayMilli = delay * 60 * 1000;
 
-                        if (duration >= delayMilli
-                                && sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                            logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                                    sstable.getSSTableLevel());
-                            String key = sstable.first.getRawKey(sstable.metadata());
-                            try {
-                                ByteBuffer sstContent = sstable.getSSTContent();
-                                List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
+                            if (duration >= delayMilli
+                                    && sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                                logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                                        sstable.getSSTableLevel());
+                                String key = sstable.first.getRawKey(sstable.metadata());
+                                try {
+                                    ByteBuffer sstContent = sstable.getSSTContent();
+                                    List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
 
-                                String sstHashID = stringToHex(sstable.getSSTableHashID());
-                                List<InetAddressAndPort> replicaNodes = StorageService.instance
-                                        .getReplicaNodesWithPort(keyspaceName, cfName, key);
-                                logger.debug(
-                                        "rymDebug: send sstables size {}, first key is {}, replicaNodes are {}, row num is {},allKeys num is {}",
-                                        sstContent.remaining(), replicaNodes, sstable.getTotalRows(), allKeys.size());
-                                ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
-                                        "", "", replicaNodes);
-                                // send selected sstable to parity nodes
-                                ecMessage.sendSSTableToParity();
-                                // send selected sstable to secondary nodes
-                                // sstable.getScanner();
+                                    String sstHashID = stringToHex(sstable.getSSTableHashID());
+                                    List<InetAddressAndPort> replicaNodes = StorageService.instance
+                                            .getReplicaNodesWithPort(keyspaceName, cfName, key);
+                                    logger.debug(
+                                            "rymDebug: send sstables size {}, first key is {}, replicaNodes are {}, row num is {},allKeys num is {}",
+                                            sstContent.remaining(), replicaNodes, sstable.getTotalRows(),
+                                            allKeys.size());
+                                    ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
+                                            "", "", replicaNodes);
+                                    // send selected sstable to parity nodes
+                                    ecMessage.sendSSTableToParity();
+                                    // send selected sstable to secondary nodes
+                                    // sstable.getScanner();
 
-                                InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
-                                // read file here
-                                byte[] filterFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
-                                byte[] indexFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
-                                byte[] statsFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
-                                byte[] summaryFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.SUMMARY));
-                                
-                                SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile, summaryFile);
+                                    InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
+                                    // read file here
+                                    byte[] filterFile = ECNetutils
+                                            .readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
+                                    byte[] indexFile = ECNetutils
+                                            .readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
+                                    byte[] statsFile = ECNetutils
+                                            .readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
+                                    byte[] summaryFile = ECNetutils
+                                            .readBytesFromFile(sstable.descriptor.filenameFor(Component.SUMMARY));
 
-                                for (InetAddressAndPort rpn : replicaNodes) {
-                                    if (!rpn.equals(locaIP)) {
-                                        String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                                        ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys, sstInBytes);
-                                        ecSync.sendSSTableToSecondary(rpn);
+                                    SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile,
+                                            summaryFile);
+
+                                    for (InetAddressAndPort rpn : replicaNodes) {
+                                        if (!rpn.equals(locaIP)) {
+                                            String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
+                                            ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys,
+                                                    sstInBytes);
+                                            ecSync.sendSSTableToSecondary(rpn);
+                                        }
                                     }
-                                }
-                                sstable.SetIsReplicationTransferredToErasureCoding();
+                                    sstable.SetIsReplicationTransferredToErasureCoding();
 
-                            } catch (IOException e) {
-                                logger.error("rymError: {}", e);
-                            } catch (Exception e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
+                                } catch (IOException e) {
+                                    logger.error("rymError: {}", e);
+                                } catch (Exception e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
                             }
+                        } else {
+                            logger.info("SSTable is transient");
                         }
+                    } else {
+                        throw new IllegalStateException("The method of getting sstables from a certain level is error!");
                     }
+
                 }
             } else {
                 logger.debug("rymDebug: cannot get sstables from level {}", level);

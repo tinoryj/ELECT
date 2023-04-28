@@ -301,6 +301,7 @@ public class LeveledManifest {
         }
 
         // [CASSANDRAEC]
+        // TODO: Wrong place for remove sstables of transient sstables.
         for(SSTableReader sstable : candidates) {
             if(!sstable.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
                 candidates.remove(sstable);
@@ -585,6 +586,7 @@ public class LeveledManifest {
         // look for a non-suspect keyspace to compact with, starting with where we left
         // off last time,
         // and wrapping back to the beginning of the generation if necessary
+        // TODO: get sstables from current level
         Map<SSTableReader, Bounds<Token>> sstablesNextLevel = genBounds(generations.get(level + 1));
         Iterator<SSTableReader> levelIterator = generations.wrappingIterator(level, lastCompactedSSTables[level]);
         while (levelIterator.hasNext()) {
