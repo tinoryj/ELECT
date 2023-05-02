@@ -705,23 +705,26 @@ public class LeveledManifest {
         // off last time,
         // and wrapping back to the beginning of the generation if necessary
         // TODO: get sstables from current level
-        Map<SSTableReader, Bounds<Token>> sstablesNextLevel = genBounds(generations.get(level + 1));
+        // Map<SSTableReader, Bounds<Token>> sstablesNextLevel = genBounds(generations.get(level + 1));
+        Set<SSTableReader> sstablesNextLevel = generations.get(level + 1);
         Set<SSTableReader> sstablesCurrentLevel = generations.get(level);
         Iterator<SSTableReader> levelIterator = generations.wrappingIterator(level, lastCompactedSSTables[level]);
         while (levelIterator.hasNext()) {
             SSTableReader sstable = levelIterator.next();
+            Token startInputToken = sstable.first.getToken();
+            Token endInputToken = sstable.last.getToken();
             Set<SSTableReader> outputLevel = Sets.union(Collections.singleton(sstable),
-                    overlappingWithBounds(sstable, sstablesNextLevel));
+                    overlapping(startInputToken, endInputToken, sstablesNextLevel));
 
             // further select sstable from input level
-            Token startToken = outputLevel.iterator().next().first.getToken();
-            Token endToken = outputLevel.iterator().next().last.getToken();
+            Token startOutputToken = outputLevel.iterator().next().first.getToken();
+            Token endOutputToken = outputLevel.iterator().next().last.getToken();
             for (SSTableReader sst : outputLevel) {
-                startToken = startToken.compareTo(sst.first.getToken()) > 0 ? sst.first.getToken() : startToken;
-                endToken = endToken.compareTo(sst.last.getToken()) < 0 ? sst.last.getToken() : endToken;
+                startOutputToken = startOutputToken.compareTo(sst.first.getToken()) > 0 ? sst.first.getToken() : startOutputToken;
+                endOutputToken = endOutputToken.compareTo(sst.last.getToken()) < 0 ? sst.last.getToken() : endOutputToken;
             }
             Set<SSTableReader> candidates = Sets.union(outputLevel, 
-                    overlapping(startToken, endToken, sstablesCurrentLevel));
+                    overlapping(startOutputToken, endOutputToken, sstablesCurrentLevel));
 
             if (Iterables.any(candidates, SSTableReader::isMarkedSuspect))
                 continue;

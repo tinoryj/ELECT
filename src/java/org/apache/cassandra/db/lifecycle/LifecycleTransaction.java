@@ -369,7 +369,8 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         assert !staged.update.contains(reader) : "each reader may only be updated once per checkpoint: " + reader;
         assert !identities.contains(reader.instanceId) : "each reader instance may only be provided as an update once: " + reader;
         // check it isn't obsolete, and that it matches the original flag
-        assert !(logged.obsolete.contains(reader) || staged.obsolete.contains(reader)) : "may not update a reader that has been obsoleted";
+        assert !logged.obsolete.contains(reader)  : "may not update a reader that has been obsoleted in logged";
+        assert !staged.obsolete.contains(reader) : "may not update a reader that has been obsoleted in staged";
         assert original == originals.contains(reader) : String.format("the 'original' indicator was incorrect (%s provided): %s", original, reader);
         staged.update.add(reader);
         identities.add(reader.instanceId);
