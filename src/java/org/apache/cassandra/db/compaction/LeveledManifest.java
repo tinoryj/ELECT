@@ -306,11 +306,11 @@ public class LeveledManifest {
 
         // [CASSANDRAEC]
         // TODO: Wrong place for remove sstables of transient sstables.
-        for(SSTableReader sstable : candidates) {
-            if(!sstable.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
-                candidates.remove(sstable);
-            }
-        }
+        // for(SSTableReader sstable : candidates) {
+        //     if(!sstable.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
+        //         candidates.remove(sstable);
+        //     }
+        // }
 
 
         return new CompactionCandidate(candidates, getNextLevel(candidates), maxSSTableSizeInBytes);
