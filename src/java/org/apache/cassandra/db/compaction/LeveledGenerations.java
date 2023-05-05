@@ -174,9 +174,10 @@ class LeveledGenerations {
             SSTableReader before = level.floor(sstable);
 
             if ((before != null && before.last.compareTo(sstable.first) >= 0 ||
-                    after != null && after.first.compareTo(sstable.last) <= 0) &&
+                    after != null && after.first.compareTo(sstable.last) <= 0) //&&
                     // sstable.isReplicationTransferredToErasureCoding() &&
-                    sstable.getColumnFamilyName().equals("usertable")) {
+                    // sstable.getColumnFamilyName().equals("usertable")
+                    ) {
                 logger.debug("rymDebug: sstable {}, level is {}, task id is  need to be sent to L0",
                         sstable.getFilename(), sstable.getSSTableLevel());
                 logger.debug(RED+"rymDebug: send sstables {} to level 0", sstable.getFilename()+RESET);
