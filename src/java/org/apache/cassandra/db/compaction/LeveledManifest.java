@@ -276,8 +276,8 @@ public class LeveledManifest {
                     return l0Compaction;
 
                 // L0 is fine, proceed with this level
-                // Collection<SSTableReader> candidates = getCandidatesFor(i);
-                Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(i);
+                Collection<SSTableReader> candidates = getCandidatesFor(i);
+                // Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(i);
                 if (!candidates.isEmpty()) {
                     int nextLevel = getNextLevel(candidates);
                     candidates = getOverlappingStarvedSSTables(nextLevel, candidates);
@@ -293,8 +293,8 @@ public class LeveledManifest {
         // Higher levels are happy, time for a standard, non-STCS L0 compaction
         if (generations.get(0).isEmpty())
             return null;
-        // Collection<SSTableReader> candidates = getCandidatesFor(0);
-        Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(0);
+        Collection<SSTableReader> candidates = getCandidatesFor(0);
+        // Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(0);
         if (candidates.isEmpty()) {
             // Since we don't have any other compactions to do, see if there is a STCS
             // compaction to perform in L0; if
