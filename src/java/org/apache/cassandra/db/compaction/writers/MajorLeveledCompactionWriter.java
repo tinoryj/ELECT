@@ -81,6 +81,8 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter {
         if (totalWrittenInCurrentWriter > maxSSTableSize) {
             totalWrittenInLevel += totalWrittenInCurrentWriter;
             sstableWriter.currentWriter().last = partition.partitionKey();
+            logger.debug("rymDebug: first key is {}, last key is {}",
+                         sstableWriter.currentWriter().first, sstableWriter.currentWriter().last);
             if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel, levelFanoutSize, maxSSTableSize)) {
                 totalWrittenInLevel = 0;
                 // logger.debug("[Tinoryj] current total written in level: {}, current level = {}", totalWrittenInLevel, currentLevel);
