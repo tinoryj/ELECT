@@ -67,21 +67,21 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter {
     @Override
     @SuppressWarnings("resource")
     public boolean realAppend(UnfilteredRowIterator partition) {
+        if(sstableWriter.currentWriter().first != null && sstableWriter.currentWriter().first.compareTo(partition.partitionKey()) >= 0) {
+            logger.debug("rymError: MajorLeveledCompactionWriter first key {} is larger than right key {}",
+                         sstableWriter.currentWriter().first.getToken(),
+                         sstableWriter.currentWriter().last.getToken());
+        }
         if(sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() <= 1024) {
             sstableWriter.currentWriter().first = partition.partitionKey();
         }
         RowIndexEntry rie = sstableWriter.append(partition);
         partitionsWritten++;
         long totalWrittenInCurrentWriter = sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten();
-        if(sstableWriter.currentWriter().first.compareTo(partition.partitionKey()) >= 0) {
-            logger.debug("rymError: first key {} is larger than right key {}",
-                         sstableWriter.currentWriter().first.getToken(),
-                         sstableWriter.currentWriter().last.getToken());
-        }
         if (totalWrittenInCurrentWriter > maxSSTableSize) {
             totalWrittenInLevel += totalWrittenInCurrentWriter;
             sstableWriter.currentWriter().last = partition.partitionKey();
-            logger.debug("rymDebug: first key is {}, last key is {}",
+            logger.debug("rymDebug: MajorLeveledCompactionWriter first key is {}, last key is {}",
                          sstableWriter.currentWriter().first, sstableWriter.currentWriter().last);
             if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel, levelFanoutSize, maxSSTableSize)) {
                 totalWrittenInLevel = 0;

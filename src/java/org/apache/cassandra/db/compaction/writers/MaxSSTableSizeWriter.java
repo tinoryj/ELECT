@@ -78,8 +78,23 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
     }
 
     protected boolean realAppend(UnfilteredRowIterator partition) {
+
+
+        if(sstableWriter.currentWriter().first != null && sstableWriter.currentWriter().first.compareTo(partition.partitionKey()) >= 0) {
+            logger.debug("rymError: MaxSSTableSizeWriter first key {} is larger than right key {}",
+                         sstableWriter.currentWriter().first.getToken(),
+                         sstableWriter.currentWriter().last.getToken());
+        }
+
+        if(sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() <= 1024) {
+            sstableWriter.currentWriter().first = partition.partitionKey();
+        }
+
         RowIndexEntry rie = sstableWriter.append(partition);
         if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize) {
+            sstableWriter.currentWriter().last = partition.partitionKey();
+            logger.debug("rymDebug: MaxSSTableSizeWriter first key is {}, last key is {}",
+                         sstableWriter.currentWriter().first, sstableWriter.currentWriter().last);
             switchCompactionLocation(sstableDirectory);
         }
         return rie != null;
