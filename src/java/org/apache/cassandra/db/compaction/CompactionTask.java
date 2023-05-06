@@ -478,9 +478,18 @@ public class CompactionTask extends AbstractCompactionTask {
                     if (!controller.cfs.getCompactionStrategyManager().isActive())
                         throw new CompactionInterruptedException(ci.getCompactionInfo());
                     estimatedKeys = writer.estimatedKeys();
+                    UnfilteredRowIterator prevRow = null;
                     while (ci.hasNext()) {
-                        if (writer.append(ci.next()))
+                        UnfilteredRowIterator row = ci.next();
+                        if(prevRow != null) {
+                            if(prevRow.partitionKey().compareTo(row.partitionKey()) > 0) {
+                                logger.error("rymError: previous partition key {} is larger than current partition key {}!",
+                                             prevRow.partitionKey().getToken(), row.partitionKey().getToken());
+                            }
+                        }
+                        if (writer.append(row))
                             totalKeysWritten++;
+                        prevRow = row;
 
                         long bytesScanned = scanners.getTotalBytesScanned();
 
