@@ -79,13 +79,13 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
 
     protected boolean realAppend(UnfilteredRowIterator partition) {
 
-        if(!sstableWriter.currentWriter().isChecked && sstableWriter.currentWriter().first != null &&
+        if(!sstableWriter.currentWriter().isOverlapped && sstableWriter.currentWriter().first != null &&
              sstableWriter.currentWriter().first.compareTo(partition.partitionKey()) >= 0) {
-            logger.debug("rymError: MaxSSTableSizeWriter first key {} is larger than right key {}, key count is {}",
+            logger.debug("rymDebug: MaxSSTableSizeWriter first key {} is larger than right key {}, key count is {}",
                          sstableWriter.currentWriter().first.getToken(),
                          sstableWriter.currentWriter().last.getToken(),
                          sstableWriter.currentWriter().currentKeyCount);
-            sstableWriter.currentWriter().isChecked = true;
+            sstableWriter.currentWriter().isOverlapped = true;
         }
 
         if(sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() <= 1024) {
@@ -95,16 +95,17 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
 
         RowIndexEntry rie = sstableWriter.append(partition);
         sstableWriter.currentWriter().currentKeyCount++;
-        if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize) {
+        if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize || sstableWriter.currentWriter().isOverlapped) {
             sstableWriter.currentWriter().last = partition.partitionKey();
             if(sstableWriter.currentWriter().first.compareTo(sstableWriter.currentWriter().last) >= 0) {
-                logger.debug("rymError: MaxSSTableSizeWriter first key {} is larger than right key {}",
+                logger.debug("rymDebug: MaxSSTableSizeWriter first key {} is larger than last key {}",
                              sstableWriter.currentWriter().first.getToken(),
                              sstableWriter.currentWriter().last.getToken());
             }
             logger.debug("rymDebug: MaxSSTableSizeWriter first key is {}, last key is {}",
                          sstableWriter.currentWriter().first.getToken(), sstableWriter.currentWriter().last.getToken());
             switchCompactionLocation(sstableDirectory);
+            sstableWriter.currentWriter().isOverlapped = false;
         }
         return rie != null;
     }

@@ -82,7 +82,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
     protected DecoratedKey firstKey = null;
     protected DecoratedKey lastKey = null;
     public long currentKeyCount = 0;
-    public boolean isChecked = false;
+    public boolean isOverlapped = false;
 
     protected abstract TransactionalProxy txnProxy();
 
