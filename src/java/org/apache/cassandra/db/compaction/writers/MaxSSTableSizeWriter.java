@@ -79,13 +79,6 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
 
     protected boolean realAppend(UnfilteredRowIterator partition) {
 
-
-        if(sstableWriter.currentWriter().first != null && sstableWriter.currentWriter().first.compareTo(partition.partitionKey()) >= 0) {
-            logger.debug("rymError: MaxSSTableSizeWriter first key {} is larger than right key {}",
-                         sstableWriter.currentWriter().first.getToken(),
-                         sstableWriter.currentWriter().last.getToken());
-        }
-
         if(sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() <= 1024) {
             sstableWriter.currentWriter().first = partition.partitionKey();
         }
@@ -93,8 +86,13 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
         RowIndexEntry rie = sstableWriter.append(partition);
         if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize) {
             sstableWriter.currentWriter().last = partition.partitionKey();
+            if(sstableWriter.currentWriter().first.compareTo(sstableWriter.currentWriter().last) >= 0) {
+                logger.debug("rymError: MaxSSTableSizeWriter first key {} is larger than right key {}",
+                             sstableWriter.currentWriter().first.getToken(),
+                             sstableWriter.currentWriter().last.getToken());
+            }
             logger.debug("rymDebug: MaxSSTableSizeWriter first key is {}, last key is {}",
-                         sstableWriter.currentWriter().first, sstableWriter.currentWriter().last);
+                         sstableWriter.currentWriter().first.getToken(), sstableWriter.currentWriter().last.getToken());
             switchCompactionLocation(sstableDirectory);
         }
         return rie != null;
@@ -127,10 +125,13 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
 
     @Override
     protected boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter) {
-        RowIndexEntry rie = sstableWriter.append(partition);
-        if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize || isSwitchWriter) {
-            switchCompactionLocation(sstableDirectory);
-        }
-        return rie != null;
+        // RowIndexEntry rie = sstableWriter.append(partition);
+        // if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize || isSwitchWriter) {
+        //     switchCompactionLocation(sstableDirectory);
+        // }
+        // return rie != null;
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'realAppend'");
+
     }
 }
