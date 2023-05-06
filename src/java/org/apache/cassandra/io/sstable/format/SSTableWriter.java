@@ -77,6 +77,10 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
     protected final SerializationHeader header;
     protected final TransactionalProxy txnProxy = txnProxy();
     protected final Collection<SSTableFlushObserver> observers;
+    
+    // [CASSANDRAEC]
+    protected DecoratedKey firstKey = null;
+    protected DecoratedKey lastKey = null;
 
     protected abstract TransactionalProxy txnProxy();
 
