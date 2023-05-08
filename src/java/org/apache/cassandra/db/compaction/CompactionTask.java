@@ -23,11 +23,14 @@ import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.LogRecord;
 import java.util.stream.StreamSupport;
@@ -77,6 +80,7 @@ public class CompactionTask extends AbstractCompactionTask {
     protected static long totalBytesCompacted = 0;
     private ActiveCompactionsTracker activeCompactions;
 
+    private static final Comparator<UnfilteredRowIterator> partitionComparator = (p1, p2) -> p1.partitionKey().compareTo(p2.partitionKey());
 
     // Reset
     public static final String RESET = "\033[0m"; // Text Reset
@@ -210,6 +214,16 @@ public class CompactionTask extends AbstractCompactionTask {
                 logger.debug("rymDebug: rewrite sstable name is {}, sstable level is {}, task id is {}", 
                     sstable.getFilename(), sstable.getSSTableLevel(), taskId);
             }
+            
+            Comparator<SSTableReader> comparator = new Comparator<SSTableReader>() {
+
+                public int compare(SSTableReader o1, SSTableReader o2) {
+                    return o1.first.compareTo(o2.first);
+                }
+
+            };
+            Set<SSTableReader> actuallyCompact = new TreeSet<>(comparator);
+            actuallyCompact.addAll(sstables);
 
             
             Collection<SSTableReader> newSSTables = new ArrayList<SSTableReader>();
@@ -223,8 +237,8 @@ public class CompactionTask extends AbstractCompactionTask {
 
 
             int nowInSec = FBUtilities.nowInSeconds();
-            try (Refs<SSTableReader> refs = Refs.ref(sstables);
-                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(sstables);
+            try (Refs<SSTableReader> refs = Refs.ref(actuallyCompact);
+                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(actuallyCompact);
                     CompactionIterator ci = new CompactionIterator(compactionType, scanners.scanners, controller,
                             nowInSec, taskId)) {
                 long lastCheckObsoletion = start;
@@ -237,7 +251,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
                 activeCompactions.beginCompaction(ci);
                 try (// CompactionAwareWriter writer1 = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables);
-                     CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables)) {
+                     CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction, actuallyCompact)) {
                     // Note that we need to re-check this flag after calling beginCompaction above
                     // to avoid a window
                     // where the compaction does not exist in activeCompactions but the CSM gets
@@ -443,13 +457,22 @@ public class CompactionTask extends AbstractCompactionTask {
             long inputSizeBytes;
             long timeSpentWritingKeys;
 
-            Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
+            Comparator<SSTableReader> comparator = new Comparator<SSTableReader>() {
+
+                public int compare(SSTableReader o1, SSTableReader o2) {
+                    return o1.first.compareTo(o2.first);
+                }
+
+            };
+            Set<SSTableReader> actuallyCompact = new TreeSet<>(comparator);
+            actuallyCompact.addAll(Sets.difference(transaction.originals(), fullyExpiredSSTables));
 
 
             Collection<SSTableReader> newSStables;
 
             long[] mergedRowCounts;
             long totalSourceCQLRows;
+
 
 
             int nowInSec = FBUtilities.nowInSeconds();

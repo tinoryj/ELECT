@@ -396,15 +396,15 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
             size = 0;
 
             // sort the iters
-            Comparator<Iterator<In>> comparator = new Comparator<Iterator<In>>() {
+            // Comparator<Iterator<In>> comparator = new Comparator<Iterator<In>>() {
 
-                @Override
-                public int compare(Iterator<In> o1, Iterator<In> o2) {
-                    return comp.compare(o1.next(), o2.next());
-                }
+            //     @Override
+            //     public int compare(Iterator<In> o1, Iterator<In> o2) {
+            //         return comp.compare(o1.next(), o2.next());
+            //     }
                 
-            };
-            Collections.sort(iters, comparator);
+            // };
+            // Collections.sort(iters, comparator);
 
 
             for (int i = 0; i < iters.size(); i++)
@@ -451,8 +451,8 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
                 if (candidate.needsAdvance())
                     replaceAndSink(candidate.advance(), i);
 
-                if (candidate.needToSink)
-                    replaceAndSink(candidate, i);
+                // if (candidate.needToSink)
+                //     replaceAndSink(candidate, i);
             }
         }
 

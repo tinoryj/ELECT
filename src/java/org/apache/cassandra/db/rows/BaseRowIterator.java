@@ -23,6 +23,8 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.RegularAndStaticColumns;
 import org.apache.cassandra.utils.CloseableIterator;
 
+import com.google.common.collect.PeekingIterator;
+
 /**
  * A common interface for Row and Unfiltered, that permits sharing of the (majority) common
  * methods and functionality

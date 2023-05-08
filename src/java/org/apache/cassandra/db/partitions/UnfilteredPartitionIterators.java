@@ -106,6 +106,16 @@ public abstract class UnfilteredPartitionIterators
     {
         assert !iterators.isEmpty();
 
+        // Comparator<UnfilteredPartitionIterator> comparator = new Comparator<UnfilteredPartitionIterator>() {
+
+        //     public int compare(UnfilteredPartitionIterator o1, UnfilteredPartitionIterator o2) {
+        //         return partitionComparator.compare(o1.next(), o2.next());
+        //     }
+
+        // };
+
+        // Collections.sort(iterators, comparator);
+
         final TableMetadata metadata = iterators.get(0).metadata();
 
         final MergeIterator<UnfilteredRowIterator, UnfilteredRowIterator> merged = MergeIterator.get(iterators, partitionComparator, new MergeIterator.Reducer<UnfilteredRowIterator, UnfilteredRowIterator>()
