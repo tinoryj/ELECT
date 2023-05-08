@@ -466,8 +466,9 @@ public class CompactionTask extends AbstractCompactionTask {
 
             };
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
-            SortedSet<SSTableReader> sortedSet = new TreeSet<>(comparator);
-            sortedSet.addAll(actuallyCompact);
+            
+            List<SSTableReader> sortedSSTables = new ArrayList<SSTableReader>(actuallyCompact);
+            Collections.sort(sortedSSTables, comparator);
 
 
             Collection<SSTableReader> newSStables;
@@ -478,8 +479,8 @@ public class CompactionTask extends AbstractCompactionTask {
 
 
             int nowInSec = FBUtilities.nowInSeconds();
-            try (Refs<SSTableReader> refs = Refs.ref(sortedSet);
-                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(sortedSet);
+            try (Refs<SSTableReader> refs = Refs.ref(actuallyCompact);
+                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(actuallyCompact);
                     CompactionIterator ci = new CompactionIterator(compactionType, scanners.scanners, controller,
                             nowInSec, taskId)) {
                 long lastCheckObsoletion = start;
@@ -492,7 +493,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
                 activeCompactions.beginCompaction(ci);
                 try (CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction,
-                sortedSet)) {
+                actuallyCompact)) {
                     // Note that we need to re-check this flag after calling beginCompaction above
                     // to avoid a window
                     // where the compaction does not exist in activeCompactions but the CSM gets
