@@ -155,7 +155,8 @@ public abstract class UnfilteredPartitionIterators
                 for (int i = 0; i < iterators.size(); i++)
                     toMerge.add(null);
             }
-        });
+        },
+         true);
 
         return new AbstractUnfilteredPartitionIterator()
         {
