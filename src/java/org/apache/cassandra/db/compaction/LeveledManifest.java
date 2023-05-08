@@ -276,8 +276,8 @@ public class LeveledManifest {
                     return l0Compaction;
 
                 // L0 is fine, proceed with this level
-                Collection<SSTableReader> candidates = getCandidatesFor(i);
-                // Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(i);
+                // Collection<SSTableReader> candidates = getCandidatesFor(i);
+                Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(i);
                 if (!candidates.isEmpty()) {
                     int nextLevel = getNextLevel(candidates);
                     candidates = getOverlappingStarvedSSTables(nextLevel, candidates);
