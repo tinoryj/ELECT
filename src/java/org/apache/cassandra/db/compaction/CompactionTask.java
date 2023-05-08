@@ -80,7 +80,7 @@ public class CompactionTask extends AbstractCompactionTask {
     protected static long totalBytesCompacted = 0;
     private ActiveCompactionsTracker activeCompactions;
 
-    private static final Comparator<UnfilteredRowIterator> partitionComparator = (p1, p2) -> p1.partitionKey().compareTo(p2.partitionKey());
+    // private static final Comparator<UnfilteredRowIterator> partitionComparator = (p1, p2) -> p1.partitionKey().compareTo(p2.partitionKey());
 
     // Reset
     public static final String RESET = "\033[0m"; // Text Reset
@@ -464,8 +464,9 @@ public class CompactionTask extends AbstractCompactionTask {
                 }
 
             };
-            Set<SSTableReader> actuallyCompact = new TreeSet<>(comparator);
-            actuallyCompact.addAll(Sets.difference(transaction.originals(), fullyExpiredSSTables));
+            Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
+            Set<SSTableReader> sortedSet = new TreeSet<>(comparator);
+            sortedSet.addAll(actuallyCompact);
 
 
             Collection<SSTableReader> newSStables;
@@ -476,8 +477,8 @@ public class CompactionTask extends AbstractCompactionTask {
 
 
             int nowInSec = FBUtilities.nowInSeconds();
-            try (Refs<SSTableReader> refs = Refs.ref(actuallyCompact);
-                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(actuallyCompact);
+            try (Refs<SSTableReader> refs = Refs.ref(sortedSet);
+                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(sortedSet);
                     CompactionIterator ci = new CompactionIterator(compactionType, scanners.scanners, controller,
                             nowInSec, taskId)) {
                 long lastCheckObsoletion = start;
@@ -490,7 +491,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
                 activeCompactions.beginCompaction(ci);
                 try (CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction,
-                        actuallyCompact)) {
+                 sortedSet)) {
                     // Note that we need to re-check this flag after calling beginCompaction above
                     // to avoid a window
                     // where the compaction does not exist in activeCompactions but the CSM gets
