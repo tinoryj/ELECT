@@ -137,13 +137,13 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
 
     @Override
     protected boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter) {
-        // RowIndexEntry rie = sstableWriter.append(partition);
-        // if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize || isSwitchWriter) {
-        //     switchCompactionLocation(sstableDirectory);
-        // }
-        // return rie != null;
+        RowIndexEntry rie = sstableWriter.append(partition);
+        if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize || isSwitchWriter) {
+            switchCompactionLocation(sstableDirectory);
+        }
+        return rie != null;
         // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'realAppend'");
+        // throw new UnsupportedOperationException("Unimplemented method 'realAppend'");
 
     }
 }
