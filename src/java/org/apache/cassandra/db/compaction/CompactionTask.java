@@ -469,8 +469,8 @@ public class CompactionTask extends AbstractCompactionTask {
             };
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
             
-            List<SSTableReader> sortedSSTables = new ArrayList<SSTableReader>(actuallyCompact);
-            Collections.sort(sortedSSTables, comparator);
+            // List<SSTableReader> sortedSSTables = new ArrayList<SSTableReader>(actuallyCompact);
+            // Collections.sort(sortedSSTables, comparator);
 
 
             Collection<SSTableReader> newSStables;
@@ -482,7 +482,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
             int nowInSec = FBUtilities.nowInSeconds();
             try (Refs<SSTableReader> refs = Refs.ref(actuallyCompact);
-                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(sortedSSTables);
+                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(actuallyCompact);
                     CompactionIterator ci = new CompactionIterator(compactionType, scanners.scanners, controller,
                             nowInSec, taskId)) {
 
