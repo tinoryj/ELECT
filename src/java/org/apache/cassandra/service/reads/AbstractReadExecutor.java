@@ -198,8 +198,14 @@ public abstract class AbstractReadExecutor {
         List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
                 .metadata().keyspace,
                 command.partitionKey().getKey());
-        logger.debug("[Tinoryj] the replication plan for read is {}, natural storage node list = {}", replicaPlan,
-                sendRequestAddresses);
+        if (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0))) {
+            logger.debug("[Tinoryj] the primary node is the first node in the natural storage node list");
+        } else {
+            logger.debug(
+                    "[Tinoryj-ERROR] the primary node is not the first node in the natural storage node list ++ the replication plan for read is {}, natural storage node list = {}",
+                    replicaPlan,
+                    sendRequestAddresses);
+        }
 
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
@@ -210,7 +216,9 @@ public abstract class AbstractReadExecutor {
         // There are simply no extra replicas to speculate.
         // Handle this separately so it can record failed attempts to speculate due to
         // lack of replicas
-        if (replicaPlan.contacts().size() == replicaPlan.readCandidates().size()) {
+        if (replicaPlan.contacts().size() == replicaPlan.readCandidates().size())
+
+        {
             boolean recordFailedSpeculation = consistencyLevel != ConsistencyLevel.ALL;
             return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime,
                     recordFailedSpeculation);
@@ -218,7 +226,9 @@ public abstract class AbstractReadExecutor {
 
         if (retry.equals(AlwaysSpeculativeRetryPolicy.INSTANCE))
             return new AlwaysSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime);
-        else // PERCENTILE or CUSTOM.
+        else // PERCENTILE
+             // or
+             // CUSTOM.
             return new SpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime);
     }
 
