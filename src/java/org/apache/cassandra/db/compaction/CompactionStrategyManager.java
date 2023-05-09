@@ -814,6 +814,10 @@ public class CompactionStrategyManager implements INotificationConsumer {
         try {
             List<GroupedSSTableContainer> sstableGroups = groupSSTables(sstables);
 
+            if(sstableGroups.size() != sstables.size()) {
+                logger.debug("rymDebug: sstableGroups num is {}, sstables num is {}", sstableGroups.size(), sstables.size());
+            }
+
             for (int i = 0; i < holders.size(); i++) {
                 AbstractStrategyHolder holder = holders.get(i);
                 GroupedSSTableContainer group = sstableGroups.get(i);
