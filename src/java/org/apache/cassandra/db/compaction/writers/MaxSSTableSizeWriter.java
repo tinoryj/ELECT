@@ -95,7 +95,9 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
 
         RowIndexEntry rie = sstableWriter.append(partition);
         sstableWriter.currentWriter().currentKeyCount++;
-        if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize || sstableWriter.currentWriter().isOverlapped) {
+        if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize
+            // || sstableWriter.currentWriter().isOverlapped
+            ) {
             sstableWriter.currentWriter().last = partition.partitionKey();
             if(sstableWriter.currentWriter().first.compareTo(sstableWriter.currentWriter().last) >= 0) {
                 logger.debug("rymERROR: MaxSSTableSizeWriter first key {} is larger than last key {}",

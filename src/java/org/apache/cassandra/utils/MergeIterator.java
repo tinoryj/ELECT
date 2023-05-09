@@ -19,11 +19,18 @@ package org.apache.cassandra.utils;
 
 import java.util.*;
 
+import org.apache.cassandra.io.sstable.ISSTableScanner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /** Merges sorted input iterators which individually contain unique items. */
 public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implements IMergeIterator<In, Out>
 {
     protected final Reducer<In,Out> reducer;
     protected final List<? extends Iterator<In>> iterators;
+
+    protected static final Logger logger = LoggerFactory.getLogger(MergeIterator.class);
+
 
     protected MergeIterator(List<? extends Iterator<In>> iters, Reducer<In, Out> reducer)
     {
@@ -429,7 +436,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
         /**
          * The number of elements to keep in order before the binary heap starts, exclusive of the top heap element.
          */
-        static final int SORTED_SECTION_SIZE = 10;
+        static final int SORTED_SECTION_SIZE = 100;
 
         public ManyToMany(List<? extends Iterator<In>> iters, Comparator<? super In> comp, Reducer<In, Out> reducer)
         {
@@ -452,12 +459,14 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
             // Collections.sort(iters, comparator);
 
 
+
             for (int i = 0; i < iters.size(); i++)
             {
                 Candidate<In> candidate = new Candidate<>(i, iters.get(i), comp);
                 heap[size++] = candidate;
             }
             
+            logger.info("rymInfo: iters size is {}, heap size is {}", iters.size(), size);
             // for(int i = size - 1; i >= 0; i--) {
             //     replaceAndSink(heap[i], i);
             // }
