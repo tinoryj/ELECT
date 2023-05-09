@@ -468,8 +468,8 @@ public class CompactionTask extends AbstractCompactionTask {
             };
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
             
-            // List<SSTableReader> sortedSSTables = new ArrayList<SSTableReader>(actuallyCompact);
-            // Collections.sort(sortedSSTables, comparator);
+            List<SSTableReader> sortedSSTables = new ArrayList<SSTableReader>(actuallyCompact);
+            Collections.sort(sortedSSTables, comparator);
 
 
             Collection<SSTableReader> newSStables;
@@ -481,7 +481,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
             int nowInSec = FBUtilities.nowInSeconds();
             try (Refs<SSTableReader> refs = Refs.ref(actuallyCompact);
-                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(actuallyCompact.stream().sorted(comparator).collect(Collectors.toList()));
+                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(sortedSSTables);
                     CompactionIterator ci = new CompactionIterator(compactionType, scanners.scanners, controller,
                             nowInSec, taskId)) {
                 long lastCheckObsoletion = start;
@@ -510,7 +510,7 @@ public class CompactionTask extends AbstractCompactionTask {
                         UnfilteredRowIterator row = ci.next();
                         if(prevRow != null) {
                             if(prevRow.partitionKey().compareTo(row.partitionKey()) > 0) {
-                                logger.error("rymError: previous partition key {} is larger than current partition key {}!",
+                                logger.error("rymERROR: previous partition key {} is larger than current partition key {}!",
                                              prevRow.partitionKey().getToken(), row.partitionKey().getToken());
                             }
                         }
