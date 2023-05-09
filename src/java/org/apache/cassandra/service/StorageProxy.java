@@ -2127,10 +2127,6 @@ public class StorageProxy implements StorageProxyMBean {
         // the consistency level
         for (int i = 0; i < cmdCount; i++) {
             // the command we'll actually query the replica
-            List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(commands.get(i)
-                    .metadata().keyspace,
-                    commands.get(i).partitionKey().getKey());
-            logger.debug("[Tinoryj] target read request addresses: {}", sendRequestAddresses);
             reads[i].executeAsync();
         }
 

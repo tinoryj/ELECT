@@ -20,6 +20,8 @@ package org.apache.cassandra.service.reads;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.net.InetAddress;
+import java.util.*;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -46,7 +48,7 @@ import org.apache.cassandra.service.reads.repair.ReadRepair;
 import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
-
+import org.apache.cassandra.service.StorageService;
 import static com.google.common.collect.Iterables.all;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 
@@ -192,7 +194,12 @@ public abstract class AbstractReadExecutor {
 
         ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, command.partitionKey().getToken(),
                 consistencyLevel, retry);
-        logger.debug("[Tinoryj] the replication plan for read is {}", replicaPlan);
+
+        List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
+                .metadata().keyspace,
+                command.partitionKey().getKey());
+        logger.debug("[Tinoryj] the replication plan for read is {}, natural storage node list = {}", replicaPlan,
+                sendRequestAddresses);
 
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
