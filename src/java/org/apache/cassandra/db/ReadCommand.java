@@ -817,7 +817,7 @@ public abstract class ReadCommand extends AbstractReadQuery
         final BiFunction<List<UnfilteredPartitionIterator>, RepairedDataInfo, UnfilteredPartitionIterator> merge =
             (unfilteredPartitionIterators, repairedDataInfo) -> {
                 UnfilteredPartitionIterator repaired = UnfilteredPartitionIterators.merge(unfilteredPartitionIterators,
-                                                                                          NOOP, false);
+                                                                                          NOOP, false, null);
                 return repairedDataInfo.withRepairedDataInfo(repaired);
             };
 

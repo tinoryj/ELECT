@@ -31,6 +31,7 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.MergeIterator;
+import org.apache.cassandra.utils.TimeUUID;
 
 /**
  * Static methods to work with partition iterators.
@@ -102,7 +103,7 @@ public abstract class UnfilteredPartitionIterators
     }
 
     @SuppressWarnings("resource")
-    public static UnfilteredPartitionIterator merge(final List<? extends UnfilteredPartitionIterator> iterators, final MergeListener listener, Boolean isCassandraEC)
+    public static UnfilteredPartitionIterator merge(final List<? extends UnfilteredPartitionIterator> iterators, final MergeListener listener, Boolean isCassandraEC, TimeUUID taskId)
     {
         assert !iterators.isEmpty();
 
@@ -156,7 +157,7 @@ public abstract class UnfilteredPartitionIterators
                     toMerge.add(null);
             }
         },
-        isCassandraEC);
+        isCassandraEC, taskId);
 
         return new AbstractUnfilteredPartitionIterator()
         {

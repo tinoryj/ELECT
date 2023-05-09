@@ -403,7 +403,7 @@ public class ReadCommandTest
                 }
             };
 
-        try (PartitionIterator partitionIterator = UnfilteredPartitionIterators.filter(UnfilteredPartitionIterators.merge(iterators, listener), nowInSeconds))
+        try (PartitionIterator partitionIterator = UnfilteredPartitionIterators.filter(UnfilteredPartitionIterators.merge(iterators, listener, false, null), nowInSeconds))
         {
 
             int i = 0;

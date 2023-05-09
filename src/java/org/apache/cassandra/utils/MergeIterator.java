@@ -57,7 +57,8 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
     public static <In, Out> MergeIterator<In, Out> get(List<? extends Iterator<In>> sources,
                                                        Comparator<? super In> comparator,
                                                        Reducer<In, Out> reducer,
-                                                       boolean isCassandraEC)
+                                                       boolean isCassandraEC,
+                                                       TimeUUID taskId)
     {
         if (sources.size() == 1)
         {
@@ -66,7 +67,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
                  : new OneToOne<>(sources, reducer);
         }
         else if (isCassandraEC)
-            return new ManyToMany<>(sources, comparator, reducer);
+            return new ManyToMany<>(sources, comparator, reducer, taskId);
         return new ManyToOne<>(sources, comparator, reducer);
     }
 
@@ -438,7 +439,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
          */
         static final int SORTED_SECTION_SIZE = 100;
 
-        public ManyToMany(List<? extends Iterator<In>> iters, Comparator<? super In> comp, Reducer<In, Out> reducer)
+        public ManyToMany(List<? extends Iterator<In>> iters, Comparator<? super In> comp, Reducer<In, Out> reducer, TimeUUID taskId)
         {
             super(iters, reducer);
 
@@ -466,7 +467,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
                 heap[size++] = candidate;
             }
             
-            logger.info("rymInfo: iters size is {}, heap size is {}", iters.size(), size);
+            logger.info("rymInfo: iters size is {}, heap size is {}, task id is {}", iters.size(), size, taskId);
             // for(int i = size - 1; i >= 0; i--) {
             //     replaceAndSink(heap[i], i);
             // }

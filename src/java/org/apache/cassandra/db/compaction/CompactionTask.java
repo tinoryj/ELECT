@@ -406,7 +406,9 @@ public class CompactionTask extends AbstractCompactionTask {
         // it is not empty, it may compact down to nothing if all rows are deleted.
         assert transaction != null;
         Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
-        logger.debug("rymDebug:[Raw Compaction Strategy] rewrite {} sstables, original sstbales number is {}", sstables.size(), transaction.originals().size());
+        TimeUUID taskId = transaction.opId();
+        logger.debug("rymDebug:[Raw Compaction Strategy] rewrite {} sstables, original sstbales number is {}, task id is {}",
+                     sstables.size(), transaction.originals().size(), taskId);
 
         if (transaction.originals().isEmpty())
             return;
@@ -436,7 +438,6 @@ public class CompactionTask extends AbstractCompactionTask {
                 }
             });
 
-            TimeUUID taskId = transaction.opId();
 
             // new sstables from flush can be added during a compaction, but only the
             // compaction can remove them,
@@ -484,6 +485,11 @@ public class CompactionTask extends AbstractCompactionTask {
                     AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(sortedSSTables);
                     CompactionIterator ci = new CompactionIterator(compactionType, scanners.scanners, controller,
                             nowInSec, taskId)) {
+
+                if (cfs.getColumnFamilyName().contains("usertable")) {
+                    logger.debug("rymDebug: actually compact sstable count is {}, scanners count is {}",
+                            actuallyCompact.size(), scanners.scanners.size());
+                }
                 long lastCheckObsoletion = start;
                 inputSizeBytes = scanners.getTotalCompressedSize();
                 double compressionRatio = scanners.getCompressionRatio();

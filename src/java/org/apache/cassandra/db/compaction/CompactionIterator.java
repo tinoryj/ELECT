@@ -128,7 +128,7 @@ public class CompactionIterator extends CompactionInfo.Holder implements Unfilte
         
         UnfilteredPartitionIterator merged = scanners.isEmpty()
                                            ? EmptyIterators.unfilteredPartition(controller.cfs.metadata())
-                                           : UnfilteredPartitionIterators.merge(scanners, listener(), controller.cfs.name.contains("usertable"));
+                                           : UnfilteredPartitionIterators.merge(scanners, listener(), controller.cfs.name.contains("usertable"), compactionId);
         if (topPartitionCollector != null) // need to count tombstones before they are purged
             merged = Transformation.apply(merged, new TopPartitionTracker.TombstoneCounter(topPartitionCollector, nowInSec));
         merged = Transformation.apply(merged, new GarbageSkipper(controller));
