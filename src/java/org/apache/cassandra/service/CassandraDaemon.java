@@ -433,12 +433,12 @@ public class CassandraDaemon {
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
                 ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(), 5, 1, TimeUnit.MINUTES);
 
-
         // schedule periodic send sstable content task submission
-        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
-                ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", DatabaseDescriptor.getCompactionThreshold(), 1),
-                2, 1, TimeUnit.MINUTES);
-        
+        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
+        // ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable",
+        // DatabaseDescriptor.getCompactionThreshold(),
+        // 1),
+        // 2, 1, TimeUnit.MINUTES);
 
         // schedule periodic recomputation of speculative retry thresholds
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(SPECULATION_THRESHOLD_UPDATER,
@@ -693,7 +693,7 @@ public class CassandraDaemon {
         try {
             applyConfig(); // apply cnfigures in cassandra.yaml
 
-            registerNativeAccess(); 
+            registerNativeAccess();
 
             setup(); // loading ssts, etc.
 

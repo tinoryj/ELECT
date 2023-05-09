@@ -519,16 +519,20 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                                 InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
                                 // read file here
-                                byte[] filterFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
-                                byte[] indexFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
-                                byte[] statsFile = ECNetutils.readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
-                                
+                                byte[] filterFile = ECNetutils
+                                        .readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
+                                byte[] indexFile = ECNetutils
+                                        .readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
+                                byte[] statsFile = ECNetutils
+                                        .readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
+
                                 SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile);
 
                                 for (InetAddressAndPort rpn : replicaNodes) {
                                     if (!rpn.equals(locaIP)) {
                                         String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                                        ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys, sstInBytes);
+                                        ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys,
+                                                sstInBytes);
                                         ecSync.sendSSTableToSecondary(rpn);
                                     }
                                 }
@@ -1786,10 +1790,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite");
 
-        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables,
-                skipIfCurrentVersion,
-
-                skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
+        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables, ecSSTable,
+                txn, skipIfCurrentVersion, skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 
     // [CASSANDRAEC]

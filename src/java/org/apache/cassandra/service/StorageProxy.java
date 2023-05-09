@@ -2106,7 +2106,7 @@ public class StorageProxy implements StorageProxyMBean {
             ConsistencyLevel consistencyLevel, long queryStartNanoTime)
             throws UnavailableException, ReadFailureException, ReadTimeoutException {
         int cmdCount = commands.size();
-
+        logger.debug("[Tinoryj] total read command count: {}", cmdCount);
         AbstractReadExecutor[] reads = new AbstractReadExecutor[cmdCount];
 
         // Get the replica locations, sorted by response time according to the snitch,
