@@ -102,19 +102,9 @@ public abstract class UnfilteredPartitionIterators
     }
 
     @SuppressWarnings("resource")
-    public static UnfilteredPartitionIterator merge(final List<? extends UnfilteredPartitionIterator> iterators, final MergeListener listener)
+    public static UnfilteredPartitionIterator merge(final List<? extends UnfilteredPartitionIterator> iterators, final MergeListener listener, Boolean isCassandraEC)
     {
         assert !iterators.isEmpty();
-
-        // Comparator<UnfilteredPartitionIterator> comparator = new Comparator<UnfilteredPartitionIterator>() {
-
-        //     public int compare(UnfilteredPartitionIterator o1, UnfilteredPartitionIterator o2) {
-        //         return partitionComparator.compare(o1.next(), o2.next());
-        //     }
-
-        // };
-
-        // Collections.sort(iterators, comparator);
 
         final TableMetadata metadata = iterators.get(0).metadata();
 
@@ -166,7 +156,7 @@ public abstract class UnfilteredPartitionIterators
                     toMerge.add(null);
             }
         },
-         true);
+        isCassandraEC);
 
         return new AbstractUnfilteredPartitionIterator()
         {
