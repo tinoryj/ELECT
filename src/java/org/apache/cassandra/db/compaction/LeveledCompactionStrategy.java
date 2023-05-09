@@ -311,33 +311,32 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
         List<ISSTableScanner> scanners = new ArrayList<ISSTableScanner>(sstables.size());
         try {
-            for (Integer level : byLevel.keySet()) {
-                // level can be -1 when sstables are added to Tracker but not to LeveledManifest
-                // since we don't know which level those sstable belong yet, we simply do the
-                // same as L0 sstables.
 
-                for (SSTableReader sstable : sstables) {
-                    scanners.add(sstable.getScanner(ranges));
-                }
-
-
-                // if (level <= 0) {
-                //     // L0 makes no guarantees about overlapping-ness. Just create a direct scanner
-                //     // for each
-                //     for (SSTableReader sstable : byLevel.get(level))
-                //         scanners.add(sstable.getScanner(ranges));
-                // } else {
-                //     // Create a LeveledScanner that only opens one sstable at a time, in sorted
-                //     // order
-                //     Collection<SSTableReader> intersecting = LeveledScanner.intersecting(byLevel.get(level), ranges);
-                //     if (!intersecting.isEmpty()) {
-                //         @SuppressWarnings("resource") // The ScannerList will be in charge of closing (and we close
-                //                                       // properly on errors)
-                //         ISSTableScanner scanner = new LeveledScanner(cfs.metadata(), intersecting, ranges);
-                //         scanners.add(scanner);
-                //     }
-                // }
+            for (SSTableReader sstable : sstables) {
+                scanners.add(sstable.getScanner(ranges));
             }
+
+            // for (Integer level : byLevel.keySet()) {
+            //     // level can be -1 when sstables are added to Tracker but not to LeveledManifest
+            //     // since we don't know which level those sstable belong yet, we simply do the
+            //     // same as L0 sstables.
+            //     if (level <= 0) {
+            //         // L0 makes no guarantees about overlapping-ness. Just create a direct scanner
+            //         // for each
+            //         for (SSTableReader sstable : byLevel.get(level))
+            //             scanners.add(sstable.getScanner(ranges));
+            //     } else {
+            //         // Create a LeveledScanner that only opens one sstable at a time, in sorted
+            //         // order
+            //         Collection<SSTableReader> intersecting = LeveledScanner.intersecting(byLevel.get(level), ranges);
+            //         if (!intersecting.isEmpty()) {
+            //             @SuppressWarnings("resource") // The ScannerList will be in charge of closing (and we close
+            //                                           // properly on errors)
+            //             ISSTableScanner scanner = new LeveledScanner(cfs.metadata(), intersecting, ranges);
+            //             scanners.add(scanner);
+            //         }
+            //     }
+            // }
         } catch (Throwable t) {
             ISSTableScanner.closeAllAndPropagate(scanners, t);
         }
