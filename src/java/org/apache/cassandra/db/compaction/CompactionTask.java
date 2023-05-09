@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -82,7 +83,7 @@ public class CompactionTask extends AbstractCompactionTask {
     protected static long totalBytesCompacted = 0;
     private ActiveCompactionsTracker activeCompactions;
 
-    // private static final Comparator<UnfilteredRowIterator> partitionComparator = (p1, p2) -> p1.partitionKey().compareTo(p2.partitionKey());
+    private static final Comparator<UnfilteredRowIterator> partitionComparator = (p1, p2) -> p1.partitionKey().compareTo(p2.partitionKey());
 
     // Reset
     public static final String RESET = "\033[0m"; // Text Reset
@@ -505,19 +506,17 @@ public class CompactionTask extends AbstractCompactionTask {
                     if (!controller.cfs.getCompactionStrategyManager().isActive())
                         throw new CompactionInterruptedException(ci.getCompactionInfo());
                     estimatedKeys = writer.estimatedKeys();
-                    UnfilteredRowIterator prevRow = null;
+                    // UnfilteredRowIterator prevRow = null;
+                    List<UnfilteredRowIterator> allRows = new ArrayList<UnfilteredRowIterator>();
                     while (ci.hasNext()) {
                         UnfilteredRowIterator row = ci.next();
-                        if(prevRow != null) {
-                            if(prevRow.partitionKey().compareTo(row.partitionKey()) > 0) {
-                                logger.error("rymERROR: previous partition key {} is larger than current partition key {}!",
-                                             prevRow.partitionKey().getToken(), row.partitionKey().getToken());
-                            }
-                        }
-                        if (writer.append(row))
-                            totalKeysWritten++;
-                        prevRow = row;
-
+                        // if(prevRow != null) {
+                        //     if(prevRow.partitionKey().compareTo(row.partitionKey()) > 0) {
+                        //         logger.error("rymERROR: previous partition key {} is larger than current partition key {}!",
+                        //                      prevRow.partitionKey().getToken(), row.partitionKey().getToken());
+                        //     }
+                        // }
+                        allRows.add(row);
                         long bytesScanned = scanners.getTotalBytesScanned();
 
                         // Rate limit the scanners, and account for compression
@@ -525,12 +524,20 @@ public class CompactionTask extends AbstractCompactionTask {
                                 compressionRatio);
 
                         lastBytesScanned = bytesScanned;
-
+                        
                         if (nanoTime() - lastCheckObsoletion > TimeUnit.MINUTES.toNanos(1L)) {
                             controller.maybeRefreshOverlaps();
                             lastCheckObsoletion = nanoTime();
                         }
                     }
+
+                    Collections.sort(allRows, partitionComparator);
+                    for(UnfilteredRowIterator row : allRows) {
+                        if (writer.append(row))
+                            totalKeysWritten++;
+                    }
+
+                    
                     timeSpentWritingKeys = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
 
                     // point of no return
