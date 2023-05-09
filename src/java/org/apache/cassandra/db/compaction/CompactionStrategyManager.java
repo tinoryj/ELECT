@@ -813,16 +813,16 @@ public class CompactionStrategyManager implements INotificationConsumer {
         //              sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
         try {
             List<GroupedSSTableContainer> sstableGroups = groupSSTables(sstables);
-
-            if(sstableGroups.size() != sstables.size()) {
-                logger.debug("rymDebug: sstableGroups num is {}, sstables num is {}", sstableGroups.size(), sstables.size());
-            }
-
             for (int i = 0; i < holders.size(); i++) {
                 AbstractStrategyHolder holder = holders.get(i);
                 GroupedSSTableContainer group = sstableGroups.get(i);
                 scanners.addAll(holder.getScanners(group, ranges));
             }
+
+            if(sstableGroups.size() != sstables.size()) {
+                logger.debug("rymDebug: sstableGroups num is {}, sstables num is {}, scanner num is {}", sstableGroups.size(), sstables.size(), scanners.size());
+            }
+
         } catch (PendingRepairManager.IllegalSSTableArgumentException e) {
             ISSTableScanner.closeAllAndPropagate(scanners, new ConcurrentModificationException(e));
         } finally {
