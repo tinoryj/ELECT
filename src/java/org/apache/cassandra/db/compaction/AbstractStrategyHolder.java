@@ -77,7 +77,7 @@ public abstract class AbstractStrategyHolder {
      */
     public static class GroupedSSTableContainer {
         private final AbstractStrategyHolder holder;
-        private final Set<SSTableReader>[] groups;
+        public final Set<SSTableReader>[] groups;
 
         private GroupedSSTableContainer(AbstractStrategyHolder holder) {
             this.holder = holder;
