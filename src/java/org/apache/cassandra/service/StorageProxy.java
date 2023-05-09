@@ -2188,11 +2188,11 @@ public class StorageProxy implements StorageProxyMBean {
             this.command = command;
             this.handler = handler;
             this.trackRepairedStatus = trackRepairedStatus;
-            if (command instanceof SinglePartitionReadCommand) {
-                logger.debug("[Tinoryj] touch SinglePartitionReadCommand in storage proxy");
-            } else {
-                logger.debug("[Tinoryj] touch PartitionRangeReadCommand in storage proxy");
-            }
+            // if (command instanceof SinglePartitionReadCommand) {
+            // logger.debug("[Tinoryj] touch SinglePartitionReadCommand in storage proxy");
+            // } else {
+            // logger.debug("[Tinoryj] touch PartitionRangeReadCommand in storage proxy");
+            // }
         }
 
         protected void runMayThrow() {
@@ -2208,6 +2208,7 @@ public class StorageProxy implements StorageProxyMBean {
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     response = command.createResponse(iterator, controller.getRepairedDataInfo());
+                    logger.debug("[Tinoryj] get read response in storage proxy: {}", response);
                 } catch (RejectException e) {
                     if (!command.isTrackingWarnings())
                         throw e;
