@@ -455,6 +455,16 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         setCompressionParameters(FBUtilities.fromJsonMap(options));
     }
 
+    /**
+     * Get scheduled tasks for sending SSTables to do erasure coding.
+     * 
+     * @param keyspaceName 
+     * @param cfName
+     * @param sendSSTLevel 
+     * @param delay the selected SSTable's age must >= this value
+     * 
+     */
+
     public static Runnable getSendSSTRunnable(String keyspaceName, String cfName, int sendSSTLevel, int delay) {
         return new SendSSTRunnable(keyspaceName, cfName, sendSSTLevel, delay);
     }
@@ -541,10 +551,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                             ecSync.sendSSTableToSecondary(rpn);
                                         }
                                     }
-                                    sstable.SetIsReplicationTransferredToErasureCoding();
+
+                                    if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
+                                        logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+                                    }
 
                                 } catch (IOException e) {
-                                    logger.error("rymError: {}", e);
+                                    logger.error("rymERROR: {}", e);
                                 } catch (Exception e) {
                                     // TODO Auto-generated catch block
                                     e.printStackTrace();
@@ -552,6 +565,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             }
                         } else {
                             logger.info("SSTable is transient");
+                            continue;
                         }
                     } else {
                         throw new IllegalStateException("The method of getting sstables from a certain level is error!");

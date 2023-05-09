@@ -121,7 +121,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         // secondary node
                         // one to one
                         if (rewriteSStables.isEmpty()) {
-                            logger.warn("rymWarnings: rewriteSStables is empty!");
+                            logger.warn("rymERROR: rewriteSStables is empty!");
                             continue;
                         }
 
@@ -148,7 +148,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                 logger.debug(RED + "rymDebug: M or M1 missed some keys in the middle, update sstable!");
                             } else {
                                 cfs.replaceSSTable(ecSSTable, updateTxn);
-                                logger.warn("rymWarning: get unexpected sstables num");
+                                logger.warn("rymERROR: get unexpected sstables num");
                             }
                         } else if (rewriteSStables.size() > 1) {
                             // many sstables are involved
@@ -172,7 +172,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                         StorageService.instance.globalSSTMap.remove(sstableHash);
                     } else {
-                        logger.warn("rymWarning: cannot get rewrite data of {}", sstableHash);
+                        logger.warn("rymERROR: cannot get rewrite data of {}", sstableHash);
                     }
 
                 } else {
