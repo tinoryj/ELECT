@@ -365,7 +365,52 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
     }
 
 
-    // [CASSANDRAEC]
+    /** [CASSANDRAEC]
+     * A MergeIterator that consumes multiple input values per output value.
+     *
+     * The most straightforward way to implement this is to use a {@code PriorityQueue} of iterators, {@code poll} it to
+     * find the next item to consume, then {@code add} the iterator back after advancing. This is not very efficient as
+     * {@code poll} and {@code add} in all cases require at least {@code log(size)} comparisons (usually more than
+     * {@code 2*log(size)}) per consumed item, even if the input is suitable for fast iteration.
+     *
+     * The implementation below makes use of the fact that replacing the top element in a binary heap can be done much
+     * more efficiently than separately removing it and placing it back, especially in the cases where the top iterator
+     * is to be used again very soon (e.g. when there are large sections of the output where only a limited number of
+     * input iterators overlap, which is normally the case in many practically useful situations, e.g. levelled
+     * compaction). To further improve this particular scenario, we also use a short sorted section at the start of the
+     * queue.
+     *
+     * The heap is laid out as this (for {@code SORTED_SECTION_SIZE == 2}):
+     *                 0
+     *                 |
+     *                 1
+     *                 |
+     *                 2
+     *               /   \
+     *              3     4
+     *             / \   / \
+     *             5 6   7 8
+     *            .. .. .. ..
+     * Where each line is a <= relationship.
+     *
+     * In the sorted section we can advance with a single comparison per level, while advancing a level within the heap
+     * requires two (so that we can find the lighter element to pop up).
+     * The sorted section adds a constant overhead when data is uniformly distributed among the iterators, but may up
+     * to halve the iteration time when one iterator is dominant over sections of the merged data (as is the case with
+     * non-overlapping iterators).
+     *
+     * The iterator is further complicated by the need to avoid advancing the input iterators until an output is
+     * actually requested. To achieve this {@code consume} walks the heap to find equal items without advancing the
+     * iterators, and {@code advance} moves them and restores the heap structure before any items can be consumed.
+     * 
+     * To avoid having to do additional comparisons in consume to identify the equal items, we keep track of equality
+     * between children and their parents in the heap. More precisely, the lines in the diagram above define the
+     * following relationship:
+     *   parent <= child && (parent == child) == child.equalParent
+     * We can track, make use of and update the equalParent field without any additional comparisons.
+     *
+     * For more formal definitions and proof of correctness, see CASSANDRA-8915.
+     */
     static final class ManyToMany<In,Out> extends MergeIterator<In,Out>
     {
         protected final Candidate<In>[] heap;
@@ -384,7 +429,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
         /**
          * The number of elements to keep in order before the binary heap starts, exclusive of the top heap element.
          */
-        static final int SORTED_SECTION_SIZE = 4;
+        static final int SORTED_SECTION_SIZE = 10;
 
         public ManyToMany(List<? extends Iterator<In>> iters, Comparator<? super In> comp, Reducer<In, Out> reducer)
         {
@@ -410,7 +455,6 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
             for (int i = 0; i < iters.size(); i++)
             {
                 Candidate<In> candidate = new Candidate<>(i, iters.get(i), comp);
-                // candidate.item = candidate.iter.next();
                 heap[size++] = candidate;
             }
             
@@ -474,14 +518,14 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
 
             reducer.onKeyChange();
             assert !heap[0].equalParent;
-            heap[0].consume(reducer);
+            heap[0].consume(reducer); // add to merge list
             final int size = this.size;
             final int sortedSectionSize = Math.min(size, SORTED_SECTION_SIZE);
             int i;
             consume: {
                 for (i = 1; i < sortedSectionSize; ++i)
                 {
-                    if (!heap[i].equalParent)
+                    if (!heap[i].equalParent) // if not equal to parent (which means not equal to heap[0]),then break
                         break consume;
                     heap[i].consume(reducer);
                 }
