@@ -169,6 +169,10 @@ public abstract class AbstractReadExecutor {
      * send the initial set of requests
      */
     public void executeAsync() {
+        logger.debug(
+                "[Tinoryj] Read executeAsync replicas: {}, initialDataRequestCount: {}, target primary and secondary nodes info = {}",
+                replicaPlan().contacts(),
+                initialDataRequestCount);
         EndpointsForToken selected = replicaPlan().contacts();
         EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
         makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
