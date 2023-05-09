@@ -487,8 +487,8 @@ public class CompactionTask extends AbstractCompactionTask {
                             nowInSec, taskId)) {
 
                 if (cfs.getColumnFamilyName().contains("usertable")) {
-                    logger.debug("rymDebug: actually compact sstable count is {}, scanners count is {}",
-                            actuallyCompact.size(), scanners.scanners.size());
+                    logger.debug("rymDebug: actually compact sstable count is {}, scanners count is {}, task id is {}",
+                            actuallyCompact.size(), scanners.scanners.size(), taskId);
                 }
                 long lastCheckObsoletion = start;
                 inputSizeBytes = scanners.getTotalCompressedSize();
