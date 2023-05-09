@@ -410,7 +410,12 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
             for (int i = 0; i < iters.size(); i++)
             {
                 Candidate<In> candidate = new Candidate<>(i, iters.get(i), comp);
+                candidate.item = candidate.iter.next();
                 heap[size++] = candidate;
+            }
+            
+            for(int i = size - 1; i >= 0; i--) {
+                replaceAndSink(heap[i], i);
             }
             needingAdvance = size;
         }
@@ -452,7 +457,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
                     replaceAndSink(candidate.advance(), i);
 
                 // if (candidate.needToSink)
-                replaceAndSink(candidate, i);
+                // replaceAndSink(candidate, i);
             }
         }
 
