@@ -50,7 +50,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
     public static <In, Out> MergeIterator<In, Out> get(List<? extends Iterator<In>> sources,
                                                        Comparator<? super In> comparator,
                                                        Reducer<In, Out> reducer,
-                                                       boolean isCompaction)
+                                                       boolean isCassandraEC)
     {
         if (sources.size() == 1)
         {
@@ -58,7 +58,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
                  ? new TrivialOneToOne<>(sources, reducer)
                  : new OneToOne<>(sources, reducer);
         }
-        else if (isCompaction)
+        else if (isCassandraEC)
             return new ManyToMany<>(sources, comparator, reducer);
         return new ManyToOne<>(sources, comparator, reducer);
     }

@@ -126,15 +126,6 @@ public class CompactionIterator extends CompactionInfo.Holder implements Unfilte
         this.activeCompactions = activeCompactions == null ? ActiveCompactionsTracker.NOOP : activeCompactions;
         this.activeCompactions.beginCompaction(this); // note that CompactionTask also calls this, but CT only creates CompactionIterator with a NOOP ActiveCompactions
         
-        // if(scanners.isEmpty()) {
-        //     UnfilteredPartitionIterator merged = EmptyIterators.unfilteredPartition(controller.cfs.metadata());
-        // } else {
-        //     if(controller.cfs.name.equals("usertable")) {
-        //         UnfilteredPartitionIterator merged = UnfilteredPartitionIterators.merge(scanners, listener());
-        //     } else {
-        //         UnfilteredPartitionIterator merged = UnfilteredPartitionIterators.merge(scanners, listener());
-        //     }
-        // }
         UnfilteredPartitionIterator merged = scanners.isEmpty()
                                            ? EmptyIterators.unfilteredPartition(controller.cfs.metadata())
                                            : UnfilteredPartitionIterators.merge(scanners, listener(), controller.cfs.name.contains("usertable"));
