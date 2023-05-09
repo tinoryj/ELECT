@@ -452,7 +452,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
                     replaceAndSink(candidate.advance(), i);
 
                 // if (candidate.needToSink)
-                //     replaceAndSink(candidate, i);
+                replaceAndSink(candidate, i);
             }
         }
 
