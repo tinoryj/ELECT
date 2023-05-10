@@ -39,6 +39,7 @@ import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.dht.IPartitioner;
@@ -164,15 +165,38 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             }
 
             
+            boolean isContainReplicationTransferredToErasureCoding = false;
+            List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+
+            // only for secondary node 
+            if (!cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable")) {
+                for (SSTableReader sstable : candidate.sstables) {
+                    if (sstable.isReplicationTransferredToErasureCoding()) {
+                        isContainReplicationTransferredToErasureCoding = true;
+                        TransfferedSSTableKeyRange range = new TransfferedSSTableKeyRange(sstable.first, sstable.last);
+                        transfferedSSTableKeyRanges.add(range);
+                    }
+                }
+
+                if (candidate.sstables.size() == 1 && isContainReplicationTransferredToErasureCoding) {
+                    return null;
+                }
+            }
 
             LifecycleTransaction txn = cfs.getTracker().tryModify(candidate.sstables, OperationType.COMPACTION);
             if (txn != null) {
                 AbstractCompactionTask newTask;
+                // get isContainReplicationTransferredToErasureCoding and selected transient sstable key ranges 
+
                 if (!singleSSTableUplevel || op == OperationType.TOMBSTONE_COMPACTION || txn.originals().size() > 1)
                     newTask = new LeveledCompactionTask(cfs, txn, candidate.level, gcBefore, candidate.maxSSTableBytes,
-                            false);
+                            false, transfferedSSTableKeyRanges);
                 else
                     newTask = new SingleSSTableLCSTask(cfs, txn, candidate.level);
+                
+                if(isContainReplicationTransferredToErasureCoding == true) {
+                    newTask.isContainReplicationTransferredToErasureCoding = true;
+                }
 
                 newTask.setCompactionType(op);
                 return newTask;
@@ -191,8 +215,27 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         LifecycleTransaction txn = cfs.getTracker().tryModify(filteredSSTables, OperationType.COMPACTION);
         if (txn == null)
             return null;
+
+                    
+        boolean isContainReplicationTransferredToErasureCoding = false;
+        List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+        int size = 0;
+
+        for (SSTableReader sstable : sstables) {
+            if (sstable.isReplicationTransferredToErasureCoding()) {
+                isContainReplicationTransferredToErasureCoding = true;
+                TransfferedSSTableKeyRange range = new TransfferedSSTableKeyRange(sstable.first, sstable.last);
+                transfferedSSTableKeyRanges.add(range);
+            }
+            size++;
+        }
+
+        if (size == 1 && isContainReplicationTransferredToErasureCoding) {
+            return null;
+        }
+
         return Arrays.<AbstractCompactionTask>asList(
-                new LeveledCompactionTask(cfs, txn, 0, gcBefore, getMaxSSTableBytes(), true));
+                new LeveledCompactionTask(cfs, txn, 0, gcBefore, getMaxSSTableBytes(), true, transfferedSSTableKeyRanges));
 
     }
 
@@ -211,22 +254,58 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             return null;
         }
         int level = sstables.size() > 1 ? 0 : sstables.iterator().next().getSSTableLevel();
+
+        boolean isContainReplicationTransferredToErasureCoding = false;
+        List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+        int size = 0;
+
+        for (SSTableReader sstable : sstables) {
+            if (sstable.isReplicationTransferredToErasureCoding()) {
+                isContainReplicationTransferredToErasureCoding = true;
+                TransfferedSSTableKeyRange range = new TransfferedSSTableKeyRange(sstable.first, sstable.last);
+                transfferedSSTableKeyRanges.add(range);
+            }
+            size++;
+        }
+
+        if (size == 1 && isContainReplicationTransferredToErasureCoding) {
+            return null;
+        }
+
         return new LeveledCompactionTask(cfs, transaction, level, gcBefore,
-                level == 0 ? Long.MAX_VALUE : getMaxSSTableBytes(), false);
+                level == 0 ? Long.MAX_VALUE : getMaxSSTableBytes(), false, transfferedSSTableKeyRanges);
     }
 
     @Override
     public AbstractCompactionTask getCompactionTask(LifecycleTransaction txn, int gcBefore, long maxSSTableBytes) {
         assert txn.originals().size() > 0;
         int level = -1;
+
+        boolean isContainReplicationTransferredToErasureCoding = false;
+        List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+        int size = 0;
+        
         // if all sstables are in the same level, we can set that level:
         for (SSTableReader sstable : txn.originals()) {
             if (level == -1)
                 level = sstable.getSSTableLevel();
             if (level != sstable.getSSTableLevel())
                 level = 0;
+
+            if (sstable.isReplicationTransferredToErasureCoding()) {
+                isContainReplicationTransferredToErasureCoding = true;
+                TransfferedSSTableKeyRange range = new TransfferedSSTableKeyRange(sstable.first, sstable.last);
+                transfferedSSTableKeyRanges.add(range);
+            }
+            size++;
         }
-        return new LeveledCompactionTask(cfs, txn, level, gcBefore, maxSSTableBytes, false);
+
+
+        if (size == 1 && isContainReplicationTransferredToErasureCoding) {
+            return null;
+        }
+
+        return new LeveledCompactionTask(cfs, txn, level, gcBefore, maxSSTableBytes, false, transfferedSSTableKeyRanges);
     }
 
     /**

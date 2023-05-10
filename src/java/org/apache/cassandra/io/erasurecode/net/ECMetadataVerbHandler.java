@@ -159,7 +159,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!",
                                     rewriteSStables.size());
                             try {
-                                AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys,
+                                AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys.get(0),
+                                        updateKeys.get(updateKeys.size() - 1),
                                         rewriteSStables, ecSSTable, updateTxn, false, Long.MAX_VALUE, false, 1);
                                 if (status != AllSSTableOpStatus.SUCCESSFUL)
                                     printStatusCode(status.statusCode, cfs.name);

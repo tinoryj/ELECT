@@ -26,13 +26,14 @@ import com.google.common.base.Preconditions;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.io.FSDiskFullWriteError;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.WrappedRunnable;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
-
+import org.apache.cassandra.dht.Range;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 public abstract class AbstractCompactionTask extends WrappedRunnable
@@ -41,6 +42,9 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     protected LifecycleTransaction transaction;
     protected boolean isUserDefined;
     protected OperationType compactionType;
+
+    // [CASSANDRAEC]
+    protected boolean isContainReplicationTransferredToErasureCoding = false;
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractCompactionTask.class);
 
@@ -119,15 +123,47 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     }
 
     /**
-     * [CASSANDRAEC] executes the task and unmarks sstables compacting
+     * 
+     * [CASSANDRAEC] perform SSTables rewrite
+     * @param first first key of the ecSSTable
+     * @param last last key of the ecSSTable
+     * @param ecSSTable the new SSTable which has been replaced Data.db with EC.db
+     * 
      */
-    public int execute(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys, SSTableReader ecSSTable)
+    public int execute(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
     {
         try
         {
             // logger.debug("rymDebug: this is ActiveCompactionTask.execute");
 
-            return executeInternal(activeCompactions, sourceKeys, ecSSTable);
+            return executeInternal(activeCompactions, first, last, ecSSTable);
+        }
+        catch(FSDiskFullWriteError e)
+        {
+            RuntimeException cause = new RuntimeException("Converted from FSDiskFullWriteError: " + e.getMessage());
+            cause.setStackTrace(e.getStackTrace());
+            throw new RuntimeException("Throwing new Runtime to bypass exception handler when disk is full", cause);
+        }
+        finally
+        {
+            transaction.close();
+        }
+    }
+
+    /**
+     * [CASSANDRAEC] perform Leveled Compaction for CassandraEC in secondary node, if transferred SSTables are selected
+     * 
+     * @param transfferedSSTableKeyRanges the key ranges of the selected transferred SSTables, we should abandon the keys
+     * within these ranges.
+     * 
+     */
+    public int execute(ActiveCompactionsTracker activeCompactions, List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
+    {
+        try
+        {
+            // logger.debug("rymDebug: this is ActiveCompactionTask.execute");
+
+            return executeInternal(activeCompactions, transfferedSSTableKeyRanges);
         }
         catch(FSDiskFullWriteError e)
         {
@@ -145,7 +181,9 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
 
     protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions);
     
-    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, List<DecoratedKey> sourceKeys, SSTableReader ecSSTable);
+    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable);
+
+    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges);
 
     public AbstractCompactionTask setUserDefined(boolean isUserDefined)
     {

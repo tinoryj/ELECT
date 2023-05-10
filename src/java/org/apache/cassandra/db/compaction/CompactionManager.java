@@ -56,6 +56,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionInfo.Holder;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
 import org.apache.cassandra.db.lifecycle.ILifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableIntervalTree;
@@ -315,6 +316,10 @@ public class CompactionManager implements CompactionManagerMBean {
                 if (task == null) {
                     if (DatabaseDescriptor.automaticSSTableUpgrade())
                         ranCompaction = maybeRunUpgradeTask(strategy);
+                } else if(task.isContainReplicationTransferredToErasureCoding){
+                    List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = ((LeveledCompactionTask) task).transfferedSSTableKeyRanges;
+                    task.execute(active, transfferedSSTableKeyRanges);
+                    ranCompaction = true;
                 } else {
                     task.execute(active);
                     ranCompaction = true;
@@ -423,7 +428,8 @@ public class CompactionManager implements CompactionManagerMBean {
 
     // [CASSANDRAEC]
     private AllSSTableOpStatus rewriteSSTables(final ColumnFamilyStore cfs, 
-            final List<DecoratedKey> sourceKeys,
+            final DecoratedKey first,
+            final DecoratedKey last,
             List<SSTableReader> rewriteSSTables,
             SSTableReader ecSSTable,
             final LifecycleTransaction txn,
@@ -574,7 +580,8 @@ public class CompactionManager implements CompactionManagerMBean {
 
     // rewrite sstables based source decorated keys
     public AllSSTableOpStatus performSSTableRewrite(final ColumnFamilyStore cfs,
-            final List<DecoratedKey> sourceKeys, 
+            final DecoratedKey first,
+            final DecoratedKey last, 
             List<SSTableReader> sstables,
             SSTableReader ecSSTable,
             final LifecycleTransaction txn,
@@ -582,7 +589,7 @@ public class CompactionManager implements CompactionManagerMBean {
             final long skipIfOlderThanTimestamp,
             final boolean skipIfCompressionMatches,
             int jobs) throws InterruptedException, ExecutionException {
-        return performSSTableRewrite(cfs, sourceKeys, sstables, ecSSTable, txn, (sstable) -> {
+        return performSSTableRewrite(cfs, first, last, sstables, ecSSTable, txn, (sstable) -> {
             // TODO: check this filter
 
             // Skip if descriptor version matches current version
@@ -614,14 +621,15 @@ public class CompactionManager implements CompactionManagerMBean {
     }
 
     public AllSSTableOpStatus performSSTableRewrite(final ColumnFamilyStore cfs,
-            final List<DecoratedKey> sourceKeys, 
+            final DecoratedKey first,
+            final DecoratedKey last, 
             List<SSTableReader> sstables, 
             SSTableReader ecSSTable,
             final LifecycleTransaction updateTxn,
             Predicate<SSTableReader> sstableFilter,
             int jobs) throws InterruptedException, ExecutionException {
         // return rewriteSSTables(cfs, sourceKeys, sstables, OperationType.COMPACTION);
-        return rewriteSSTables(cfs, sourceKeys, sstables, ecSSTable, updateTxn, new OneSSTableOperation() {
+        return rewriteSSTables(cfs, first, last, sstables, ecSSTable, updateTxn, new OneSSTableOperation() {
             @Override
             public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
                 List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
@@ -649,7 +657,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
                 task.setUserDefined(true);
                 task.setCompactionType(OperationType.COMPACTION);
-                task.execute(active, sourceKeys, ecSSTable);
+                task.execute(active, first, last, ecSSTable);
             }
         }, OperationType.COMPACTION);
     }
@@ -871,7 +879,13 @@ public class CompactionManager implements CompactionManagerMBean {
             }
 
             @Override
-            protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
@@ -1060,7 +1074,14 @@ public class CompactionManager implements CompactionManagerMBean {
                 }
 
                 @Override
-                protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
+                        throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1105,7 +1126,14 @@ public class CompactionManager implements CompactionManagerMBean {
                 }
 
                 @Override
-                protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
+                        throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1285,7 +1313,13 @@ public class CompactionManager implements CompactionManagerMBean {
             }
 
             @Override
-            protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

@@ -20,7 +20,9 @@ package org.apache.cassandra.utils;
 import java.util.List;
 
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.tools.nodetool.DescribeCluster;
 
 import com.google.common.base.Throwables;
 
@@ -39,11 +41,23 @@ public abstract class WrappedRunnable implements Runnable
     }
 
     // [CASSANDRAEC]
-    public final void run(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable){
+    public final void run(DecoratedKey first, DecoratedKey last,SSTableReader ecSSTable){
         
         try
         {
-            runMayThrow(sourceKeys, ecSSTable);
+            runMayThrow(first, last, ecSSTable);
+        }
+        catch (Exception e)
+        {
+            throw Throwables.propagate(e);
+        }
+    }
+
+    public final void run(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges){
+        
+        try
+        {
+            runMayThrow(transfferedSSTableKeyRanges);
         }
         catch (Exception e)
         {
@@ -52,5 +66,6 @@ public abstract class WrappedRunnable implements Runnable
     }
 
     abstract protected void runMayThrow() throws Exception;
-    abstract protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception;
+    abstract protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception;
+    abstract protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception;
 }

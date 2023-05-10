@@ -481,7 +481,8 @@ public class LeveledManifest {
         Bounds<Token> promotedBounds = new Bounds<>(start, end);
 
         for (Map.Entry<SSTableReader, Bounds<Token>> pair : sstables.entrySet()) {
-            if (pair.getValue().intersects(promotedBounds))
+            if (pair.getValue().intersects(promotedBounds)
+                 && !pair.getKey().isReplicationTransferredToErasureCoding())
                 overlapped.add(pair.getKey());
         }
         return overlapped;
@@ -704,13 +705,16 @@ public class LeveledManifest {
         // look for a non-suspect keyspace to compact with, starting with where we left
         // off last time,
         // and wrapping back to the beginning of the generation if necessary
-        // TODO: get sstables from current level
         // Map<SSTableReader, Bounds<Token>> sstablesNextLevel = genBounds(generations.get(level + 1));
+        // TODO: for primary node
+        // [CASSANDRAEC]
         Set<SSTableReader> sstablesNextLevel = generations.get(level + 1);
         Set<SSTableReader> sstablesCurrentLevel = generations.get(level);
         Iterator<SSTableReader> levelIterator = generations.wrappingIterator(level, lastCompactedSSTables[level]);
         while (levelIterator.hasNext()) {
             SSTableReader sstable = levelIterator.next();
+            if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
+                continue;
             Token startInputToken = sstable.first.getToken();
             Token endInputToken = sstable.last.getToken();
             Set<SSTableReader> outputLevel = Sets.union(Collections.singleton(sstable),
