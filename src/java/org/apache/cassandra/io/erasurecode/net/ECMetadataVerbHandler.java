@@ -241,7 +241,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             if(sstables.get(tail).getSSTableLevel() != DatabaseDescriptor.getCompactionThreshold())
                 logger.warn("rymWarnings: sstable level {} is not equal to threshold {}", 
                     sstables.get(tail).getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
-            rewriteSStables.add(sstables.get(tail));
+            if(!sstables.get(tail).isReplicationTransferredToErasureCoding())
+                rewriteSStables.add(sstables.get(tail));
             tail++;
         }
 
@@ -250,13 +251,14 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             if(sstables.get(head).getSSTableLevel() != DatabaseDescriptor.getCompactionThreshold())
                 logger.warn("rymWarnings: sstable level {} is not equal to threshold {}", 
                     sstables.get(head).getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
-            rewriteSStables.add(sstables.get(head));
+            if(!sstables.get(head).isReplicationTransferredToErasureCoding())
+                rewriteSStables.add(sstables.get(head));
             head--;
         }
 
-        if(head >= 0) 
+        if(head >= 0 && !sstables.get(head).isReplicationTransferredToErasureCoding()) 
             rewriteSStables.add(sstables.get(head));
-        if(tail < sstables.size()) 
+        if(tail < sstables.size() && !sstables.get(tail).isReplicationTransferredToErasureCoding()) 
             rewriteSStables.add(sstables.get(tail));
 
         return rewriteSStables;

@@ -474,7 +474,7 @@ public class CompactionManager implements CompactionManagerMBean {
                     logger.debug("rymDebug: transaction {} still has sstable {}, Data.db is {}, EC.db is {}", txn.opId(), sstable.getFilename(),
                          sstable.descriptor.fileFor(Component.DATA).exists(),
                          sstable.descriptor.fileFor(Component.EC_METADATA).exists());
-                    txn.cancel(sstable);
+                    // txn.cancel(sstable);
                 }
             }
             return AllSSTableOpStatus.SUCCESSFUL;
