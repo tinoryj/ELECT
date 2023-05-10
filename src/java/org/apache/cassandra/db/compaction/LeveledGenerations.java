@@ -186,8 +186,12 @@ class LeveledGenerations {
                 // }
                 if(!sstable.getColumnFamilyName().contains("usertable"))
                     sendToL0(sstable);
-                else 
+                else {
                     level.add(sstable);
+                    logger.debug("rymDebug: sstable {}, overlapped with its neighbors, but we still add it to level {}",
+                        sstable.getFilename(), sstable.getSSTableLevel());
+                }
+                    
             } else {
                 level.add(sstable);
             }

@@ -482,7 +482,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
             int nowInSec = FBUtilities.nowInSeconds();
             try (Refs<SSTableReader> refs = Refs.ref(actuallyCompact);
-                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(actuallyCompact);
+                    AbstractCompactionStrategy.ScannerList scanners = strategy.getScanners(actuallyCompact.stream().sorted(comparator).collect(Collectors.toList()));
                     CompactionIterator ci = new CompactionIterator(compactionType, scanners.scanners, controller,
                             nowInSec, taskId)) {
 
