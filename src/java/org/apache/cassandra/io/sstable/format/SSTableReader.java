@@ -282,7 +282,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     // not final since we need to be able to change level on a file.
     protected volatile StatsMetadata sstableMetadata;
 
-    protected Boolean isReplicationTransferredToErasureCoding;
+    protected Boolean isReplicationTransferredToErasureCoding = false;
 
     public final SerializationHeader header;
 
