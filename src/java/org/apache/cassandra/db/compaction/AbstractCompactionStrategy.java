@@ -532,13 +532,11 @@ public abstract class AbstractCompactionStrategy {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             MetadataCollector meta,
             SerializationHeader header,
             Collection<Index> indexes,
             LifecycleNewTracker lifecycleNewTracker) {
         return SimpleSSTableMultiWriter.create(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding,
                 cfs.metadata, meta, header, indexes, lifecycleNewTracker);
     }
 

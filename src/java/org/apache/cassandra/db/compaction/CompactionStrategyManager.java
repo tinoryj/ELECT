@@ -172,8 +172,8 @@ public class CompactionStrategyManager implements INotificationConsumer {
                 return compactionStrategyIndexForDirectory(descriptor);
             }
         };
-        transientRepairs = new PendingRepairHolder(cfs, router, true, false);
-        pendingRepairs = new PendingRepairHolder(cfs, router, false, false);
+        transientRepairs = new PendingRepairHolder(cfs, router, true);
+        pendingRepairs = new PendingRepairHolder(cfs, router, false);
         repaired = new CompactionStrategyHolder(cfs, router, true); // runing SSTs
         unrepaired = new CompactionStrategyHolder(cfs, router, false);
         holders = ImmutableList.of(transientRepairs, pendingRepairs, repaired, unrepaired);
@@ -654,19 +654,16 @@ public class CompactionStrategyManager implements INotificationConsumer {
         throw new IllegalStateException("No holder claimed " + sstable);
     }
 
-    private AbstractStrategyHolder getHolder(long repairedAt, TimeUUID pendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+    private AbstractStrategyHolder getHolder(long repairedAt, TimeUUID pendingRepair, boolean isTransient) {
         return getHolder(repairedAt != ActiveRepairService.UNREPAIRED_SSTABLE,
                 pendingRepair != ActiveRepairService.NO_PENDING_REPAIR,
-                isTransient, isReplicationTransferredToErasureCoding);
+                isTransient);
     }
 
     @VisibleForTesting
-    AbstractStrategyHolder getHolder(boolean isRepaired, boolean isPendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+    AbstractStrategyHolder getHolder(boolean isRepaired, boolean isPendingRepair, boolean isTransient) {
         for (AbstractStrategyHolder holder : holders) {
-            if (holder.managesRepairedGroup(isRepaired, isPendingRepair, isTransient,
-                    isReplicationTransferredToErasureCoding))
+            if (holder.managesRepairedGroup(isRepaired, isPendingRepair, isTransient))
                 return holder;
         }
 
@@ -1026,7 +1023,6 @@ public class CompactionStrategyManager implements INotificationConsumer {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             MetadataCollector collector,
             SerializationHeader header,
             Collection<Index> indexes,
@@ -1035,13 +1031,12 @@ public class CompactionStrategyManager implements INotificationConsumer {
         maybeReloadDiskBoundaries();
         readLock.lock();
         try {
-            return getHolder(repairedAt, pendingRepair, isTransient, isReplicationTransferredToErasureCoding)
+            return getHolder(repairedAt, pendingRepair, isTransient)
                     .createSSTableMultiWriter(descriptor,
                             keyCount,
                             repairedAt,
                             pendingRepair,
                             isTransient,
-                            isReplicationTransferredToErasureCoding,
                             collector,
                             header,
                             indexes,
@@ -1098,16 +1093,14 @@ public class CompactionStrategyManager implements INotificationConsumer {
      * are moved between strategies.
      */
     public void mutateRepaired(Collection<SSTableReader> sstables, long repairedAt, TimeUUID pendingRepair,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException {
+            boolean isTransient) throws IOException {
         Set<SSTableReader> changed = new HashSet<>();
 
         writeLock.lock();
         try {
             for (SSTableReader sstable : sstables) {
-                sstable.mutateRepairedAndReload(repairedAt, pendingRepair, isTransient,
-                        isReplicationTransferredToErasureCoding);
-                verifyMetadata(sstable, repairedAt, pendingRepair, isTransient,
-                        isReplicationTransferredToErasureCoding);
+                sstable.mutateRepairedAndReload(repairedAt, pendingRepair, isTransient);
+                verifyMetadata(sstable, repairedAt, pendingRepair, isTransient);
                 changed.add(sstable);
             }
         } finally {
@@ -1122,7 +1115,7 @@ public class CompactionStrategyManager implements INotificationConsumer {
     }
 
     private static void verifyMetadata(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) {
+            boolean isTransient) {
         if (!Objects.equals(pendingRepair, sstable.getPendingRepair()))
             throw new IllegalStateException(
                     String.format("Failed setting pending repair to %s on %s (pending repair is %s)", pendingRepair,

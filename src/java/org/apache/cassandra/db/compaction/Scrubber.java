@@ -183,7 +183,7 @@ public class Scrubber implements Closeable {
             StatsMetadata metadata = sstable.getSSTableMetadata();
             writer.switchWriter(CompactionManager.createWriter(cfs, destination, expectedBloomFilterSize,
                     metadata.repairedAt, metadata.pendingRepair, metadata.isTransient,
-                    metadata.isReplicationTransferredToErasureCoding, sstable, transaction));
+                    sstable, transaction));
 
             DecoratedKey prevKey = null;
 
@@ -294,7 +294,7 @@ public class Scrubber implements Closeable {
                 SSTableReader newInOrderSstable;
                 try (SSTableWriter inOrderWriter = CompactionManager.createWriter(cfs, destination,
                         expectedBloomFilterSize, repairedAt, metadata.pendingRepair, metadata.isTransient,
-                        metadata.isReplicationTransferredToErasureCoding, sstable, transaction)) {
+                        sstable, transaction)) {
                     for (Partition partition : outOfOrder)
                         inOrderWriter.append(partition.unfilteredIterator());
                     newInOrderSstable = inOrderWriter.finish(-1, sstable.maxDataAge, true);

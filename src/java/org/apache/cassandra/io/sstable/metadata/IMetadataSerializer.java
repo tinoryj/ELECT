@@ -101,7 +101,7 @@ public interface IMetadataSerializer {
      * {@link SSTableReader#mutateLevelAndReload} instead on live sstable.
      */
     public void mutateRepairMetadata(Descriptor descriptor, long newRepairedAt, TimeUUID newPendingRepair,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException;
+            boolean isTransient) throws IOException;
 
     /**
      * Replace the sstable metadata file ({@code -Statistics.db}) with the given

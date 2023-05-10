@@ -81,14 +81,13 @@ public class BigTableWriter extends SSTableWriter {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             TableMetadataRef metadata,
             MetadataCollector metadataCollector,
             SerializationHeader header,
             Collection<SSTableFlushObserver> observers,
             LifecycleNewTracker lifecycleNewTracker) {
         super(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, metadata, metadataCollector, header,
+                metadata, metadataCollector, header,
                 observers);
         lifecycleNewTracker.trackNew(this); // must track before any files are created
 
@@ -107,15 +106,10 @@ public class BigTableWriter extends SSTableWriter {
                     new File(descriptor.filenameFor(Component.DIGEST)),
                     writerOption);
         }
-        if (isReplicationTransferredToErasureCoding && !metadata.name.equals("usertable")) {
-            // logger.debug("[Tinoryj] find SSTable transfered from replication to EC, sstable's EC metadata name = {}", descriptor.filenameFor(Component.EC_METADATA));
-            dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.EC_METADATA)).compressed(false)
-                    .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
-        } else {
-            // logger.debug("[Tinoryj] find original data, sstable's data name = {}", descriptor.filenameFor(Component.DATA));
-            dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA)).compressed(compression)
-                    .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
-        }
+
+        
+        dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA)).compressed(compression)
+                .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
 
         chunkCache.ifPresent(dbuilder::withChunkCache);
         iwriter = new IndexWriter(keyCount);

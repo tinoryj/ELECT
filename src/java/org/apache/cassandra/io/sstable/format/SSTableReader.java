@@ -282,6 +282,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     // not final since we need to be able to change level on a file.
     protected volatile StatsMetadata sstableMetadata;
 
+    protected Boolean isReplicationTransferredToErasureCoding;
+
     public final SerializationHeader header;
 
     protected final AtomicLong keyCacheHit = new AtomicLong(0);
@@ -1785,12 +1787,12 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public boolean isReplicationTransferredToErasureCoding() {
-        return sstableMetadata.isReplicationTransferredToErasureCoding;
+        return this.isReplicationTransferredToErasureCoding;
     }
 
     public boolean SetIsReplicationTransferredToErasureCoding() {
-        sstableMetadata.isReplicationTransferredToErasureCoding = true;
-        if (sstableMetadata.isReplicationTransferredToErasureCoding) {
+        this.isReplicationTransferredToErasureCoding = true;
+        if (this.isReplicationTransferredToErasureCoding) {
             return true;
         } else {
             return false;
@@ -1964,12 +1966,11 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
      * Mutate sstable repair metadata with a lock to avoid racing with
      * entire-sstable-streaming and then reload sstable metadata
      */
-    public void mutateRepairedAndReload(long newRepairedAt, TimeUUID newPendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding)
+    public void mutateRepairedAndReload(long newRepairedAt, TimeUUID newPendingRepair, boolean isTransient)
             throws IOException {
         synchronized (tidy.global) {
             descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, newRepairedAt, newPendingRepair,
-                    isTransient, isReplicationTransferredToErasureCoding);
+                    isTransient);
             reloadSSTableMetadata();
         }
     }

@@ -86,7 +86,6 @@ public class BigFormat implements SSTableFormat {
                 long repairedAt,
                 TimeUUID pendingRepair,
                 boolean isTransient,
-                boolean isReplicationTransferredToErasureCoding,
                 TableMetadataRef metadata,
                 MetadataCollector metadataCollector,
                 SerializationHeader header,
@@ -94,7 +93,7 @@ public class BigFormat implements SSTableFormat {
                 LifecycleNewTracker lifecycleNewTracker) {
             SSTable.validateRepairedMetadata(repairedAt, pendingRepair, isTransient);
             return new BigTableWriter(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                    isReplicationTransferredToErasureCoding, metadata,
+                    metadata,
                     metadataCollector, header, observers, lifecycleNewTracker);
         }
     }

@@ -692,22 +692,6 @@ public class CompactionTask extends AbstractCompactionTask {
         return isTransient;
     }
 
-    public static boolean getIsReplicationTransferredToErasureCoding(Set<SSTableReader> sstables) {
-        if (sstables.isEmpty()) {
-            return false;
-        }
-
-        boolean isReplicationTransferredToErasureCoding = sstables.iterator().next()
-                .isReplicationTransferredToErasureCoding();
-        // if (!Iterables.all(sstables, (sstable -> (!sstable.getColumnFamilyName().equals("usertable") ||
-        //                                      (sstable.isReplicationTransferredToErasureCoding() == isReplicationTransferredToErasureCoding ))))) {
-        //     throw new RuntimeException(
-        //             "Attempting to compact replication transferred sstables with non transient sstables");
-        // }
-
-        return isReplicationTransferredToErasureCoding;
-    }
-
     /*
      * Checks if we have enough disk space to execute the compaction. Drops the
      * largest sstable out of the Task until

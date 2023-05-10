@@ -900,7 +900,7 @@ public class CompactionManager implements CompactionManagerMBean {
             Collection<Range<Token>> ranges,
             LifecycleTransaction txn,
             TimeUUID sessionID,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException {
+            boolean isTransient) throws IOException {
         if (ranges.isEmpty())
             return;
 
@@ -911,7 +911,7 @@ public class CompactionManager implements CompactionManagerMBean {
 
         cfs.metric.bytesMutatedAnticompaction.inc(SSTableReader.getTotalBytes(fullyContainedSSTables));
         cfs.getCompactionStrategyManager().mutateRepaired(fullyContainedSSTables, UNREPAIRED_SSTABLE, sessionID,
-                isTransient, isReplicationTransferredToErasureCoding);
+                isTransient);
         // since we're just re-writing the sstable metdata for the fully contained
         // sstables, we don't want
         // them obsoleted when the anti-compaction is complete. So they're removed from
@@ -964,9 +964,9 @@ public class CompactionManager implements CompactionManagerMBean {
             Set<SSTableReader> sstables = new HashSet<>(validatedForRepair);
             validateSSTableBoundsForAnticompaction(sessionID, sstables, replicas);
             mutateFullyContainedSSTables(cfs, validatedForRepair, sstables.iterator(), replicas.onlyFull().ranges(),
-                    txn, sessionID, false, false);
+                    txn, sessionID, false);
             mutateFullyContainedSSTables(cfs, validatedForRepair, sstables.iterator(),
-                    replicas.onlyTransient().ranges(), txn, sessionID, true, false);
+                    replicas.onlyTransient().ranges(), txn, sessionID, true);
 
             assert txn.originals().equals(sstables);
             if (!sstables.isEmpty())
@@ -1452,7 +1452,7 @@ public class CompactionManager implements CompactionManagerMBean {
                         Collections.singletonList(scanner), controller, nowInSec, nextTimeUUID(), active, null)) {
             StatsMetadata metadata = sstable.getSSTableMetadata();
             writer.switchWriter(createWriter(cfs, compactionFileLocation, expectedBloomFilterSize, metadata.repairedAt,
-                    metadata.pendingRepair, metadata.isTransient, metadata.isReplicationTransferredToErasureCoding,
+                    metadata.pendingRepair, metadata.isTransient,
                     sstable, txn));
             long lastBytesScanned = 0;
 
@@ -1601,7 +1601,6 @@ public class CompactionManager implements CompactionManagerMBean {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            Boolean isReplicationTransferredToErasureCoding,
             SSTableReader sstable,
             LifecycleTransaction txn) {
         FileUtils.createDirectory(compactionFileLocation);
@@ -1612,7 +1611,6 @@ public class CompactionManager implements CompactionManagerMBean {
                 repairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 sstable.getSSTableLevel(),
                 sstable.header,
                 cfs.indexManager.listIndexes(),
@@ -1625,7 +1623,6 @@ public class CompactionManager implements CompactionManagerMBean {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            Boolean isReplicationTransferredToErasureCoding,
             Collection<SSTableReader> sstables,
             ILifecycleTransaction txn) {
         FileUtils.createDirectory(compactionFileLocation);
@@ -1650,7 +1647,6 @@ public class CompactionManager implements CompactionManagerMBean {
                 repairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 cfs.metadata,
                 new MetadataCollector(sstables, cfs.metadata().comparator, minLevel),
                 SerializationHeader.make(cfs.metadata(), sstables),
@@ -1820,13 +1816,13 @@ public class CompactionManager implements CompactionManagerMBean {
                     (int) (SSTableReader.getApproximateKeyCount(sstableAsSet)));
 
             fullWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, false, false,
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, false,
                     sstableAsSet, txn));
             transWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, true, false,
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, true,
                     sstableAsSet, txn));
             unrepairedWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false, false,
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false,
                     sstableAsSet, txn));
 
             Predicate<Token> fullChecker = !ranges.onlyFull().isEmpty()

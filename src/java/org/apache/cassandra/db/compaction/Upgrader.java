@@ -76,7 +76,6 @@ public class Upgrader {
                 metadata.repairedAt,
                 metadata.pendingRepair,
                 metadata.isTransient,
-                metadata.isReplicationTransferredToErasureCoding,
                 cfs.metadata,
                 sstableMetadataCollector,
                 SerializationHeader.make(cfs.metadata(), Sets.newHashSet(sstable)),

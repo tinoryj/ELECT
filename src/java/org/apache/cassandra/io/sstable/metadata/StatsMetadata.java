@@ -85,7 +85,6 @@ public class StatsMetadata extends MetadataComponent {
     public final UUID originatingHostId;
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
-    public boolean isReplicationTransferredToErasureCoding;
     public String hashID = null;
     // just holds the current encoding stats to avoid allocating - it is not
     // serialized
@@ -113,7 +112,6 @@ public class StatsMetadata extends MetadataComponent {
             UUID originatingHostId,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             String hashID) {
         this.estimatedPartitionSize = estimatedPartitionSize;
         this.estimatedCellPerPartitionCount = estimatedCellPerPartitionCount;
@@ -137,7 +135,6 @@ public class StatsMetadata extends MetadataComponent {
         this.originatingHostId = originatingHostId;
         this.pendingRepair = pendingRepair;
         this.isTransient = isTransient;
-        this.isReplicationTransferredToErasureCoding = isReplicationTransferredToErasureCoding;
         this.hashID = hashID;
         this.encodingStats = new EncodingStats(minTimestamp, minLocalDeletionTime, minTTL);
     }
@@ -241,12 +238,11 @@ public class StatsMetadata extends MetadataComponent {
                 originatingHostId,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 hashID);
     }
 
-    public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient,
-            boolean newIsReplicationTransferredToErasureCoding) {
+    public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient
+            ) {
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
@@ -269,7 +265,6 @@ public class StatsMetadata extends MetadataComponent {
                 originatingHostId,
                 newPendingRepair,
                 newIsTransient,
-                newIsReplicationTransferredToErasureCoding,
                 hashID);
     }
 
@@ -374,10 +369,6 @@ public class StatsMetadata extends MetadataComponent {
                 size += TypeSizes.sizeof(component.isTransient);
             }
 
-            if (version.hasIsReplicationTransferredToErasureCoding()) {
-                size += TypeSizes.sizeof(component.isReplicationTransferredToErasureCoding);
-            }
-
             if (version.hasOriginatingHostId()) {
                 size += 1; // boolean: is originatingHostId present
                 if (component.originatingHostId != null)
@@ -432,10 +423,6 @@ public class StatsMetadata extends MetadataComponent {
 
             if (version.hasIsTransient()) {
                 out.writeBoolean(component.isTransient);
-            }
-
-            if (version.hasIsReplicationTransferredToErasureCoding()) {
-                out.writeBoolean(component.isReplicationTransferredToErasureCoding);
             }
 
             if (version.hasOriginatingHostId()) {
@@ -534,9 +521,6 @@ public class StatsMetadata extends MetadataComponent {
 
             boolean isTransient = version.hasIsTransient() && in.readBoolean();
 
-            boolean isReplicationTransferredToErasureCoding = version.hasIsReplicationTransferredToErasureCoding()
-                    && in.readBoolean();
-
             UUID originatingHostId = null;
             if (version.hasOriginatingHostId() && in.readByte() != 0)
                 originatingHostId = UUIDSerializer.serializer.deserialize(in, 0);
@@ -573,7 +557,6 @@ public class StatsMetadata extends MetadataComponent {
                     originatingHostId,
                     pendingRepair,
                     isTransient,
-                    isReplicationTransferredToErasureCoding,
                     hashIDRawStr);
         }
     }

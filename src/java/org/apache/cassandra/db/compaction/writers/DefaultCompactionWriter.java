@@ -70,7 +70,6 @@ public class DefaultCompactionWriter extends CompactionAwareWriter {
                 minRepairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 cfs.metadata,
                 new MetadataCollector(txn.originals(), cfs.metadata().comparator, sstableLevel),
                 SerializationHeader.make(cfs.metadata(), nonExpiredSSTables),

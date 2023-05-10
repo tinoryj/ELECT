@@ -122,7 +122,6 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
                 minRepairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 cfs.metadata,
                 new MetadataCollector(allSSTables, cfs.metadata().comparator, level),
                 SerializationHeader.make(cfs.metadata(), nonExpiredSSTables),

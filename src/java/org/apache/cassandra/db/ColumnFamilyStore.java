@@ -757,21 +757,21 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt,
-            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            TimeUUID pendingRepair, boolean isTransient,
             int sstableLevel, SerializationHeader header,
             LifecycleNewTracker lifecycleNewTracker) {
         MetadataCollector collector = new MetadataCollector(metadata().comparator).sstableLevel(sstableLevel);
         return createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, collector, header,
+                collector, header,
                 lifecycleNewTracker);
     }
 
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt,
-            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            TimeUUID pendingRepair, boolean isTransient,
             MetadataCollector metadataCollector,
             SerializationHeader header, LifecycleNewTracker lifecycleNewTracker) {
         return getCompactionStrategyManager().createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair,
-                isTransient, isReplicationTransferredToErasureCoding, metadataCollector, header,
+                isTransient, metadataCollector, header,
                 indexManager.listIndexes(), lifecycleNewTracker);
     }
 
@@ -2546,7 +2546,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 keys,
                 0,
                 repairSessionID,
-                false,
                 false,
                 0,
                 new SerializationHeader(true,
