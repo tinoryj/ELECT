@@ -240,6 +240,7 @@ public final class Ref<T> implements RefCounted<T>
                 OnLeak onLeak = ON_LEAK;
                 if (onLeak != null)
                     onLeak.onLeak(this);
+                throw new IllegalStateException(String.format("LEAK DETECTED: a reference ({}) to {} was not released before the reference was garbage collected", id, globalState));
             }
             else if (DEBUG_ENABLED)
             {

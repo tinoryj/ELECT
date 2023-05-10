@@ -473,6 +473,9 @@ public class CompactionManager implements CompactionManagerMBean {
                 }
             } else {
                 logger.warn(BLUE+"Still remaining {} sstables in this transaction {}", txn.originals().size()+RESET, txn.opId());
+                for(SSTableReader sstable : txn.originals()) { 
+                    txn.cancel(sstable);
+                }
             }
             return AllSSTableOpStatus.SUCCESSFUL;
 
