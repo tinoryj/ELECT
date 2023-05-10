@@ -152,7 +152,7 @@ public class EntireSSTableStreamConcurrentComponentMutationTest {
         latch = new CountDownLatch(1);
         // reset repair info to avoid test interfering each other
         descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, 0, ActiveRepairService.NO_PENDING_REPAIR,
-                false, false);
+                false);
     }
 
     @Test
@@ -172,7 +172,7 @@ public class EntireSSTableStreamConcurrentComponentMutationTest {
 
             Descriptor desc = sstable.descriptor;
             desc.getMetadataSerializer().mutate(desc, "testing",
-                    stats -> stats.mutateRepairedMetadata(0, nextTimeUUID(), false,false));
+                    stats -> stats.mutateRepairedMetadata(0, nextTimeUUID(), false));
 
             return null;
         }, NO_OP);

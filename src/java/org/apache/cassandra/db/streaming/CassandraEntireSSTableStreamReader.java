@@ -135,7 +135,7 @@ public class CassandraEntireSSTableStreamReader implements IStreamReader {
             }
 
             UnaryOperator<StatsMetadata> transform = stats -> stats.mutateLevel(header.sstableLevel)
-                    .mutateRepairedMetadata(messageHeader.repairedAt, messageHeader.pendingRepair, false, false);
+                    .mutateRepairedMetadata(messageHeader.repairedAt, messageHeader.pendingRepair, false);
             String description = String.format("level %s and repairedAt time %s and pendingRepair %s",
                     header.sstableLevel, messageHeader.repairedAt, messageHeader.pendingRepair);
             writer.descriptor.getMetadataSerializer().mutate(writer.descriptor, description, transform);

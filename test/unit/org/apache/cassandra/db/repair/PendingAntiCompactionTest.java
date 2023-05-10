@@ -199,7 +199,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         assertTrue(repaired.intersects(FULL_RANGE));
         assertTrue(unrepaired.intersects(FULL_RANGE));
 
-        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 1, null, false, false);
+        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 1, null, false);
         repaired.reloadSSTableMetadata();
 
         PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
@@ -227,7 +227,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
 
         TimeUUID sessionId = prepareSession();
         LocalSessionAccessor.finalizeUnsafe(sessionId);
-        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false,false);
+        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false);
         repaired.reloadSSTableMetadata();
         assertTrue(repaired.isPendingRepair());
 
@@ -255,7 +255,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         assertTrue(unrepaired.intersects(FULL_RANGE));
 
         TimeUUID sessionId = prepareSession();
-        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false,false);
+        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false);
         repaired.reloadSSTableMetadata();
         assertTrue(repaired.isPendingRepair());
 
@@ -566,7 +566,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         }
         for (int i = 1; i <= 10; i++) {
             SSTableReader sstable = MockSchema.sstable(i + 20, i * 10, i * 10 + 9, cfs);
-            AbstractPendingRepairTest.mutateRepaired(sstable, nextTimeUUID(), false, false);
+            AbstractPendingRepairTest.mutateRepaired(sstable, nextTimeUUID(), false);
             pendingSSTables.add(sstable);
         }
 

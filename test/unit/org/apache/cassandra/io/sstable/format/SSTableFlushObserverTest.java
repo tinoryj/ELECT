@@ -97,7 +97,7 @@ public class SSTableFlushObserverTest {
                 sstableFormat);
 
         BigTableWriter writer = new BigTableWriter(descriptor,
-                10L, 0L, null, false, false, TableMetadataRef.forOfflineTools(cfm),
+                10L, 0L, null, false, TableMetadataRef.forOfflineTools(cfm),
                 new MetadataCollector(cfm.comparator).sstableLevel(0),
                 new SerializationHeader(true, cfm, cfm.regularAndStaticColumns(), EncodingStats.NO_STATS),
                 Collections.singletonList(observer),

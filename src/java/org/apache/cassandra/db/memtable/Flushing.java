@@ -193,7 +193,6 @@ public class Flushing {
                 ActiveRepairService.UNREPAIRED_SSTABLE,
                 ActiveRepairService.NO_PENDING_REPAIR,
                 false,
-                false,
                 sstableMetadataCollector,
                 new SerializationHeader(true,
                         flushSet.metadata(),

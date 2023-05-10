@@ -187,8 +187,7 @@ public class ImportTest extends CQLTester {
         Set<SSTableReader> sstables = getCurrentColumnFamilyStore().getLiveSSTables();
         getCurrentColumnFamilyStore().clearUnsafe();
         for (SSTableReader sstable : sstables)
-            sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, 111, null, false,
-                    false);
+            sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, 111, null, false);
 
         File backupdir = moveToBackupDir(sstables);
         assertEquals(0, execute("select * from %s").size());
