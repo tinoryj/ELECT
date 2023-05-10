@@ -267,7 +267,7 @@ public class MetadataSerializer implements IMetadataSerializer {
              actualChecksum, expectedChecksum, type, filename);
             throw new CorruptSSTableException(new IOException("Checksums do not match for " + filename), filename);
         }else if (!filename.contains("usertable-")){
-            logger.info("rymInfo: file name {} for type {} checksum is correct", filename, type);
+            // logger.info("rymInfo: file name {} for type {} checksum is correct", filename, type);
         }
     }
 

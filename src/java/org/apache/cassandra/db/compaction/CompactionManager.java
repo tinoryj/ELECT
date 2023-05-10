@@ -430,7 +430,7 @@ public class CompactionManager implements CompactionManagerMBean {
             final OneSSTableOperation operation,
             OperationType operationType)
             throws ExecutionException, InterruptedException {
-        logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
+        // logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
         List<LifecycleTransaction> transactions = new ArrayList<>();
         List<Future<?>> futures = new ArrayList<>();
         try (txn) {
@@ -440,7 +440,7 @@ public class CompactionManager implements CompactionManagerMBean {
             rewriteSSTables = Lists.newArrayList(operation.filterSSTables(txn));
             int originalRewriteSSTablesNum = rewriteSSTables.size();
             if (Iterables.isEmpty(rewriteSSTables)) {
-                logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
+                // logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
                 return AllSSTableOpStatus.SUCCESSFUL;
             }
 

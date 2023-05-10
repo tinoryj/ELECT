@@ -53,7 +53,7 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
             forwardToLocalNodes(message, forwardTo);
-            logger.debug("rymDebug: this is a forwarding header");
+            // logger.debug("rymDebug: this is a forwarding header");
         }
         
         logger.debug("rymDebug: Received message: {}", message.payload.parityHash);

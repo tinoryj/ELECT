@@ -74,7 +74,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;
         boolean configuredSingleSSTableUplevel = false;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
-        logger.debug("rymDebug: SizeTieredCompaction Strategy Options is: {}, localoption is: {}", options, localOptions);
+        // logger.debug("rymDebug: SizeTieredCompaction Strategy Options is: {}, localoption is: {}", options, localOptions);
         if (options != null) {
             if (options.containsKey(SSTABLE_SIZE_OPTION)) {
                 configuredMaxSSTableSize = Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));

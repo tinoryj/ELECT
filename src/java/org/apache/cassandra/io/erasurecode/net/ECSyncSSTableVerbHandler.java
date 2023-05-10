@@ -65,7 +65,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
             forwardToLocalNodes(message, forwardTo);
-            logger.debug("rymDebug: this is a forwarding header");
+            // logger.debug("rymDebug: this is a forwarding header");
         }  
 
         // collect sstcontent

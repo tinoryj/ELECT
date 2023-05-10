@@ -178,12 +178,12 @@ class LeveledGenerations {
                     // sstable.isReplicationTransferredToErasureCoding() &&
                     // sstable.getColumnFamilyName().equals("usertable")
                     ) {
-                if(sstable.getColumnFamilyName().contains("usertable")) {
-                    logger.debug("rymDebug: sstable {}, level is {}, task id is  need to be sent to L0",
-                        sstable.getFilename(), sstable.getSSTableLevel());
-                } else {
-                    logger.debug("rymDebug: no-usertable {} also need to be sent to L0", sstable.getColumnFamilyName());
-                }
+                // if(sstable.getColumnFamilyName().contains("usertable")) {
+                //     logger.debug("rymDebug: sstable {}, level is {}, task id is  need to be sent to L0",
+                //         sstable.getFilename(), sstable.getSSTableLevel());
+                // } else {
+                //     logger.debug("rymDebug: no-usertable {} also need to be sent to L0", sstable.getColumnFamilyName());
+                // }
                 if(!sstable.getColumnFamilyName().contains("usertable"))
                     sendToL0(sstable);
                 else 

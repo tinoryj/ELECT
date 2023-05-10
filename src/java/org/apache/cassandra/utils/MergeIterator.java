@@ -467,7 +467,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
                 heap[size++] = candidate;
             }
             
-            logger.info("rymInfo: iters size is {}, heap size is {}, task id is {}", iters.size(), size, taskId);
+            // logger.info("rymInfo: iters size is {}, heap size is {}, task id is {}", iters.size(), size, taskId);
             // for(int i = size - 1; i >= 0; i--) {
             //     replaceAndSink(heap[i], i);
             // }

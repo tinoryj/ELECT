@@ -117,7 +117,7 @@ public class ECSyncSSTable {
             message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().sendSSTContentWithoutCallback(message, rpn);
         } else {
-            logger.debug("rymError: replicaNodes is null!!");
+            logger.error("rymError: replicaNodes is null!!");
         }
     }
 

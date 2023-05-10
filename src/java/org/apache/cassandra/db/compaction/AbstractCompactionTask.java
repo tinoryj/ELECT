@@ -125,7 +125,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     {
         try
         {
-            logger.debug("rymDebug: this is ActiveCompactionTask.execute");
+            // logger.debug("rymDebug: this is ActiveCompactionTask.execute");
 
             return executeInternal(activeCompactions, sourceKeys, ecSSTable);
         }

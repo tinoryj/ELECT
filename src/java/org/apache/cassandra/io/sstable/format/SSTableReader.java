@@ -422,10 +422,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // String dataDir = cfs.getDirectories().toString();
 
         String dataDir = directory.get().toString();
-        logger.debug("rymDebug: get data directory  {} (by prefix) for cf {}", dataDir, cfs.name);
+        // logger.debug("rymDebug: get data directory  {} (by prefix) for cf {}", dataDir, cfs.name);
       
         List<String> sstables = List.of("Filter.db", "Index.db", "Statistics.db", "Summary.db");
-        logger.debug("rymDebug: get sstable id {} for ecMetadata!", ecSSTableId);
+        // logger.debug("rymDebug: get sstable id {} for ecMetadata!", ecSSTableId);
         for (String sst : sstables) {
             String sourceFileName = dataForRewriteDir + fileNamePrefix + sst;
             String destFileName = dataDir + "/nb-" + ecSSTableId + "-big-" + sst;
@@ -1632,7 +1632,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     public List<String> getAllKeys() {
         // final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
         //         Collections.singletonList(fullRange()));
-        logger.debug("rymDebug: this is get all keys");
+        // logger.debug("rymDebug: this is get all keys");
         
         ISSTableScanner scanner = this.getScanner();
         List<String> allKeys = new ArrayList<String>();
@@ -1642,7 +1642,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         }
         scanner.close();
         
-        logger.debug("rymDebug: this is get all keys successfully, key number is {}", allKeys.size());
+        // logger.debug("rymDebug: this is get all keys successfully, key number is {}", allKeys.size());
         return allKeys;
     }
 
