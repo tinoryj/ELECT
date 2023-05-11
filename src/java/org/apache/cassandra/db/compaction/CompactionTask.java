@@ -62,6 +62,7 @@ import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
@@ -167,6 +168,7 @@ public class CompactionTask extends AbstractCompactionTask {
         // it is not empty, it may compact down to nothing if all rows are deleted.
         assert transaction != null;
         Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
+
         
         int originalSSTableNum = sstables.size();
 
@@ -352,6 +354,7 @@ public class CompactionTask extends AbstractCompactionTask {
             
             // add ecSSTable to newSSTables
             newSSTables.add(ecSSTable);
+            logger.debug("[Rewrite SSTables]: rewrite SSTable is finished, ecSSTable is {},", ecSSTable.descriptor.filenameFor(Component.EC_METADATA));
 
             // log a bunch of statistics about the result and save to system table
             // compaction_history
