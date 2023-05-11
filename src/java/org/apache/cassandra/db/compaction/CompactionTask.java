@@ -334,7 +334,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     // logger.debug("rymDebug: about writer, capacity is ");
                     // headNewSStables = writer1.finishFirstPhase();
                     // tailNewSStables = writer2.finish();
-                    newSSTables = writer.finish();
+                    newSSTables = writer.finish(ecSSTable);
                     // TODO: re-create sstable reader from ecmetadata 
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
@@ -353,8 +353,8 @@ public class CompactionTask extends AbstractCompactionTask {
                 return;
             
             // add ecSSTable to newSSTables
-            newSSTables.add(ecSSTable);
-            logger.debug("[Rewrite SSTables]: rewrite SSTable is finished, ecSSTable is {},", ecSSTable.descriptor.filenameFor(Component.EC_METADATA));
+            // newSSTables.add(ecSSTable);
+            // logger.debug("[Rewrite SSTables]: rewrite SSTable is finished, ecSSTable is {},", ecSSTable.descriptor.filenameFor(Component.EC_METADATA));
 
             // log a bunch of statistics about the result and save to system table
             // compaction_history
