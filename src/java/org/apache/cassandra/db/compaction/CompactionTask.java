@@ -839,6 +839,9 @@ public class CompactionTask extends AbstractCompactionTask {
 
             // update the metrics
             cfs.metric.compactionBytesWritten.inc(endsize);
+
+            logger.debug("[Raw compaction strategy]: After update the metrics, the sstables number remained in transaction {} is {}",
+             transaction.opId(), transaction.originals().size());
         }
     }
 
