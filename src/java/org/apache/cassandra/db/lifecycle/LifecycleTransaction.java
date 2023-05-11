@@ -735,6 +735,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         accumulate = markObsolete(obsoletions, accumulate);
         accumulate = tracker.updateSizeTracking(logged.obsolete, logged.update, accumulate, ecSSTable);
         accumulate = runOnCommitHooks(accumulate);
+        logged.obsolete.add(ecSSTable);
         accumulate = release(selfRefs(logged.obsolete), accumulate);
         accumulate = tracker.notifySSTablesChanged(originals, logged.update, log.type(), accumulate, ecSSTable);
 
