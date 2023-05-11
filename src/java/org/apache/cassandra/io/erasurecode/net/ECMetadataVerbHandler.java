@@ -148,7 +148,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                 logger.debug(RED + "rymDebug: M or M1 missed some keys in the middle, update sstable!");
                             } else {
                                 cfs.replaceSSTable(ecSSTable, updateTxn);
-                                logger.warn("rymERROR: get unexpected sstables num");
+                                logger.warn("rymWarning: get unexpected sstables num");
                             }
                         } else if (rewriteSStables.size() > 1) {
                             // many sstables are involved
@@ -169,6 +169,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
+                        } else {
+                            logger.debug("rewrite SSTable size is {}, ecSSTable is {}", rewriteSStables.size(), ecSSTable.descriptor);
                         }
 
                         StorageService.instance.globalSSTMap.remove(sstableHash);
