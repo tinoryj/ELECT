@@ -354,7 +354,7 @@ public class CompactionTask extends AbstractCompactionTask {
             
             // add ecSSTable to newSSTables
             // newSSTables.add(ecSSTable);
-            // logger.debug("[Rewrite SSTables]: rewrite SSTable is finished, ecSSTable is {},", ecSSTable.descriptor.filenameFor(Component.EC_METADATA));
+            logger.debug("[Rewrite SSTables]: rewrite SSTable is finished, ecSSTable is {},", ecSSTable.descriptor);
 
             // log a bunch of statistics about the result and save to system table
             // compaction_history
