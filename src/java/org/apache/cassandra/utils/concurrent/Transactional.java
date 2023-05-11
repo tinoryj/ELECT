@@ -137,7 +137,7 @@ public interface Transactional extends AutoCloseable
             if (state != State.READY_TO_COMMIT)
                 throw new IllegalStateException("Cannot commit unless READY_TO_COMMIT; state is " + state);
             accumulate = doCommit(accumulate, ecSSTable);
-            accumulate = doPostCleanup(accumulate, ecSSTable);
+            accumulate = doPostCleanup(accumulate);
             state = State.COMMITTED;
             return accumulate;
         }
