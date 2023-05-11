@@ -134,8 +134,8 @@ public interface Transactional extends AutoCloseable
             if(!isRewrite) {
                 state = State.READY_TO_COMMIT;
             }
-            if (state != State.READY_TO_COMMIT)
-                throw new IllegalStateException("Cannot commit unless READY_TO_COMMIT; state is " + state);
+            if (state != State.READY_TO_COMMIT) 
+                throw new IllegalStateException(String.format("Cannot commit unless READY_TO_COMMIT; state is {%s}, isRewrite {%s}", state, isRewrite));
             accumulate = doCommit(accumulate, ecSSTable);
             accumulate = doPostCleanup(accumulate);
             state = State.COMMITTED;
