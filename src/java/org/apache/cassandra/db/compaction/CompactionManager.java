@@ -469,7 +469,8 @@ public class CompactionManager implements CompactionManagerMBean {
             if(txn.originals().isEmpty()) {
                 logger.info("Finished rewrite {} sstables successfully!", originalRewriteSSTablesNum);
             } else {
-                logger.warn(BLUE+"Still remaining {} sstables in this transaction {}", txn.originals().size()+RESET, txn.opId());
+                logger.warn("Still remaining {} sstables in this transaction {}, original sstables number is {}",
+                 txn.originals().size(), txn.opId(), rewriteSSTables.size());
                 for(SSTableReader sstable : txn.originals()) { 
                     logger.debug("rymDebug: transaction {} still has sstable {}, Data.db is {}, EC.db is {}", txn.opId(), sstable.getFilename(),
                          sstable.descriptor.fileFor(Component.DATA).exists(),
