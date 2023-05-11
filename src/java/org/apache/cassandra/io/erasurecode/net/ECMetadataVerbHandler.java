@@ -133,7 +133,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                         if (rewriteSStables.size() == 1) {
                             List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllDecoratedKeys();
-
+                            logger.debug("rymDebug: replace sstable {} Data.db with EC.db", ecSSTable.descriptor);
                             if (rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
                                 // delete sstable if sstable Hash can be found
                                 // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash, cfs, fileNamePrefix);
@@ -158,7 +158,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                             logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!",
                                     rewriteSStables.size());
+                            logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db", ecSSTable.descriptor);
                             try {
+
                                 AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys.get(0),
                                         updateKeys.get(updateKeys.size() - 1),
                                         rewriteSStables, ecSSTable, updateTxn, false, Long.MAX_VALUE, false, 1);
@@ -169,8 +171,6 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
-                        } else {
-                            logger.debug("rewrite SSTable size is {}, ecSSTable is {}", rewriteSStables.size(), ecSSTable.descriptor);
                         }
 
                         StorageService.instance.globalSSTMap.remove(sstableHash);
