@@ -240,9 +240,9 @@ public interface Transactional extends AutoCloseable
 
 
         // [CASSANDRAEC]
-        // public void updateState(){
-        //     state = State.IN_PROGRESS;
-        // }
+        public void updateState(){
+            state = State.READY_TO_COMMIT;
+        }
 
         public final State state()
         {

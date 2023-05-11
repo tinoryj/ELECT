@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.compaction.OperationType;
@@ -724,6 +725,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         maybeFail(accumulate);
 
         // transaction log commit failure means we must abort; safe commit is not possible
+        log.updateState();
         maybeFail(log.commit(null));
 
         // this is now the point of no return; we cannot safely rollback, so we ignore exceptions until we're done
