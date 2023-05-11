@@ -27,6 +27,7 @@ import java.util.Map;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.utils.TimeUUID;
@@ -126,6 +127,13 @@ class TracingImpl extends Tracing
 
             @Override
             protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

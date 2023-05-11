@@ -47,6 +47,7 @@ import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.RandomAccessReader;
@@ -328,6 +329,13 @@ public class CommitLogReplayer implements CommitLogReadHandler
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
+                
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
             };
             return Stage.MUTATION.submit(runnable, serializedSize);
         }

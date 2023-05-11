@@ -36,6 +36,7 @@ import org.junit.Test;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.service.ClientWarn;
@@ -80,6 +81,13 @@ public class DebuggableThreadPoolExecutorTest
 
             @Override
             protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

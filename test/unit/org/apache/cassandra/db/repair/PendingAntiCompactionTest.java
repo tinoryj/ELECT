@@ -69,6 +69,7 @@ import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -436,6 +437,13 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
                             @Override
                             protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
                                     throws Exception {
+                                // TODO Auto-generated method stub
+                                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                            }
+
+                            @Override
+                            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                                    String fileNamePrefix) throws Exception {
                                 // TODO Auto-generated method stub
                                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                             }

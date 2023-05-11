@@ -658,17 +658,15 @@ public class CompactionManager implements CompactionManagerMBean {
             @Override
             public void execute(LifecycleTransaction txn) {
                 
-                try {
-                    AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
-                    task.setUserDefined(true);
-                    task.setCompactionType(OperationType.COMPACTION);
-                    SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, cfs, fileNamePrefix);
-                    logger.debug("rymDebug: open ec sstable {} successfully.", ecSSTable.descriptor);
-                    task.execute(active, first, last, ecSSTable);
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
+                AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC,
+                        Long.MAX_VALUE);
+                task.setUserDefined(true);
+                task.setCompactionType(OperationType.COMPACTION);
+                // SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, cfs,
+                // fileNamePrefix);
+                // logger.debug("rymDebug: open ec sstable {} successfully.",
+                // ecSSTable.descriptor);
+                task.execute(active, first, last, ecMetadata, fileNamePrefix);
             }
         }, OperationType.COMPACTION);
     }
@@ -900,6 +898,13 @@ public class CompactionManager implements CompactionManagerMBean {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
         };
 
         Future<Void> task = null;
@@ -1096,6 +1101,13 @@ public class CompactionManager implements CompactionManagerMBean {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
+
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                        String fileNamePrefix) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
             };
 
             Future<?> fut = executor.submitIfRunning(runnable, "maximal task");
@@ -1145,6 +1157,13 @@ public class CompactionManager implements CompactionManagerMBean {
                 @Override
                 protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
                         throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                        String fileNamePrefix) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1331,6 +1350,13 @@ public class CompactionManager implements CompactionManagerMBean {
 
             @Override
             protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

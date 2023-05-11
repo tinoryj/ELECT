@@ -1462,6 +1462,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
+
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                        String fileNamePrefix) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
             }, reclaimExecutor);
         }
 

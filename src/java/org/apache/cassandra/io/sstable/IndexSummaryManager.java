@@ -47,6 +47,7 @@ import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.db.lifecycle.View;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.utils.ExecutorUtils;
@@ -136,6 +137,13 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
 
             @Override
             protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

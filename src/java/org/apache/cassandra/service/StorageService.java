@@ -107,6 +107,7 @@ import org.apache.cassandra.dht.Token.TokenFactory;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.gms.*;
 import org.apache.cassandra.hints.HintsService;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
 import org.apache.cassandra.io.sstable.SSTableLoader;
 import org.apache.cassandra.io.sstable.format.SSTableFormat;
@@ -788,6 +789,13 @@ public class StorageService extends NotificationBroadcasterSupport
             @Override
             protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
                     throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+            
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

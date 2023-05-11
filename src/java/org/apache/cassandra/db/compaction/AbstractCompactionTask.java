@@ -29,6 +29,7 @@ import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.io.FSDiskFullWriteError;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.WrappedRunnable;
@@ -130,13 +131,13 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
      * @param ecSSTable the new SSTable which has been replaced Data.db with EC.db
      * 
      */
-    public int execute(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+    public int execute(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix)
     {
         try
         {
             // logger.debug("rymDebug: this is ActiveCompactionTask.execute");
 
-            return executeInternal(activeCompactions, first, last, ecSSTable);
+            return executeInternal(activeCompactions, first, last, ecMetadata, fileNamePrefix);
         }
         catch(FSDiskFullWriteError e)
         {
@@ -181,7 +182,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
 
     protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions);
     
-    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable);
+    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix);
 
     protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges);
 

@@ -62,6 +62,7 @@ import org.apache.cassandra.db.lifecycle.SSTableSet;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
@@ -131,6 +132,12 @@ public class CompactionTask extends AbstractCompactionTask {
     }
 
     // [CASSANDRAEC]
+    protected int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix) {
+        this.activeCompactions = activeCompactions == null ? ActiveCompactionsTracker.NOOP : activeCompactions;
+        run(first, last, ecMetadata, fileNamePrefix);
+        return transaction.originals().size();
+    }
+
     protected int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) {
         this.activeCompactions = activeCompactions == null ? ActiveCompactionsTracker.NOOP : activeCompactions;
         run(first, last, ecSSTable);
@@ -141,6 +148,12 @@ public class CompactionTask extends AbstractCompactionTask {
         this.activeCompactions = activeCompactions == null ? ActiveCompactionsTracker.NOOP : activeCompactions;
         run(transfferedSSTableKeyRanges);
         return transaction.originals().size();
+    }
+
+    @Override
+    protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
     }
 
     public boolean reduceScopeForLimitedSpace(Set<SSTableReader> nonExpiredSSTables, long expectedSize) {
@@ -163,7 +176,7 @@ public class CompactionTask extends AbstractCompactionTask {
     /** [CASSANDRAEC] rewrite the sstables
      * 
      */
-    protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+    protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix) throws Exception {
         // The collection of sstables passed may be empty (but not null); even if
         // it is not empty, it may compact down to nothing if all rows are deleted.
         assert transaction != null;
@@ -263,7 +276,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
                 activeCompactions.beginCompaction(ci);
                 
-                logger.debug("[Rewrite SSTables]: rewrite SSTable is START, ecSSTable is {},", ecSSTable.descriptor);
+                // logger.debug("[Rewrite SSTables]: rewrite SSTable is START, ecSSTable is {},", ecSSTable.descriptor);
                 try (// CompactionAwareWriter writer1 = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables);
                      CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables)) {
                     // Note that we need to re-check this flag after calling beginCompaction above
@@ -336,7 +349,9 @@ public class CompactionTask extends AbstractCompactionTask {
                     // logger.debug("rymDebug: about writer, capacity is ");
                     // headNewSStables = writer1.finishFirstPhase();
                     // tailNewSStables = writer2.finish();
+                    SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, cfs, fileNamePrefix);
                     newSSTables = writer.finish(ecSSTable);
+                    logger.debug("[Rewrite SSTables]: rewrite SSTable is FINISHED, ecSSTable is {},", ecSSTable.descriptor);
                     // TODO: re-create sstable reader from ecmetadata 
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
@@ -354,9 +369,7 @@ public class CompactionTask extends AbstractCompactionTask {
             if (transaction.isOffline())
                 return;
             
-            // add ecSSTable to newSSTables
-            // newSSTables.add(ecSSTable);
-            logger.debug("[Rewrite SSTables]: rewrite SSTable is FINISHED, ecSSTable is {},", ecSSTable.descriptor);
+
 
             // log a bunch of statistics about the result and save to system table
             // compaction_history
@@ -1010,4 +1023,6 @@ public class CompactionTask extends AbstractCompactionTask {
         }
         return max;
     }
+
+
 }
