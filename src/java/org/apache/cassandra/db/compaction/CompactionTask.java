@@ -349,6 +349,9 @@ public class CompactionTask extends AbstractCompactionTask {
 
             if (transaction.isOffline())
                 return;
+            
+            // add ecSSTable to newSSTables
+            newSSTables.add(ecSSTable);
 
             // log a bunch of statistics about the result and save to system table
             // compaction_history
@@ -360,6 +363,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
             // newSSTables.addAll(headNewSStables);
             // newSSTables.addAll(tailNewSStables);
+
             StringBuilder newSSTableNames = new StringBuilder();
             for (SSTableReader reader : newSSTables) {
                 newSSTableNames.append(reader.descriptor.baseFilename()).append(",");
@@ -840,8 +844,8 @@ public class CompactionTask extends AbstractCompactionTask {
             // update the metrics
             cfs.metric.compactionBytesWritten.inc(endsize);
 
-            logger.debug("[Raw compaction strategy]: After update the metrics, the sstables number remained in transaction {} is {}",
-             transaction.opId(), transaction.originals().size());
+            // logger.debug("[Raw compaction strategy]: After update the metrics, the sstables number remained in transaction {} is {}",
+            //  transaction.opId(), transaction.originals().size());
         }
     }
 

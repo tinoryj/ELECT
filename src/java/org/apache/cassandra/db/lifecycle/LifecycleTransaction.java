@@ -517,6 +517,12 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
             cancel(cancel);
     }
 
+    // [CASSANDRAEC]
+    public void removeAll(Iterable<SSTableReader> cancels) {
+        for (SSTableReader cancel : cancels)
+            originals.remove(cancel);
+    }
+
     /**
      * remove the provided readers from this Transaction, and return a new Transaction to manage them
      * only permitted to be called if the current Transaction has never been used
