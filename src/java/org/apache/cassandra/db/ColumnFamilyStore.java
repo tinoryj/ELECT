@@ -1833,6 +1833,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     public void replaceSSTable(SSTableReader ecSSTable, final LifecycleTransaction txn) {
         // notify sstable changes to view and leveled generation
         // unmark sstable compacting status
+        logger.debug("rymDebug: replace sstable {} Data.db with EC.db", ecSSTable.descriptor);
         maybeFail(txn.commitEC(null, ecSSTable, false));
     }
 
