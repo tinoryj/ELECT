@@ -126,28 +126,28 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         }
 
                         // TODO: mark this sstable COMPACTION
-                        SSTableReader ecSSTable = SSTableReader.openECSSTable(message.payload, cfs, fileNamePrefix);
-                        ecSSTable.SetIsReplicationTransferredToErasureCoding();
-                        logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}", ecSSTable.getFilename());
+                        // SSTableReader ecSSTable = SSTableReader.openECSSTable(message.payload, cfs, fileNamePrefix);
+                        // ecSSTable.SetIsReplicationTransferredToErasureCoding();
+                        // logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}", ecSSTable.getFilename());
                         final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(rewriteSStables, OperationType.COMPACTION);
 
                         if (rewriteSStables.size() == 1) {
                             List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllDecoratedKeys();
-                            logger.debug("rymDebug: replace sstable {} Data.db with EC.db", ecSSTable.descriptor);
+                            // logger.debug("rymDebug: replace sstable {} Data.db with EC.db", ecSSTable.descriptor);
                             if (rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
                                 // delete sstable if sstable Hash can be found
                                 // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash, cfs, fileNamePrefix);
-                                cfs.replaceSSTable(ecSSTable, updateTxn);
+                                cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
                                 logger.debug(RED + "rymDebug: get the match sstbales, delete it!");
                             } else if(first.equals(allKeys.get(0)) && last.equals(allKeys.get(allKeys.size() - 1))) {
                                 // Case1: M missed some keys in the middle, just delete M`
                                 // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume
                                 // that the compaction speed of secondary node is slower than primary node
                                 // Case2: M` missed some keys in the middle,  need to update the metadata
-                                cfs.replaceSSTable(ecSSTable, updateTxn);
+                                cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
                                 logger.debug(RED + "rymDebug: M or M1 missed some keys in the middle, update sstable!");
                             } else {
-                                cfs.replaceSSTable(ecSSTable, updateTxn);
+                                cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
                                 logger.warn("rymWarning: get unexpected sstables num");
                             }
                         } else if (rewriteSStables.size() > 1) {
@@ -158,12 +158,12 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                             logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!",
                                     rewriteSStables.size());
-                            logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db", ecSSTable.descriptor);
+                            // logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db", ecSSTable.descriptor);
                             try {
 
                                 AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys.get(0),
                                         updateKeys.get(updateKeys.size() - 1),
-                                        rewriteSStables, ecSSTable, updateTxn, false, Long.MAX_VALUE, false, 1);
+                                        rewriteSStables, message.payload, fileNamePrefix, updateTxn, false, Long.MAX_VALUE, false, 1);
                                 if (status != AllSSTableOpStatus.SUCCESSFUL)
                                     printStatusCode(status.statusCode, cfs.name);
                             } catch (ExecutionException e) {

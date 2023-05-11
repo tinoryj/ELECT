@@ -126,6 +126,7 @@ import org.apache.cassandra.index.transactions.UpdateTransaction;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
@@ -1816,7 +1817,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     public CompactionManager.AllSSTableOpStatus sstablesRewrite(final DecoratedKey first,
             final DecoratedKey last, 
             List<SSTableReader> sstables,
-            SSTableReader ecSSTable,
+            ECMetadata metadata, String fileNamePrefix,
             final LifecycleTransaction txn,
             final boolean skipIfCurrentVersion,
             final long skipIfNewerThanTimestamp,
@@ -1824,16 +1825,26 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite");
 
-        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, first, last, sstables, ecSSTable, txn,
+        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, first, last, sstables, metadata, fileNamePrefix, txn,
                 skipIfCurrentVersion,
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 
     // [CASSANDRAEC]
-    public void replaceSSTable(SSTableReader ecSSTable, final LifecycleTransaction txn) {
+    public void replaceSSTable(ECMetadata metadata, ColumnFamilyStore cfs, String fileNamePrefix, final LifecycleTransaction txn) {
         // notify sstable changes to view and leveled generation
         // unmark sstable compacting status
-        maybeFail(txn.commitEC(null, ecSSTable, false));
+        
+        try {
+            SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, cfs, fileNamePrefix);
+            ecSSTable.SetIsReplicationTransferredToErasureCoding();
+            maybeFail(txn.commitEC(null, ecSSTable, false));
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        
     }
 
     public CompactionManager.AllSSTableOpStatus relocateSSTables(int jobs)

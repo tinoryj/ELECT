@@ -69,6 +69,7 @@ import org.apache.cassandra.dht.Bounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.index.SecondaryIndexBuilder;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
@@ -431,7 +432,8 @@ public class CompactionManager implements CompactionManagerMBean {
             final DecoratedKey first,
             final DecoratedKey last,
             List<SSTableReader> rewriteSSTables,
-            SSTableReader ecSSTable,
+            // SSTableReader ecSSTable,
+            ECMetadata ecMetadata, String fileNamePrefix,
             final LifecycleTransaction txn,
             final OneSSTableOperation operation,
             OperationType operationType)
@@ -471,14 +473,7 @@ public class CompactionManager implements CompactionManagerMBean {
             } else {
                 logger.warn("Still remaining {} sstables in this transaction {}, original sstables number is {}",
                  txn.originals().size(), txn.opId(), rewriteSSTables.size());
-                txn.removeAll(rewriteSSTables);
-                // for(SSTableReader sstable : txn.originals()) { 
-                //     logger.debug("rymDebug: transaction {} still has sstable {}, Data.db is {}, EC.db is {}", txn.opId(), sstable.getFilename(),
-                //          sstable.descriptor.fileFor(Component.DATA).exists(),
-                //          sstable.descriptor.fileFor(Component.EC_METADATA).exists());
-                // }
-
-                
+                txn.removeAll(rewriteSSTables);                
             }
             return AllSSTableOpStatus.SUCCESSFUL;
 
@@ -589,13 +584,14 @@ public class CompactionManager implements CompactionManagerMBean {
             final DecoratedKey first,
             final DecoratedKey last, 
             List<SSTableReader> sstables,
-            SSTableReader ecSSTable,
+            // SSTableReader ecSSTable,
+            ECMetadata ecMetadata, String fileNamePrefix,
             final LifecycleTransaction txn,
             final boolean skipIfCurrentVersion,
             final long skipIfOlderThanTimestamp,
             final boolean skipIfCompressionMatches,
             int jobs) throws InterruptedException, ExecutionException {
-        return performSSTableRewrite(cfs, first, last, sstables, ecSSTable, txn, (sstable) -> {
+        return performSSTableRewrite(cfs, first, last, sstables, ecMetadata, fileNamePrefix, txn, (sstable) -> {
             // TODO: check this filter
 
             // Skip if descriptor version matches current version
@@ -630,12 +626,13 @@ public class CompactionManager implements CompactionManagerMBean {
             final DecoratedKey first,
             final DecoratedKey last, 
             List<SSTableReader> sstables, 
-            SSTableReader ecSSTable,
+            // SSTableReader ecSSTable,
+            ECMetadata ecMetadata, String fileNamePrefix,
             final LifecycleTransaction updateTxn,
             Predicate<SSTableReader> sstableFilter,
             int jobs) throws InterruptedException, ExecutionException {
         // return rewriteSSTables(cfs, sourceKeys, sstables, OperationType.COMPACTION);
-        return rewriteSSTables(cfs, first, last, sstables, ecSSTable, updateTxn, new OneSSTableOperation() {
+        return rewriteSSTables(cfs, first, last, sstables, ecMetadata, fileNamePrefix, updateTxn, new OneSSTableOperation() {
             @Override
             public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
                 List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
@@ -660,10 +657,18 @@ public class CompactionManager implements CompactionManagerMBean {
 
             @Override
             public void execute(LifecycleTransaction txn) {
-                AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
-                task.setUserDefined(true);
-                task.setCompactionType(OperationType.COMPACTION);
-                task.execute(active, first, last, ecSSTable);
+                
+                try {
+                    AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
+                    task.setUserDefined(true);
+                    task.setCompactionType(OperationType.COMPACTION);
+                    SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, cfs, fileNamePrefix);
+                    logger.debug("rymDebug: open ec sstable {} successfully.", ecSSTable.descriptor);
+                    task.execute(active, first, last, ecSSTable);
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
             }
         }, OperationType.COMPACTION);
     }

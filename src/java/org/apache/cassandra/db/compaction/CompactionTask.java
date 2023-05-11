@@ -262,6 +262,8 @@ public class CompactionTask extends AbstractCompactionTask {
                 long lastBytesScanned = 0;
 
                 activeCompactions.beginCompaction(ci);
+                
+                logger.debug("[Rewrite SSTables]: rewrite SSTable is START, ecSSTable is {},", ecSSTable.descriptor);
                 try (// CompactionAwareWriter writer1 = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables);
                      CompactionAwareWriter writer = getCompactionAwareWriter(cfs, getDirectories(), transaction, sstables)) {
                     // Note that we need to re-check this flag after calling beginCompaction above
@@ -354,7 +356,7 @@ public class CompactionTask extends AbstractCompactionTask {
             
             // add ecSSTable to newSSTables
             // newSSTables.add(ecSSTable);
-            logger.debug("[Rewrite SSTables]: rewrite SSTable is finished, ecSSTable is {},", ecSSTable.descriptor);
+            logger.debug("[Rewrite SSTables]: rewrite SSTable is FINISHED, ecSSTable is {},", ecSSTable.descriptor);
 
             // log a bunch of statistics about the result and save to system table
             // compaction_history
