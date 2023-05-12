@@ -125,7 +125,7 @@ public class ECMetadata implements Serializable {
             this.ecMetadataContentBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMetadataContent);
             this.ecMetadataContentBytesSize = this.ecMetadataContentBytes.length;
             if(this.ecMetadataContentBytes.length == 0) {
-                logger.error("rymError: no metadata content"); 
+                logger.error("rymERROR: no metadata content"); 
             }
         } catch (IOException e) {
             // TODO Auto-generated catch block

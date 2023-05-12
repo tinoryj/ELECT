@@ -122,6 +122,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         // one to one
                         if (rewriteSStables.isEmpty()) {
                             logger.warn("rymERROR: rewriteSStables is empty!");
+                            // TODO: Save the ECMetadata
+
                             continue;
                         }
 

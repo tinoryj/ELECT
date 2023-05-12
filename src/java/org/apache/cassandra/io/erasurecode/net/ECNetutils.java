@@ -143,7 +143,7 @@ public class ECNetutils {
         try (FileOutputStream outputStream = new FileOutputStream(fileName)) {
             outputStream.write(buffer);
         } catch (Exception e) {
-            logger.error("rymError: failed to write bytes to file, {}", e);
+            logger.error("rymERROR: failed to write bytes to file, {}", e);
         }
     }
 
@@ -153,6 +153,16 @@ public class ECNetutils {
                 .filter(path -> Files.isDirectory(path))
                 .filter(path -> path.getFileName().toString().startsWith(prefix))
                 .findFirst();
+    }
+
+    public static String stringToHex(String str) {
+        byte[] bytes = str.getBytes();
+        StringBuilder hex = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            hex.append(Character.forDigit((b >> 4) & 0xF, 16))
+                    .append(Character.forDigit((b & 0xF), 16));
+        }
+        return hex.toString();
     }
 
 

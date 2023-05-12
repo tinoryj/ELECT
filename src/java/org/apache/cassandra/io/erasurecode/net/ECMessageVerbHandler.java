@@ -160,7 +160,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         @Override
         public void run() {
             if(messages.length != ecDataNum) {
-                logger.error("rymError: message length is not equal to ecDataNum");
+                logger.error("rymERROR: message length is not equal to ecDataNum");
             }
             int codeLength = messages[0].sstSize;
             for (ECMessage msg : messages) {
@@ -200,7 +200,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             try {
                 encoder.encode(data, parity);
             } catch (IOException e) {
-                logger.error("rymError: Perform erasure code error", e);
+                logger.error("rymERROR: Perform erasure code error", e);
             }
 
             
@@ -220,7 +220,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 fileChannel.close();
                 // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
             } catch (IOException e) {
-                logger.error("rymError: Perform erasure code error", e);
+                logger.error("rymERROR: Perform erasure code error", e);
             }
 
 

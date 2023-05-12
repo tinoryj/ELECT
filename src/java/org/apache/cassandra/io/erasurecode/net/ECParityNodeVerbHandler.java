@@ -65,7 +65,7 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
                 fileChannel.close();
             } 
         catch (IOException e) {
-                logger.error("rymError: Perform erasure code error", e);
+                logger.error("rymERROR: Perform erasure code error", e);
             }
     }
 

@@ -521,7 +521,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     List<InetAddressAndPort> replicaNodes = StorageService.instance
                                             .getReplicaNodesWithPort(keyspaceName, cfName, key);
                                     logger.debug(
-                                            "rymDebug: send sstables size {}, first key is {}, replicaNodes are {}, row num is {},allKeys num is {}",
+                                            "rymDebug: send sstables ({}) size {}, first key is {}, replicaNodes are {}, row num is {}, allKeys num is {}",
+                                            sstHashID,
                                             sstContent.remaining(), replicaNodes, sstable.getTotalRows(),
                                             allKeys.size());
                                     ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,

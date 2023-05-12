@@ -263,7 +263,7 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         String filename = descriptor.filenameFor(Component.STATS);
         if (actualChecksum != expectedChecksum) {
-            logger.error("rymError: actual checksum is {}, expected checksum is {}, check type is {}, file name is {}",
+            logger.error("rymERROR: actual checksum is {}, expected checksum is {}, check type is {}, file name is {}",
              actualChecksum, expectedChecksum, type, filename);
             throw new CorruptSSTableException(new IOException("Checksums do not match for " + filename), filename);
         }else if (!filename.contains("usertable-")){
