@@ -168,8 +168,12 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             boolean isContainReplicationTransferredToErasureCoding = false;
             List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
 
-            // only for secondary node 
-            if (!cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable")) {
+            if(cfs.getColumnFamilyName().equals("usertable")) {
+                // for primary nodes
+
+            } else if (cfs.getColumnFamilyName().contains("usertable")) {
+                
+                //for secondary node 
                 for (SSTableReader sstable : candidate.sstables) {
                     if (sstable.isReplicationTransferredToErasureCoding()) {
                         isContainReplicationTransferredToErasureCoding = true;

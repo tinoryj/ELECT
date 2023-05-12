@@ -103,9 +103,8 @@ public class ECSyncSSTable {
             this.allKeysInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
             this.allKeysInBytesSize = this.allKeysInBytes.length;
             // logger.debug("rymDebug: try to serialize allKey, allKey num is {}", this.allKey.size());
-            logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
-
-
+            // logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
+            logger.debug("rymDebug: ECSyncSSTable send sstable {} to {}", this.sstHashID, rpn);
             //logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstContent.length);
 
         } catch (Exception e) {

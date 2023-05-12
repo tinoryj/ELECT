@@ -146,6 +146,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
     
 
 
+    /** [CASSANDRAEC]
+     * To support perform erasure coding with multiple threads, we implement the following Runnable class
+     * @param ecDataNum the value of k
+     * @param ecParity the value of m
+     * @param messages the input data to be processed, length equal to ecDataNum
+     */
     private static  class ErasureCodeRunnable implements Runnable {
         private final int ecDataNum;
         private final int ecParityNum;
