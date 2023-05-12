@@ -376,6 +376,11 @@ public class MessagingService extends MessagingServiceMBeanImpl
         send(message, to, null);
     }
 
+    public void sendECNetRequestWithCallback(Message message, InetAddressAndPort to) {
+        AsyncOneResponse ior = new AsyncOneResponse();
+        sendWithCallback(message, to, ior);
+    }
+
 
     /**
      * Send a message to a given endpoint. This method adheres to the fire and forget
