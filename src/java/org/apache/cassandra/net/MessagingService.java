@@ -369,7 +369,7 @@ public class MessagingService extends MessagingServiceMBeanImpl
      */
     public void sendSSTContentWithoutCallback(Message message, InetAddressAndPort to)
     {
-        logger.debug("rymDebug: This is sendSSTContentWithoutCallback");
+        // logger.debug("rymDebug: This is sendSSTContentWithoutCallback");
         // TODO: callback handler
         // assert message.callBackOnFailure();
         // callbacks.addWithExpiration(handler, message, null, null, isShuttingDown);

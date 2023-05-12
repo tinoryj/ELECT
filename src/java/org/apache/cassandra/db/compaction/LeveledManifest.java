@@ -854,6 +854,7 @@ public class LeveledManifest {
         public final Collection<SSTableReader> sstables;
         public final int level;
         public final long maxSSTableBytes;
+        public boolean isContainTransferredSSTable = false;
 
         public CompactionCandidate(Collection<SSTableReader> sstables, int level, long maxSSTableBytes) {
             this.sstables = sstables;

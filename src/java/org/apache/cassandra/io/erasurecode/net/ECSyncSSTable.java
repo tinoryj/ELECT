@@ -104,19 +104,17 @@ public class ECSyncSSTable {
             this.allKeysInBytesSize = this.allKeysInBytes.length;
             // logger.debug("rymDebug: try to serialize allKey, allKey num is {}", this.allKey.size());
             // logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
-            logger.debug("rymDebug: ECSyncSSTable send sstable {} to {}", this.sstHashID, rpn);
             //logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstContent.length);
+            if (rpn != null) {
+                Message<ECSyncSSTable> message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
+                MessagingService.instance().sendSSTContentWithoutCallback(message, rpn);
+            } else {
+                logger.error("rymERROR: replicaNodes is null!!");
+            }
+            logger.debug("rymDebug: ECSyncSSTable send sstable {} to {}", this.sstHashID, rpn);
 
         } catch (Exception e) {
             logger.error("rymERROR: cannot get the bytes array from key!!!, error info {}", e);
-        }
-        Message<ECSyncSSTable> message = null;
-        InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
-        if (rpn != null && !rpn.equals(locaIP)) {
-            message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
-            MessagingService.instance().sendSSTContentWithoutCallback(message, rpn);
-        } else {
-            logger.error("rymERROR: replicaNodes is null!!");
         }
     }
 
