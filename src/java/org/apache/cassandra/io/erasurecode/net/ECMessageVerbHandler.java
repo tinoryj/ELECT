@@ -48,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+
 public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
     public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
@@ -213,7 +214,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             // generate parity hash code
             List<String> parityHashCode = new ArrayList<String>();
             for(ByteBuffer parityCode : parity) {
-                parityHashCode.add(String.valueOf(parityCode.hashCode()));
+                parityHashCode.add(ECNetutils.stringToHex(String.valueOf(parityCode.hashCode())));
             }
 
             // record first parity code to current node

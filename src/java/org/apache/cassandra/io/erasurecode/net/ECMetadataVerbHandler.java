@@ -110,6 +110,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     // TODO: somtimes cannot get 
                     // List<DecoratedKey> updateKeys = StorageService.instance.globalSSTMap.get(sstableHash);
                     DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
+                    logger.debug("rymDebug: ECMetadataVerbHandler get sstHash {} from {}",
+                                    sstableHash, message.from());
                     if (dataForRewrite != null) {
                         String fileNamePrefix = dataForRewrite.fileNamePrefix;
                         List<DecoratedKey> updateKeys = dataForRewrite.sourceKeys;

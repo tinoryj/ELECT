@@ -64,9 +64,9 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         // Check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
+            logger.debug("rymDebug: ECSyncSSTableVerbHandler this is a forwarding header, message {} is from {} to {}",
+                            message.payload.sstHashID ,message.from(), forwardTo);
             forwardToLocalNodes(message, forwardTo);
-            logger.debug("rymDebug: ECSyncSSTableVerbHandler this is a forwarding header, message is from {} to {}",
-                            message.from(), forwardTo);
         }
         logger.debug("rymDebug: ECSyncSSTableVerbHandler received {} from {}", 
                         message.payload.sstHashID, message.from());
@@ -100,7 +100,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         String summaryFileName = tmpFileName + "Summary.db";
         ECNetutils.writeBytesToFile(summaryFileName, sstInBytes.sstSummary);
 
-        StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
+        StorageService.instance.globalSSTMap.put(message.payload.sstHashID, 
                                                          new DataForRewrite(sourceKeys, fileNamePrefix));
     
 

@@ -52,7 +52,7 @@ import org.apache.cassandra.io.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ECNetutils {
+public final class ECNetutils {
     private static final Logger logger = LoggerFactory.getLogger(ECNetutils.class);
     
     private static final String dataForRewriteDir = System.getProperty("user.dir")+"/data/tmp/";
@@ -155,6 +155,7 @@ public class ECNetutils {
                 .findFirst();
     }
 
+
     public static String stringToHex(String str) {
         byte[] bytes = str.getBytes();
         StringBuilder hex = new StringBuilder(bytes.length * 2);
@@ -164,8 +165,6 @@ public class ECNetutils {
         }
         return hex.toString();
     }
-
-
 
 
     public static void main(String[] args) throws IOException {
