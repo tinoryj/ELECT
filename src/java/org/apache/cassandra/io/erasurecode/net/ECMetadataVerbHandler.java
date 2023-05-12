@@ -182,7 +182,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                     e.printStackTrace();
                                 }
                             }
-                            StorageService.instance.globalSSTMap.remove(sstableHash);
+                            // StorageService.instance.globalSSTMap.remove(sstableHash);
                         } else {
                             // TODO: Save ECMetadata and redo ec transition lager
                             logger.debug("rymDebug: failed to get transactions for the sstables, we will try it later");
