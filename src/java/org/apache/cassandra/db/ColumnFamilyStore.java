@@ -1845,7 +1845,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         try {
             SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, cfs, fileNamePrefix);
             ecSSTable.SetIsReplicationTransferredToErasureCoding();
+            logger.debug("rymDebug: this is replace SSTable method, replacing SSTable {}", ecSSTable.descriptor);
             maybeFail(txn.commitEC(null, ecSSTable, false));
+            logger.debug("rymDebug: replaced SSTable {} successfully", ecSSTable.descriptor);
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
