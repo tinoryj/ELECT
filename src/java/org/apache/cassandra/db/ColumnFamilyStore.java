@@ -525,13 +525,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                             sstHashID,
                                             sstContent.remaining(), replicaNodes, sstable.getTotalRows(),
                                             allKeys.size());
-                                    ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
-                                            "", "", replicaNodes);
-                                    // send selected sstable to parity nodes
-                                    ecMessage.sendSSTableToParity();
-                                    // send selected sstable to secondary nodes
-                                    // sstable.getScanner();
-
                                     InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
                                     // read file here
                                     byte[] filterFile = ECNetutils
@@ -554,6 +547,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                             ecSync.sendSSTableToSecondary(rpn);
                                         }
                                     }
+
+                                    ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
+                                            "", "", replicaNodes);
+                                    // send selected sstable to parity nodes
+                                    ecMessage.sendSSTableToParity();
+                                    // send selected sstable to secondary nodes
+                                    // sstable.getScanner();
 
                                     if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
                                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
