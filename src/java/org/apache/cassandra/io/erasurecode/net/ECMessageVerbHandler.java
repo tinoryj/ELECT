@@ -94,7 +94,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
 
         InetAddressAndPort primaryNode = message.payload.replicaNodes.get(0);
-        // Once we have k different sstContent, do erasure coding locally
+
+        // save the received data to recvQueue
         if(!recvQueues.containsKey(primaryNode)) {
             Queue<ECMessage> recvQueue = new LinkedList<ECMessage>();
             recvQueue.add(message.payload);
@@ -106,6 +107,11 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         
         // logger.debug("rymDebug: recvQueues is {}", recvQueues);
 
+
+        // check whether we should update the parity code
+
+
+        // Once we have k different sstContent, do erasure coding locally
         if(recvQueues.size()>=message.payload.ecDataNum) {
             // logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
             ECMessage tmpArray[] = new ECMessage[message.payload.ecDataNum];
@@ -212,15 +218,15 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             
             // generate parity hash code
-            List<String> parityHashCode = new ArrayList<String>();
+            List<String> parityHashList = new ArrayList<String>();
             for(ByteBuffer parityCode : parity) {
-                parityHashCode.add(ECNetutils.stringToHex(String.valueOf(parityCode.hashCode())));
+                parityHashList.add(ECNetutils.stringToHex(String.valueOf(parityCode.hashCode())));
             }
 
             // record first parity code to current node
             try {
                 String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
-                FileChannel fileChannel = FileChannel.open(Paths.get(localParityCodeDir, parityHashCode.get(0)),
+                FileChannel fileChannel = FileChannel.open(Paths.get(localParityCodeDir, parityHashList.get(0)),
                                                             StandardOpenOption.WRITE,
                                                              StandardOpenOption.CREATE);
                 fileChannel.write(parity[0]);
@@ -233,14 +239,15 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // sync encoded data to parity nodes
             ECParityNode ecParityNode = new ECParityNode(null, null, 0);
-            ecParityNode.distributeEcDataToParityNodes(parity, messages[0].parityNodes, parityHashCode);
+            ecParityNode.distributeCodedDataToParityNodes(parity, messages[0].parityNodes, parityHashList);
 
             // Transform to ECMetadata and dispatch to related nodes
             // ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
             //             new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
             ECMetadata ecMetadata = new ECMetadata("", new ECMetadataContent("", "", new ArrayList<String>(),new ArrayList<String>(),
-                                                   new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>()));
-            ecMetadata.generateMetadata(messages, parity, parityHashCode);
+                                                   new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new ArrayList<InetAddressAndPort>(),
+                                                new HashMap<String, List<InetAddressAndPort>>()));
+            ecMetadata.generateMetadata(messages, parity, parityHashList);
         }
 
     }

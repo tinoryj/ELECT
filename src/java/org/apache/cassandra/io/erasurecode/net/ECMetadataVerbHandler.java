@@ -188,9 +188,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             logger.debug("rymDebug: failed to get transactions for the sstables, we will try it later");
                         }
                         
-
                     } else {
-                        // TODO: need to debug here
                         logger.warn("rymERROR: cannot get rewrite data of {}", sstableHash);
                     }
 

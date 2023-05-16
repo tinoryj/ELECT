@@ -1,0 +1,73 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.cassandra.io.erasurecode.net;
+
+import java.io.IOException;
+
+import org.apache.cassandra.net.ForwardingInfo;
+import org.apache.cassandra.net.IVerbHandler;
+import org.apache.cassandra.net.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.apache.cassandra.net.MessagingService;
+import org.apache.cassandra.net.ParamType;
+import org.apache.cassandra.tracing.Tracing;
+
+public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
+    public static final ECParityUpdateVerbHandler instance = new ECParityUpdateVerbHandler();
+    private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
+
+
+    /**
+     * Receives update data from the primary node, and performs the following steps:
+     * 1. First consume the new data list, perform parity update
+     * 2. If new data is empty while the old data is not empty, add old data to the global queuef
+     */
+    @Override
+    public void doVerb(Message<ECParityUpdate> message) throws IOException {
+        ForwardingInfo forwardTo = message.forwardTo();
+        if (forwardTo != null) {
+            forwardToLocalNodes(message, forwardTo);
+            logger.debug("rymDebug: this is a forwarding header");
+        }
+
+        ECParityUpdate parityUpdateData = message.payload;
+        
+
+
+
+        
+    }
+
+    private static void forwardToLocalNodes(Message<ECParityUpdate> originalMessage, ForwardingInfo forwardTo) {
+        Message.Builder<ECParityUpdate> builder = Message.builder(originalMessage)
+                .withParam(ParamType.RESPOND_TO, originalMessage.from())
+                .withoutParam(ParamType.FORWARD_TO);
+
+        boolean useSameMessageID = forwardTo.useSameMessageID(originalMessage.id());
+        // reuse the same Message if all ids are identical (as they will be for 4.0+
+        // node originated messages)
+        Message<ECParityUpdate> message = useSameMessageID ? builder.build() : null;
+
+        forwardTo.forEach((id, target) -> {
+            Tracing.trace("Enqueuing forwarded write to {}", target);
+            MessagingService.instance().send(useSameMessageID ? message : builder.withId(id).build(), target);
+        });
+    }
+    
+}

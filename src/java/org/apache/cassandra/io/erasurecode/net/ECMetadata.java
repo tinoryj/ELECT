@@ -49,6 +49,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+/**
+ * This class is to generate ECMetadata and distribute metadata to the replica nodes
+ * @param stripeId the global unique id of ECMetadata, generated from the {@value sstHashList}
+ * @param ecMetadataContent the content of ECMetadata
+ * @param ecMetadataContentBytes the serialized data of ecMetadataContent
+ * @param ecMetadataSize the size of the content of ecMetadata
+ * 
+ * ecMetadataContent is consist of the following parameters:
+ * @param keyspace
+ * @param cfName
+ * @param sstHashList the hash code list of the data blocks
+ * @param parityHashList the hash code list of the parity blocks
+ * @param primaryNodes 
+ * @param secondaryNodes
+ * @param parityNodes Note that the parity nodes are the same among each entry
+ * 
+ * 
+ * There are two key methods:
+ * @method generateMetadata
+ * @method distributeEcMetadata
+ */
+
 public class ECMetadata implements Serializable {
     // TODO: improve the performance
     public String stripeId;
@@ -66,20 +88,22 @@ public class ECMetadata implements Serializable {
         public String keyspace;
         public String cfName;
         public List<String> sstHashIdList;
-        public List<String> parityCodeHashList;
+        public List<String> parityHashList;
         public Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap;
         public List<InetAddressAndPort> primaryNodes;
-        public Set<InetAddressAndPort> relatedNodes; // e.g. secondary nodes or parity nodes
+        public Set<InetAddressAndPort> secondaryNodes;
+        public List<InetAddressAndPort> parityNodes;
         
-        public ECMetadataContent(String ks, String cf, List<String> sstHashIdList, List<String> parityCodeHashList,
-        List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> relatedNodes, 
+        public ECMetadataContent(String ks, String cf, List<String> sstHashIdList, List<String> parityHashList,
+        List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> secondaryNodes, List<InetAddressAndPort> parityNodes,
         Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap) {
             this.keyspace = ks;
             this.cfName = cf;
             this.sstHashIdList = sstHashIdList;
-            this.parityCodeHashList = parityCodeHashList;
+            this.parityHashList = parityHashList;
             this.primaryNodes = primaryNodes;
-            this.relatedNodes = relatedNodes;
+            this.secondaryNodes = secondaryNodes;
+            this.parityNodes = parityNodes;
             this.sstHashIdToReplicaMap = sstHashIdToReplicaMap;
         }
     }
@@ -89,6 +113,12 @@ public class ECMetadata implements Serializable {
         this.ecMetadataContent = ecMetadataContent;
     }
 
+    /**
+     * This method is to generate the metadata for the given messages
+     * @param messages this is the data block for erasure coding, this size is equal to k
+     * @param parityCode this is the parity block for erasure coding, size is m
+     * @param parityHashes
+     */
     public void generateMetadata(ECMessage[] messages, ByteBuffer[] parityCode, List<String> parityHashes) {
         logger.debug("rymDebug: this generateMetadata method");
         // get stripe id, sst content hashes and primary nodes
@@ -106,18 +136,21 @@ public class ECMetadata implements Serializable {
         this.ecMetadataContent.cfName = messages[0].cfName;
 
         // generate parity code hash
-        this.ecMetadataContent.parityCodeHashList = parityHashes;
+        this.ecMetadataContent.parityHashList = parityHashes;
 
         // get related nodes
         // if everything goes well, each message has the same parity code
-        for(InetAddressAndPort pns : messages[0].parityNodes) {
-            this.ecMetadataContent.relatedNodes.add(pns);
-        }
-        // also need to add related nodes
+        this.ecMetadataContent.parityNodes.addAll(messages[0].parityNodes);
+
+        // for(InetAddressAndPort pns : messages[0].parityNodes) {
+        //     this.ecMetadataContent.relatedNodes.add(pns);
+        // }
+
+        // initialize the secondary nodes
         for(ECMessage msg : messages) {
             for(InetAddressAndPort pns : msg.replicaNodes) {
                 if(!this.ecMetadataContent.primaryNodes.contains(pns))
-                    this.ecMetadataContent.relatedNodes.add(pns);
+                    this.ecMetadataContent.secondaryNodes.add(pns);
             }
         }
 
@@ -138,10 +171,14 @@ public class ECMetadata implements Serializable {
 
     }
 
+
+    /**
+     * Distribute ecMetadata to secondary nodes
+     */
     public void distributeEcMetadata(ECMetadata ecMetadata) {
         logger.debug("rymDebug: this distributeEcMetadata method");
         Message<ECMetadata> message = Message.outWithFlag(Verb.ECMETADATA_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
-        for (InetAddressAndPort node : ecMetadata.ecMetadataContent.relatedNodes) {
+        for (InetAddressAndPort node : ecMetadata.ecMetadataContent.secondaryNodes) {
             if(!node.equals(FBUtilities.getBroadcastAddressAndPort())) {
                 MessagingService.instance().send(message, node);
             }
