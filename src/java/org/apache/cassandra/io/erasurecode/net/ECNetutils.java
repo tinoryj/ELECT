@@ -58,6 +58,7 @@ public final class ECNetutils {
     private static final String dataForRewriteDir = System.getProperty("user.dir")+"/data/tmp/";
     private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
     private static final String dataDir = System.getProperty("user.dir")+"/data/data/";
+    private static final String localParityCodeDir = System.getProperty("user.dir")+"/data/localParityHashes/";
 
     public static class ByteObjectConversion {
         public static byte[] objectToByteArray(Serializable obj) throws IOException {
@@ -116,6 +117,10 @@ public final class ECNetutils {
 
     public static String getDataDir() {
         return dataDir;
+    }
+
+    public static String getLocalParityCodeDir() {
+        return localParityCodeDir;
     }
 
     public static byte[] readBytesFromFile(String fileName) throws IOException

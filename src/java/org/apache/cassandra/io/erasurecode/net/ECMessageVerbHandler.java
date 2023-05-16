@@ -53,7 +53,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
     public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
-    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
+    // private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
 
     private static ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
 
@@ -219,8 +219,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // record first parity code to current node
             try {
-                
-                FileChannel fileChannel = FileChannel.open(Paths.get(parityCodeDir, parityHashCode.get(0)),
+                String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
+                FileChannel fileChannel = FileChannel.open(Paths.get(localParityCodeDir, parityHashCode.get(0)),
                                                             StandardOpenOption.WRITE,
                                                              StandardOpenOption.CREATE);
                 fileChannel.write(parity[0]);

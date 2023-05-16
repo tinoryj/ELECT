@@ -567,7 +567,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 }
                             }
                         } else {
-                            logger.info("SSTable is transient");
+                            logger.info("SSTable is transferred");
                             continue;
                         }
                     } else {
