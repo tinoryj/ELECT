@@ -36,6 +36,7 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessageFlag;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
@@ -163,6 +164,10 @@ public class ECMetadata implements Serializable {
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
+        }
+        
+        for(String sstHash : this.ecMetadataContent.sstHashIdList) {
+            StorageService.instance.globalSSTHashToStripID.put(sstHash, this.stripeId);
         }
         
 

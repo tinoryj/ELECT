@@ -35,7 +35,7 @@ import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureEncoder;
 import org.apache.cassandra.io.erasurecode.NativeRSEncoder;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
-import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.OldSSTablesWithStripID;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.ForwardingInfo;
 import org.apache.cassandra.net.IVerbHandler;
@@ -73,9 +73,9 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         // read parity code locally and from peer parity nodes
         // TODO: check that parity code blocks are all ready
-        for (OldSSTablesWithStripID oldSSTablesWithStripID : parityUpdateData.oldSSTablesWithStripIDs) {
-            String stripID = oldSSTablesWithStripID.stripID;
-            String sstHash = oldSSTablesWithStripID.sstHash;
+        for (SSTableContentWithHashID sstContentWithHash: parityUpdateData.oldSSTables) {
+            String sstHash = sstContentWithHash.sstHash;
+            String stripID = StorageService.instance.globalSSTHashToStripID.get(sstHash);
 
             
             // read ec_metadata from memory, get the needed parity hash list
@@ -87,12 +87,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
             // TODO: check the length
-            if(localParityCode.capacity() > oldSSTablesWithStripID.sstContent.capacity()) {
-                oldSSTablesWithStripID.codeLength = localParityCode.capacity();
-                // padding zero for new sst content
-            } else {
-                oldSSTablesWithStripID.codeLength = oldSSTablesWithStripID.sstContent.capacity();
-            }
+            // if(localParityCode.capacity() > entry.getValue().capacity()) {
+            //     oldSSTablesWithStripID.codeLength = localParityCode.capacity();
+            //     // padding zero for new sst content
+            // } else {
+            //     oldSSTablesWithStripID.codeLength = oldSSTablesWithStripID.sstContent.capacity();
+            // }
 
             
             for(int i = 0; i < parityHashList.size(); i++) {
@@ -111,14 +111,16 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         }
 
         // consume the new data
-        for (Entry<String, ByteBuffer> entry : parityUpdateData.newSSTables.entrySet()) {
-            ByteBuffer newData = entry.getValue();
-            OldSSTablesWithStripID obj = parityUpdateData.oldSSTablesWithStripIDs.get(parityUpdateData.oldSSTablesWithStripIDs.size() - 1);
-            
+        for (SSTableContentWithHashID newSSTable: parityUpdateData.newSSTables) {
+            ByteBuffer newData = newSSTable.sstContent;
+            // OldSSTablesWithStripID obj = parityUpdateData.oldSSTablesWithStripIDs.get(parityUpdateData.oldSSTablesWithStripIDs.size() - 1);
+            SSTableContentWithHashID oldSSTable = parityUpdateData.oldSSTables.get(0);
             Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(newData,
-                                                                                    StorageService.instance.globalSSTHashToParityCodeMap.get(obj.sstHash),
-                                                                                    StorageService.instance.globalECMetadataMap.get(obj.sstHash).sstHashIdList.indexOf(obj.sstHash), 
-                                                                                    obj.codeLength));
+                                                                                    StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
+                                                                                    StorageService.instance.globalECMetadataMap.get(oldSSTable.sstHash).sstHashIdList.indexOf(oldSSTable.sstHash), 
+                                                                                    oldSSTable.sstContentSize));
+
+            // TODO: remove the processed entry
         }
         
     }

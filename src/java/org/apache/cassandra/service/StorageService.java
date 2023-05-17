@@ -185,10 +185,17 @@ public class StorageService extends NotificationBroadcasterSupport
     public static final int SCHEMA_DELAY_MILLIS = getSchemaDelay();
 
     // public Map<String, List<DecoratedKey>> globalSSTMap = new HashMap<String, List<DecoratedKey>>();
+    // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
     public Map<String, DataForRewrite> globalSSTMap = new HashMap<String, DataForRewrite>();
+    // [In parity node] This map is used to store <stripID, ECMetadataContent>, generate after erasure coding, use during parity update.
+    // TODO: could be optimize 
     public Map<String, ECMetadataContent> globalECMetadataMap = new HashMap<String, ECMetadataContent>();
+    // [In parity node] Generate after ResponseParity, use during real parity update.
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToParityCodeMap = new ConcurrentHashMap<String, ByteBuffer[]>();
+    // [In primary node] Generate when sendSSTableToParity, use during send parity update signal.
     public Map<String, List<InetAddressAndPort>> globalSSTHashToParityNodesMap = new HashMap<String, List<InetAddressAndPort>>();
+    // [In parity node] Generate after erasure coding, use during parity update. 
+    public Map<String, String> globalSSTHashToStripID = new HashMap<String, String>();
 
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 

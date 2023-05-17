@@ -51,32 +51,31 @@ public final class ECParityUpdate implements Serializable {
     public static final Logger logger = LoggerFactory.getLogger(ECParityUpdate.class);
 
     
-    // public final Map<String, ByteBuffer> oldSSTables;
-    public final List<OldSSTablesWithStripID> oldSSTablesWithStripIDs;
-    public final Map<String, ByteBuffer> newSSTables;
+    public final List<SSTableContentWithHashID> oldSSTables;
+    // public final List<OldSSTablesWithStripID> oldSSTablesWithStripIDs;
+    public final List<SSTableContentWithHashID> newSSTables;
     public final List<InetAddressAndPort> parityNodes;
     
     public byte[] updateContentInBytes;
     public int updateContentInBytesSize;
 
 
-    public ECParityUpdate(List<OldSSTablesWithStripID> oldSSTablesWithStripIDs, Map<String, ByteBuffer> newSSTables,
+    public ECParityUpdate(List<SSTableContentWithHashID> oldSSTables, List<SSTableContentWithHashID> newSSTables,
                             List<InetAddressAndPort> parityNodes) {
-        this.oldSSTablesWithStripIDs = oldSSTablesWithStripIDs;
+        this.oldSSTables = oldSSTables;
         this.newSSTables = newSSTables;
         this.parityNodes = parityNodes;
     }
 
 
-    public class OldSSTablesWithStripID implements Serializable {
-        public final String stripID;
+    public class SSTableContentWithHashID implements Serializable {
         public final String sstHash;
         public final ByteBuffer sstContent;
-        public int codeLength;
-        public OldSSTablesWithStripID(String stripID, String sstHash, ByteBuffer sstContent) {
-            this.stripID = stripID;
+        public final int sstContentSize;
+        public SSTableContentWithHashID(String sstHash, ByteBuffer sstContent) {
             this.sstHash = sstHash;
             this.sstContent = sstContent;
+            this.sstContentSize = sstContent.capacity();
         }
     }
 

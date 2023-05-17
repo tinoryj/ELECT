@@ -654,6 +654,8 @@ public class CompactionTask extends AbstractCompactionTask {
      * the submit* methods,
      * which are properly serialized.
      * Caller is in charge of marking/unmarking the sstables as compacting.
+     * 
+     * For CassandraEC's primary LSM tree only, we should send parity update signal to parity node if needed.
      */
     protected void runMayThrow() throws Exception {
         // The collection of sstables passed may be empty (but not null); even if
@@ -723,8 +725,18 @@ public class CompactionTask extends AbstractCompactionTask {
             };
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
             
-            // List<SSTableReader> sortedSSTables = new ArrayList<SSTableReader>(actuallyCompact);
-            // Collections.sort(sortedSSTables, comparator);
+            // record before compaction
+            int transferredSSTablesNum = 0;
+            Map<String, ByteBuffer> transferredSSTables;
+            if(cfs.getColumnFamilyName().equals("usertable")) {
+                transferredSSTables = new HashMap<String, ByteBuffer>();
+                for(SSTableReader sstable : actuallyCompact) {
+                    if(sstable.isReplicationTransferredToErasureCoding()) {
+                        transferredSSTables.put(sstable.getSSTableHashID(), sstable.getSSTContent());
+                        transferredSSTablesNum++;
+                    }
+                }
+            }
 
 
             Collection<SSTableReader> newSStables;
@@ -815,6 +827,15 @@ public class CompactionTask extends AbstractCompactionTask {
 
             if (transaction.isOffline())
                 return;
+            
+
+            if(cfs.getColumnFamilyName().equals("usertable") && transferredSSTablesNum > 0) {
+                // send parity update signal
+                // send old data 
+                
+                // send new data 
+
+            }
 
             // log a bunch of statistics about the result and save to system table
             // compaction_history
@@ -823,6 +844,7 @@ public class CompactionTask extends AbstractCompactionTask {
             long startsize = inputSizeBytes;
             long endsize = SSTableReader.getTotalBytes(newSStables);
             double ratio = (double) endsize / (double) startsize;
+
 
             StringBuilder newSSTableNames = new StringBuilder();
             for (SSTableReader reader : newSStables)

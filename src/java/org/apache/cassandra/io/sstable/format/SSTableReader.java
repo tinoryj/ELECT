@@ -797,7 +797,17 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         if(!readAndSetHashIDIfNotExists()){
             logger.debug("[Tinoryj] could not setup hash ID for current sstable = {}",descriptor.filenameFor(Component.DATA));
         }
-        return sstableMetadata.hashID();
+        return stringToHex(sstableMetadata.hashID());
+    }
+
+    public static String stringToHex(String str) {
+        byte[] bytes = str.getBytes();
+        StringBuilder hex = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            hex.append(Character.forDigit((b >> 4) & 0xF, 16))
+                    .append(Character.forDigit((b & 0xF), 16));
+        }
+        return hex.toString();
     }
 
     public void updateBloomFilter(ColumnFamilyStore cfs, List<DecoratedKey> allKeys) throws IOException {
