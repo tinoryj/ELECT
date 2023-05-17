@@ -39,36 +39,47 @@ import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
 
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 
+
+/**
+ * This class contains information of parity update and implements the methods for sending parity update signals
+ * @param oldSSTables  Map<String, ByteBuffer>
+ * @param newSSTables  Map<String, ByteBuffer>
+ * @param parityNode
+ */
 public final class ECParityUpdate implements Serializable {
     public static final Serializer serializer = new Serializer();
     public static final Logger logger = LoggerFactory.getLogger(ECParityUpdate.class);
 
     
-    public final List<Map<String, ByteBuffer>> oldSSTHash;
-    public final List<Map<String, ByteBuffer>> newData;
-    public final InetAddressAndPort parityNode;
+    // public final Map<String, ByteBuffer> oldSSTables;
+    public final List<OldSSTablesWithStripID> oldSSTablesWithStripIDs;
+    public final Map<String, ByteBuffer> newSSTables;
+    public final List<InetAddressAndPort> parityNodes;
     
     public byte[] updateContentInBytes;
     public int updateContentInBytesSize;
 
 
-    public ECParityUpdate(List<Map<String, ByteBuffer>> oldSSTHash, InetAddressAndPort parityNode, List<Map<String, ByteBuffer>> newData) {
-        this.oldSSTHash = oldSSTHash;
-        this.newData = newData;
-        this.parityNode = parityNode;
+    public ECParityUpdate(List<OldSSTablesWithStripID> oldSSTablesWithStripIDs, Map<String, ByteBuffer> newSSTables,
+                            List<InetAddressAndPort> parityNodes) {
+        this.oldSSTablesWithStripIDs = oldSSTablesWithStripIDs;
+        this.newSSTables = newSSTables;
+        this.parityNodes = parityNodes;
     }
 
-    // public class parityUpdateContent implements Serializable {
-    //     public final List<String> oldSSTHash;
-    //     public final List<Map<String, ByteBuffer>> newData;
-    //     public final InetAddressAndPort parityNode;
 
-    //     public parityUpdateContent(List<String> oldSSTHash, InetAddressAndPort parityNode, List<Map<String, ByteBuffer>> newData) {
-    //         this.oldSSTHash = oldSSTHash;
-    //         this.newData = newData;
-    //         this.parityNode = parityNode;
-    //     }
-    // }
+    public class OldSSTablesWithStripID implements Serializable {
+        public final String stripID;
+        public final String sstHash;
+        public final ByteBuffer sstContent;
+        public int codeLength;
+        public OldSSTablesWithStripID(String stripID, String sstHash, ByteBuffer sstContent) {
+            this.stripID = stripID;
+            this.sstHash = sstHash;
+            this.sstContent = sstContent;
+        }
+    }
+
 
     // Send SSTables to a specific node
     public void sendParityUpdateSignal() {
@@ -85,8 +96,8 @@ public final class ECParityUpdate implements Serializable {
         }
 
 
-        Message<ECParityUpdate> message = Message.outWithFlag(Verb.ECPARITYNODE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
-        MessagingService.instance().send(message, this.parityNode);
+        Message<ECParityUpdate> message = Message.outWithFlag(Verb.ECPARITYUPDATE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
+        MessagingService.instance().send(message, this.parityNodes.get(0));
     }
 
 
@@ -120,7 +131,8 @@ public final class ECParityUpdate implements Serializable {
 
         @Override
         public long serializedSize(ECParityUpdate t, int version) {
-            long size = sizeof(t.updateContentInBytesSize) + t.updateContentInBytesSize;
+            long size = sizeof(t.updateContentInBytesSize) +
+                        t.updateContentInBytesSize;
             return size;
         }
 

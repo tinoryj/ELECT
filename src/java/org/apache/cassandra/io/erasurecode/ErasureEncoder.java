@@ -69,6 +69,9 @@ public abstract class ErasureEncoder extends ErasureCoder {
 
     /**
      * Encode with inputs and generates outputs
+     * @param inputs the new data for parity update
+     * @param outputs outputs is old parity code when first call this method, after execute this method, outputs is new parity code
+     * @param targetDataIndex the index of the inputs in the coding blocks
      */
     public void encodeUpdate(ByteBuffer[] inputs, ByteBuffer[] outputs, int targetDataIndex)
             throws IOException {
@@ -81,10 +84,10 @@ public abstract class ErasureEncoder extends ErasureCoder {
 
         // Perform encoding
         if (usingDirectBuffer) {
-            doEncode(bbestate);
+            doEncodeUpdate(bbestate, targetDataIndex);
         } else {
             ByteArrayEncodingState baeState = bbestate.convertToByteArrayState();
-            doEncode(baeState);
+            doEncodeUpdate(baeState, targetDataIndex);
         }
 
     }

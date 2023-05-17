@@ -108,6 +108,7 @@ import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.gms.*;
 import org.apache.cassandra.hints.HintsService;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
 import org.apache.cassandra.io.sstable.SSTableLoader;
 import org.apache.cassandra.io.sstable.format.SSTableFormat;
@@ -185,6 +186,9 @@ public class StorageService extends NotificationBroadcasterSupport
 
     // public Map<String, List<DecoratedKey>> globalSSTMap = new HashMap<String, List<DecoratedKey>>();
     public Map<String, DataForRewrite> globalSSTMap = new HashMap<String, DataForRewrite>();
+    public Map<String, ECMetadataContent> globalECMetadataMap = new HashMap<String, ECMetadataContent>();
+    public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToParityCodeMap = new ConcurrentHashMap<String, ByteBuffer[]>();
+    public Map<String, List<InetAddressAndPort>> globalSSTHashToParityNodesMap = new HashMap<String, List<InetAddressAndPort>>();
 
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 

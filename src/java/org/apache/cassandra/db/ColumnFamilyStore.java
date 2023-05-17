@@ -552,6 +552,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                             "", "", replicaNodes);
                                     // send selected sstable to parity nodes
                                     ecMessage.sendSSTableToParity();
+                                    StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.sstHashID, ecMessage.parityNodes);
                                     // send selected sstable to secondary nodes
                                     // sstable.getScanner();
 

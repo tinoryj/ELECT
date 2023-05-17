@@ -174,7 +174,7 @@ public class CompactionTask extends AbstractCompactionTask {
     }
 
     /** [CASSANDRAEC] rewrite the sstables
-     * 
+     *  only for secondary LSM-tree
      */
     protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix) throws Exception {
         // The collection of sstables passed may be empty (but not null); even if

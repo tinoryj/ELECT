@@ -482,7 +482,7 @@ public class LeveledManifest {
 
         for (Map.Entry<SSTableReader, Bounds<Token>> pair : sstables.entrySet()) {
             if (pair.getValue().intersects(promotedBounds)
-                 // && !pair.getKey().isReplicationTransferredToErasureCoding()
+                  && !pair.getKey().isReplicationTransferredToErasureCoding()
                  )
                 overlapped.add(pair.getKey());
         }

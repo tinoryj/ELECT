@@ -53,7 +53,6 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
     public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
-    // private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
 
     private static ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
 

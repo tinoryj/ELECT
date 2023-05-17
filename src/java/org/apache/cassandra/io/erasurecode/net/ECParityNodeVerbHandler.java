@@ -39,7 +39,6 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
 
     public static final ECParityNodeVerbHandler instance = new ECParityNodeVerbHandler();
 
-    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
     private static final Logger logger = LoggerFactory.getLogger(ECParityNodeVerbHandler.class);
 
     /*
@@ -57,8 +56,9 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
         }
         
         logger.debug("rymDebug: Received message: {}", message.payload.parityHash);
+        String receivedParityCodeDir = ECNetutils.getReceivedParityCodeDir();
         try {
-                FileChannel fileChannel = FileChannel.open(Paths.get(parityCodeDir, message.payload.parityHash),
+                FileChannel fileChannel = FileChannel.open(Paths.get(receivedParityCodeDir, message.payload.parityHash),
                                                             StandardOpenOption.WRITE,
                                                              StandardOpenOption.CREATE);
                 fileChannel.write(message.payload.parityCode);
@@ -87,18 +87,18 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
     }
 
 
-    public static void main(String[] args) {
-        File parityCodeFile = new File(parityCodeDir + String.valueOf("parityCodeTest"));
+    // public static void main(String[] args) {
+    //     File parityCodeFile = new File(parityCodeDir + String.valueOf("parityCodeTest"));
         
-        if (!parityCodeFile.exists()) {
-            try {
-                parityCodeFile.createNewFile();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
-        logger.debug("rymDebug: parityCodeFile.getName is {}", parityCodeFile.getAbsolutePath());
-    }
+    //     if (!parityCodeFile.exists()) {
+    //         try {
+    //             parityCodeFile.createNewFile();
+    //         } catch (IOException e) {
+    //             // TODO Auto-generated catch block
+    //             e.printStackTrace();
+    //         }
+    //     }
+    //     logger.debug("rymDebug: parityCodeFile.getName is {}", parityCodeFile.getAbsolutePath());
+    // }
 
 }

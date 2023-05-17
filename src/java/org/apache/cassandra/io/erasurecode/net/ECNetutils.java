@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.net.Inet4Address;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
@@ -49,6 +50,7 @@ import org.apache.cassandra.io.sstable.metadata.MetadataComponent;
 import org.apache.cassandra.io.sstable.metadata.MetadataType;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +58,7 @@ public final class ECNetutils {
     private static final Logger logger = LoggerFactory.getLogger(ECNetutils.class);
     
     private static final String dataForRewriteDir = System.getProperty("user.dir")+"/data/tmp/";
-    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
+    private static final String receivedParityCodeDir = System.getProperty("user.dir")+"/data/receivedParityHashes/";
     private static final String dataDir = System.getProperty("user.dir")+"/data/data/";
     private static final String localParityCodeDir = System.getProperty("user.dir")+"/data/localParityHashes/";
 
@@ -79,6 +81,17 @@ public final class ECNetutils {
             bis.close();
             ois.close();
             return obj;
+        }
+    }
+
+    public static class StripIDToSSTHashAndParityNodes implements Serializable {
+        public final String stripID;
+        public final String sstHash;
+        public final List<InetAddressAndPort> parityNodes;
+        public StripIDToSSTHashAndParityNodes(String stripID, String sstHash, List<InetAddressAndPort> parityNodes) {
+            this.stripID = stripID;
+            this.sstHash = sstHash;
+            this.parityNodes = parityNodes;
         }
     }
 
@@ -111,8 +124,8 @@ public final class ECNetutils {
         return dataForRewriteDir;
     }
 
-    public static String getParityCodeDir() {
-        return parityCodeDir;
+    public static String getReceivedParityCodeDir() {
+        return receivedParityCodeDir;
     }
 
     public static String getDataDir() {
