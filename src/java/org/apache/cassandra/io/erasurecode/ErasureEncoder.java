@@ -81,10 +81,10 @@ public abstract class ErasureEncoder extends ErasureCoder {
 
         // Perform encoding
         if (usingDirectBuffer) {
-            doEncode(bbestate);
+            doEncodeUpdate(bbestate, targetDataIndex);
         } else {
             ByteArrayEncodingState baeState = bbestate.convertToByteArrayState();
-            doEncode(baeState);
+            doEncodeUpdate(baeState, targetDataIndex);
         }
 
     }
