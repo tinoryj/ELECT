@@ -68,7 +68,7 @@ public final class ECParityUpdate implements Serializable {
     }
 
 
-    public class SSTableContentWithHashID implements Serializable {
+    public static class SSTableContentWithHashID implements Serializable {
         public final String sstHash;
         public final ByteBuffer sstContent;
         public final int sstContentSize;

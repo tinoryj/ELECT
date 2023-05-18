@@ -107,6 +107,7 @@ import org.apache.cassandra.dht.Token.TokenFactory;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.gms.*;
 import org.apache.cassandra.hints.HintsService;
+import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
@@ -184,7 +185,9 @@ public class StorageService extends NotificationBroadcasterSupport
     public static final int RING_DELAY_MILLIS = getRingDelay(); // delay after which we assume ring has stablized
     public static final int SCHEMA_DELAY_MILLIS = getSchemaDelay();
 
-    // public Map<String, List<DecoratedKey>> globalSSTMap = new HashMap<String, List<DecoratedKey>>();
+    // [CASSANDRAEC] The following parameters belong to CassandraEC.
+    // [In parity node] This queue is used to receive ECMessages for erasure coding.
+    public ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
     // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
     public Map<String, DataForRewrite> globalSSTMap = new HashMap<String, DataForRewrite>();
     // [In parity node] This map is used to store <stripID, ECMetadataContent>, generate after erasure coding, use during parity update.

@@ -19,6 +19,9 @@ package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
@@ -33,16 +36,17 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         String sstHash = message.payload.sstHash;
         int parityIndex = message.payload.parityIndex;
         String receivedParityCodeDir = ECNetutils.getReceivedParityCodeDir();
+        String filePath = receivedParityCodeDir + parityHash;
 
-        byte[] parityCode = ECNetutils.readBytesFromFile(receivedParityCodeDir + parityHash);
+        byte[] parityCode = ECNetutils.readBytesFromFile(filePath);
         
         
         // response this parityCode to to source node
         ECResponseParity response = new ECResponseParity(parityHash, sstHash, parityCode, parityIndex);
         response.responseParity(message.from());
         
-        // TODO: delete parity code file locally
-        
+        // delete parity code file locally
+        ECNetutils.deleteFileByName(filePath);
     }
 
 

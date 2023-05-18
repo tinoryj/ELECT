@@ -88,6 +88,7 @@ public class ECMetadata implements Serializable {
         
         public String keyspace;
         public String cfName;
+        public boolean isParityUpdate = false;
         public List<String> sstHashIdList;
         public List<String> parityHashList;
         public Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap;
@@ -120,7 +121,7 @@ public class ECMetadata implements Serializable {
      * @param parityCode this is the parity block for erasure coding, size is m
      * @param parityHashes
      */
-    public void generateMetadata(ECMessage[] messages, ByteBuffer[] parityCode, List<String> parityHashes) {
+    public void generateAndDistributeMetadata(ECMessage[] messages, List<String> parityHashes) {
         logger.debug("rymDebug: this generateMetadata method");
         // get stripe id, sst content hashes and primary nodes
         String connectedSSTHash = "";
@@ -142,10 +143,6 @@ public class ECMetadata implements Serializable {
         // get related nodes
         // if everything goes well, each message has the same parity code
         this.ecMetadataContent.parityNodes.addAll(messages[0].parityNodes);
-
-        // for(InetAddressAndPort pns : messages[0].parityNodes) {
-        //     this.ecMetadataContent.relatedNodes.add(pns);
-        // }
 
         // initialize the secondary nodes
         for(ECMessage msg : messages) {
@@ -172,7 +169,76 @@ public class ECMetadata implements Serializable {
         
 
         // dispatch to related nodes
-        distributeEcMetadata(this);
+        distributeECMetadata(this);
+
+    }
+
+    /**
+     * This method is to update the metadata for the given messages
+     * @param parityHashes
+     */
+    public void updateAndDistributeMetadata(List<String> newParityHashes, boolean isParityUpdate, 
+                                            String oldSSTHash, String newSSTHash, int targetIndex,
+                                            List<InetAddressAndPort> oldReplicaNodes, List<InetAddressAndPort> newReplicaNodes) {
+        logger.debug("rymDebug: this update ECMetadata method");
+        // update isParityUpdate
+        this.ecMetadataContent.isParityUpdate = isParityUpdate;
+        // update sstable hash list
+        this.ecMetadataContent.sstHashIdList.set(targetIndex, newSSTHash);
+        // update parity code hash
+        this.ecMetadataContent.parityHashList = newParityHashes;
+        // modify sstHashIdToReplicaMap
+        this.ecMetadataContent.sstHashIdToReplicaMap.put(newSSTHash, newReplicaNodes);
+        this.ecMetadataContent.sstHashIdToReplicaMap.remove(oldSSTHash);
+
+        if(!oldReplicaNodes.equals(newReplicaNodes)) {
+            logger.warn("rymDebug: new replication nodes {} are different from old replication nodes {}",
+                             newReplicaNodes, oldReplicaNodes);
+            // update primary node list
+            this.ecMetadataContent.primaryNodes.set(targetIndex, newReplicaNodes.get(0));
+
+            // update secondary node list
+            this.ecMetadataContent.secondaryNodes = new HashSet<InetAddressAndPort>();
+            // update secondary nodes
+            for(Map.Entry<String, List<InetAddressAndPort>> entry : this.ecMetadataContent.sstHashIdToReplicaMap.entrySet()) {
+                for (int i = 1; i < entry.getValue().size(); i++) {
+                    this.ecMetadataContent.secondaryNodes.add(entry.getValue().get(i));
+                }
+            }
+            
+        }
+
+        // remove the ECMetadata from memory
+        StorageService.instance.globalECMetadataMap.remove(this.stripeId);
+
+        // update strip id
+        String connectedSSTHash = "";
+        for(String sstHash : this.ecMetadataContent.sstHashIdList) {
+            connectedSSTHash += sstHash;
+        }
+        this.stripeId = ECNetutils.stringToHex(String.valueOf(connectedSSTHash.hashCode()));
+
+
+
+        try {
+            this.ecMetadataContentBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMetadataContent);
+            this.ecMetadataContentBytesSize = this.ecMetadataContentBytes.length;
+            if(this.ecMetadataContentBytes.length == 0) {
+                logger.error("rymERROR: no metadata content"); 
+            }
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        for(String sstHash : this.ecMetadataContent.sstHashIdList) {
+            StorageService.instance.globalSSTHashToStripID.putIfAbsent(sstHash, this.stripeId);
+        }
+        StorageService.instance.globalSSTHashToStripID.remove(oldSSTHash);
+        
+
+        // dispatch to related nodes
+        distributeECMetadata(this);
 
     }
 
@@ -180,14 +246,26 @@ public class ECMetadata implements Serializable {
     /**
      * Distribute ecMetadata to secondary nodes
      */
-    public void distributeEcMetadata(ECMetadata ecMetadata) {
+    public void distributeECMetadata(ECMetadata ecMetadata) {
         logger.debug("rymDebug: this distributeEcMetadata method");
         Message<ECMetadata> message = Message.outWithFlag(Verb.ECMETADATA_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
+        
+        // send to secondary nodes 
         for (InetAddressAndPort node : ecMetadata.ecMetadataContent.secondaryNodes) {
             if(!node.equals(FBUtilities.getBroadcastAddressAndPort())) {
                 MessagingService.instance().send(message, node);
             }
         }
+
+        // send to remote parity nodes
+        // for (InetAddressAndPort node : ecMetadata.ecMetadataContent.parityNodes) {
+        //     if(!node.equals(FBUtilities.getBroadcastAddressAndPort())) {
+        //         MessagingService.instance().send(message, node);
+        //     }
+        // }
+
+        // store parity nodes locally
+        StorageService.instance.globalECMetadataMap.put(ecMetadata.stripeId, ecMetadata.ecMetadataContent);
     }
 
     public static final class Serializer implements IVersionedSerializer<ECMetadata>{

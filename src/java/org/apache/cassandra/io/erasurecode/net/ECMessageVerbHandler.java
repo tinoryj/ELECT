@@ -43,6 +43,7 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.ParamType;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
     public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
-    private static ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
+    // private static ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
 
     private void respond(Message<?> respondTo, InetAddressAndPort respondToAddress) {
         Tracing.trace("Enqueuing response to {}", respondToAddress);
@@ -95,13 +96,13 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         InetAddressAndPort primaryNode = message.payload.replicaNodes.get(0);
 
         // save the received data to recvQueue
-        if(!recvQueues.containsKey(primaryNode)) {
+        if(!StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
             Queue<ECMessage> recvQueue = new LinkedList<ECMessage>();
             recvQueue.add(message.payload);
-            recvQueues.put(primaryNode, recvQueue);
+            StorageService.instance.globalRecvQueues.put(primaryNode, recvQueue);
         }
         else {
-            recvQueues.get(primaryNode).add(message.payload);
+            StorageService.instance.globalRecvQueues.get(primaryNode).add(message.payload);
         }
         
         // logger.debug("rymDebug: recvQueues is {}", recvQueues);
@@ -111,15 +112,15 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
 
         // Once we have k different sstContent, do erasure coding locally
-        if(recvQueues.size()>=message.payload.ecDataNum) {
+        if(StorageService.instance.globalRecvQueues.size()>=message.payload.ecDataNum) {
             // logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
             ECMessage tmpArray[] = new ECMessage[message.payload.ecDataNum];
             //traverse the recvQueues
             int i = 0;
-            for (InetAddressAndPort msg : recvQueues.keySet()) {
-                tmpArray[i] = recvQueues.get(msg).poll();
-                if(recvQueues.get(msg).size() == 0) {
-                    recvQueues.remove(msg);
+            for (InetAddressAndPort msg : StorageService.instance.globalRecvQueues.keySet()) {
+                tmpArray[i] = StorageService.instance.globalRecvQueues.get(msg).poll();
+                if(StorageService.instance.globalRecvQueues.get(msg).size() == 0) {
+                    StorageService.instance.globalRecvQueues.remove(msg);
                 }
                 if (i == message.payload.ecDataNum - 1) 
                     break;
@@ -246,7 +247,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             ECMetadata ecMetadata = new ECMetadata("", new ECMetadataContent("", "", new ArrayList<String>(),new ArrayList<String>(),
                                                    new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new ArrayList<InetAddressAndPort>(),
                                                 new HashMap<String, List<InetAddressAndPort>>()));
-            ecMetadata.generateMetadata(messages, parity, parityHashList);
+            ecMetadata.generateAndDistributeMetadata(messages, parityHashList);
         }
 
     }

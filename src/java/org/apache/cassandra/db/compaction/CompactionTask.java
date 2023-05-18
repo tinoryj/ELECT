@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.LogRecord;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import java.util.Iterator;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
@@ -63,6 +64,9 @@ import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECParityNode;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdate;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
@@ -725,14 +729,14 @@ public class CompactionTask extends AbstractCompactionTask {
             };
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
             
-            // record before compaction
+            // [CASSANDRAEC]
+            // store old data before compaction
             int transferredSSTablesNum = 0;
-            Map<String, ByteBuffer> transferredSSTables;
+            List<SSTableContentWithHashID> transferredSSTables = new ArrayList<>();
             if(cfs.getColumnFamilyName().equals("usertable")) {
-                transferredSSTables = new HashMap<String, ByteBuffer>();
                 for(SSTableReader sstable : actuallyCompact) {
                     if(sstable.isReplicationTransferredToErasureCoding()) {
-                        transferredSSTables.put(sstable.getSSTableHashID(), sstable.getSSTContent());
+                        transferredSSTables.add(new SSTableContentWithHashID(sstable.getSSTableHashID(), sstable.getSSTContent()));
                         transferredSSTablesNum++;
                     }
                 }
@@ -828,13 +832,55 @@ public class CompactionTask extends AbstractCompactionTask {
             if (transaction.isOffline())
                 return;
             
-
+            // [CASSADNRAEC]
+            // Compaction is done: match the old/new data, and send them to parity node
             if(cfs.getColumnFamilyName().equals("usertable") && transferredSSTablesNum > 0) {
                 // send parity update signal
                 // send old data 
-                
-                // send new data 
+                // List<InetAddressAndPort> targets = new ArrayList<>();
+                Map<InetAddressAndPort, List<SSTableContentWithHashID>> oldSSTables = new HashMap<InetAddressAndPort, List<SSTableContentWithHashID>>();
+                for (SSTableContentWithHashID transferredSST : transferredSSTables) {
+                    String sstHash = transferredSST.sstHash;
+                    InetAddressAndPort target = StorageService.instance.globalSSTHashToParityNodesMap.get(sstHash).get(0);
+                    // targets.add(target);
+                    if(oldSSTables.containsKey(target)){
+                        oldSSTables.get(target).add(transferredSST);
+                    } else {
+                        oldSSTables.put(target, Collections.singletonList(transferredSST));
+                    }
+                }
 
+                // handle the new data 
+                Iterator<SSTableReader> newSSTableIterator = newSStables.iterator();
+                for(Map.Entry<InetAddressAndPort, List<SSTableContentWithHashID>> entry : oldSSTables.entrySet()) {
+                    // InetAddressAndPort target = entry.getKey();
+                    int requireSize = entry.getValue().size();
+                    List<SSTableContentWithHashID> newSSTables = new ArrayList<>();
+                    while(requireSize-- > 0) {
+                        if(newSSTableIterator.hasNext()) {
+                            SSTableReader sstable = newSSTableIterator.next();
+                            newSSTables.add(new SSTableContentWithHashID(sstable.getSSTableHashID(),sstable.getSSTContent()));
+                            // set this sstable as updated
+                            sstable.SetIsParityUpdate();
+                            newSSTableIterator.remove();
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Debug: check if the sstables' parity nodes are the same
+                    logger.debug("----------------------------------------------------------------------------");
+                    for(SSTableContentWithHashID sst : entry.getValue()) {
+                        logger.debug("rymDebug: the parity nodes of sstable ({}) are ({})", sst.sstHash,
+                                        StorageService.instance.globalSSTHashToParityNodesMap.get(sst.sstHash));
+                    }
+                    logger.debug("----------------------------------------------------------------------------");
+
+                    // send the old sstable and new sstable to target parity node
+                    ECParityUpdate parityUpdate = new ECParityUpdate(entry.getValue(), newSSTables,
+                                    StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
+                    parityUpdate.sendParityUpdateSignal();
+                }
             }
 
             // log a bunch of statistics about the result and save to system table
@@ -1047,6 +1093,5 @@ public class CompactionTask extends AbstractCompactionTask {
         }
         return max;
     }
-
 
 }

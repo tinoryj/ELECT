@@ -283,6 +283,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     protected volatile StatsMetadata sstableMetadata;
 
     protected Boolean isReplicationTransferredToErasureCoding = false;
+    protected Boolean isParityUpdate = false;
 
     public final SerializationHeader header;
 
@@ -1803,6 +1804,18 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     public boolean SetIsReplicationTransferredToErasureCoding() {
         this.isReplicationTransferredToErasureCoding = true;
         if (this.isReplicationTransferredToErasureCoding) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    public boolean isParityUpdate() {
+        return this.isParityUpdate;
+    }
+
+    public boolean SetIsParityUpdate() {
+        this.isParityUpdate = true;
+        if (this.isParityUpdate) {
             return true;
         } else {
             return false;

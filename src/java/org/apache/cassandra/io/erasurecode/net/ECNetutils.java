@@ -184,6 +184,17 @@ public final class ECNetutils {
         return hex.toString();
     }
 
+    public static void deleteFileByName(String fileName) {
+        Path path = Paths.get(fileName);
+        try {
+            Files.delete(path);
+            logger.debug("rymDebug: delete file {} successfully", fileName);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
 
     public static void main(String[] args) throws IOException {
         // SSTableMetadataViewer metawriter = new SSTableMetadataViewer(false, false, Integer.MAX_VALUE, TimeUnit.MICROSECONDS, System.out);

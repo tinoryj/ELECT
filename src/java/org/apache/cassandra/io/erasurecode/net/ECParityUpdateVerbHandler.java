@@ -25,6 +25,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -66,13 +67,14 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         }
 
         ECParityUpdate parityUpdateData = message.payload;
-        List<InetAddressAndPort> parityNode = parityUpdateData.parityNodes;
+        List<InetAddressAndPort> parityNodes = parityUpdateData.parityNodes;
         
         // Map<String, ByteBuffer[]> sstHashToParityCodeMap = new HashMap<String, ByteBuffer[]>();
         String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
 
         // read parity code locally and from peer parity nodes
         // TODO: check that parity code blocks are all ready
+        int codeLength = 0;
         for (SSTableContentWithHashID sstContentWithHash: parityUpdateData.oldSSTables) {
             String sstHash = sstContentWithHash.sstHash;
             String stripID = StorageService.instance.globalSSTHashToStripID.get(sstHash);
@@ -82,17 +84,15 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             List<String> parityHashList = StorageService.instance.globalECMetadataMap.get(stripID).parityHashList;
             ByteBuffer[] parityCodes = new ByteBuffer[parityHashList.size()];
             // get the needed parity code locally
+            String parityCodeFileName = localParityCodeDir + parityHashList.get(0);
             ByteBuffer localParityCode =
-                 ByteBuffer.wrap(ECNetutils.readBytesFromFile(localParityCodeDir + parityHashList.get(0)));
+                 ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
+            
+            // delete local parity code file
+            ECNetutils.deleteFileByName(parityCodeFileName);
 
-
-            // TODO: check the length
-            // if(localParityCode.capacity() > entry.getValue().capacity()) {
-            //     oldSSTablesWithStripID.codeLength = localParityCode.capacity();
-            //     // padding zero for new sst content
-            // } else {
-            //     oldSSTablesWithStripID.codeLength = oldSSTablesWithStripID.sstContent.capacity();
-            // }
+            if(codeLength == 0)
+                codeLength = localParityCode.capacity();
 
             
             for(int i = 0; i < parityHashList.size(); i++) {
@@ -106,23 +106,62 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             // get the needed parity code remotely, send a parity code request
             for (int i = 1; i < parityHashList.size(); i++) {
                 ECRequestParity request = new ECRequestParity(parityHashList.get(i), sstHash, i);
-                request.requestParityCode(parityNode.get(i));
+                request.requestParityCode(parityNodes.get(i));
             }            
         }
 
-        // consume the new data
-        for (SSTableContentWithHashID newSSTable: parityUpdateData.newSSTables) {
-            ByteBuffer newData = newSSTable.sstContent;
-            // OldSSTablesWithStripID obj = parityUpdateData.oldSSTablesWithStripIDs.get(parityUpdateData.oldSSTablesWithStripIDs.size() - 1);
-            SSTableContentWithHashID oldSSTable = parityUpdateData.oldSSTables.get(0);
-            Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(newData,
+        // consume old data with new data
+        Iterator<SSTableContentWithHashID> oldSSTablesIterator = parityUpdateData.oldSSTables.iterator();
+        Iterator<SSTableContentWithHashID> newSSTablesIterator = parityUpdateData.newSSTables.iterator();
+
+        while (newSSTablesIterator.hasNext()) {
+            SSTableContentWithHashID newSSTable = newSSTablesIterator.next();
+            SSTableContentWithHashID oldSSTable = oldSSTablesIterator.next();
+
+            // [ATTENTION] Debug to avoid dead loops
+            // For safety, we should make sure the parity code is ready
+            while (!checkParityCodesAreReady(StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash))) {
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+
+            // remove the processed entry to save memory
+            newSSTablesIterator.remove();
+            oldSSTablesIterator.remove();
+
+            // ByteBuffer oldData = oldSSTable.sstContent;
+            // ByteBuffer newData = newSSTable.sstContent;
+
+
+            Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
+                                                                                    newSSTable,
                                                                                     StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
                                                                                     StorageService.instance.globalECMetadataMap.get(oldSSTable.sstHash).sstHashIdList.indexOf(oldSSTable.sstHash), 
-                                                                                    oldSSTable.sstContentSize));
-
-            // TODO: remove the processed entry
+                                                                                    codeLength,
+                                                                                    parityNodes));
+            
+            
         }
+
+        // If old data is not completely consumed, we select sstables from globalRecvQueues
+
+
+        // If old data and globalRecvQueues still has data remaining, padding zero
         
+        
+    }
+
+    private static boolean checkParityCodesAreReady(ByteBuffer[] parityCodes) {
+        for(ByteBuffer buf : parityCodes) {
+            if(buf.limit() - buf.position() == 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void forwardToLocalNodes(Message<ECParityUpdate> originalMessage, ForwardingInfo forwardTo) {
@@ -152,16 +191,23 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
     private static  class ErasureCodeUpdateRunnable implements Runnable {
         private final int ecDataNum = DatabaseDescriptor.getEcDataNodes();
         private final int ecParityNum = DatabaseDescriptor.getParityNodes();
-        private final ByteBuffer newSSTContent;
+        private final SSTableContentWithHashID oldSSTable;
+        private final SSTableContentWithHashID newSSTable;
         private final ByteBuffer[] parityCodes;
         private final int targetDataIndex;
         private final int codeLength;
+        private final List<InetAddressAndPort> parityNodes;
 
-        ErasureCodeUpdateRunnable(ByteBuffer newSSTContent, ByteBuffer[] oldParityCodes, int targetDataIndex, int codeLength) {
-            this.newSSTContent = newSSTContent;
+        ErasureCodeUpdateRunnable(SSTableContentWithHashID oldSSTable,
+                                  SSTableContentWithHashID newSSTable,
+                                  ByteBuffer[] oldParityCodes,
+                                  int targetDataIndex, int codeLength, List<InetAddressAndPort> parityNodes) {
+            this.oldSSTable = oldSSTable;
+            this.newSSTable = newSSTable;
             this.parityCodes = oldParityCodes;
             this.targetDataIndex = targetDataIndex;
             this.codeLength = codeLength;
+            this.parityNodes = parityNodes;
         }
 
         @Override
@@ -174,21 +220,33 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             logger.debug("rymDebug: let's start computing erasure coding");
 
             // Encoding input and output
+            ByteBuffer[] oldData = new ByteBuffer[1];
             ByteBuffer[] newData = new ByteBuffer[1];
 
-            // Prepare input data
+            // prepare old data
+            oldData[0] = ByteBuffer.allocateDirect(codeLength);
+            oldData[0].put(oldSSTable.sstContent);
+            int oldRemaining = oldData[0].remaining();
+            if(oldRemaining>0) {
+                byte[] zeros = new byte[oldRemaining];
+                oldData[0].put(zeros);
+            }
+            oldData[0].rewind();
+
+            // Prepare new data
             newData[0] = ByteBuffer.allocateDirect(codeLength);
-            newData[0].put(newSSTContent);
-            int remaining = newData[0].remaining();
-            if(remaining>0) {
-                byte[] zeros = new byte[remaining];
+            newData[0].put(newSSTable.sstContent);
+            int newRemaining = newData[0].remaining();
+            if(newRemaining>0) {
+                byte[] zeros = new byte[newRemaining];
                 newData[0].put(zeros);
             }
             newData[0].rewind();
 
 
-            // Encode
+            // Encode update
             try {
+                encoder.encodeUpdate(oldData, parityCodes, targetDataIndex);
                 encoder.encodeUpdate(newData, parityCodes, targetDataIndex);
             } catch (IOException e) {
                 logger.error("rymERROR: Perform erasure code error", e);
@@ -214,12 +272,20 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 logger.error("rymERROR: Perform erasure code error", e);
             }
 
-            // TODO: delete local parity code file
 
+            // sync encoded data to parity nodes
+            ECParityNode ecParityNode = new ECParityNode(null, null, 0);
+            ecParityNode.distributeCodedDataToParityNodes(parityCodes, parityNodes, parityHashList);
 
-            // // sync encoded data to parity nodes
-            // ECParityNode ecParityNode = new ECParityNode(null, null, 0);
-            // ecParityNode.distributeCodedDataToParityNodes(parityCodes, messages[0].parityNodes, parityHashList);
+            // update ECMetadata and distribute it
+            // get old ECMetadata content 
+            String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
+            ECMetadataContent oldMetadata = StorageService.instance.globalECMetadataMap.get(stripID);
+            // update the isParityUpdate, sstHashIdList, parityHashList, replication nodes, stripID
+            ECMetadata ecMetadata = new ECMetadata(stripID, oldMetadata);
+            ecMetadata.updateAndDistributeMetadata(parityHashList, true,
+                                                   oldSSTable.sstHash, newSSTable.sstHash, targetDataIndex,
+                                                   null, null);
 
             // // Transform to ECMetadata and dispatch to related nodes
             // // ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
