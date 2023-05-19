@@ -81,7 +81,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             logger.debug("rymDebug: this is a forwarding header");
         }
         
-        ByteBuffer sstContent = message.payload.ecMessageContent.sstContent;
+        ByteBuffer sstContent = message.payload.sstContent;
         int ec_data_num = message.payload.ecMessageContent.ecDataNum;
 
         
@@ -175,9 +175,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             if(messages.length != ecDataNum) {
                 logger.error("rymERROR: message length is not equal to ecDataNum");
             }
-            int codeLength = messages[0].ecMessageContent.sstSize;
+            int codeLength = messages[0].sstSize;
             for (ECMessage msg : messages) {
-                codeLength = codeLength < msg.ecMessageContent.sstSize? msg.ecMessageContent.sstSize : codeLength;
+                codeLength = codeLength < msg.sstSize? msg.sstSize : codeLength;
              }
             ErasureCoderOptions ecOptions = new ErasureCoderOptions(ecDataNum, ecParityNum);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
@@ -191,7 +191,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
                 data[i] = ByteBuffer.allocateDirect(codeLength);
-                data[i].put(messages[i].ecMessageContent.sstContent);
+                data[i].put(messages[i].sstContent);
                 logger.debug("rymDebug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
                 int remaining = data[i].remaining();
                 if(remaining>0) {
@@ -200,7 +200,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 }
                 // data[i].put(new byte[data[i].remaining()]);
                 logger.debug("rymDebug: message[{}].sstconetent {}, data[{}] is: {}",
-                 i, messages[i].ecMessageContent.sstContent,i, data[i]);
+                 i, messages[i].sstContent,i, data[i]);
                 data[i].rewind();
             }
 

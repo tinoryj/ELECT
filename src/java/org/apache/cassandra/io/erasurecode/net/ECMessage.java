@@ -65,10 +65,11 @@ public class ECMessage implements Serializable {
     public ECMessageContent ecMessageContent;
     public byte[] ecMessageContentInBytes;
     public int ecMessageContentInBytesSize;
+    
+    public final ByteBuffer sstContent;
+    public final int sstSize;
 
     public static class ECMessageContent implements Serializable {
-        public final ByteBuffer sstContent;
-        public final int sstSize;
         public final String sstHashID;
         public final String keyspace;
         public final String cfName;
@@ -80,11 +81,10 @@ public class ECMessage implements Serializable {
         public List<InetAddressAndPort> replicaNodes;
         public List<InetAddressAndPort> parityNodes;
 
-        public ECMessageContent(ByteBuffer sstContent, String sstHashID, String keyspace, String cfName,
+        public ECMessageContent(String sstHashID, String keyspace, String cfName,
                 List<InetAddressAndPort> replicaNodes) {
 
-            this.sstContent = sstContent;
-            this.sstSize = sstContent.remaining();
+            
             this.sstHashID = sstHashID;
             this.keyspace = keyspace;
             this.cfName = cfName;
@@ -100,7 +100,9 @@ public class ECMessage implements Serializable {
 
 
 
-    public ECMessage(ECMessageContent ecMessageContent) {
+    public ECMessage(ByteBuffer sstContent, ECMessageContent ecMessageContent) {
+        this.sstContent = sstContent;
+        this.sstSize = sstContent.remaining();
         this.ecMessageContent = ecMessageContent;
     }
 
@@ -136,6 +138,7 @@ public class ECMessage implements Serializable {
         // }
 
         try {
+            logger.debug("thiss is transform ");
             this.ecMessageContentInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMessageContent);
             this.ecMessageContentInBytesSize = this.ecMessageContentInBytes.length;
             
@@ -218,6 +221,11 @@ public class ECMessage implements Serializable {
             logger.debug("rymDebug: t.ecMessageContentInBytes.length {}", t.ecMessageContentInBytes.length);
             out.writeInt(t.ecMessageContentInBytesSize);
             out.write(t.ecMessageContentInBytes);
+
+            out.writeInt(t.sstSize);
+            byte[] buf = new byte[t.sstSize];
+            t.sstContent.get(buf);
+            out.write(buf);
             // logger.debug("rymDebug: [serialize] write successfully", buf.length);
         }
 
@@ -254,11 +262,16 @@ public class ECMessage implements Serializable {
             int ecMessageContentInBytesSize = in.readInt();
             byte[] ecMessageContentInBytes = new byte[ecMessageContentInBytesSize];
             in.readFully(ecMessageContentInBytes);
-            
+
+            int sstSize = in.readInt();
+            byte[] buf = new byte[sstSize];
+            in.readFully(buf);
+            ByteBuffer sstContent = ByteBuffer.wrap(buf);
+
             ECMessageContent ecMessage;
             try {
                 ecMessage = (ECMessageContent) ByteObjectConversion.byteArrayToObject(ecMessageContentInBytes);
-                return new ECMessage(ecMessage);
+                return new ECMessage(sstContent, ecMessage);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
