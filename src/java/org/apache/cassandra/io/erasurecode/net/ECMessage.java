@@ -129,14 +129,6 @@ public class ECMessage implements Serializable {
 
         getTargetEdpoints(this);
 
-        // for (InetAddressAndPort ep : this.replicaNodes) {
-        //     this.repEpsString += ep.toString() + ",";
-        // }
-
-        // for (InetAddressAndPort ep : this.parityNodes) {
-        //     this.parityNodesString += ep.toString() + ",";
-        // }
-
         try {
             logger.debug("thiss is transform ");
             this.ecMessageContentInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMessageContent);
@@ -200,25 +192,8 @@ public class ECMessage implements Serializable {
 
         @Override
         public void serialize(ECMessage t, DataOutputPlus out, int version) throws IOException {
-            // TODO: reduce (de)serialize cost
-            // logger.debug("rymDebug: [Load] the length of sstContent buffer is: {}" , ecMessage.sstSize);
-            // logger.debug("rymDebug: [Load] the size of = {}" , sizeofLong(ecMessage.sstContent));
-            // out.writeUTF(ecMessage.sstContent);
-
-            ////////////////////////////////////////////////
-            // out.writeUTF(ecMessage.sstHashID);
-            // out.writeUTF(ecMessage.keyspace);
-            // out.writeUTF(ecMessage.cfName);
-            // out.writeUTF(ecMessage.repEpsString);
-            // out.writeUTF(ecMessage.parityNodesString);
-
-            // out.writeInt(ecMessage.sstSize);
-            // byte[] buf = new byte[ecMessage.sstSize];
-            // ecMessage.sstContent.get(buf);
-            // out.write(buf);
-            ///////////////////////////////////////////////
-            logger.debug("rymDebug: t.ecMessageContentInBytesSize is {}", t.ecMessageContentInBytesSize);
-            logger.debug("rymDebug: t.ecMessageContentInBytes.length {}", t.ecMessageContentInBytes.length);
+            // logger.debug("rymDebug: t.ecMessageContentInBytesSize is {}", t.ecMessageContentInBytesSize);
+            // logger.debug("rymDebug: t.ecMessageContentInBytes.length {}", t.ecMessageContentInBytes.length);
             out.writeInt(t.ecMessageContentInBytesSize);
             out.write(t.ecMessageContentInBytes);
 
@@ -231,33 +206,10 @@ public class ECMessage implements Serializable {
 
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
-            // String sstContent = in.readUTF();
-            // String sstContent = "sstContentTest";
-
-            ///////////////////////////////////////////
-            // String sstHashID = in.readUTF();
-            // String ks = in.readUTF();
-            // String cf = in.readUTF();
-            // String repEpsString = in.readUTF();
-            // String parityNodesString = in.readUTF();
-
-
 
             // // logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             // // , sstHashID,ks, cf,repEpsString,parityNodesString);
 
-            // int sstSize = in.readInt();
-            // byte[] buf = new byte[sstSize];
-            // in.readFully(buf);
-            // ByteBuffer sstContent = ByteBuffer.wrap(buf);
-
-            // // logger.debug("rymDebug: deserialize.sstSize is {}, sstContent length is {}", sstSize, sstContent.remaining());
-
-            // List<InetAddressAndPort> replicaNodes = new ArrayList<InetAddressAndPort>();
-            // for (String ep : repEpsString.split(",")) {
-            //     replicaNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
-            // }
-            /////////////////////////////////////////////////////////////
 
             int ecMessageContentInBytesSize = in.readInt();
             byte[] ecMessageContentInBytes = new byte[ecMessageContentInBytesSize];
@@ -280,21 +232,7 @@ public class ECMessage implements Serializable {
         }
 
         @Override
-        public long serializedSize(ECMessage ecMessage, int version) {
-
-            // logger.debug("rymDebug: serializedSize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
-            // , ecMessage.sstHashID,ecMessage.keyspace, ecMessage.cfName,ecMessage.repEpsString,ecMessage.parityNodesString);
-            // logger.debug("rymDebug: [Cacl] the length of sstContent.size is: {}" , ecMessage.sstSize);
-            // logger.debug("rymDebug: [Cacl] the ecMessage.sstContent.remaining() = {}" , ecMessage.sstContent.remaining());
-            
-            //////////////////////////////////////
-            // long size = ecMessage.sstSize + sizeof(ecMessage.sstSize) +
-            //             sizeof(ecMessage.sstHashID) + 
-            //             sizeof(ecMessage.keyspace) + 
-            //             sizeof(ecMessage.cfName) + 
-            //             sizeof(ecMessage.parityNodesString) + 
-            //             sizeof(ecMessage.repEpsString);
-            //////////////////////////////////////////////////
+        public long serializedSize(ECMessage ecMessage, int version) {            
             
             long size = ecMessage.ecMessageContentInBytesSize +
                         sizeof(ecMessage.ecMessageContentInBytesSize) +
