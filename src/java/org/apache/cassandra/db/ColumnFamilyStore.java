@@ -524,7 +524,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     
                                     // Send selected sstable for perform erasure coding.
                                     ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
-                                            "", "", replicaNodes);
+                                                                        replicaNodes);
                                     ecMessage.sendSSTableToParity();
                                     StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.sstHashID, ecMessage.parityNodes);
 

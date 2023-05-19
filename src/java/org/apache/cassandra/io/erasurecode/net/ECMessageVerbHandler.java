@@ -85,12 +85,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         int ec_data_num = message.payload.ecDataNum;
 
         
-        for (String ep : message.payload.parityNodesString.split(",")) {
-            message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
-        }
+        // for (String ep : message.payload.parityNodesString.split(",")) {
+        //     message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
+        // }
 
-        // logger.debug("rymDebug: get new message!!! message is from: {}, primaryNode is {}, parityNodes is {}",
-        //  message.from(), message.payload.replicaNodes.get(0), message.payload.parityNodes);
+        logger.debug("rymDebug: get new message!!! message is from: {}, primaryNode is {}, parityNodes is {}",
+         message.from(), message.payload.replicaNodes.get(0), message.payload.parityNodes);
 
 
         InetAddressAndPort primaryNode = message.payload.replicaNodes.get(0);
