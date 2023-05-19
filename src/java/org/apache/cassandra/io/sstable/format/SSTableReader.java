@@ -1813,7 +1813,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return this.isParityUpdate;
     }
 
-    public boolean SetIsParityUpdate() {
+    public boolean setIsParityUpdate() {
         this.isParityUpdate = true;
         if (this.isParityUpdate) {
             return true;

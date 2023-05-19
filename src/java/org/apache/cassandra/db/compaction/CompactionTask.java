@@ -861,7 +861,7 @@ public class CompactionTask extends AbstractCompactionTask {
                             SSTableReader sstable = newSSTableIterator.next();
                             newSSTables.add(new SSTableContentWithHashID(sstable.getSSTableHashID(),sstable.getSSTContent()));
                             // set this sstable as updated
-                            sstable.SetIsParityUpdate();
+                            sstable.setIsParityUpdate();
                             newSSTableIterator.remove();
                         } else {
                             break;
