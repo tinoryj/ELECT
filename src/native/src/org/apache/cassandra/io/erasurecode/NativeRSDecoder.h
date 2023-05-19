@@ -19,7 +19,7 @@ JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_
  * Method:    decodeImpl
  * Signature: ([Ljava/nio/ByteBuffer;[II[I[Ljava/nio/ByteBuffer;[I)V
  */
-JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_decodeImpl(JNIEnv*, jobject, jobjectArray, jintArray, jint, jintArray, jobjectArray, jintArray);
+JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_decodeImpl(JNIEnv*, jobject, jobjectArray, jintArray, jint, jintArray, jintArray, jobjectArray, jintArray);
 
 /*
  * Class:     org_apache_cassandra_io_erasurecode_NativeRSDecoder

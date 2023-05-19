@@ -74,28 +74,9 @@ public class NativeRSEncoder extends ErasureEncoder {
             }
             encodeUpdateImpl(bbeState.inputs, bbeState.inputOffsets, bbeState.encodeLength, targetDataIndex,
                     bbeState.outputs, bbeState.outputOffsets);
+            logger.debug("NativeRSEncoder - doEncodeUpdate called");
         } finally {
             encoderLock.readLock().unlock();
-        }
-    }
-
-    protected void doEncode(ByteArrayEncodingState baeState) throws IOException {
-        ByteBufferEncodingState bbeState = baeState.convertToByteBufferState();
-        doEncode(bbeState);
-
-        for (int i = 0; i < baeState.outputs.length; i++) {
-            bbeState.outputs[i].get(baeState.outputs[i], baeState.outputOffsets[i],
-                    baeState.encodeLength);
-        }
-    }
-
-    protected void doEncodeUpdate(ByteArrayEncodingState baeState, int targetDataIndex) throws IOException {
-        ByteBufferEncodingState bbeState = baeState.convertToByteBufferState();
-        doEncodeUpdate(bbeState, targetDataIndex);
-
-        for (int i = 0; i < baeState.outputs.length; i++) {
-            bbeState.outputs[i].get(baeState.outputs[i], baeState.outputOffsets[i],
-                    baeState.encodeLength);
         }
     }
 

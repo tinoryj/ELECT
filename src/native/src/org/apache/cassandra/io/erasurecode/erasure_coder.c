@@ -91,10 +91,13 @@ int encode(IsalEncoder* pCoder, unsigned char** dataUnits,
 int encodeUpdate(IsalEncoder* pCoder, unsigned char* newDataUnit, int fragment_index,
     unsigned char** parityUnits, int chunkSize)
 {
+
     int numDataUnits = pCoder->coder.numDataUnits;
     int numParityUnits = pCoder->coder.numParityUnits;
+    printf("Start encode update in C environment, target replace data block ID = %d\n", fragment_index);
 
     ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, newDataUnit, parityUnits);
+    printf("Encode update in C environment done\n");
     return 0;
 }
 
@@ -115,39 +118,25 @@ static int compare(int* arr1, int len1, int* arr2, int len2)
     return 1;
 }
 
-static int processErasures(IsalDecoder* pCoder, unsigned char** inputs,
-    int* erasedIndexes, int numErased)
+static int processErasures(IsalDecoder* pCoder, unsigned char** inputs, int* decodeIndexes, int* erasedIndexes, int numErased)
 {
     int i, r, ret, index;
     int numDataUnits = pCoder->coder.numDataUnits;
     int isChanged = 0;
 
-    for (i = 0, r = 0; i < numDataUnits; i++, r++) {
-        while (inputs[r] == NULL) {
-            r++;
-        }
-
-        if (pCoder->decodeIndex[i] != r) {
-            pCoder->decodeIndex[i] = r;
-            isChanged = 1;
-        }
+    for (i = 0; i < numDataUnits; i++) {
+        pCoder->decodeIndex[i] = decodeIndexes[i];
     }
 
     for (i = 0; i < numDataUnits; i++) {
-        pCoder->realInputs[i] = inputs[pCoder->decodeIndex[i]];
-    }
-
-    if (isChanged == 0 && compare(pCoder->erasedIndexes, pCoder->numErased, erasedIndexes, numErased) == 0) {
-        return 0; // Optimization, nothing to do
+        pCoder->recoverySrc[i] = inputs[i];
     }
 
     clearDecoder(pCoder);
 
     for (i = 0; i < numErased; i++) {
-        index = erasedIndexes[i];
-        pCoder->erasedIndexes[i] = index;
-        pCoder->erasureFlags[index] = 1;
-        if (index < numDataUnits) {
+        pCoder->erasedIndexes[i] = erasedIndexes[i];
+        if (erasedIndexes[i] < numDataUnits) {
             pCoder->numErasedDataUnits++;
         }
     }
@@ -171,20 +160,29 @@ static int processErasures(IsalDecoder* pCoder, unsigned char** inputs,
 }
 
 int decode(IsalDecoder* pCoder, unsigned char** inputs,
-    int* erasedIndexes, int numErased,
+    int* decodeIndexes, int* erasedIndexes, int numErased,
     unsigned char** outputs, int chunkSize)
 {
     int numDataUnits = pCoder->coder.numDataUnits;
     int i;
 
-    processErasures(pCoder, inputs, erasedIndexes, numErased);
-
+    printf("Start decoding in C environment, first element in decode index = %d, first element in erased index = %d\n", decodeIndexes[0], erasedIndexes[0]);
+    processErasures(pCoder, inputs, decodeIndexes, erasedIndexes, numErased);
+    printf("Target decode index: \n");
+    for (i = 0; i < numDataUnits; i++) {
+        printf(" %d ", pCoder->decodeIndex[i]);
+    }
+    printf("\nTarget recovery index: \n");
+    for (i = 0; i < numErased; i++) {
+        printf(" %d ", pCoder->erasedIndexes[i]);
+    }
+    printf("\n Start final decoding\n");
     for (i = 0; i < numErased; i++) {
         memset(outputs[i], 0, chunkSize);
     }
 
     ec_encode_data(chunkSize, numDataUnits, pCoder->numErased,
-        pCoder->gftbls, pCoder->realInputs, outputs);
+        pCoder->gftbls, pCoder->recoverySrc, outputs);
 
     return 0;
 }
@@ -196,9 +194,8 @@ void clearDecoder(IsalDecoder* decoder)
     decoder->numErased = 0;
     memset(decoder->gftbls, 0, sizeof(decoder->gftbls));
     memset(decoder->decodeMatrix, 0, sizeof(decoder->decodeMatrix));
-    memset(decoder->tmpMatrix, 0, sizeof(decoder->tmpMatrix));
+    memset(decoder->tempMatrix, 0, sizeof(decoder->tempMatrix));
     memset(decoder->invertMatrix, 0, sizeof(decoder->invertMatrix));
-    memset(decoder->erasureFlags, 0, sizeof(decoder->erasureFlags));
     memset(decoder->erasedIndexes, 0, sizeof(decoder->erasedIndexes));
 }
 
@@ -215,28 +212,33 @@ int generateDecodeMatrix(IsalDecoder* pCoder)
     for (i = 0; i < numDataUnits; i++) {
         r = pCoder->decodeIndex[i];
         for (j = 0; j < numDataUnits; j++) {
-            pCoder->tmpMatrix[numDataUnits * i + j] = pCoder->encodeMatrix[numDataUnits * r + j];
+            pCoder->tempMatrix[numDataUnits * i + j] = pCoder->encodeMatrix[numDataUnits * r + j];
         }
     }
 
-    gf_invert_matrix(pCoder->tmpMatrix,
+    gf_invert_matrix(pCoder->tempMatrix,
         pCoder->invertMatrix, numDataUnits);
 
+    // Get decode matrix with only wanted recovery rows
     for (i = 0; i < pCoder->numErasedDataUnits; i++) {
-        for (j = 0; j < numDataUnits; j++) {
-            pCoder->decodeMatrix[numDataUnits * i + j] = pCoder->invertMatrix[numDataUnits * pCoder->erasedIndexes[i] + j];
+        if (pCoder->erasedIndexes[i] < numDataUnits) {
+            for (j = 0; j < numDataUnits; j++) {
+                pCoder->decodeMatrix[numDataUnits * i + j] = pCoder->invertMatrix[numDataUnits * pCoder->erasedIndexes[i] + j];
+            }
         }
     }
+    // For non-src (parity) erasures need to multiply encode matrix * invert.
+    for (p = 0; p < pCoder->numErasedDataUnits; p++) {
+        if (pCoder->erasedIndexes[p] >= numDataUnits) { // A parity err
+            for (i = 0; i < numDataUnits; i++) {
+                s = 0;
+                for (j = 0; j < numDataUnits; j++) {
+                    s ^= gf_mul(pCoder->invertMatrix[j * numDataUnits + i],
+                        pCoder->encodeMatrix[numDataUnits * pCoder->erasedIndexes[p] + j]);
+                }
 
-    for (p = pCoder->numErasedDataUnits; p < pCoder->numErased; p++) {
-        for (i = 0; i < numDataUnits; i++) {
-            s = 0;
-            for (j = 0; j < numDataUnits; j++) {
-                s ^= gf_mul(pCoder->invertMatrix[j * numDataUnits + i],
-                    pCoder->encodeMatrix[numDataUnits * pCoder->erasedIndexes[p] + j]);
+                pCoder->decodeMatrix[numDataUnits * p + i] = s;
             }
-
-            pCoder->decodeMatrix[numDataUnits * p + i] = s;
         }
     }
 

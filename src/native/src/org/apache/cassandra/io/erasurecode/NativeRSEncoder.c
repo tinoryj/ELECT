@@ -76,8 +76,9 @@ Java_org_apache_cassandra_io_erasurecode_NativeRSEncoder_encodeUpdateImpl(
 
     getInputs(env, inputs, inputOffsets, rsEncoder->inputs, 1);
     getOutputs(env, outputs, outputOffsets, rsEncoder->outputs, numParityUnits);
-
+    printf("NativeRSEncoder_encodeUpdateImpl, update data block for index = %d\n", (int)targetUpdateDataIndex);
     encodeUpdate(&rsEncoder->encoder, rsEncoder->inputs[0], (int)targetUpdateDataIndex, rsEncoder->outputs, chunkSize);
+    printf("NativeRSEncoder_encodeUpdateImpl, update data block for index = %d done!!!\n", (int)targetUpdateDataIndex);
 }
 
 JNIEXPORT void JNICALL

@@ -22,18 +22,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
-import org.apache.cassandra.utils.OutputHandler.SystemOutput;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ErasureCodeTest {
     private static Logger logger = LoggerFactory.getLogger(ErasureCodeTest.class.getName());
 
-    @Test
-    public static void test() throws IOException {
-        final int k = 6, m = 3;
-        int codeLength = 10485760;
+    public static void erasureCodeTest() throws IOException {
+        final int k = 4, m = 2;
+        int codeLength = 1024;
         Random random = new Random((long) 123);
 
         // Generate encoder and decoder
@@ -46,11 +43,12 @@ public class ErasureCodeTest {
         ByteBuffer[] parity = new ByteBuffer[m];
 
         // Decoding input and output
-        ByteBuffer[] inputs = new ByteBuffer[k + m];
+        ByteBuffer[] recoverySrc = new ByteBuffer[k];
         int[] eraseIndexes = { 0 };
+        int[] decodeIndexes = { 4, 1, 2, 3 };
         ByteBuffer[] outputs = new ByteBuffer[1];
 
-        // Prepare inputs for encoding
+        // Prepare recoverySrc for encoding
         byte[] tmpArray = new byte[codeLength];
         for (int i = 0; i < k; i++) {
             data[i] = ByteBuffer.allocateDirect(codeLength);
@@ -67,25 +65,63 @@ public class ErasureCodeTest {
         logger.debug("ErasureCodeTest - next to call encode()!");
         encoder.encode(data, parity);
 
-        // Prepare inputs for decoding
-        inputs[0] = null;
+        // Prepare recoverySrc for decoding
+        recoverySrc[0] = null;
         for (int i = 1; i < k; i++) {
             data[i].rewind();
-            inputs[i] = data[i];
-            logger.debug("inputs[" + i + "]: position() = " + inputs[i].position()
-                    + ", remaining() = " + inputs[i].remaining());
+            recoverySrc[i] = data[i];
+            logger.debug("recoverySrc[" + i + "]: position() = " + recoverySrc[i].position() + ", remaining() = "
+                    + recoverySrc[i].remaining());
         }
-        inputs[k + 0] = parity[0];
-        for (int i = k + 1; i < k + m; i++) {
-            inputs[i] = null;
-        }
+        recoverySrc[0] = parity[0];
+        // for (int i = k + 1; i < k + m; i++) {
+        // recoverySrc[i] = null;
+        // }
 
         // Prepare outputs for decoding
         outputs[0] = ByteBuffer.allocateDirect(codeLength);
 
         // Decode
         logger.debug("ErasureCodeTest - next to call decode()!");
-        decoder.decode(inputs, eraseIndexes, outputs);
+        decoder.decode(recoverySrc, decodeIndexes, eraseIndexes, outputs);
+
+        data[0].rewind();
+        if (outputs[0].compareTo(data[0]) == 0) {
+            logger.debug("ErasureCodeTest - decoding Succeeded, same recovered data!");
+        } else {
+            logger.debug("ErasureCodeTest - decoding Failed, diffent recovered data ");
+        }
+
+        // update
+        logger.debug("ErasureCodeTest - Perform encode update for data block 1!");
+        ByteBuffer[] dataUpdate = new ByteBuffer[1];
+        dataUpdate[0] = ByteBuffer.allocateDirect(codeLength);
+        random.nextBytes(tmpArray);
+        dataUpdate[0].put(tmpArray);
+        dataUpdate[0].rewind();
+        encoder.encodeUpdate(data, parity, 1);
+        logger.debug(
+                "ErasureCodeTest - Perform encode update for data block 1, remove original data from stripe done!");
+        encoder.encodeUpdate(dataUpdate, parity, 1);
+
+        recoverySrc[0] = null;
+        for (int i = 1; i < k; i++) {
+            data[i].rewind();
+            recoverySrc[i] = data[i];
+            logger.debug("recoverySrc[" + i + "]: position() = " + recoverySrc[i].position() + ", remaining() = "
+                    + recoverySrc[i].remaining());
+        }
+        recoverySrc[0] = parity[0];
+        // for (int i = k + 1; i < k + m; i++) {
+        // recoverySrc[i] = null;
+        // }
+
+        // Prepare outputs for decoding
+        outputs[0] = ByteBuffer.allocateDirect(codeLength);
+
+        // Decode
+        logger.debug("ErasureCodeTest - next to call decode()!");
+        decoder.decode(recoverySrc, decodeIndexes, eraseIndexes, outputs);
 
         data[0].rewind();
         if (outputs[0].compareTo(data[0]) == 0) {
@@ -100,7 +136,7 @@ public class ErasureCodeTest {
 
     public static void main(String[] args) throws IOException {
         System.out.println("Start test for erasure coding utils\n");
-        test();
+        erasureCodeTest();
         System.out.println("End test for erasure coding utils\n");
     }
 }

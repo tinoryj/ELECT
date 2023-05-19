@@ -66,8 +66,8 @@ public final class CoderUtil {
      * @param numParityUnits number of parity units per stripe
      */
     static <T> void checkParameters(T[] inputs, int[] erasedIndexes,
-            T[] outputs, int numAllUnits, int numParityUnits) {
-        if (inputs.length != numAllUnits) {
+            T[] outputs, int numDataUnits, int numParityUnits) {
+        if (inputs.length < numDataUnits) {
             throw new ErasureCodeException("Invalid inputs length for decoding");
         }
 

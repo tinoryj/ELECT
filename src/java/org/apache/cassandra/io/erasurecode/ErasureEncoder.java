@@ -36,75 +36,31 @@ public abstract class ErasureEncoder extends ErasureCoder {
      */
     public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs)
             throws IOException {
-        ByteBufferEncodingState bbestate = new ByteBufferEncodingState(this, inputs, outputs);
-        boolean usingDirectBuffer = bbestate.usingDirectBuffer;
+        ByteBufferEncodingState bbestate = new ByteBufferEncodingState(this, inputs, outputs, false);
         int dataLen = bbestate.encodeLength;
         if (dataLen == 0) {
             return;
         }
-
-        // Figure out inputs' position
-        int[] inputPositions = new int[inputs.length];
-        for (int i = 0; i < inputPositions.length; i++) {
-            if (inputs[i] != null) {
-                inputPositions[i] = inputs[i].position();
-            }
-        }
-
         // Perform encoding
-        if (usingDirectBuffer) {
-            doEncode(bbestate);
-        } else {
-            ByteArrayEncodingState baeState = bbestate.convertToByteArrayState();
-            doEncode(baeState);
-        }
-
-        for (int i = 0; i < inputs.length; i++) {
-            if (inputs[i] != null) {
-                // update inputs' positon with the amount of bytes consumed
-                inputs[i].position(inputPositions[i] + dataLen);
-            }
-        }
+        doEncode(bbestate);
     }
 
     /**
      * Encode with inputs and generates outputs
      */
-    public void encodeUpdate(ByteBuffer[] inputs, ByteBuffer[] outputs, int targetDataIndex)
+    public void encodeUpdate(ByteBuffer[] targetCodingBlock, ByteBuffer[] parityBuffers, int targetDataIndex)
             throws IOException {
-        ByteBufferEncodingState bbestate = new ByteBufferEncodingState(this, inputs, outputs);
-        boolean usingDirectBuffer = bbestate.usingDirectBuffer;
+        ByteBufferEncodingState bbestate = new ByteBufferEncodingState(this, targetCodingBlock, parityBuffers,
+                false);
+
         int dataLen = bbestate.encodeLength;
         if (dataLen == 0) {
             return;
         }
 
         // Perform encoding
-        if (usingDirectBuffer) {
-            doEncode(bbestate);
-        } else {
-            ByteArrayEncodingState baeState = bbestate.convertToByteArrayState();
-            doEncode(baeState);
-        }
-
-    }
-
-    public void encode(byte[][] inputs, byte[][] outputs) throws IOException {
-        ByteArrayEncodingState baeState = new ByteArrayEncodingState(this, inputs, outputs);
-        if (baeState.encodeLength == 0) {
-            return;
-        }
-
-        doEncode(baeState);
-    }
-
-    public void encodeUpdate(byte[][] newData, byte[][] parity, int targetDataIndex) throws IOException {
-        ByteArrayEncodingState baeState = new ByteArrayEncodingState(this, newData, parity);
-        if (baeState.encodeLength == 0) {
-            return;
-        }
-
-        doEncodeUpdate(baeState, targetDataIndex);
+        doEncodeUpdate(bbestate, targetDataIndex);
+        logger.debug("[Tinoryj] perform encode update done.");
     }
 
     /**
@@ -124,20 +80,4 @@ public abstract class ErasureEncoder extends ErasureCoder {
     protected abstract void doEncodeUpdate(ByteBufferEncodingState encodingState, int targetDataIndex)
             throws IOException;
 
-    /**
-     * Perform the real encoding using byte array, supporting offsets and lengths.
-     * 
-     * @param encodingState, the encoding state.
-     * @throws IOException
-     */
-    protected abstract void doEncode(ByteArrayEncodingState encodingState) throws IOException;
-
-    /**
-     * Perform the real encoding using byte array, supporting offsets and lengths.
-     * 
-     * @param encodingState, the encoding state.
-     * @throws IOException
-     */
-    protected abstract void doEncodeUpdate(ByteArrayEncodingState encodingState,
-            int targetDataIndex) throws IOException;
 }
