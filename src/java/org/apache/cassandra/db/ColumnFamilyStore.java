@@ -129,6 +129,7 @@ import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
+import org.apache.cassandra.io.erasurecode.net.ECMessage.ECMessageContent;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
@@ -523,10 +524,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID);
                                     
                                     // Send selected sstable for perform erasure coding.
-                                    ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
-                                                                        replicaNodes);
+                                    ECMessage ecMessage = new ECMessage(new ECMessageContent(sstContent, sstHashID, keyspaceName, cfName,
+                                                                        replicaNodes));
                                     ecMessage.sendSSTableToParity();
-                                    StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.sstHashID, ecMessage.parityNodes);
+                                    StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.ecMessageContent.sstHashID,
+                                                                                              ecMessage.ecMessageContent.parityNodes);
 
                                     if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
                                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");

@@ -81,8 +81,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             logger.debug("rymDebug: this is a forwarding header");
         }
         
-        ByteBuffer sstContent = message.payload.sstContent;
-        int ec_data_num = message.payload.ecDataNum;
+        ByteBuffer sstContent = message.payload.ecMessageContent.sstContent;
+        int ec_data_num = message.payload.ecMessageContent.ecDataNum;
 
         
         // for (String ep : message.payload.parityNodesString.split(",")) {
@@ -90,10 +90,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         // }
 
         logger.debug("rymDebug: get new message!!! message is from: {}, primaryNode is {}, parityNodes is {}",
-         message.from(), message.payload.replicaNodes.get(0), message.payload.parityNodes);
+         message.from(), message.payload.ecMessageContent.replicaNodes.get(0), message.payload.ecMessageContent.parityNodes);
 
 
-        InetAddressAndPort primaryNode = message.payload.replicaNodes.get(0);
+        InetAddressAndPort primaryNode = message.payload.ecMessageContent.replicaNodes.get(0);
 
         // save the received data to recvQueue
         if(!StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
@@ -112,9 +112,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
 
         // Once we have k different sstContent, do erasure coding locally
-        if(StorageService.instance.globalRecvQueues.size()>=message.payload.ecDataNum) {
+        if(StorageService.instance.globalRecvQueues.size()>=message.payload.ecMessageContent.ecDataNum) {
             // logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
-            ECMessage tmpArray[] = new ECMessage[message.payload.ecDataNum];
+            ECMessage tmpArray[] = new ECMessage[message.payload.ecMessageContent.ecDataNum];
             //traverse the recvQueues
             int i = 0;
             for (InetAddressAndPort msg : StorageService.instance.globalRecvQueues.keySet()) {
@@ -122,7 +122,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 if(StorageService.instance.globalRecvQueues.get(msg).size() == 0) {
                     StorageService.instance.globalRecvQueues.remove(msg);
                 }
-                if (i == message.payload.ecDataNum - 1) 
+                if (i == message.payload.ecMessageContent.ecDataNum - 1) 
                     break;
                 i++;
             }
@@ -165,8 +165,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         private final ECMessage[] messages;
 
         ErasureCodeRunnable(ECMessage[] message) {
-            this.ecDataNum = message[0].ecDataNum;
-            this.ecParityNum = message[0].ecParityNum;
+            this.ecDataNum = message[0].ecMessageContent.ecDataNum;
+            this.ecParityNum = message[0].ecMessageContent.ecParityNum;
             this.messages = message;
         }
 
@@ -175,9 +175,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             if(messages.length != ecDataNum) {
                 logger.error("rymERROR: message length is not equal to ecDataNum");
             }
-            int codeLength = messages[0].sstSize;
+            int codeLength = messages[0].ecMessageContent.sstSize;
             for (ECMessage msg : messages) {
-                codeLength = codeLength < msg.sstSize? msg.sstSize : codeLength;
+                codeLength = codeLength < msg.ecMessageContent.sstSize? msg.ecMessageContent.sstSize : codeLength;
              }
             ErasureCoderOptions ecOptions = new ErasureCoderOptions(ecDataNum, ecParityNum);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
@@ -191,7 +191,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
                 data[i] = ByteBuffer.allocateDirect(codeLength);
-                data[i].put(messages[i].sstContent);
+                data[i].put(messages[i].ecMessageContent.sstContent);
                 logger.debug("rymDebug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
                 int remaining = data[i].remaining();
                 if(remaining>0) {
@@ -200,7 +200,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 }
                 // data[i].put(new byte[data[i].remaining()]);
                 logger.debug("rymDebug: message[{}].sstconetent {}, data[{}] is: {}",
-                 i, messages[i].sstContent,i, data[i]);
+                 i, messages[i].ecMessageContent.sstContent,i, data[i]);
                 data[i].rewind();
             }
 
@@ -239,7 +239,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // sync encoded data to parity nodes
             ECParityNode ecParityNode = new ECParityNode(null, null, 0);
-            ecParityNode.distributeCodedDataToParityNodes(parity, messages[0].parityNodes, parityHashList);
+            ecParityNode.distributeCodedDataToParityNodes(parity, messages[0].ecMessageContent.parityNodes, parityHashList);
 
             // Transform to ECMetadata and dispatch to related nodes
             // ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),

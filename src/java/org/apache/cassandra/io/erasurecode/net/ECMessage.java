@@ -55,49 +55,53 @@ import org.tartarus.snowball.TestApp;
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 import static org.apache.cassandra.db.TypeSizes.sizeofLong;
 
-public final class ECMessage implements Serializable {
+public class ECMessage implements Serializable {
 
     public static final Serializer serializer = new Serializer();
-    public final ByteBuffer sstContent;
-    public final int sstSize;
-    public final String sstHashID;
-    public final String keyspace;
-    public final String cfName;
-    public final int ecDataNum;
-    public final int rf;
 
-    public final int ecParityNum;
-    
-
-    public List<InetAddressAndPort> replicaNodes;
-    public List<InetAddressAndPort> parityNodes;
 
     private static AtomicInteger GLOBAL_COUNTER = new AtomicInteger(0);
 
-    public byte[] ecMessageInBytes;
-    public int ecMessageInBytesSize;
-    // public String repEpsString;
-    // public String parityNodesString;
+    public ECMessageContent ecMessageContent;
+    public byte[] ecMessageContentInBytes;
+    public int ecMessageContentInBytesSize;
+
+    public static class ECMessageContent implements Serializable {
+        public final ByteBuffer sstContent;
+        public final int sstSize;
+        public final String sstHashID;
+        public final String keyspace;
+        public final String cfName;
+        public final int ecDataNum;
+        public final int rf;
+
+        public final int ecParityNum;
+
+        public List<InetAddressAndPort> replicaNodes;
+        public List<InetAddressAndPort> parityNodes;
+
+        public ECMessageContent(ByteBuffer sstContent, String sstHashID, String keyspace, String cfName,
+                List<InetAddressAndPort> replicaNodes) {
+
+            this.sstContent = sstContent;
+            this.sstSize = sstContent.remaining();
+            this.sstHashID = sstHashID;
+            this.keyspace = keyspace;
+            this.cfName = cfName;
+            this.ecDataNum = DatabaseDescriptor.getEcDataNodes();
+            this.ecParityNum = DatabaseDescriptor.getParityNodes();
+            this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
+
+            this.replicaNodes = new ArrayList<InetAddressAndPort>(replicaNodes);
+            this.parityNodes = new ArrayList<InetAddressAndPort>();
+}
+    }
 
 
 
 
-    public ECMessage(ByteBuffer sstContent, String sstHashID, String keyspace, String cfName,
-                     List<InetAddressAndPort> replicaNodes) {
-
-        this.sstContent = sstContent;
-        this.sstSize = sstContent.remaining();
-        this.sstHashID = sstHashID;
-        this.keyspace = keyspace;
-        this.cfName = cfName;
-        this.ecDataNum = DatabaseDescriptor.getEcDataNodes();
-        this.ecParityNum = DatabaseDescriptor.getParityNodes();
-        this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
-
-        this.replicaNodes = new ArrayList<InetAddressAndPort>(replicaNodes);
-        this.parityNodes = new ArrayList<InetAddressAndPort>();
-        // this.repEpsString = repEpString;
-        // this.parityNodesString = parityEpString;
+    public ECMessage(ECMessageContent ecMessageContent) {
+        this.ecMessageContent = ecMessageContent;
     }
 
     protected static Output output;
@@ -132,9 +136,9 @@ public final class ECMessage implements Serializable {
         // }
 
         try {
-            this.ecMessageInBytes = ByteObjectConversion.objectToByteArray((Serializable) this);
-            this.ecMessageInBytesSize = this.ecMessageInBytes.length;
-            if(this.ecMessageInBytesSize == 0) {
+            this.ecMessageContentInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMessageContent);
+            this.ecMessageContentInBytesSize = this.ecMessageContentInBytes.length;
+            if(this.ecMessageContentInBytesSize == 0) {
                 logger.error("rymERROR: ecMessageInBytesSize is 0"); 
             }
         } catch (IOException e) {
@@ -142,10 +146,10 @@ public final class ECMessage implements Serializable {
             e.printStackTrace();
         }
 
-        if (this.parityNodes != null) {
+        if (this.ecMessageContent.parityNodes != null) {
             // logger.debug("target endpoints are : {}", this.parityNodes);
             message = Message.outWithFlag(Verb.ERASURECODE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
-            MessagingService.instance().sendSSTContentWithoutCallback(message, this.parityNodes.get(0));
+            MessagingService.instance().sendSSTContentWithoutCallback(message, this.ecMessageContent.parityNodes.get(0));
         } else {
             logger.debug("targetEndpoints is null");
         }
@@ -164,18 +168,19 @@ public final class ECMessage implements Serializable {
 
         // select parity nodes from live nodes, suppose all nodes work healthy
         int n = liveEndpoints.size();
-        InetAddressAndPort primaryNode = ecMessage.replicaNodes.get(0);
+        InetAddressAndPort primaryNode = ecMessage.ecMessageContent.replicaNodes.get(0);
         int primaryNodeIndex = liveEndpoints.indexOf(primaryNode);
 
-        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER.getAndIncrement() % ecMessage.ecDataNum+1))%n);
-        for (int i = startIndex; i < ecMessage.ecParityNum+startIndex; i++) {
+        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER.getAndIncrement() % ecMessage.ecMessageContent.ecDataNum+1))%n);
+        for (int i = startIndex; i < ecMessage.ecMessageContent.ecParityNum+startIndex; i++) {
             int index = i%n;
             if(index==primaryNodeIndex) {
                 index = (index+1)%n;
                 i++;
             }
-            ecMessage.parityNodes.add(liveEndpoints.get(index));
-            if(i==(ecMessage.ecParityNum+startIndex)&&ecMessage.parityNodes.size()<ecMessage.ecParityNum) {
+            ecMessage.ecMessageContent.parityNodes.add(liveEndpoints.get(index));
+            if(i == (ecMessage.ecMessageContent.ecParityNum + startIndex)
+                  && ecMessage.ecMessageContent.parityNodes.size() < ecMessage.ecMessageContent.ecParityNum) {
 
                 startIndex++;
             }
@@ -206,8 +211,8 @@ public final class ECMessage implements Serializable {
             // out.write(buf);
             ///////////////////////////////////////////////
 
-            out.writeInt(ecMessage.ecMessageInBytesSize);
-            out.write(ecMessage.ecMessageInBytes);
+            out.writeInt(ecMessage.ecMessageContentInBytesSize);
+            out.write(ecMessage.ecMessageContentInBytes);
             // logger.debug("rymDebug: [serialize] write successfully", buf.length);
         }
 
@@ -241,14 +246,14 @@ public final class ECMessage implements Serializable {
             // }
             /////////////////////////////////////////////////////////////
 
-            int ecMessageInBytesSize = in.readInt();
-            byte[] ecMessageInBytes = new byte[ecMessageInBytesSize];
-            in.readFully(ecMessageInBytes);
+            int ecMessageContentInBytesSize = in.readInt();
+            byte[] ecMessageContentInBytes = new byte[ecMessageContentInBytesSize];
+            in.readFully(ecMessageContentInBytes);
             
-            ECMessage ecMessage;
+            ECMessageContent ecMessage;
             try {
-                ecMessage = (ECMessage) ByteObjectConversion.byteArrayToObject(ecMessageInBytes);
-                return ecMessage;
+                ecMessage = (ECMessageContent) ByteObjectConversion.byteArrayToObject(ecMessageContentInBytes);
+                return new ECMessage(ecMessage);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -273,8 +278,8 @@ public final class ECMessage implements Serializable {
             //             sizeof(ecMessage.repEpsString);
             //////////////////////////////////////////////////
             
-            long size = ecMessage.ecMessageInBytesSize +
-                        sizeof(ecMessage.ecMessageInBytesSize);
+            long size = ecMessage.ecMessageContentInBytesSize +
+                        sizeof(ecMessage.ecMessageContentInBytesSize);
 
             return size;
 

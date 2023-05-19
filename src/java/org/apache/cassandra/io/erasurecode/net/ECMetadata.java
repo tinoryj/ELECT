@@ -130,27 +130,27 @@ public class ECMetadata implements Serializable {
         // get stripe id, sst content hashes and primary nodes
         String connectedSSTHash = "";
         for(ECMessage msg : messages) {
-            String sstContentHash = msg.sstHashID;
+            String sstContentHash = msg.ecMessageContent.sstHashID;
             this.ecMetadataContent.sstHashIdList.add(sstContentHash);
-            this.ecMetadataContent.sstHashIdToReplicaMap.putIfAbsent(sstContentHash, msg.replicaNodes);
+            this.ecMetadataContent.sstHashIdToReplicaMap.putIfAbsent(sstContentHash, msg.ecMessageContent.replicaNodes);
             connectedSSTHash += sstContentHash;
-            this.ecMetadataContent.primaryNodes.add(msg.replicaNodes.get(0));
+            this.ecMetadataContent.primaryNodes.add(msg.ecMessageContent.replicaNodes.get(0));
         }
         
         this.stripeId = String.valueOf(connectedSSTHash.hashCode());
-        this.ecMetadataContent.keyspace = messages[0].keyspace;
-        this.ecMetadataContent.cfName = messages[0].cfName;
+        this.ecMetadataContent.keyspace = messages[0].ecMessageContent.keyspace;
+        this.ecMetadataContent.cfName = messages[0].ecMessageContent.cfName;
 
         // generate parity code hash
         this.ecMetadataContent.parityHashList = parityHashes;
 
         // get related nodes
         // if everything goes well, each message has the same parity code
-        this.ecMetadataContent.parityNodes.addAll(messages[0].parityNodes);
+        this.ecMetadataContent.parityNodes.addAll(messages[0].ecMessageContent.parityNodes);
 
         // initialize the secondary nodes
         for(ECMessage msg : messages) {
-            for(InetAddressAndPort pns : msg.replicaNodes) {
+            for(InetAddressAndPort pns : msg.ecMessageContent.replicaNodes) {
                 if(!this.ecMetadataContent.primaryNodes.contains(pns))
                     this.ecMetadataContent.secondaryNodes.add(pns);
             }
