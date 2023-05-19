@@ -138,8 +138,9 @@ public class ECMessage implements Serializable {
         try {
             this.ecMessageContentInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMessageContent);
             this.ecMessageContentInBytesSize = this.ecMessageContentInBytes.length;
-            if(this.ecMessageContentInBytesSize == 0) {
-                logger.error("rymERROR: ecMessageInBytesSize is 0"); 
+            if(this.ecMessageContentInBytesSize == 0 || this.ecMessageContentInBytes == null) {
+                logger.error("rymERROR: ecMessageInBytesSize is {}, ecMessageContentInBytes is {}", this.ecMessageContentInBytesSize,
+                                                                                                    this.ecMessageContent); 
             }
         } catch (IOException e) {
             // TODO Auto-generated catch block
