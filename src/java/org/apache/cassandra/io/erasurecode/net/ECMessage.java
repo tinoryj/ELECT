@@ -193,7 +193,7 @@ public class ECMessage implements Serializable {
     public static final class Serializer implements IVersionedSerializer<ECMessage> {
 
         @Override
-        public void serialize(ECMessage ecMessage, DataOutputPlus out, int version) throws IOException {
+        public void serialize(ECMessage t, DataOutputPlus out, int version) throws IOException {
             // TODO: reduce (de)serialize cost
             // logger.debug("rymDebug: [Load] the length of sstContent buffer is: {}" , ecMessage.sstSize);
             // logger.debug("rymDebug: [Load] the size of = {}" , sizeofLong(ecMessage.sstContent));
@@ -211,9 +211,10 @@ public class ECMessage implements Serializable {
             // ecMessage.sstContent.get(buf);
             // out.write(buf);
             ///////////////////////////////////////////////
-
-            out.writeInt(ecMessage.ecMessageContentInBytesSize);
-            out.write(ecMessage.ecMessageContentInBytes);
+            logger.debug("rymDebug: t.ecMessageContentInBytesSize is {}", t.ecMessageContentInBytesSize);
+            logger.debug("rymDebug: t.ecMessageContentInBytes.length {}", t.ecMessageContentInBytes.length);
+            out.writeInt(t.ecMessageContentInBytesSize);
+            out.write(t.ecMessageContentInBytes);
             // logger.debug("rymDebug: [serialize] write successfully", buf.length);
         }
 
