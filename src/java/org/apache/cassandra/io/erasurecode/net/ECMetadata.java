@@ -88,7 +88,6 @@ public class ECMetadata implements Serializable {
         
         public String keyspace;
         public String cfName;
-        public boolean isParityUpdate = false;
         public List<String> sstHashIdList;
         public List<String> parityHashList;
         public Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap;
@@ -96,6 +95,11 @@ public class ECMetadata implements Serializable {
         public Set<InetAddressAndPort> secondaryNodes;
         public List<InetAddressAndPort> parityNodes;
         
+        // The following properties is only for parity update
+        public boolean isParityUpdate = false;
+        public int targetIndex = 0;
+        public String oldSSTHash = "";
+
         public ECMetadataContent(String ks, String cf, List<String> sstHashIdList, List<String> parityHashList,
         List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> secondaryNodes, List<InetAddressAndPort> parityNodes,
         Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap) {
@@ -183,6 +187,8 @@ public class ECMetadata implements Serializable {
         logger.debug("rymDebug: this update ECMetadata method");
         // update isParityUpdate
         this.ecMetadataContent.isParityUpdate = isParityUpdate;
+        // update the old sstable hash
+        this.ecMetadataContent.oldSSTHash = oldSSTHash;
         // update sstable hash list
         this.ecMetadataContent.sstHashIdList.set(targetIndex, newSSTHash);
         // update parity code hash
@@ -190,6 +196,8 @@ public class ECMetadata implements Serializable {
         // modify sstHashIdToReplicaMap
         this.ecMetadataContent.sstHashIdToReplicaMap.put(newSSTHash, newReplicaNodes);
         this.ecMetadataContent.sstHashIdToReplicaMap.remove(oldSSTHash);
+        // update the target index
+        this.ecMetadataContent.targetIndex = targetIndex;
 
         if(!oldReplicaNodes.equals(newReplicaNodes)) {
             logger.warn("rymDebug: new replication nodes {} are different from old replication nodes {}",

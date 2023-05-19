@@ -68,6 +68,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         ECParityUpdate parityUpdateData = message.payload;
         List<InetAddressAndPort> parityNodes = parityUpdateData.parityNodes;
+
+        InetAddressAndPort oldPrimaryNodes = message.from();
+        InetAddressAndPort newPrimaryNodes = message.from();
+        String keyspaceName = "ycsb";
         
         // Map<String, ByteBuffer[]> sstHashToParityCodeMap = new HashMap<String, ByteBuffer[]>();
         String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
@@ -110,10 +114,13 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             }            
         }
 
-        // consume old data with new data
+        // get oldReplicaNodes
+        List<InetAddressAndPort> oldReplicaNodes = StorageService.instance.getReplicaNodesWithPortFromPrimaryNode(oldPrimaryNodes, keyspaceName);
+
         Iterator<SSTableContentWithHashID> oldSSTablesIterator = parityUpdateData.oldSSTables.iterator();
         Iterator<SSTableContentWithHashID> newSSTablesIterator = parityUpdateData.newSSTables.iterator();
-
+        // consume old data with new data
+        // In this case, old replica nodes are the same to new replica nodes
         while (newSSTablesIterator.hasNext()) {
             SSTableContentWithHashID newSSTable = newSSTablesIterator.next();
             SSTableContentWithHashID oldSSTable = oldSSTablesIterator.next();
@@ -136,13 +143,14 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             // ByteBuffer oldData = oldSSTable.sstContent;
             // ByteBuffer newData = newSSTable.sstContent;
 
-
             Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
                                                                                     newSSTable,
                                                                                     StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
                                                                                     StorageService.instance.globalECMetadataMap.get(oldSSTable.sstHash).sstHashIdList.indexOf(oldSSTable.sstHash), 
                                                                                     codeLength,
-                                                                                    parityNodes));
+                                                                                    parityNodes,
+                                                                                    oldReplicaNodes,
+                                                                                    oldReplicaNodes));
             
             
         }
@@ -197,17 +205,23 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         private final int targetDataIndex;
         private final int codeLength;
         private final List<InetAddressAndPort> parityNodes;
+        private final List<InetAddressAndPort> oldRelicaNodes;
+        private final List<InetAddressAndPort> newRelicaNodes;
 
         ErasureCodeUpdateRunnable(SSTableContentWithHashID oldSSTable,
                                   SSTableContentWithHashID newSSTable,
                                   ByteBuffer[] oldParityCodes,
-                                  int targetDataIndex, int codeLength, List<InetAddressAndPort> parityNodes) {
+                                  int targetDataIndex, int codeLength, List<InetAddressAndPort> parityNodes,
+                                  List<InetAddressAndPort> oldRelicaNodes,
+                                  List<InetAddressAndPort> newRelicaNodes) {
             this.oldSSTable = oldSSTable;
             this.newSSTable = newSSTable;
             this.parityCodes = oldParityCodes;
             this.targetDataIndex = targetDataIndex;
             this.codeLength = codeLength;
             this.parityNodes = parityNodes;
+            this.oldRelicaNodes = oldRelicaNodes;
+            this.newRelicaNodes = newRelicaNodes;
         }
 
         @Override
@@ -285,15 +299,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             ECMetadata ecMetadata = new ECMetadata(stripID, oldMetadata);
             ecMetadata.updateAndDistributeMetadata(parityHashList, true,
                                                    oldSSTable.sstHash, newSSTable.sstHash, targetDataIndex,
-                                                   null, null);
+                                                   oldRelicaNodes, newRelicaNodes);
 
-            // // Transform to ECMetadata and dispatch to related nodes
-            // // ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
-            // //             new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
-            // ECMetadata ecMetadata = new ECMetadata("", new ECMetadataContent("", "", new ArrayList<String>(),new ArrayList<String>(),
-            //                                        new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new ArrayList<InetAddressAndPort>(),
-            //                                     new HashMap<String, List<InetAddressAndPort>>()));
-            // ecMetadata.generateMetadata(messages, parity, parityHashList);
         }
 
     }

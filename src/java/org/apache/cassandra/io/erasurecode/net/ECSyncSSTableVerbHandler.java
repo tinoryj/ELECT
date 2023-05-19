@@ -47,12 +47,16 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
 
 
     public static class DataForRewrite {
-        public final List<DecoratedKey> sourceKeys;
+        // public final List<DecoratedKey> sourceKeys;
+        public final DecoratedKey firstKey;
+        public final DecoratedKey lastKey;
         // public final SSTablesInBytes sstInBytes;
         public String fileNamePrefix;
 
-        public DataForRewrite(List<DecoratedKey> sourceKeys, String fileNamePrefix) {
-            this.sourceKeys = sourceKeys;
+        public DataForRewrite(DecoratedKey firstKey, DecoratedKey lastKey, String fileNamePrefix) {
+            this.firstKey = firstKey;
+            this.lastKey = lastKey;
+            // this.sourceKeys = sourceKeys;
             // this.sstInBytes = sstInBytes;
             this.fileNamePrefix = fileNamePrefix;
         }
@@ -77,11 +81,13 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         String cfName = message.payload.targetCfName;
 
         // Get all keys 
-        List<DecoratedKey> sourceKeys = new ArrayList<DecoratedKey>();
-        for(String key : allKey) {
-            sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
-        }
+        // List<DecoratedKey> sourceKeys = new ArrayList<DecoratedKey>();
+        // for(String key : allKey) {
+        //     sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
+        // }
         // Collections.sort(sourceKeys, new DecoratedKeyComparator());
+        DecoratedKey firstKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, allKey.get(0));
+        DecoratedKey lastKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, allKey.get(allKey.size() - 1));
 
         // Get sstales in byte.
         // TODO: save the recieved data to a certain location based on the keyspace name and cf name
@@ -91,7 +97,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         // the full name is user.dir/data/tmp/${HostName}-${COUNTER}-XXX.db
         String fileNamePrefix = hostName + "-" + String.valueOf(fileCount) + "-";
         StorageService.instance.globalSSTMap.put(message.payload.sstHashID, 
-                                                         new DataForRewrite(sourceKeys, fileNamePrefix));
+                                                         new DataForRewrite(firstKey, lastKey, fileNamePrefix));
         
         String tmpFileName = dataForRewriteDir + fileNamePrefix;
         String filterFileName = tmpFileName + "Filter.db";

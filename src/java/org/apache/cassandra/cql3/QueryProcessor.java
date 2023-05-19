@@ -272,11 +272,8 @@ public class QueryProcessor implements QueryHandler
                 } else {
                     // logger.debug("rymDebug: consistency level is node equal, use statement.execute()");
                     // int rf = Keyspace.open(tableStatement.keyspace()).getMetadata().params.replication.getReplicationFactor();
-                    String rfString = Keyspace.open(tableStatement.keyspace()).getReplicationStrategy().configOptions.get("replication_factor");
-                    int rf = ReplicationFactor.fromString(rfString).allReplicas;
+                    int rf = Keyspace.open(tableStatement.keyspace()).getAllReplicationFactor();
                     // logger.debug("rymDebug: replica factor is {}", rf);
-                    // TODO: get correct replication factor
-                    // int rf = 3;
                     for(int i=1; i < rf; i++) {
                         String tableName = tn + Integer.toString(i);
                         CreateTableStatement ts = tableStatement.copyObjects(tableName);

@@ -85,6 +85,7 @@ import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.service.CacheService;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.concurrent.*;
 
@@ -414,8 +415,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRAEC]
-    public static SSTableReader openECSSTable(ECMetadata message, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
-        // TODO: modify the sstables, e.g. TOC.txt
+    public static SSTableReader openECSSTable(ECMetadata ecMetadata, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
 
         // Get a correct generation id
         SSTableId ecSSTableId = cfs.sstableIdGenerator.get();
@@ -451,13 +451,22 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // get descriptor from toc file name
         Descriptor desc = Descriptor.fromFilename(tocFileName);
         // write ECMetadata
+        loadECMetadata(ecMetadata, desc);
+        
+        SSTableReader ecSSTable = open(desc);
+        StorageService.instance.globalSSTHashToECSSTable.putIfAbsent(ecSSTable.getSSTableHashID(), ecSSTable);
+        return ecSSTable;
+    }
+
+    public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc) {
+
         File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
         if (ecMetadataFile.exists())
             FileUtils.deleteWithConfirm(ecMetadataFile);
 
         try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
 
-            byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) message);
+            byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata);
             ByteBufferUtil.writeWithLength(ByteBuffer.wrap(buffer), oStream);
 
         } catch (IOException e) {
@@ -467,9 +476,6 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             if (ecMetadataFile.exists())
                 FileUtils.deleteWithConfirm(ecMetadataFile);
         }
-        
-
-        return open(desc);
     }
 
     public static SSTableReader open(Descriptor desc, TableMetadataRef metadata) {

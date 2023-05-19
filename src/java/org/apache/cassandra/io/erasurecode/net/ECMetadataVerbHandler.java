@@ -18,7 +18,6 @@
 
 package org.apache.cassandra.io.erasurecode.net;
 
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -51,11 +50,11 @@ import org.slf4j.LoggerFactory;
 
 public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     public static final ECMetadataVerbHandler instance = new ECMetadataVerbHandler();
-    // private static final String ecMetadataDir = System.getProperty("user.dir") + "/data/ECMetadata/";
+    // private static final String ecMetadataDir = System.getProperty("user.dir") +
+    // "/data/ECMetadata/";
     public static List<ECMetadata> ecMetadatas = new ArrayList<ECMetadata>();
 
     private static final Logger logger = LoggerFactory.getLogger(ECMetadataVerbHandler.class);
-
 
     // Reset
     public static final String RESET = "\033[0m"; // Text Reset
@@ -70,7 +69,6 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     public static final String CYAN = "\033[0;36m"; // CYAN
     public static final String GREY = "\033[0;37m"; // GREY
 
-
     @Override
     public void doVerb(Message<ECMetadata> message) throws IOException {
         // Check if there were any forwarding headers in this message
@@ -81,13 +79,15 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         }
 
         // receive metadata and record it to files (append)
-        ecMetadatas.add(message.payload);
+        // ecMetadatas.add(message.payload);
         // logger.debug("rymDebug: received metadata: {}, {},{},{}", message.payload,
-        //         message.payload.sstHashIdList, message.payload.primaryNodes, message.payload.relatedNodes);
+        // message.payload.sstHashIdList, message.payload.primaryNodes,
+        // message.payload.relatedNodes);
 
         Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap = message.payload.ecMetadataContent.sstHashIdToReplicaMap;
 
-        // logger.debug("rymDebug: got sstHashIdToReplicaMap: {} ", sstHashIdToReplicaMap);
+        // logger.debug("rymDebug: got sstHashIdToReplicaMap: {} ",
+        // sstHashIdToReplicaMap);
 
         InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();
         for (Map.Entry<String, List<InetAddressAndPort>> entry : sstHashIdToReplicaMap.entrySet()) {
@@ -96,107 +96,136 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 String ks = message.payload.ecMetadataContent.keyspace;
                 int index = entry.getValue().indexOf(localIP);
                 String cfName = message.payload.ecMetadataContent.cfName + index;
-                
+
                 ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
 
                 // get the dedicated level of sstables
-                List<SSTableReader> sstables = new ArrayList<>(cfs.getSSTableForLevel(DatabaseDescriptor.getCompactionThreshold()));
-                if (!sstables.isEmpty()) {
-                    Collections.sort(sstables, new SSTableReaderComparator());
-                    // rewrite the most similar sstables
-                    List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
+                if (!message.payload.ecMetadataContent.isParityUpdate) {
+                    // [In progress of erasure coding]
 
-                    // use binary search to find related sstables
-                    // TODO: somtimes cannot get 
-                    // List<DecoratedKey> updateKeys = StorageService.instance.globalSSTMap.get(sstableHash);
                     DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
                     logger.debug("rymDebug: ECMetadataVerbHandler get sstHash {} from {}",
-                                    sstableHash, message.from());
+                            sstableHash, message.from());
+
                     if (dataForRewrite != null) {
+
                         String fileNamePrefix = dataForRewrite.fileNamePrefix;
-                        List<DecoratedKey> updateKeys = dataForRewrite.sourceKeys;
-                        DecoratedKey first = updateKeys.get(0);
-                        DecoratedKey last = updateKeys.get(updateKeys.size() - 1);
-                        rewriteSStables = getRewriteSSTables(sstables, first, last);
-                        // rewrite and update the sstables
-                        // M is the sstable from primary node, M` is the corresponding sstable of
-                        // secondary node
-                        // one to one
-                        if (rewriteSStables.isEmpty()) {
-                            logger.warn("rymERROR: rewriteSStables is empty!");
-                            // TODO: Save the ECMetadata
+                        List<SSTableReader> sstables = new ArrayList<>(
+                                cfs.getSSTableForLevel(DatabaseDescriptor.getCompactionThreshold()));
+                        if (!sstables.isEmpty()) {
+                            Collections.sort(sstables, new SSTableReaderComparator());
+                            List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
+                            DecoratedKey firstKeyForRewrite = dataForRewrite.firstKey;
+                            DecoratedKey lastKeyForRewrite = dataForRewrite.lastKey;
+                            // use binary search to find related sstables
+                            rewriteSStables = getRewriteSSTables(sstables, firstKeyForRewrite, lastKeyForRewrite);
+                            // M is the sstable from primary node, M` is the corresponding sstable of secondary node
+                            if (rewriteSStables.isEmpty()) {
+                                logger.warn("rymERROR: rewriteSStables is empty!");
+                                // TODO: Save the ECMetadata
 
-                            continue;
-                        }
-
-                        // TODO: mark this sstable COMPACTION
-                        // SSTableReader ecSSTable = SSTableReader.openECSSTable(message.payload, cfs, fileNamePrefix);
-                        // ecSSTable.SetIsReplicationTransferredToErasureCoding();
-                        // logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}", ecSSTable.getFilename());
-                        final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(rewriteSStables, OperationType.COMPACTION);
-                        if (updateTxn != null) {
-                            if (rewriteSStables.size() == 1) {
-                                List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllDecoratedKeys();
-                                // logger.debug("rymDebug: replace sstable {} Data.db with EC.db",
-                                // ecSSTable.descriptor);
-                                if (rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
-                                    // delete sstable if sstable Hash can be found
-                                    // rewriteSStables.get(0).replaceDatabyECMetadata(message.payload, sstableHash,
-                                    // cfs, fileNamePrefix);
-                                    cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
-                                    logger.debug(RED + "rymDebug: get the match sstbales, delete it!");
-                                } else if (first.equals(allKeys.get(0))
-                                        && last.equals(allKeys.get(allKeys.size() - 1))) {
-                                    // Case1: M missed some keys in the middle, just delete M`
-                                    // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume
-                                    // that the compaction speed of secondary node is slower than primary node
-                                    // Case2: M` missed some keys in the middle, need to update the metadata
-                                    cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
-                                    logger.debug(
-                                            RED + "rymDebug: M or M1 missed some keys in the middle, update sstable!");
-                                } else {
-                                    cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
-                                    logger.warn("rymWarning: get unexpected sstables num");
-                                }
-                            } else if (rewriteSStables.size() > 1) {
-                                // many sstables are involved
-                                // delete the sstables and update the metadata
-                                // rewrite the sstables, just delete the key ranges of M` which are matching
-                                // those of M
-
-                                logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!",
-                                        rewriteSStables.size());
-                                // logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db",
-                                // ecSSTable.descriptor);
-                                try {
-
-                                    AllSSTableOpStatus status = cfs.sstablesRewrite(updateKeys.get(0),
-                                            updateKeys.get(updateKeys.size() - 1),
-                                            rewriteSStables, message.payload, fileNamePrefix, updateTxn, false,
-                                            Long.MAX_VALUE, false, 1);
-                                    if (status != AllSSTableOpStatus.SUCCESSFUL)
-                                        printStatusCode(status.statusCode, cfs.name);
-                                } catch (ExecutionException e) {
-                                    e.printStackTrace();
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                }
+                                continue;
                             }
-                            StorageService.instance.globalSSTMap.remove(sstableHash);
+
+                            // TODO: mark this sstable COMPACTION
+                            // logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}",
+                            // ecSSTable.getFilename());
+                            final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(rewriteSStables,
+                                    OperationType.COMPACTION);
+                            if (updateTxn != null) {
+                                if (rewriteSStables.size() == 1) {
+                                    // List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllDecoratedKeys();
+                                    DecoratedKey fistKey = rewriteSStables.get(0).first;
+                                    DecoratedKey lastKey = rewriteSStables.get(0).last;
+                                    // logger.debug("rymDebug: replace sstable {} Data.db with EC.db",
+                                    // ecSSTable.descriptor);
+                                    if (rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
+                                        // delete sstable if sstable Hash can be found
+                                        cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
+                                        logger.debug(RED + "rymDebug: get the match sstbales, delete it!");
+                                    } else if (firstKeyForRewrite.equals(fistKey)
+                                            && lastKeyForRewrite.equals(lastKey)) {
+                                        // Case1: M missed some keys in the middle, just delete M`
+                                        // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume
+                                        // that the compaction speed of secondary node is slower than primary node
+                                        // Case2: M` missed some keys in the middle, need to update the metadata
+                                        cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
+                                        logger.debug(RED
+                                                + "rymDebug: M or M1 missed some keys in the middle, update sstable!");
+                                    } else {
+                                        cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
+                                        logger.warn("rymWarning: get unexpected sstables num");
+                                    }
+                                } else if (rewriteSStables.size() > 1) {
+                                    // many sstables are involved
+                                    // delete the sstables and update the metadata
+                                    // rewrite the sstables, just delete the key ranges of M` which are matching
+                                    // those of M
+
+                                    logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!",
+                                            rewriteSStables.size());
+                                    // logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db",
+                                    // ecSSTable.descriptor);
+                                    try {
+
+                                        AllSSTableOpStatus status = cfs.sstablesRewrite(firstKeyForRewrite,
+                                                lastKeyForRewrite,
+                                                rewriteSStables, message.payload, fileNamePrefix, updateTxn, false,
+                                                Long.MAX_VALUE, false, 1);
+                                        if (status != AllSSTableOpStatus.SUCCESSFUL)
+                                            printStatusCode(status.statusCode, cfs.name);
+                                    } catch (ExecutionException e) {
+                                        e.printStackTrace();
+                                    } catch (InterruptedException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                                StorageService.instance.globalSSTMap.remove(sstableHash);
+                            } else {
+                                // TODO: Save ECMetadata and redo ec transition later
+                                logger.debug("rymDebug: failed to get transactions for the sstables, we will try it later");
+                            }
                         } else {
-                            // TODO: Save ECMetadata and redo ec transition lager
-                            logger.debug("rymDebug: failed to get transactions for the sstables, we will try it later");
+                            logger.info("rymDebug: cannot replace the existing sstables yet, as {} is lower than {}",
+                                    cfName, DatabaseDescriptor.getCompactionThreshold());
                         }
-                        
                     } else {
-                        logger.warn("rymERROR: cannot get rewrite data of {}", sstableHash);
+                        logger.warn("rymERROR: cannot get rewrite data of {} during erasure coding", sstableHash);
                     }
 
                 } else {
-                    logger.info("rymDebug: cannot replace the existing sstables yet, as {} is lower than {}",
-                            cfName, DatabaseDescriptor.getCompactionThreshold());
-                }
+                    // [In progress of parity update], update the related sstables, there are two
+                    // cases:
+                    // 1. For the parity update sstable, replace the ECMetadata
+                    // 2. For the non-updated sstable, just replace the files
+                    String currentSSTHash = entry.getKey();
+                    int sstIndex = message.payload.ecMetadataContent.sstHashIdList.indexOf(currentSSTHash);
+                    SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(currentSSTHash);
+                    if (sstIndex == message.payload.ecMetadataContent.targetIndex) {
+                        // replace ec sstable
 
+                        DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
+                        if (dataForRewrite != null) {
+
+                            String fileNamePrefix = dataForRewrite.fileNamePrefix;
+                            final LifecycleTransaction updateTxn = cfs.getTracker()
+                                    .tryModify(Collections.singletonList(oldECSSTable), OperationType.COMPACTION);
+                            if (updateTxn != null) {
+                                cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
+                            } else {
+                                logger.debug(
+                                        "rymDebug: failed to get transactions for the sstables, we will try it later");
+                            }
+                        } else {
+                            logger.warn("rymERROR: cannot get rewrite data of {} during parity update", sstableHash);
+                        }
+
+                    } else {
+                        // Just replace the files
+                        SSTableReader.loadECMetadata(message.payload, oldECSSTable.descriptor);
+                    }
+
+                }
             }
 
         }
@@ -222,29 +251,33 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     private static void printStatusCode(int statusCode, String cfName) {
         switch (statusCode) {
             case 1:
-                logger.debug("Aborted rewrite sstables for at least one table in cfs {}, check server logs for more information.", cfName);
+                logger.debug(
+                        "Aborted rewrite sstables for at least one table in cfs {}, check server logs for more information.",
+                        cfName);
                 break;
             case 2:
-                logger.error("Failed marking some sstables compacting in cfs {}, check server logs for more information.", cfName);
+                logger.error(
+                        "Failed marking some sstables compacting in cfs {}, check server logs for more information.",
+                        cfName);
         }
     }
 
-    private static List<SSTableReader> getRewriteSSTables(List<SSTableReader> sstables, DecoratedKey first, DecoratedKey last) {
+    private static List<SSTableReader> getRewriteSSTables(List<SSTableReader> sstables, DecoratedKey first,
+            DecoratedKey last) {
         List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
-        // TODO: add head and tail 
+        // TODO: add head and tail
         // first search which sstable does the first key stored
         int left = 0;
         int right = sstables.size() - 1;
         int mid = 0;
-        while(left <= right) {
+        while (left <= right) {
             mid = (left + right) / 2;
             SSTableReader sstable = sstables.get(mid);
-            if(sstable.first.compareTo(first)<=0 && 
-               sstable.last.compareTo(first)>=0) {
+            if (sstable.first.compareTo(first) <= 0 &&
+                    sstable.last.compareTo(first) >= 0) {
                 // rewriteSStables.add(sstable);
                 break;
-            }
-            else if (sstable.first.compareTo(first)<0) {
+            } else if (sstable.first.compareTo(first) < 0) {
                 left = mid + 1;
             } else {
                 right = mid - 1;
@@ -253,28 +286,28 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         // then search which sstable does the last key stored
         int tail = mid + 1;
-        while (tail < sstables.size() && last.compareTo(sstables.get(tail).first)>=0) {
-            if(sstables.get(tail).getSSTableLevel() != DatabaseDescriptor.getCompactionThreshold())
-                logger.warn("rymWarnings: sstable level {} is not equal to threshold {}", 
-                    sstables.get(tail).getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
-            if(!sstables.get(tail).isReplicationTransferredToErasureCoding())
+        while (tail < sstables.size() && last.compareTo(sstables.get(tail).first) >= 0) {
+            if (sstables.get(tail).getSSTableLevel() != DatabaseDescriptor.getCompactionThreshold())
+                logger.warn("rymWarnings: sstable level {} is not equal to threshold {}",
+                        sstables.get(tail).getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
+            if (!sstables.get(tail).isReplicationTransferredToErasureCoding())
                 rewriteSStables.add(sstables.get(tail));
             tail++;
         }
 
         int head = mid - 1;
-        if(head >= 0 && (rewriteSStables.size() > 1 || first.compareTo(sstables.get(head).last)<=0)) {
-            if(sstables.get(head).getSSTableLevel() != DatabaseDescriptor.getCompactionThreshold())
-                logger.warn("rymWarnings: sstable level {} is not equal to threshold {}", 
-                    sstables.get(head).getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
-            if(!sstables.get(head).isReplicationTransferredToErasureCoding())
+        if (head >= 0 && (rewriteSStables.size() > 1 || first.compareTo(sstables.get(head).last) <= 0)) {
+            if (sstables.get(head).getSSTableLevel() != DatabaseDescriptor.getCompactionThreshold())
+                logger.warn("rymWarnings: sstable level {} is not equal to threshold {}",
+                        sstables.get(head).getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
+            if (!sstables.get(head).isReplicationTransferredToErasureCoding())
                 rewriteSStables.add(sstables.get(head));
             head--;
         }
 
-        if(head >= 0 && !sstables.get(head).isReplicationTransferredToErasureCoding()) 
+        if (head >= 0 && !sstables.get(head).isReplicationTransferredToErasureCoding())
             rewriteSStables.add(sstables.get(head));
-        if(tail < sstables.size() && !sstables.get(tail).isReplicationTransferredToErasureCoding()) 
+        if (tail < sstables.size() && !sstables.get(tail).isReplicationTransferredToErasureCoding())
             rewriteSStables.add(sstables.get(tail));
 
         return rewriteSStables;
@@ -286,6 +319,6 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         public int compare(SSTableReader o1, SSTableReader o2) {
             return o1.first.getToken().compareTo(o2.first.getToken());
         }
-        
+
     }
 }

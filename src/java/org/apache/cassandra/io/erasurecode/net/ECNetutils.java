@@ -33,6 +33,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.Inet4Address;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
@@ -41,16 +42,20 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.StorageHook;
 import org.apache.cassandra.index.Index.Indexer;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.sstable.Descriptor;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataComponent;
 import org.apache.cassandra.io.sstable.metadata.MetadataType;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,6 +139,44 @@ public final class ECNetutils {
 
     public static String getLocalParityCodeDir() {
         return localParityCodeDir;
+    }
+
+    /**
+     * This method is to sync a given sstable's file (without Data.db) with secondary nodes during erasure coding and parity update.
+     * @param sstable
+     * @param replicaNodes
+     * @param sstHashID
+     * @return
+     * @throws Exception
+     */
+    public static void syncSSTableWithSecondaryNodes(SSTableReader sstable,
+                                                     List<InetAddressAndPort> replicaNodes,
+                                                     String sstHashID) throws Exception {
+
+        // Read a given sstable's Filter.db, Index.db, Statistics.db and Summary.db
+        byte[] filterFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
+        byte[] indexFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
+        byte[] statsFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
+        byte[] summaryFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.SUMMARY));
+
+        SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile, summaryFile);
+        List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
+        InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
+
+        for (InetAddressAndPort rpn : replicaNodes) {
+            if (!rpn.equals(locaIP)) {
+                String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
+                ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys, sstInBytes);
+                ecSync.sendSSTableToSecondary(rpn);
+            }
+        }
+
+        logger.debug(
+            "rymDebug: send sstables ({}), replicaNodes are {}, row num is {}, allKeys num is {}",
+            sstHashID,
+            replicaNodes, sstable.getTotalRows(),
+            allKeys.size());
+
     }
 
     public static byte[] readBytesFromFile(String fileName) throws IOException

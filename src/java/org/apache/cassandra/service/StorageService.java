@@ -185,7 +185,7 @@ public class StorageService extends NotificationBroadcasterSupport
     public static final int RING_DELAY_MILLIS = getRingDelay(); // delay after which we assume ring has stablized
     public static final int SCHEMA_DELAY_MILLIS = getSchemaDelay();
 
-    // [CASSANDRAEC] The following parameters belong to CassandraEC.
+    // [CASSANDRAEC] The following properties belong to CassandraEC.
     // [In parity node] This queue is used to receive ECMessages for erasure coding.
     public ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
     // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
@@ -199,6 +199,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public Map<String, List<InetAddressAndPort>> globalSSTHashToParityNodesMap = new HashMap<String, List<InetAddressAndPort>>();
     // [In parity node] Generate after erasure coding, use during parity update. 
     public Map<String, String> globalSSTHashToStripID = new HashMap<String, String>();
+    // [In every node] Record the sstHash to SSTableReader map
+    public Map<String, SSTableReader> globalSSTHashToECSSTable = new HashMap<String, SSTableReader>();
 
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 
@@ -4335,7 +4337,8 @@ public class StorageService extends NotificationBroadcasterSupport
         EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, key);
         return Replicas.stringify(replicas, true);
     }
-    ////////////////////
+
+    // [CASSANDRAEC]
     public List<InetAddressAndPort> getReplicaNodesWithPort(String keyspaceName, String cf, String key) {
         List<String> inetStringList = getNaturalEndpointsWithPort(keyspaceName, cf, key);
         List<InetAddressAndPort> inetList = new ArrayList<>(inetStringList.size());
@@ -4350,7 +4353,26 @@ public class StorageService extends NotificationBroadcasterSupport
         return inetList;
 
     }
-    ///////////////////
+
+    // [CASSANDRAEC]
+    public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode, String keyspaceName) {
+        List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
+        List<InetAddressAndPort> replicaNodes = new ArrayList<>();
+        int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
+
+        int startIndex = liveEndpoints.indexOf(primaryNode);
+        int endIndex = startIndex + rf;
+        
+        if(endIndex > liveEndpoints.size()) {
+            replicaNodes.addAll(liveEndpoints.subList(startIndex, liveEndpoints.size()));
+            replicaNodes.addAll(liveEndpoints.subList(0,endIndex % liveEndpoints.size()));
+        } else {
+            replicaNodes.addAll(liveEndpoints.subList(startIndex, endIndex));
+        }
+
+        return replicaNodes;
+    }
+
     public List<InetAddress> getNaturalEndpointsForToken(String keyspaceName, String tokenStr) {
         List<InetAddress> inetList = new ArrayList<>();
         Token token = getTokenFactory().fromString(tokenStr);

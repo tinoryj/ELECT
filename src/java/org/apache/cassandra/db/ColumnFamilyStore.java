@@ -515,46 +515,18 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 String key = sstable.first.getRawKey(sstable.metadata());
                                 try {
                                     ByteBuffer sstContent = sstable.getSSTContent();
-                                    List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
-
                                     String sstHashID = sstable.getSSTableHashID();
                                     List<InetAddressAndPort> replicaNodes = StorageService.instance
                                             .getReplicaNodesWithPort(keyspaceName, cfName, key);
-                                    logger.debug(
-                                            "rymDebug: send sstables ({}) size {}, replicaNodes are {}, row num is {}, allKeys num is {}",
-                                            sstHashID,
-                                            sstContent.remaining(), replicaNodes, sstable.getTotalRows(),
-                                            allKeys.size());
-                                    InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
-                                    // read file here
-                                    byte[] filterFile = ECNetutils
-                                            .readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
-                                    byte[] indexFile = ECNetutils
-                                            .readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
-                                    byte[] statsFile = ECNetutils
-                                            .readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
-                                    byte[] summaryFile = ECNetutils
-                                            .readBytesFromFile(sstable.descriptor.filenameFor(Component.SUMMARY));
 
-                                    SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile,
-                                            summaryFile);
-
-                                    for (InetAddressAndPort rpn : replicaNodes) {
-                                        if (!rpn.equals(locaIP)) {
-                                            String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                                            ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys,
-                                                    sstInBytes);
-                                            ecSync.sendSSTableToSecondary(rpn);
-                                        }
-                                    }
-
+                                    // Sync sstable with secondary nodes for rewrite
+                                    ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID);
+                                    
+                                    // Send selected sstable for perform erasure coding.
                                     ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
                                             "", "", replicaNodes);
-                                    // send selected sstable to parity nodes
                                     ecMessage.sendSSTableToParity();
                                     StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.sstHashID, ecMessage.parityNodes);
-                                    // send selected sstable to secondary nodes
-                                    // sstable.getScanner();
 
                                     if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
                                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");

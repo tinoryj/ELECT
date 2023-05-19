@@ -64,6 +64,7 @@ import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECParityNode;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
@@ -858,10 +859,16 @@ public class CompactionTask extends AbstractCompactionTask {
                     List<SSTableContentWithHashID> newSSTables = new ArrayList<>();
                     while(requireSize-- > 0) {
                         if(newSSTableIterator.hasNext()) {
-                            SSTableReader sstable = newSSTableIterator.next();
-                            newSSTables.add(new SSTableContentWithHashID(sstable.getSSTableHashID(),sstable.getSSTContent()));
+                            SSTableReader newSSTable = newSSTableIterator.next();
+                            newSSTables.add(new SSTableContentWithHashID(newSSTable.getSSTableHashID(), newSSTable.getSSTContent()));
                             // set this sstable as updated
-                            sstable.setIsParityUpdate();
+                            newSSTable.setIsParityUpdate();
+
+                            // Sync selected new sstables for parity update
+                            List<InetAddressAndPort> replicaNodes = StorageService.instance
+                                                                                  .getReplicaNodesWithPortFromPrimaryNode(FBUtilities.getBroadcastAddressAndPort(), cfs.keyspace.getName());
+                            ECNetutils.syncSSTableWithSecondaryNodes(newSSTable, replicaNodes, newSSTable.getSSTableHashID());
+
                             newSSTableIterator.remove();
                         } else {
                             break;
