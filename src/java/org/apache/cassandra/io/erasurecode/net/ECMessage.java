@@ -297,7 +297,9 @@ public class ECMessage implements Serializable {
             //////////////////////////////////////////////////
             
             long size = ecMessage.ecMessageContentInBytesSize +
-                        sizeof(ecMessage.ecMessageContentInBytesSize);
+                        sizeof(ecMessage.ecMessageContentInBytesSize) +
+                        ecMessage.sstSize +
+                        sizeof(ecMessage.sstSize);
 
             return size;
 
