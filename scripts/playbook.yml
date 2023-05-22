@@ -26,7 +26,7 @@
 
   - name: Fail the play if the previous command did not succeed
     fail: msg="the command failed"
-    when: "'FAILED' in command_result.stdeer"
+    when: "'FAILED' in command_result.stderr"
 
   - name: Pause for 20 seconds
     pause:
@@ -43,7 +43,7 @@
 
   - name: Fail the play if the previous command did not succeed
     fail: msg="the command failed"
-    when: "'FAILED' in command_result.stdeer"
+    when: "'FAILED' in command_result.stderr"
 
   - name: Pause for 10 seconds
     pause:
@@ -53,11 +53,11 @@
   hosts: cassandra_client
 
   tasks:
-  - name: Execute script start-eveluation.sh
+  - name: Execute script start-evaluation.sh
     command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ inventory_hostname }} # <coordinator address>
     register: command_result
     ignore_errors: True
 
   - name: Fail the play if the previous command did not succeed
     fail: msg="the command failed"
-    when: "'FAILED' in command_result.stdeer"
+    when: "'FAILED' in command_result.stderr"
