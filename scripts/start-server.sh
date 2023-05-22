@@ -15,8 +15,7 @@
 # limitations under the License.
 
 whoami
-source /etc/profile
-source ~/.bashrc
+
 cd /mnt/ssd/Debug/CassandraEC
 
 git pull origin yuanming
