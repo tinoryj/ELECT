@@ -31,7 +31,7 @@
 
   - name: Pause for 20 seconds
     pause:
-      seconds: 20
+      seconds: 25
 
 - name: Prepare keyspace and tables for evaluation
   hosts: cassandra_client
@@ -46,9 +46,6 @@
     fail: msg="the command failed"
     when: "'FAILED' in command_result.stderr"
 
-  - name: Pause for 10 seconds
-    pause:
-      seconds: 10
 
 - name: Start a evaluation
   hosts: cassandra_client
