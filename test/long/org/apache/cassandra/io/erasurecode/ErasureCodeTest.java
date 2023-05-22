@@ -61,6 +61,7 @@ public class ErasureCodeTest {
         for (int i = 0; i < m; i++) {
             parity[i] = ByteBuffer.allocateDirect(codeLength);
             SecondParity[i] = ByteBuffer.allocateDirect(codeLength);
+            SecondParity[i].rewind();
         }
 
         // Encode
@@ -105,7 +106,7 @@ public class ErasureCodeTest {
             dataUpdate[i + 2] = parity[i];
         }
 
-        // check by encode again.
+        // // check by encode again.
         ByteBuffer[] dataUpdateXOR = new ByteBuffer[k];
         dataUpdateXOR[0] = ByteBuffer.allocateDirect(codeLength);
         // compute XOR for dataUpdate[0] and dataUpdate[1]
@@ -114,9 +115,11 @@ public class ErasureCodeTest {
         for (int i = 0; i < codeLength; i++) {
             dataUpdateXOR[0].put((byte) (dataUpdate[0].get() ^ dataUpdate[1].get()));
         }
+        dataUpdateXOR[0].rewind();
         for (int i = 1; i < k; i++) {
             data[i].rewind();
             dataUpdateXOR[i] = ByteBuffer.allocateDirect(codeLength);
+            dataUpdateXOR[i].rewind();
             dataUpdateXOR[i] = data[i];
             dataUpdateXOR[i].rewind();
         }
