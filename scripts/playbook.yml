@@ -17,10 +17,11 @@
 ---
 - name: Rebuild and start Cassandra servers
   hosts: cassandra_servers
-
+  become: true
+  become_user: yjren
   tasks:
   - name: Execute script start-server.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-server.sh
+    command: bash /mnt/ssd/Debug/CassandraEC/scripts/start-server.sh
     register: command_result
     ignore_errors: True
 
@@ -37,7 +38,7 @@
 
   tasks:
   - name: Execute script start-client.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-client.sh {{ inventory_hostname }} 4 4 # <coordinator address>, <sstable size in MB>, <fanout size>
+    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-client.sh {{ ansible_hostname }} 4 4 # <coordinator address>, <sstable size in MB>, <fanout size>
     register: command_result
     ignore_errors: True
 
@@ -54,7 +55,7 @@
 
   tasks:
   - name: Execute script start-evaluation.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ inventory_hostname }} # <coordinator address>
+    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} # <coordinator address>
     register: command_result
     ignore_errors: True
 
