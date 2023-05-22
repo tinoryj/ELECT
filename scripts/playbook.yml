@@ -1,0 +1,29 @@
+---
+- name: Rebuild and start Cassandra servers
+  hosts: cassandra_servers
+  
+  tasks:
+  - name: Execute script start_server.sh
+    shell: /mnt/ssd/Debug/CassandraEC/scripts/start-server.sh
+
+  - name: Pause for 20 seconds
+    pause:
+      seconds: 20
+
+- name: Prepare keyspace and tables for evaluation
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute script start_client.sh
+    shell: /mnt/ssd/Debug/CassandraEC/scripts/start-client.sh {{ inventory_hostname }} 4 4 # <coordinator address>, <sstable size in MB>, <fanout size>
+  
+  - name: Pause for 10 seconds
+    pause:
+      seconds: 10
+
+- name: Start a evaluation
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute script start_eveluation.sh
+    shell: /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ inventory_hostname }} # <coordinator address>,
