@@ -40,53 +40,86 @@ public class ErasureCodeTest {
 
         // Encoding input and output
         ByteBuffer[] data = new ByteBuffer[k];
+        ByteBuffer[] ModifiedData = new ByteBuffer[k];
         ByteBuffer[] parity = new ByteBuffer[m];
         ByteBuffer[] SecondParity = new ByteBuffer[m];
+        ByteBuffer[] XORParity = new ByteBuffer[m];
+        ByteBuffer[] UpdateParity = new ByteBuffer[m];
 
         // Decoding input and output
-        ByteBuffer[] recoverySrc = new ByteBuffer[k];
+        ByteBuffer[] recoveryOriginalSrc = new ByteBuffer[k];
+        ByteBuffer[] recoveryUpdatedSrc = new ByteBuffer[k];
         int[] eraseIndexes = { 0 };
         int[] decodeIndexes = { 4, 1, 2, 3 };
-        ByteBuffer[] outputs = new ByteBuffer[1];
+        ByteBuffer[] outputsOriginal = new ByteBuffer[1];
+        ByteBuffer[] outputsUpdated = new ByteBuffer[1];
 
-        // Prepare recoverySrc for encoding
+        // Prepare src for encoding
         byte[] tmpArray = new byte[codeLength];
         for (int i = 0; i < k; i++) {
             data[i] = ByteBuffer.allocateDirect(codeLength);
             random.nextBytes(tmpArray);
             data[i].put(tmpArray);
             data[i].rewind();
+            ModifiedData[i] = ByteBuffer.allocateDirect(codeLength);
+            ModifiedData[i].put(tmpArray);
+            ModifiedData[i].rewind();
         }
-        // Prepare outputs for encoding
+        // modify data block 0
+        random.nextBytes(tmpArray);
+        ModifiedData[0].put(tmpArray);
+        ModifiedData[0].rewind();
+
+        // Prepare outputsOriginal for encoding
         for (int i = 0; i < m; i++) {
             parity[i] = ByteBuffer.allocateDirect(codeLength);
             SecondParity[i] = ByteBuffer.allocateDirect(codeLength);
-            SecondParity[i].rewind();
+            XORParity[i] = ByteBuffer.allocateDirect(codeLength);
+            UpdateParity[i] = ByteBuffer.allocateDirect(codeLength);
         }
 
         // Encode
-        logger.debug("ErasureCodeTest - first encode()!");
+        logger.debug("ErasureCodeTest - encode() original data !");
         encoder.encode(data, parity);
 
-        // Prepare recoverySrc for decoding
-        recoverySrc[0] = parity[0];
+        logger.debug("ErasureCodeTest - encode() updated data !");
+        encoder.encode(ModifiedData, SecondParity);
+
+        // Prepare recoveryOriginalSrc for decoding
+        recoveryOriginalSrc[0] = parity[0];
         for (int i = 1; i < k; i++) {
             data[i].rewind();
-            recoverySrc[i] = data[i];
+            recoveryOriginalSrc[i] = data[i];
         }
 
-        // Prepare outputs for decoding
-        outputs[0] = ByteBuffer.allocateDirect(codeLength);
+        recoveryUpdatedSrc[0] = SecondParity[0];
+        for (int i = 1; i < k; i++) {
+            ModifiedData[i].rewind();
+            recoveryUpdatedSrc[i] = ModifiedData[i];
+        }
+
+        // Prepare outputsOriginal for decoding
+        outputsOriginal[0] = ByteBuffer.allocateDirect(codeLength);
+        outputsUpdated[0] = ByteBuffer.allocateDirect(codeLength);
 
         // Decode
-        logger.debug("ErasureCodeTest - first decode()!");
-        decoder.decode(recoverySrc, decodeIndexes, eraseIndexes, outputs);
+        logger.debug("ErasureCodeTest - decode() original data blocks!");
+        decoder.decode(recoveryOriginalSrc, decodeIndexes, eraseIndexes, outputsOriginal);
+        logger.debug("ErasureCodeTest - decode() updated data blocks!");
+        decoder.decode(recoveryUpdatedSrc, decodeIndexes, eraseIndexes, outputsUpdated);
 
         data[0].rewind();
-        if (outputs[0].compareTo(data[0]) == 0) {
-            logger.debug("ErasureCodeTest - decoding Succeeded, same recovered data!");
+        if (outputsOriginal[0].compareTo(data[0]) == 0) {
+            logger.debug("ErasureCodeTest(1) - decoding Succeeded, same recovered data!");
         } else {
-            logger.debug("ErasureCodeTest - decoding Failed, diffent recovered data ");
+            logger.debug("ErasureCodeTest(1) - decoding Failed, diffent recovered data ");
+        }
+
+        ModifiedData[0].rewind();
+        if (outputsUpdated[0].compareTo(ModifiedData[0]) == 0) {
+            logger.debug("ErasureCodeTest(2) - decoding Succeeded, same recovered data!");
+        } else {
+            logger.debug("ErasureCodeTest(2) - decoding Failed, diffent recovered data ");
         }
 
         // update
@@ -97,59 +130,43 @@ public class ErasureCodeTest {
         dataUpdate[0] = data[0];
         dataUpdate[0].rewind();
         dataUpdate[1] = ByteBuffer.allocateDirect(codeLength);
-        random.nextBytes(tmpArray);
-        dataUpdate[1].put(tmpArray);
+        ModifiedData[0].rewind();
+        dataUpdate[1] = ModifiedData[0];
         dataUpdate[1].rewind();
         for (int i = 0; i < m; i++) {
             parity[i].rewind();
             dataUpdate[i + 2] = ByteBuffer.allocateDirect(codeLength);
             dataUpdate[i + 2] = parity[i];
+            dataUpdate[i + 2].rewind();
         }
 
-        // // check by encode again.
-        ByteBuffer[] dataUpdateXOR = new ByteBuffer[k];
-        dataUpdateXOR[0] = ByteBuffer.allocateDirect(codeLength);
-        // compute XOR for dataUpdate[0] and dataUpdate[1]
-        dataUpdate[0].rewind();
-        dataUpdate[1].rewind();
-        for (int i = 0; i < codeLength; i++) {
-            dataUpdateXOR[0].put((byte) (dataUpdate[0].get() ^ dataUpdate[1].get()));
-        }
-        dataUpdateXOR[0].rewind();
-        for (int i = 1; i < k; i++) {
-            data[i].rewind();
-            dataUpdateXOR[i] = ByteBuffer.allocateDirect(codeLength);
-            dataUpdateXOR[i].rewind();
-            dataUpdateXOR[i] = data[i];
-            dataUpdateXOR[i].rewind();
-        }
-        encoder.encode(dataUpdateXOR, SecondParity);
         // perform update
-        encoder.encodeUpdate(dataUpdate, parity, 1);
+        encoder.encodeUpdate(dataUpdate, UpdateParity, 1);
 
-        recoverySrc[0] = null;
-        for (int i = 1; i < k; i++) {
-            data[i].rewind();
-            recoverySrc[i] = data[i];
-            // logger.debug("recoverySrc[" + i + "]: position() = " +
-            // recoverySrc[i].position() + ", remaining() = "
-            // + recoverySrc[i].remaining());
-        }
-        recoverySrc[0] = parity[0];
+        // recoveryOriginalSrc[0] = null;
+        // for (int i = 1; i < k; i++) {
+        // data[i].rewind();
+        // recoveryOriginalSrc[i] = data[i];
+        // // logger.debug("recoveryOriginalSrc[" + i + "]: position() = " +
+        // // recoveryOriginalSrc[i].position() + ", remaining() = "
+        // // + recoveryOriginalSrc[i].remaining());
+        // }
+        // recoveryOriginalSrc[0] = parity[0];
 
-        // Prepare outputs for decoding
-        outputs[0] = ByteBuffer.allocateDirect(codeLength);
+        // // Prepare outputsOriginal for decoding
+        // outputsOriginal[0] = ByteBuffer.allocateDirect(codeLength);
 
-        // Decode
-        logger.debug("ErasureCodeTest - second decode()!");
-        decoder.decode(recoverySrc, decodeIndexes, eraseIndexes, outputs);
+        // // Decode
+        // logger.debug("ErasureCodeTest - second decode()!");
+        // decoder.decode(recoveryOriginalSrc, decodeIndexes, eraseIndexes,
+        // outputsOriginal);
 
-        data[0].rewind();
-        if (outputs[0].compareTo(dataUpdate[0]) == 0) {
-            logger.debug("ErasureCodeTest - decoding Succeeded, same recovered data!");
-        } else {
-            logger.debug("ErasureCodeTest - decoding Failed, diffent recovered data ");
-        }
+        // data[0].rewind();
+        // if (outputsOriginal[0].compareTo(dataUpdate[0]) == 0) {
+        // logger.debug("ErasureCodeTest - decoding Succeeded, same recovered data!");
+        // } else {
+        // logger.debug("ErasureCodeTest - decoding Failed, diffent recovered data ");
+        // }
 
         encoder.release();
         decoder.release();

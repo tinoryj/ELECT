@@ -120,11 +120,10 @@ int encodeUpdate(IsalEncoder* pCoder, unsigned char** newDataUnitAndParitys, int
         dump(tempParityUnits[i], 8);
         printf("\n");
     }
-    for (int i = 0; i < chunkSize; i++) {
-        newDataUnitAndParitys[0][i] ^= newDataUnitAndParitys[1][i];
-    }
+
     printf("Start encode update in C environment, memcpy done, target replace data block ID = %d\n", fragment_index);
     ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, newDataUnitAndParitys[0], tempParityUnits);
+    ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, newDataUnitAndParitys[1], tempParityUnits);
     printf("Encoded parity:\n");
     for (int i = 0; i < numParityUnits; i++) {
         memcpy(newParityUnits[i], tempParityUnits[i], chunkSize);
