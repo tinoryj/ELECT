@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+whoami
+
 cd /mnt/ssd/Debug/CassandraEC
 
 git checkout yuanming
