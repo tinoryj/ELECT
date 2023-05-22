@@ -27,4 +27,4 @@ mkdir -p data/tmp/
 mkdir -p logs
 ant -Duse.jdk11=true
 cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
-bin/cassandra &> logs/debug.log
+nohup bin/cassandra &> logs/debug.log &
