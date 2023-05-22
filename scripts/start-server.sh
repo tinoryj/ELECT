@@ -14,10 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-whoami
+. /etc/profile
 
 cd /mnt/ssd/Debug/CassandraEC
-
 git pull origin yuanming
 kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
 rm -rf data logs
