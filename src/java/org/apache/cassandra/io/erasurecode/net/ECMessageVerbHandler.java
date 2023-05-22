@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -106,6 +107,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         }
         
         // logger.debug("rymDebug: recvQueues is {}", recvQueues);
+
+
+        StorageService.instance.globalRecvQueues.forEach((address, queue) -> System.out.print("Queue length of " + address + " is " + queue.size()));
 
 
         // check whether we should update the parity code

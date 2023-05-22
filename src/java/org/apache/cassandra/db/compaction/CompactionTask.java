@@ -732,16 +732,16 @@ public class CompactionTask extends AbstractCompactionTask {
             
             // [CASSANDRAEC]
             // store old data before compaction
-            int transferredSSTablesNum = 0;
-            List<SSTableContentWithHashID> transferredSSTables = new ArrayList<>();
-            if(cfs.getColumnFamilyName().equals("usertable")) {
-                for(SSTableReader sstable : actuallyCompact) {
-                    if(sstable.isReplicationTransferredToErasureCoding()) {
-                        transferredSSTables.add(new SSTableContentWithHashID(sstable.getSSTableHashID(), sstable.getSSTContent()));
-                        transferredSSTablesNum++;
-                    }
-                }
-            }
+            // int transferredSSTablesNum = 0;
+            // List<SSTableContentWithHashID> transferredSSTables = new ArrayList<>();
+            // if(cfs.getColumnFamilyName().equals("usertable")) {
+            //     for(SSTableReader sstable : actuallyCompact) {
+            //         if(sstable.isReplicationTransferredToErasureCoding()) {
+            //             transferredSSTables.add(new SSTableContentWithHashID(sstable.getSSTableHashID(), sstable.getSSTContent()));
+            //             transferredSSTablesNum++;
+            //         }
+            //     }
+            // }
 
 
             Collection<SSTableReader> newSStables;
@@ -835,60 +835,60 @@ public class CompactionTask extends AbstractCompactionTask {
             
             // [CASSADNRAEC]
             // Compaction is done: match the old/new data, and send them to parity node
-            if(cfs.getColumnFamilyName().equals("usertable") && transferredSSTablesNum > 0) {
-                // send parity update signal
-                // send old data 
-                // List<InetAddressAndPort> targets = new ArrayList<>();
-                Map<InetAddressAndPort, List<SSTableContentWithHashID>> oldSSTables = new HashMap<InetAddressAndPort, List<SSTableContentWithHashID>>();
-                for (SSTableContentWithHashID transferredSST : transferredSSTables) {
-                    String sstHash = transferredSST.sstHash;
-                    InetAddressAndPort target = StorageService.instance.globalSSTHashToParityNodesMap.get(sstHash).get(0);
-                    // targets.add(target);
-                    if(oldSSTables.containsKey(target)){
-                        oldSSTables.get(target).add(transferredSST);
-                    } else {
-                        oldSSTables.put(target, Collections.singletonList(transferredSST));
-                    }
-                }
+            // if(cfs.getColumnFamilyName().equals("usertable") && transferredSSTablesNum > 0) {
+            //     // send parity update signal
+            //     // send old data 
+            //     // List<InetAddressAndPort> targets = new ArrayList<>();
+            //     Map<InetAddressAndPort, List<SSTableContentWithHashID>> oldSSTables = new HashMap<InetAddressAndPort, List<SSTableContentWithHashID>>();
+            //     for (SSTableContentWithHashID transferredSST : transferredSSTables) {
+            //         String sstHash = transferredSST.sstHash;
+            //         InetAddressAndPort target = StorageService.instance.globalSSTHashToParityNodesMap.get(sstHash).get(0);
+            //         // targets.add(target);
+            //         if(oldSSTables.containsKey(target)){
+            //             oldSSTables.get(target).add(transferredSST);
+            //         } else {
+            //             oldSSTables.put(target, Collections.singletonList(transferredSST));
+            //         }
+            //     }
 
-                // handle the new data 
-                Iterator<SSTableReader> newSSTableIterator = newSStables.iterator();
-                for(Map.Entry<InetAddressAndPort, List<SSTableContentWithHashID>> entry : oldSSTables.entrySet()) {
-                    // InetAddressAndPort target = entry.getKey();
-                    int requireSize = entry.getValue().size();
-                    List<SSTableContentWithHashID> newSSTables = new ArrayList<>();
-                    while(requireSize-- > 0) {
-                        if(newSSTableIterator.hasNext()) {
-                            SSTableReader newSSTable = newSSTableIterator.next();
-                            newSSTables.add(new SSTableContentWithHashID(newSSTable.getSSTableHashID(), newSSTable.getSSTContent()));
-                            // set this sstable as updated
-                            newSSTable.setIsParityUpdate();
+            //     // handle the new data 
+            //     Iterator<SSTableReader> newSSTableIterator = newSStables.iterator();
+            //     for(Map.Entry<InetAddressAndPort, List<SSTableContentWithHashID>> entry : oldSSTables.entrySet()) {
+            //         // InetAddressAndPort target = entry.getKey();
+            //         int requireSize = entry.getValue().size();
+            //         List<SSTableContentWithHashID> newSSTables = new ArrayList<>();
+            //         while(requireSize-- > 0) {
+            //             if(newSSTableIterator.hasNext()) {
+            //                 SSTableReader newSSTable = newSSTableIterator.next();
+            //                 newSSTables.add(new SSTableContentWithHashID(newSSTable.getSSTableHashID(), newSSTable.getSSTContent()));
+            //                 // set this sstable as updated
+            //                 newSSTable.setIsParityUpdate();
 
-                            // Sync selected new sstables for parity update
-                            List<InetAddressAndPort> replicaNodes = StorageService.instance
-                                                                                  .getReplicaNodesWithPortFromPrimaryNode(FBUtilities.getBroadcastAddressAndPort(), cfs.keyspace.getName());
-                            ECNetutils.syncSSTableWithSecondaryNodes(newSSTable, replicaNodes, newSSTable.getSSTableHashID());
+            //                 // Sync selected new sstables for parity update
+            //                 List<InetAddressAndPort> replicaNodes = StorageService.instance
+            //                                                                       .getReplicaNodesWithPortFromPrimaryNode(FBUtilities.getBroadcastAddressAndPort(), cfs.keyspace.getName());
+            //                 ECNetutils.syncSSTableWithSecondaryNodes(newSSTable, replicaNodes, newSSTable.getSSTableHashID());
 
-                            newSSTableIterator.remove();
-                        } else {
-                            break;
-                        }
-                    }
+            //                 newSSTableIterator.remove();
+            //             } else {
+            //                 break;
+            //             }
+            //         }
 
-                    // Debug: check if the sstables' parity nodes are the same
-                    logger.debug("----------------------------------------------------------------------------");
-                    for(SSTableContentWithHashID sst : entry.getValue()) {
-                        logger.debug("rymDebug: the parity nodes of sstable ({}) are ({})", sst.sstHash,
-                                        StorageService.instance.globalSSTHashToParityNodesMap.get(sst.sstHash));
-                    }
-                    logger.debug("----------------------------------------------------------------------------");
+            //         // Debug: check if the sstables' parity nodes are the same
+            //         logger.debug("----------------------------------------------------------------------------");
+            //         for(SSTableContentWithHashID sst : entry.getValue()) {
+            //             logger.debug("rymDebug: the parity nodes of sstable ({}) are ({})", sst.sstHash,
+            //                             StorageService.instance.globalSSTHashToParityNodesMap.get(sst.sstHash));
+            //         }
+            //         logger.debug("----------------------------------------------------------------------------");
 
-                    // send the old sstable and new sstable to target parity node
-                    ECParityUpdate parityUpdate = new ECParityUpdate(entry.getValue(), newSSTables,
-                                    StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
-                    parityUpdate.sendParityUpdateSignal();
-                }
-            }
+            //         // send the old sstable and new sstable to target parity node
+            //         ECParityUpdate parityUpdate = new ECParityUpdate(entry.getValue(), newSSTables,
+            //                         StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
+            //         parityUpdate.sendParityUpdateSignal();
+            //     }
+            // }
 
             // log a bunch of statistics about the result and save to system table
             // compaction_history

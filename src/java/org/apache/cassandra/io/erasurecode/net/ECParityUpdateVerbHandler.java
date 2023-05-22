@@ -37,6 +37,7 @@ import org.apache.cassandra.io.erasurecode.ErasureEncoder;
 import org.apache.cassandra.io.erasurecode.NativeRSEncoder;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
+import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.ForwardingInfo;
 import org.apache.cassandra.net.IVerbHandler;
@@ -119,26 +120,16 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         Iterator<SSTableContentWithHashID> oldSSTablesIterator = parityUpdateData.oldSSTables.iterator();
         Iterator<SSTableContentWithHashID> newSSTablesIterator = parityUpdateData.newSSTables.iterator();
-        // consume old data with new data
+
+        // Case1: Consume old data with new data firstly.
         // In this case, old replica nodes are the same to new replica nodes
         while (newSSTablesIterator.hasNext()) {
             SSTableContentWithHashID newSSTable = newSSTablesIterator.next();
             SSTableContentWithHashID oldSSTable = oldSSTablesIterator.next();
 
-            // [ATTENTION] Debug to avoid dead loops
             // For safety, we should make sure the parity code is ready
-            while (!checkParityCodesAreReady(StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash))) {
-                try {
-                    Thread.sleep(5);
-                } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }
+            waitUntilParityCodesReader(oldSSTable.sstHash);
 
-            // remove the processed entry to save memory
-            newSSTablesIterator.remove();
-            oldSSTablesIterator.remove();
 
             // ByteBuffer oldData = oldSSTable.sstContent;
             // ByteBuffer newData = newSSTable.sstContent;
@@ -151,16 +142,86 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                                                                                     parityNodes,
                                                                                     oldReplicaNodes,
                                                                                     oldReplicaNodes));
+            // remove the processed entry to save memory
+            newSSTablesIterator.remove();
+            oldSSTablesIterator.remove();
             
             
         }
 
-        // If old data is not completely consumed, we select sstables from globalRecvQueues
+        // Case2: If old data is not completely consumed, we select sstables from globalRecvQueues
+        while (oldSSTablesIterator.hasNext()) {
+            if(StorageService.instance.globalRecvQueues.containsKey(newPrimaryNodes)) {
+                ECMessage msg = StorageService.instance.globalRecvQueues.get(newPrimaryNodes).poll();
 
+                if(StorageService.instance.globalRecvQueues.get(newPrimaryNodes).size() == 0) {
+                    StorageService.instance.globalRecvQueues.remove(newPrimaryNodes);
+                }
 
-        // If old data and globalRecvQueues still has data remaining, padding zero
+                SSTableContentWithHashID oldSSTable = oldSSTablesIterator.next();
+                waitUntilParityCodesReader(oldSSTable.sstHash);
+
+                SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(msg.ecMessageContent.sstHashID, msg.sstContent);
+
+                Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
+                                                                                        newSSTable,
+                                                                                        StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
+                                                                                        StorageService.instance.globalECMetadataMap.get(oldSSTable.sstHash).sstHashIdList.indexOf(oldSSTable.sstHash), 
+                                                                                        codeLength,
+                                                                                        parityNodes,
+                                                                                        oldReplicaNodes,
+                                                                                        oldReplicaNodes));
+                oldSSTablesIterator.remove();
+            } else {
+                break;
+            }
+        }
+        
+        StorageService.instance.globalRecvQueues.forEach((address, queue) -> System.out.print("Queue length of " + address + " is " + queue.size()));
+
+        // Case3: Old data still not completely consumed, we have to padding zero
+        while (oldSSTablesIterator.hasNext()) {
+
+            SSTableContentWithHashID oldSSTable = oldSSTablesIterator.next();
+            waitUntilParityCodesReader(oldSSTable.sstHash);
+            
+            ByteBuffer newSSTContent = ByteBuffer.allocateDirect(codeLength);
+            SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())),
+                                                                               newSSTContent);
+
+            Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
+                                                                                    newSSTable,
+                                                                                    StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
+                                                                                    StorageService.instance.globalECMetadataMap.get(oldSSTable.sstHash).sstHashIdList.indexOf(oldSSTable.sstHash), 
+                                                                                    codeLength,
+                                                                                    parityNodes,
+                                                                                    oldReplicaNodes,
+                                                                                    oldReplicaNodes));
+            oldSSTablesIterator.remove();
+        }
+        
+
         
         
+    }
+
+    // [WARNING!] Make sure to avoid dead loops
+    private static void waitUntilParityCodesReader(String sstHash) {
+        int retryCount = 0;
+        while (!checkParityCodesAreReady(StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash))) {
+            try {
+                if(retryCount < 10) {
+                    Thread.sleep(2);
+                    retryCount++;
+                } else {
+                    throw new IllegalStateException(String.format("ERROR: cannot retrieve the remote parity codes for sstHash (%s)", sstHash));
+                }
+                
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
     }
 
     private static boolean checkParityCodesAreReady(ByteBuffer[] parityCodes) {
