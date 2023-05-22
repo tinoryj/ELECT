@@ -68,6 +68,7 @@ void getInputs(JNIEnv* env, jobjectArray inputs, jintArray inputOffsets,
     jobject byteBuffer;
 
     if (numInputs != num) {
+        printf("numInputs: %d, num: %d\n", numInputs, num);
         THROW(env, "java/lang/InternalError", "Invalid inputs");
     }
 

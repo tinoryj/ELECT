@@ -75,7 +75,7 @@ void initDecoder(IsalDecoder* decoder, int numDataUnits, int numParityUnits);
 void clearDecoder(IsalDecoder* decoder);
 
 int encode(IsalEncoder* encoder, unsigned char** dataUnits, unsigned char** parityUnits, int chunkSize);
-int encodeUpdate(IsalEncoder* pCoder, unsigned char* newDataUnit, int fragment_index, unsigned char** parityUnits, int chunkSize);
+int encodeUpdate(IsalEncoder* pCoder, unsigned char** newDataUnitAndParitys, int fragment_index, unsigned char** newParityUnits, int chunkSize);
 int decode(IsalDecoder* decoder, unsigned char** allUnits, int* decodeIndexes, int* erasedIndexes, int numErased, unsigned char** recoveredUnits, int chunkSize);
 
 int generateDecodeMatrix(IsalDecoder* pCoder);
