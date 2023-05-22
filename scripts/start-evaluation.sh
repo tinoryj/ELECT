@@ -17,8 +17,14 @@
 
 func() {
     coordinator=$1
+    record_count=$2
+    field_length=$3
     cd /home/yjren/ycsb-0.17.0/
-    bin/ycsb load cassandra-cql -p hosts=$coordinator -s -P workloads/workload_template
+    mkdir -p logs
+    sed -i "s/recordcount=.*$/recordcount=${record_count}/" workloads/workload_template
+    sed -i "s/fieldlength=.*$/fieldlength=${field_length}/" workloads/workload_template
+    file_name="${record_count}-${field_length}-$(date +%s)"
+    nohup bin/ycsb load cassandra-cql -p hosts=$coordinator -s -P workloads/workload_template &> logs/${file_name}.log &
 }
 
-func "$1"
+func "$1" "$2" "$3"
