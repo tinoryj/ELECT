@@ -179,6 +179,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                         isContainReplicationTransferredToErasureCoding = true;
                         TransfferedSSTableKeyRange range = new TransfferedSSTableKeyRange(sstable.first, sstable.last);
                         transfferedSSTableKeyRanges.add(range);
+                        logger.debug("rymDebug[transferred]: Selected transferred sstables from {}", cfs.getColumnFamilyName());
                     }
                 }
 
@@ -201,6 +202,8 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                 if(isContainReplicationTransferredToErasureCoding == true) {
                     newTask.isContainReplicationTransferredToErasureCoding = true;
                 }
+                logger.debug("rymDebug[transferred]: task {} is contain replication ({}), isContainReplicationTransferredToErasureCoding is ({})",
+                             newTask.transaction.opId(), newTask.isContainReplicationTransferredToErasureCoding, isContainReplicationTransferredToErasureCoding);
 
                 newTask.setCompactionType(op);
                 return newTask;

@@ -29,7 +29,7 @@
     fail: msg="the command failed"
     when: "'FAILED' in command_result.stderr"
 
-  - name: Pause for 20 seconds
+  - name: Wait until all nodes are ready
     pause:
       seconds: 25
 

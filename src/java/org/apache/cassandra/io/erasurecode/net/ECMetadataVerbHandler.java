@@ -213,8 +213,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             if (updateTxn != null) {
                                 cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);
                             } else {
-                                logger.debug(
-                                        "rymDebug: failed to get transactions for the sstables, we will try it later");
+                                logger.debug("rymERROR: failed to get transactions for the sstables, we will try it later");
                             }
                         } else {
                             logger.warn("rymERROR: cannot get rewrite data of {} during parity update", sstableHash);

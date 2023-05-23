@@ -438,6 +438,7 @@ public class CompactionTask extends AbstractCompactionTask {
     protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
         // The collection of sstables passed may be empty (but not null); even if
         // it is not empty, it may compact down to nothing if all rows are deleted.
+        logger.info("rymDebug[transferred]: This is runMayThrow for secondary node, as this compaction transaction involves transferred sstables");
         assert transaction != null;
         Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
         TimeUUID taskId = transaction.opId();

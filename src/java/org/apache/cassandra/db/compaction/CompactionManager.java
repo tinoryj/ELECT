@@ -318,6 +318,7 @@ public class CompactionManager implements CompactionManagerMBean {
                     if (DatabaseDescriptor.automaticSSTableUpgrade())
                         ranCompaction = maybeRunUpgradeTask(strategy);
                 } else if(task.isContainReplicationTransferredToErasureCoding){
+                    logger.debug("rymDebug[transferred]: this task contains transferred sstables.");
                     List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = ((LeveledCompactionTask) task).transfferedSSTableKeyRanges;
                     task.execute(active, transfferedSSTableKeyRanges);
                     ranCompaction = true;

@@ -481,8 +481,10 @@ public class LeveledManifest {
         Bounds<Token> promotedBounds = new Bounds<>(start, end);
 
         for (Map.Entry<SSTableReader, Bounds<Token>> pair : sstables.entrySet()) {
+            // we cannot select the sstables that isReplicationTransferredToErasureCoding is (true) and 
+            // this sstable is belong to primary LSM tree
             if (pair.getValue().intersects(promotedBounds)
-                  && !pair.getKey().isReplicationTransferredToErasureCoding()
+                  && (!pair.getKey().isReplicationTransferredToErasureCoding() || !pair.getKey().getColumnFamilyName().equals("usertable"))
                  )
                 overlapped.add(pair.getKey());
         }
