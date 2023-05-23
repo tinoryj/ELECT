@@ -109,8 +109,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         // logger.debug("rymDebug: recvQueues is {}", recvQueues);
 
 
-        StorageService.instance.globalRecvQueues.forEach((address, queue) -> System.out.print("Queue length of " + address + " is " + queue.size()));
-
+        // StorageService.instance.globalRecvQueues.forEach((address, queue) -> System.out.print("Queue length of " + address + " is " + queue.size()));
+        
 
         // check whether we should update the parity code
 

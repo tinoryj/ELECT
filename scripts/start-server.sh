@@ -25,6 +25,6 @@ mkdir -p data/localParityHashes/
 mkdir -p data/ECMetadata/
 mkdir -p data/tmp/
 mkdir -p logs
-ant -Duse.jdk11=true
+ant realclean && ant -Duse.jdk11=true
 cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
 nohup bin/cassandra &> logs/debug.log &
