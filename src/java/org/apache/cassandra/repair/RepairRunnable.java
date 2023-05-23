@@ -55,7 +55,7 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
-import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.RepairException;
@@ -562,7 +562,7 @@ public class RepairRunnable implements Runnable, ProgressEventNotifier, RepairNo
             }
 
             @Override
-            protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
+            protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
                     throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");

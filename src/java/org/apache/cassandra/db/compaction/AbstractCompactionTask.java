@@ -26,7 +26,7 @@ import com.google.common.base.Preconditions;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.io.FSDiskFullWriteError;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
@@ -154,17 +154,17 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     /**
      * [CASSANDRAEC] perform Leveled Compaction for CassandraEC in secondary node, if transferred SSTables are selected
      * 
-     * @param transfferedSSTableKeyRanges the key ranges of the selected transferred SSTables, we should abandon the keys
+     * @param TransferredSSTableKeyRanges the key ranges of the selected transferred SSTables, we should abandon the keys
      * within these ranges.
      * 
      */
-    public int execute(ActiveCompactionsTracker activeCompactions, List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
+    public int execute(ActiveCompactionsTracker activeCompactions, List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
     {
         try
         {
             // logger.debug("rymDebug: this is ActiveCompactionTask.execute");
 
-            return executeInternal(activeCompactions, transfferedSSTableKeyRanges);
+            return executeInternal(activeCompactions, TransferredSSTableKeyRanges);
         }
         catch(FSDiskFullWriteError e)
         {
@@ -184,7 +184,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     
     protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix);
 
-    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges);
+    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges);
 
     public AbstractCompactionTask setUserDefined(boolean isUserDefined)
     {

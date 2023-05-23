@@ -62,7 +62,7 @@ import org.apache.cassandra.db.compaction.CompactionInfo;
 import org.apache.cassandra.db.compaction.CompactionInterruptedException;
 import org.apache.cassandra.db.compaction.CompactionIterator;
 import org.apache.cassandra.db.compaction.CompactionManager;
-import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
@@ -435,7 +435,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
                             }
 
                             @Override
-                            protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
+                            protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
                                     throws Exception {
                                 // TODO Auto-generated method stub
                                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");

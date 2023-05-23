@@ -56,7 +56,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionInfo.Holder;
-import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.lifecycle.ILifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableIntervalTree;
@@ -319,8 +319,8 @@ public class CompactionManager implements CompactionManagerMBean {
                         ranCompaction = maybeRunUpgradeTask(strategy);
                 } else if(task.isContainReplicationTransferredToErasureCoding){
                     logger.debug("rymDebug[transferred]: this task contains transferred sstables.");
-                    List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = ((LeveledCompactionTask) task).transfferedSSTableKeyRanges;
-                    task.execute(active, transfferedSSTableKeyRanges);
+                    List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = ((LeveledCompactionTask) task).transferredSSTableKeyRanges;
+                    task.execute(active, TransferredSSTableKeyRanges);
                     ranCompaction = true;
                 } else {
                     task.execute(active);
@@ -895,7 +895,7 @@ public class CompactionManager implements CompactionManagerMBean {
             }
 
             @Override
-            protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
+            protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
@@ -1097,7 +1097,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 }
 
                 @Override
-                protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
+                protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
                         throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
@@ -1156,7 +1156,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 }
 
                 @Override
-                protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
+                protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
                         throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
@@ -1350,7 +1350,7 @@ public class CompactionManager implements CompactionManagerMBean {
             }
 
             @Override
-            protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
+            protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
-import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
@@ -102,13 +102,13 @@ public class SingleSSTableLCSTask extends AbstractCompactionTask {
 
     @Override
     protected int executeInternal(ActiveCompactionsTracker activeCompactions,
-            List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) {
+            List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'executeInternal'");
     }
 
     @Override
-    protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
+    protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) throws Exception {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
     }

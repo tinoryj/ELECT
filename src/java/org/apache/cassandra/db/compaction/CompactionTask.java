@@ -55,7 +55,7 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.SystemKeyspace;
-import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -149,9 +149,9 @@ public class CompactionTask extends AbstractCompactionTask {
         return transaction.originals().size();
     }
 
-    protected int executeInternal(ActiveCompactionsTracker activeCompactions, List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) {
+    protected int executeInternal(ActiveCompactionsTracker activeCompactions, List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) {
         this.activeCompactions = activeCompactions == null ? ActiveCompactionsTracker.NOOP : activeCompactions;
-        run(transfferedSSTableKeyRanges);
+        run(TransferredSSTableKeyRanges);
         return transaction.originals().size();
     }
 
@@ -435,7 +435,7 @@ public class CompactionTask extends AbstractCompactionTask {
     /** [CASSANDRAEC] compaction for CassandraEC, only perform on secondary nodes
      * 
      */
-    protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) throws Exception {
+    protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) throws Exception {
         // The collection of sstables passed may be empty (but not null); even if
         // it is not empty, it may compact down to nothing if all rows are deleted.
         logger.info("rymDebug[transferred]: This is runMayThrow for secondary node, as this compaction transaction involves transferred sstables");
@@ -551,7 +551,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                              prevRow.partitionKey().getToken(), row.partitionKey().getToken());
                             }
                         }
-                        if(!isKeyInTransfferedSSTableKeyRanges(row.partitionKey(), transfferedSSTableKeyRanges))
+                        if(!isKeyInTransferredSSTableKeyRanges(row.partitionKey(), TransferredSSTableKeyRanges))
                             if (writer.append(row))
                                 totalKeysWritten++;
                         prevRow = row;
@@ -644,9 +644,9 @@ public class CompactionTask extends AbstractCompactionTask {
         }
     }
 
-    private boolean isKeyInTransfferedSSTableKeyRanges(DecoratedKey key, List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges) {
+    private boolean isKeyInTransferredSSTableKeyRanges(DecoratedKey key, List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) {
 
-        for(TransfferedSSTableKeyRange range : transfferedSSTableKeyRanges) {
+        for(TransferredSSTableKeyRange range : TransferredSSTableKeyRanges) {
             if(range.first.compareTo(key)<=0 && range.last.compareTo(key) >= 0) {
                 return true;
             }

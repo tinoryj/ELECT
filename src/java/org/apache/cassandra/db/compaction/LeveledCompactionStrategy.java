@@ -225,14 +225,14 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
                     
         boolean isContainReplicationTransferredToErasureCoding = false;
-        List<TransferredSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+        List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = new ArrayList<>();
         int size = 0;
 
         for (SSTableReader sstable : sstables) {
             if (sstable.isReplicationTransferredToErasureCoding()) {
                 isContainReplicationTransferredToErasureCoding = true;
                 TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
-                transfferedSSTableKeyRanges.add(range);
+                TransferredSSTableKeyRanges.add(range);
             }
             size++;
         }
@@ -242,7 +242,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         }
 
         return Arrays.<AbstractCompactionTask>asList(
-                new LeveledCompactionTask(cfs, txn, 0, gcBefore, getMaxSSTableBytes(), true, transfferedSSTableKeyRanges));
+                new LeveledCompactionTask(cfs, txn, 0, gcBefore, getMaxSSTableBytes(), true, TransferredSSTableKeyRanges));
 
     }
 
@@ -263,14 +263,14 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int level = sstables.size() > 1 ? 0 : sstables.iterator().next().getSSTableLevel();
 
         boolean isContainReplicationTransferredToErasureCoding = false;
-        List<TransferredSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+        List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = new ArrayList<>();
         int size = 0;
 
         for (SSTableReader sstable : sstables) {
             if (sstable.isReplicationTransferredToErasureCoding()) {
                 isContainReplicationTransferredToErasureCoding = true;
                 TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
-                transfferedSSTableKeyRanges.add(range);
+                TransferredSSTableKeyRanges.add(range);
             }
             size++;
         }
@@ -280,7 +280,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         }
 
         return new LeveledCompactionTask(cfs, transaction, level, gcBefore,
-                level == 0 ? Long.MAX_VALUE : getMaxSSTableBytes(), false, transfferedSSTableKeyRanges);
+                level == 0 ? Long.MAX_VALUE : getMaxSSTableBytes(), false, TransferredSSTableKeyRanges);
     }
 
     @Override
@@ -289,7 +289,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int level = -1;
 
         boolean isContainReplicationTransferredToErasureCoding = false;
-        List<TransferredSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+        List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = new ArrayList<>();
         int size = 0;
         
         // if all sstables are in the same level, we can set that level:
@@ -302,7 +302,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             if (sstable.isReplicationTransferredToErasureCoding()) {
                 isContainReplicationTransferredToErasureCoding = true;
                 TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
-                transfferedSSTableKeyRanges.add(range);
+                TransferredSSTableKeyRanges.add(range);
             }
             size++;
         }
@@ -312,7 +312,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             return null;
         }
 
-        return new LeveledCompactionTask(cfs, txn, level, gcBefore, maxSSTableBytes, false, transfferedSSTableKeyRanges);
+        return new LeveledCompactionTask(cfs, txn, level, gcBefore, maxSSTableBytes, false, TransferredSSTableKeyRanges);
     }
 
     /**

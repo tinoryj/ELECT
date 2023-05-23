@@ -98,7 +98,7 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.Verifier;
-import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.virtual.VirtualKeyspaceRegistry;
 import org.apache.cassandra.dht.*;
@@ -803,7 +803,7 @@ public class StorageService extends NotificationBroadcasterSupport
             }
 
             @Override
-            protected void runMayThrow(List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
+            protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
                     throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
