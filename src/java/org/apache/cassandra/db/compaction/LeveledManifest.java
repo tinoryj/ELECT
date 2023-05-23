@@ -483,14 +483,18 @@ public class LeveledManifest {
         for (Map.Entry<SSTableReader, Bounds<Token>> pair : sstables.entrySet()) {
             // we cannot select the sstables that isReplicationTransferredToErasureCoding is (true) and 
             // this sstable is belong to primary LSM tree
-            if (pair.getValue().intersects(promotedBounds)
-                  && (!pair.getKey().isReplicationTransferredToErasureCoding() || !pair.getKey().getColumnFamilyName().equals("usertable"))
-                 ) {
-                overlapped.add(pair.getKey());
-            }
-            
-            if(pair.getKey().isReplicationTransferredToErasureCoding()) {
-                logger.debug("rymDebug[transferred]: {} is a transferred sstable", pair.getKey().descriptor);
+            if (pair.getValue().intersects(promotedBounds)) {
+
+                if((pair.getKey().isReplicationTransferredToErasureCoding() &&
+                    pair.getKey().getColumnFamilyName().equals("usertable"))){
+                    logger.debug("rymDebug: we cannot select sstable {}", pair.getKey().descriptor);
+                } else {
+                    overlapped.add(pair.getKey());
+                    if(pair.getKey().isReplicationTransferredToErasureCoding()) {
+                        logger.debug("rymDebug[transferred]: select a transferred sstable {}", pair.getKey().descriptor);
+                    }
+                }
+                
             }
                 
         }
