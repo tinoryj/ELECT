@@ -76,7 +76,7 @@ public class View
     // When marking compacting, we now  indicate if we expect the sstables to be present (by default we do),
     // and we then check that not only are they all present in the live set, but that the exact instance present is
     // the one we made our decision to compact against.
-    final Map<SSTableReader, SSTableReader> sstablesMap;
+    public final Map<SSTableReader, SSTableReader> sstablesMap;
     final Map<SSTableReader, SSTableReader> compactingMap;
 
     final SSTableIntervalTree intervalTree;
