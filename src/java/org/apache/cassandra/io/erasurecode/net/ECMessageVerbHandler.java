@@ -110,11 +110,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
 
         // StorageService.instance.globalRecvQueues.forEach((address, queue) -> System.out.print("Queue length of " + address + " is " + queue.size()));
-        logger.debug("rymDebug: Insight to global recv queue-------------------------------------------------");
+        String logString = "rymDebug: Insight the globalRecvQueues";
         for(Map.Entry<InetAddressAndPort, Queue<ECMessage>> entry : StorageService.instance.globalRecvQueues.entrySet()) {
-            logger.debug("rymDebug: The queue length of {} is {}", entry.getKey(), entry.getValue().size());
+            String str = entry.getKey().toString() + " has " + entry.getValue().size() + "elements";
+            logString += str;
         }
-        logger.debug("rymDebug: Insight to global recv queue------------------------------------------------");
+        logger.debug(logString);
 
         // check whether we should update the parity code
 
