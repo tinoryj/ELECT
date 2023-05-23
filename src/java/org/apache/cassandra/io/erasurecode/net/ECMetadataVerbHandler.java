@@ -134,11 +134,10 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                     OperationType.COMPACTION);
                             if (updateTxn != null) {
                                 if (rewriteSStables.size() == 1) {
-                                    // List<DecoratedKey> allKeys = rewriteSStables.get(0).getAllDecoratedKeys();
+                                    
                                     DecoratedKey fistKey = rewriteSStables.get(0).first;
                                     DecoratedKey lastKey = rewriteSStables.get(0).last;
-                                    // logger.debug("rymDebug: replace sstable {} Data.db with EC.db",
-                                    // ecSSTable.descriptor);
+                                    logger.debug("rymDebug: Anyway, we just replace the sstables");
                                     if (rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
                                         // delete sstable if sstable Hash can be found
                                         cfs.replaceSSTable(message.payload, cfs, fileNamePrefix, updateTxn);

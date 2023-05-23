@@ -417,6 +417,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     // [CASSANDRAEC]
     public static SSTableReader openECSSTable(ECMetadata ecMetadata, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
 
+        logger.debug("rymDebug: this is invoke openECSSTable method");
         // Get a correct generation id
         SSTableId ecSSTableId = cfs.sstableIdGenerator.get();
         String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
