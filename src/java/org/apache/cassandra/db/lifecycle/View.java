@@ -284,7 +284,7 @@ public class View
     }
 
     // construct a function to change the liveset in a Snapshot
-    static Function<View, View> updateLiveSet(final Set<SSTableReader> remove, final Iterable<SSTableReader> add)
+    public static Function<View, View> updateLiveSet(final Set<SSTableReader> remove, final Iterable<SSTableReader> add)
     {
         if (remove.isEmpty() && Iterables.isEmpty(add))
             return Functions.identity();

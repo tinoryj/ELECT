@@ -60,6 +60,7 @@ import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.DefaultCompactionWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableSet;
+import org.apache.cassandra.db.lifecycle.View;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
@@ -359,10 +360,11 @@ public class CompactionTask extends AbstractCompactionTask {
                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
                     }
                     logger.debug("rymDebug: this is rewrite SSTable method, replacing SSTable {}", ecSSTable.descriptor);
-                    transaction.update(ecSSTable, false);
-                    ecSSTable.setupOnline();
-                    transaction.checkpoint();
+                    
+                    // transaction.tracker.addSSTables(Collections.singleton(ecSSTable));
+                    transaction.tracker.apply(View.updateLiveSet(Collections.emptySet(), Collections.singleton(ecSSTable)));
                     newSSTables = writer.finish(ecSSTable);
+                    // newSSTables = writer.finish();
                     logger.debug("[Rewrite SSTables]: rewrite SSTable is FINISHED, ecSSTable is {},", ecSSTable.descriptor);
                     // TODO: re-create sstable reader from ecmetadata 
 
