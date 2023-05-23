@@ -362,7 +362,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     logger.debug("rymDebug: this is rewrite SSTable method, replacing SSTable {}", ecSSTable.descriptor);
                     
                     // transaction.tracker.addSSTables(Collections.singleton(ecSSTable));
-                    transaction.tracker.apply(View.updateLiveSet(Collections.emptySet(), Collections.singleton(ecSSTable)));
+                    // transaction.tracker.apply(View.updateLiveSet(Collections.emptySet(), Collections.singleton(ecSSTable)));
                     newSSTables = writer.finish(ecSSTable);
                     // newSSTables = writer.finish();
                     logger.debug("[Rewrite SSTables]: rewrite SSTable is FINISHED, ecSSTable is {},", ecSSTable.descriptor);

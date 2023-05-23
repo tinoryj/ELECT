@@ -1827,7 +1827,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             // txn.update(ecSSTable, false);
             // ecSSTable.setupOnline();
             // txn.checkpoint();
-            txn.tracker.apply(View.updateLiveSet(Collections.emptySet(), Collections.singleton(ecSSTable)));
+            // txn.tracker.apply(View.updateLiveSet(Collections.emptySet(), Collections.singleton(ecSSTable)));
 
             maybeFail(txn.commitEC(null, ecSSTable, false));
             logger.debug("rymDebug: replaced SSTable {} successfully", ecSSTable.descriptor);

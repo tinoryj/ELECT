@@ -269,14 +269,24 @@ public class View
         {
             public boolean apply(View view)
             {
-                for (SSTableReader reader : readers)
-                    if (view.compacting.contains(reader) || view.sstablesMap.get(reader) != reader || reader.isMarkedCompacted()){
-                        if(reader.isReplicationTransferredToErasureCoding()) {
+                for (SSTableReader reader : readers){
+                    if(reader.isReplicationTransferredToErasureCoding() && !reader.getColumnFamilyName().equals("usertable")) {
+                        if (reader.isReplicationTransferredToErasureCoding()) {
                             logger.debug("rymDebug: the transferred sstable {} is already marked as compaction! The reason is view.compacting.contains? ({}), view.sstablesMap.get(reader) != reader? ({}), view.sstablesMap.get(reader) ({}) reader.isMarkedCompacted? ({})",
-                                         reader.descriptor, view.compacting.contains(reader), view.sstablesMap.get(reader) != reader, view.sstablesMap.get(reader), reader.isMarkedCompacted());
+                                    reader.descriptor, view.compacting.contains(reader),
+                                    view.sstablesMap.get(reader) != reader, view.sstablesMap.get(reader),
+                                    reader.isMarkedCompacted());
+                            if(view.compacting.contains(reader)|| reader.isMarkedCompacted())
+                                return false;
                         }
-                        return false;
+                    } else {
+                        if (view.compacting.contains(reader) || view.sstablesMap.get(reader) != reader || reader.isMarkedCompacted()) {
+                            return false;
+                        }
                     }
+                    
+                }
+                    
                         
                 return true;
             }

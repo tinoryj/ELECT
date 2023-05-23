@@ -324,11 +324,26 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             }
             newData[0].rewind();
 
+            ByteBuffer[] newParityCodes = new ByteBuffer[parityCodes.length];
+            // 0: old data, 1: new data, m is old parity codes
+            ByteBuffer[] dataUpdate = new ByteBuffer[2 + parityCodes.length];
+            for(int i=0;i < dataUpdate.length;i++) {
+                dataUpdate[i].allocate(codeLength);
+            }
+            // fill this buffer
+            dataUpdate[0] = oldData[0];
+            dataUpdate[0].rewind();
+            dataUpdate[1] = newData[0];
+            dataUpdate[1].rewind();
+
+            for(int i = 2; i< dataUpdate.length; i++) {
+                dataUpdate[i] = parityCodes[i-2];
+                dataUpdate[i].rewind();
+            }
 
             // Encode update
             try {
-                encoder.encodeUpdate(oldData, parityCodes, targetDataIndex);
-                encoder.encodeUpdate(newData, parityCodes, targetDataIndex);
+                encoder.encodeUpdate(dataUpdate, newParityCodes, targetDataIndex);
             } catch (IOException e) {
                 logger.error("rymERROR: Perform erasure code error", e);
             }
@@ -336,7 +351,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             
             // generate parity hash code
             List<String> parityHashList = new ArrayList<String>();
-            for(ByteBuffer parityCode : parityCodes) {
+            for(ByteBuffer parityCode : newParityCodes) {
                 parityHashList.add(ECNetutils.stringToHex(String.valueOf(parityCode.hashCode())));
             }
 
@@ -346,7 +361,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 FileChannel fileChannel = FileChannel.open(Paths.get(localParityCodeDir, parityHashList.get(0)),
                                                             StandardOpenOption.WRITE,
                                                              StandardOpenOption.CREATE);
-                fileChannel.write(parityCodes[0]);
+                fileChannel.write(newParityCodes[0]);
                 fileChannel.close();
                 // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
             } catch (IOException e) {
@@ -356,7 +371,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
             // sync encoded data to parity nodes
             ECParityNode ecParityNode = new ECParityNode(null, null, 0);
-            ecParityNode.distributeCodedDataToParityNodes(parityCodes, parityNodes, parityHashList);
+            ecParityNode.distributeCodedDataToParityNodes(newParityCodes, parityNodes, parityHashList);
 
             // update ECMetadata and distribute it
             // get old ECMetadata content 
