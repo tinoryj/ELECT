@@ -121,6 +121,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
 
         // Once we have k different sstContent, do erasure coding locally
+        // TODO: need a while loop
         if(StorageService.instance.globalRecvQueues.size()>=message.payload.ecMessageContent.ecDataNum) {
             logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
             ECMessage tmpArray[] = new ECMessage[message.payload.ecMessageContent.ecDataNum];

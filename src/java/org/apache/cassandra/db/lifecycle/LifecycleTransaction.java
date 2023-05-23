@@ -739,7 +739,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         // and notification status for the obsolete and new files
         logger.debug("rymDebug: commit ec_metadata {}", ecSSTable.descriptor);
         logger.debug("rymDebug: Before update live set, the size of sstables map is {}", tracker.view.get().sstablesMap.size());
-        accumulate = tracker.apply(updateLiveSet(Collections.emptySet(), Collections.singletonList(ecSSTable)), accumulate);
+        // accumulate = tracker.apply(updateLiveSet(Collections.emptySet(), Collections.singletonList(ecSSTable)), accumulate);
         logger.debug("rymDebug: After update live set, the size of sstables map is {}", tracker.view.get().sstablesMap.size());
         accumulate = markObsolete(obsoletions, accumulate);
         accumulate = tracker.updateSizeTracking(logged.obsolete, logged.update, accumulate, ecSSTable);
