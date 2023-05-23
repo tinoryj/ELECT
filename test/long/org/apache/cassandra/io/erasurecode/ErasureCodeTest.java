@@ -123,7 +123,7 @@ public class ErasureCodeTest {
         }
 
         // update
-        logger.debug("ErasureCodeTest - Perform encode update for data block 1!");
+        logger.debug("ErasureCodeTest - Perform encode update for data block 0!");
         ByteBuffer[] dataUpdate = new ByteBuffer[2 + m];
         dataUpdate[0] = ByteBuffer.allocateDirect(codeLength);
         data[0].rewind();
@@ -141,7 +141,7 @@ public class ErasureCodeTest {
         }
 
         // perform update
-        encoder.encodeUpdate(dataUpdate, UpdateParity, 1);
+        encoder.encodeUpdate(dataUpdate, UpdateParity, 0);
 
         // recoveryOriginalSrc[0] = null;
         // for (int i = 1; i < k; i++) {

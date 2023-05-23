@@ -26,6 +26,9 @@ gcc -I ${JAVA_HOME}/include/linux/ -I ${JAVA_HOME}/include/ -I /usr/includ \
     -L/usr/lib -lisal
 echo "Complete generating libec.so!"
 
+exit
+
+sudo mkdir -p /usr/lib/jni
 sudo rm -rf /usr/lib/jni/libec.so
 sudo cp libec.so /usr/lib/jni
 ls /usr/lib/jni | grep libec.so

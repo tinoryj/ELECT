@@ -77,11 +77,11 @@ int encode(IsalEncoder* pCoder, unsigned char** dataUnits,
     int numDataUnits = pCoder->coder.numDataUnits;
     int numParityUnits = pCoder->coder.numParityUnits;
     int i;
-    printf("Input data units (for encoding):\n");
-    for (int i = 0; i < numDataUnits; i++) {
-        dump(dataUnits[i], 8);
-        printf("\n");
-    }
+    // printf("Input data units (for encoding):\n");
+    // for (int i = 0; i < numDataUnits; i++) {
+    //     dump(dataUnits[i], 8);
+    //     printf("\n");
+    // }
 
     for (i = 0; i < numParityUnits; i++) {
         memset(parityUnits[i], 0, chunkSize);
@@ -89,11 +89,11 @@ int encode(IsalEncoder* pCoder, unsigned char** dataUnits,
 
     ec_encode_data(chunkSize, numDataUnits, numParityUnits,
         pCoder->gftbls, dataUnits, parityUnits);
-    printf("Generted parity units (for encoding):\n");
-    for (int i = 0; i < numParityUnits; i++) {
-        dump(parityUnits[i], 8);
-        printf("\n");
-    }
+    // printf("Generted parity units (for encoding):\n");
+    // for (int i = 0; i < numParityUnits; i++) {
+    //     dump(parityUnits[i], 8);
+    //     printf("\n");
+    // }
     return 0;
 }
 
@@ -102,47 +102,42 @@ int encodeUpdate(IsalEncoder* pCoder, unsigned char** newDataUnitAndParitys, int
 
     int numDataUnits = pCoder->coder.numDataUnits;
     int numParityUnits = pCoder->coder.numParityUnits;
-    printf("Start encode update in C environment, target replace data block ID = %d\n", fragment_index);
-    printf("Input old data units (for encoding update):\n");
-    dump(newDataUnitAndParitys[0], 8);
-    printf("\nInput new data units (for encoding update):\n");
-    dump(newDataUnitAndParitys[1], 8);
-    printf("\n");
+    // printf("Start encode update in C environment, target replace data block ID = %d\n", fragment_index);
+    // printf("Input old data units (for encoding update):\n");
+    // dump(newDataUnitAndParitys[0], 8);
+    // printf("\nInput new data units (for encoding update):\n");
+    // dump(newDataUnitAndParitys[1], 8);
+    // printf("\n");
     unsigned char** tempParityUnits = (unsigned char**)malloc(sizeof(unsigned char*) * numParityUnits);
     for (int i = 0; i < numParityUnits; i++) {
-        if (newDataUnitAndParitys[i + 2] == NULL) {
-            printf("newDataUnitAndParitys[%d] is null\n", i + 2);
-            break;
-        }
         tempParityUnits[i] = (unsigned char*)malloc(chunkSize);
         memcpy(tempParityUnits[i], newDataUnitAndParitys[i + 2], chunkSize);
-        printf("Input old parity units [%d] (for encoding update):\n", i);
-        dump(tempParityUnits[i], 8);
-        printf("\n");
+        // printf("Input old parity units [%d] (for encoding update):\n", i);
+        // dump(tempParityUnits[i], 8);
+        // printf("\n");
     }
 
     unsigned char* dataXOR = (unsigned char*)malloc(sizeof(unsigned char) * chunkSize);
     for (int i = 0; i < chunkSize; i++) {
         dataXOR[i] = newDataUnitAndParitys[0][i] ^ newDataUnitAndParitys[1][i];
     }
-    printf("Start encode update in C environment, memcpy done, target replace data block ID = %d\n", fragment_index);
-    // ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, newDataUnitAndParitys[0], tempParityUnits);
-    // ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, newDataUnitAndParitys[1], tempParityUnits)
-    printf("XOR of old and new data:\n");
-    dump(dataXOR, 8);
-    printf("\n");
+    // printf("Start encode update in C environment, memcpy done, target replace data block ID = %d\n", fragment_index);
+    // printf("XOR of old and new data:\n");
+    // dump(dataXOR, 8);
+    // printf("\n");
     ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, dataXOR, tempParityUnits);
-    printf("Encoded parity:\n");
+    // printf("Encoded parity:\n");
     for (int i = 0; i < numParityUnits; i++) {
         memcpy(newParityUnits[i], tempParityUnits[i], chunkSize);
-        dump(newParityUnits[i], 8);
-        printf("\n");
+        // dump(newParityUnits[i], 8);
+        // printf("\n");
     }
-    printf("Encode update in C environment done\n");
+    // printf("Encode update in C environment done\n");
     for (int i = 0; i < numParityUnits; i++) {
         free(tempParityUnits[i]);
     }
     free(tempParityUnits);
+    free(dataXOR);
     return 0;
 }
 
@@ -211,22 +206,22 @@ int decode(IsalDecoder* pCoder, unsigned char** inputs,
     int numDataUnits = pCoder->coder.numDataUnits;
     int i;
 
-    printf("Start decoding in C environment, first element in decode index = %d, first element in erased index = %d\n", decodeIndexes[0], erasedIndexes[0]);
+    // printf("Start decoding in C environment, first element in decode index = %d, first element in erased index = %d\n", decodeIndexes[0], erasedIndexes[0]);
     processErasures(pCoder, inputs, decodeIndexes, erasedIndexes, numErased);
-    for (i = 0; i < numDataUnits; i++) {
-        printf("Target decode index:  %d ", pCoder->decodeIndex[i]);
-        dump(inputs[i], 8);
-        printf("\n");
-    }
-    printf("\nTarget recovery index: %d\n", pCoder->erasedIndexes[0]);
+    // for (i = 0; i < numDataUnits; i++) {
+    //     printf("Target decode index:  %d ", pCoder->decodeIndex[i]);
+    //     dump(inputs[i], 8);
+    //     printf("\n");
+    // }
+    // printf("\nTarget recovery index: %d\n", pCoder->erasedIndexes[0]);
     for (i = 0; i < numErased; i++) {
         memset(outputs[i], 0, chunkSize);
     }
 
     ec_encode_data(chunkSize, numDataUnits, pCoder->numErased,
         pCoder->gftbls, pCoder->recoverySrc, outputs);
-    dump(outputs[0], 8);
-    printf("\n");
+    // dump(outputs[0], 8);
+    // printf("\n");
     return 0;
 }
 
