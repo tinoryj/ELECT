@@ -367,6 +367,10 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
      */
     public void update(SSTableReader reader, boolean original)
     {
+        if(reader.isReplicationTransferredToErasureCoding()) {
+            logger.debug("update a transferred sstable {}", reader.descriptor);
+        }
+        
         assert !staged.update.contains(reader) : "each reader may only be updated once per checkpoint: " + reader;
         assert !identities.contains(reader.instanceId) : "each reader instance may only be provided as an update once: " + reader;
         // check it isn't obsolete, and that it matches the original flag
