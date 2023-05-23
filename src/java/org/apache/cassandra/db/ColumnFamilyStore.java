@@ -93,6 +93,7 @@ import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.compaction.AbstractCompactionStrategy;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.CompactionStrategyManager;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.Verifier;
 import org.apache.cassandra.db.filter.ClusteringIndexFilter;
@@ -125,8 +126,10 @@ import org.apache.cassandra.index.transactions.UpdateTransaction;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
+import org.apache.cassandra.io.erasurecode.net.ECMessage.ECMessageContent;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
@@ -455,6 +458,16 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         setCompressionParameters(FBUtilities.fromJsonMap(options));
     }
 
+    /**
+     * Get scheduled tasks for sending SSTables to do erasure coding.
+     * 
+     * @param keyspaceName 
+     * @param cfName
+     * @param sendSSTLevel 
+     * @param delay the selected SSTable's age must >= this value
+     * 
+     */
+
     public static Runnable getSendSSTRunnable(String keyspaceName, String cfName, int sendSSTLevel, int delay) {
         return new SendSSTRunnable(keyspaceName, cfName, sendSSTLevel, delay);
     }
@@ -480,72 +493,62 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             if (!sstatbles.isEmpty()) {
                 logger.debug("rymDebug: get {} sstables from level {}", sstatbles.size(), level);
                 for (SSTableReader sstable : sstatbles) {
-                    if (!sstable.isReplicationTransferredToErasureCoding()) {
+                    if (sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                        if (!sstable.isReplicationTransferredToErasureCoding()) {
 
-                        logger.debug(
-                                "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
-                                sstable.getFilename(), sstable.getSSTableLevel(),
-                                DatabaseDescriptor.getCompactionThreshold(),
-                                sstable.descriptor.ksname,
-                                sstable.descriptor.cfname,
-                                sstable.descriptor.version,
-                                sstable.descriptor.id,
-                                sstable.descriptor);
-                        long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+                            logger.debug(
+                                    "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
+                                    sstable.getFilename(), sstable.getSSTableLevel(),
+                                    DatabaseDescriptor.getCompactionThreshold(),
+                                    sstable.descriptor.ksname,
+                                    sstable.descriptor.cfname,
+                                    sstable.descriptor.version,
+                                    sstable.descriptor.id,
+                                    sstable.descriptor);
+                            long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 
-                        long delayMilli = delay * 60 * 1000;
+                            long delayMilli = delay * 60 * 1000;
 
-                        if (duration >= delayMilli
-                                && sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                            logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                                    sstable.getSSTableLevel());
-                            String key = sstable.first.getRawKey(sstable.metadata());
-                            try {
-                                ByteBuffer sstContent = sstable.getSSTContent();
-                                List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
+                            if (duration >= delayMilli
+                                    && sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                                logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                                        sstable.getSSTableLevel());
+                                String key = sstable.first.getRawKey(sstable.metadata());
+                                try {
+                                    ByteBuffer sstContent = sstable.getSSTContent();
+                                    String sstHashID = sstable.getSSTableHashID();
+                                    List<InetAddressAndPort> replicaNodes = StorageService.instance
+                                            .getReplicaNodesWithPort(keyspaceName, cfName, key);
 
-                                String sstHashID = stringToHex(sstable.getSSTableHashID());
-                                List<InetAddressAndPort> replicaNodes = StorageService.instance
-                                        .getReplicaNodesWithPort(keyspaceName, cfName, key);
-                                logger.debug(
-                                        "rymDebug: send sstables size {}, first key is {}, replicaNodes are {}, row num is {},allKeys num is {}",
-                                        sstContent.remaining(), replicaNodes, sstable.getTotalRows(), allKeys.size());
-                                ECMessage ecMessage = new ECMessage(sstContent, sstHashID, keyspaceName, cfName,
-                                        "", "", replicaNodes);
-                                // send selected sstable to parity nodes
-                                ecMessage.sendSSTableToParity();
-                                // send selected sstable to secondary nodes
-                                // sstable.getScanner();
+                                    // Sync sstable with secondary nodes for rewrite
+                                    ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID);
+                                    
+                                    // Send selected sstable for perform erasure coding.
+                                    ECMessage ecMessage = new ECMessage(sstContent, new ECMessageContent(sstHashID, keyspaceName, cfName,
+                                                                        replicaNodes));
+                                    ecMessage.sendSSTableToParity();
+                                    StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.ecMessageContent.sstHashID,
+                                                                                              ecMessage.ecMessageContent.parityNodes);
 
-                                InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
-                                // read file here
-                                byte[] filterFile = ECNetutils
-                                        .readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
-                                byte[] indexFile = ECNetutils
-                                        .readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
-                                byte[] statsFile = ECNetutils
-                                        .readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
-
-                                SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile);
-
-                                for (InetAddressAndPort rpn : replicaNodes) {
-                                    if (!rpn.equals(locaIP)) {
-                                        String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                                        ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys,
-                                                sstInBytes);
-                                        ecSync.sendSSTableToSecondary(rpn);
+                                    if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
+                                        logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
                                     }
-                                }
-                                // sstable.SetIsReplicationTransferredToErasureCoding();
 
-                            } catch (IOException e) {
-                                logger.error("rymError: {}", e);
-                            } catch (Exception e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
+                                } catch (IOException e) {
+                                    logger.error("rymERROR: {}", e);
+                                } catch (Exception e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
                             }
+                        } else {
+                            logger.info("SSTable is transferred");
+                            continue;
                         }
+                    } else {
+                        throw new IllegalStateException("The method of getting sstables from a certain level is error!");
                     }
+
                 }
             } else {
                 logger.debug("rymDebug: cannot get sstables from level {}", level);
@@ -732,21 +735,21 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt,
-            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            TimeUUID pendingRepair, boolean isTransient,
             int sstableLevel, SerializationHeader header,
             LifecycleNewTracker lifecycleNewTracker) {
         MetadataCollector collector = new MetadataCollector(metadata().comparator).sstableLevel(sstableLevel);
         return createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, collector, header,
+                collector, header,
                 lifecycleNewTracker);
     }
 
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt,
-            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            TimeUUID pendingRepair, boolean isTransient,
             MetadataCollector metadataCollector,
             SerializationHeader header, LifecycleNewTracker lifecycleNewTracker) {
         return getCompactionStrategyManager().createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair,
-                isTransient, isReplicationTransferredToErasureCoding, metadataCollector, header,
+                isTransient, metadataCollector, header,
                 indexManager.listIndexes(), lifecycleNewTracker);
     }
 
@@ -1424,7 +1427,21 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 }
 
                 @Override
-                protected void runMayThrow(List<DecoratedKey> sourceKeys, SSTableReader ecSSTable) throws Exception {
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
+                        throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                        String fileNamePrefix) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1780,9 +1797,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     // rewrite the sstables based on the source decorated keys
-    public CompactionManager.AllSSTableOpStatus sstablesRewrite(final List<DecoratedKey> sourceKeys,
+    public CompactionManager.AllSSTableOpStatus sstablesRewrite(final DecoratedKey first,
+            final DecoratedKey last, 
             List<SSTableReader> sstables,
-            SSTableReader ecSSTable,
+            ECMetadata metadata, String fileNamePrefix,
             final LifecycleTransaction txn,
             final boolean skipIfCurrentVersion,
             final long skipIfNewerThanTimestamp,
@@ -1790,15 +1808,35 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite");
 
-        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, sourceKeys, sstables, ecSSTable,
-                txn, skipIfCurrentVersion, skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
+        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, first, last, sstables, metadata, fileNamePrefix, txn,
+                skipIfCurrentVersion,
+                skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 
     // [CASSANDRAEC]
-    public void replaceSSTable(SSTableReader ecSSTable, final LifecycleTransaction txn) {
+    public void replaceSSTable(ECMetadata metadata, ColumnFamilyStore cfs, String fileNamePrefix, final LifecycleTransaction txn) {
         // notify sstable changes to view and leveled generation
         // unmark sstable compacting status
-        maybeFail(txn.commitEC(null, ecSSTable));
+        
+        try {
+            SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, cfs, fileNamePrefix);
+            if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
+                logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+            }
+            logger.debug("rymDebug: this is replace SSTable method, replacing SSTable {}", ecSSTable.descriptor);
+            // txn.update(ecSSTable, false);
+            // ecSSTable.setupOnline();
+            // txn.checkpoint();
+            txn.tracker.apply(View.updateLiveSet(Collections.emptySet(), Collections.singleton(ecSSTable)));
+
+            maybeFail(txn.commitEC(null, ecSSTable, false));
+            logger.debug("rymDebug: replaced SSTable {} successfully", ecSSTable.descriptor);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        
     }
 
     public CompactionManager.AllSSTableOpStatus relocateSSTables(int jobs)
@@ -2520,7 +2558,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 keys,
                 0,
                 repairSessionID,
-                false,
                 false,
                 0,
                 new SerializationHeader(true,

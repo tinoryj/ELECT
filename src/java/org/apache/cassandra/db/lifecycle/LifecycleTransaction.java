@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.compaction.OperationType;
@@ -366,15 +367,21 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
      */
     public void update(SSTableReader reader, boolean original)
     {
+        if(reader.isReplicationTransferredToErasureCoding()) {
+            logger.debug("update a transferred sstable {}", reader.descriptor);
+        }
+        
         assert !staged.update.contains(reader) : "each reader may only be updated once per checkpoint: " + reader;
         assert !identities.contains(reader.instanceId) : "each reader instance may only be provided as an update once: " + reader;
         // check it isn't obsolete, and that it matches the original flag
-        assert !(logged.obsolete.contains(reader) || staged.obsolete.contains(reader)) : "may not update a reader that has been obsoleted";
+        assert !logged.obsolete.contains(reader)  : "may not update a reader that has been obsoleted in logged";
+        assert !staged.obsolete.contains(reader) : "may not update a reader that has been obsoleted in staged";
         assert original == originals.contains(reader) : String.format("the 'original' indicator was incorrect (%s provided): %s", original, reader);
         staged.update.add(reader);
         identities.add(reader.instanceId);
         if (!isOffline())
             reader.setupOnline();
+        //throw new IllegalStateException("rymDebug: debug for update method");
     }
 
     public void update(Collection<SSTableReader> readers, boolean original)
@@ -516,6 +523,12 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
             cancel(cancel);
     }
 
+    // [CASSANDRAEC]
+    public void removeAll(Iterable<SSTableReader> cancels) {
+        for (SSTableReader cancel : cancels)
+            originals.remove(cancel);
+    }
+
     /**
      * remove the provided readers from this Transaction, and return a new Transaction to manage them
      * only permitted to be called if the current Transaction has never been used
@@ -560,7 +573,8 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
     // [CASSANDRAEC]
     private Throwable unmarkCompacting(Set<SSTableReader> unmark, Throwable accumulate, SSTableReader ecSSTable)
     {
-        unmark.add(ecSSTable);
+        logger.debug("This is ummarkCompacting for ec sstable {}", ecSSTable.descriptor);
+        // unmark.add(ecSSTable);
         accumulate = tracker.apply(updateCompacting(unmark, emptySet()), accumulate);
         // when the CFS is invalidated, it will call unreferenceSSTables().  However, unreferenceSSTables only deals
         // with sstables that aren't currently being compacted.  If there are ongoing compactions that finish or are
@@ -717,15 +731,17 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         maybeFail(accumulate);
 
         // transaction log commit failure means we must abort; safe commit is not possible
+        log.updateState();
         maybeFail(log.commit(null));
 
         // this is now the point of no return; we cannot safely rollback, so we ignore exceptions until we're done
         // we restore state by obsoleting our obsolete files, releasing our references to them, and updating our size
         // and notification status for the obsolete and new files
-
+        logger.debug("rymDebug: commit ec_metadata {}", ecSSTable.descriptor);
         accumulate = markObsolete(obsoletions, accumulate);
-        accumulate = tracker.updateSizeTracking(logged.obsolete, logged.update, accumulate);
+        accumulate = tracker.updateSizeTracking(logged.obsolete, logged.update, accumulate, ecSSTable);
         accumulate = runOnCommitHooks(accumulate);
+        logged.obsolete.add(ecSSTable);
         accumulate = release(selfRefs(logged.obsolete), accumulate);
         accumulate = tracker.notifySSTablesChanged(originals, logged.update, log.type(), accumulate, ecSSTable);
 

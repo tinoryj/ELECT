@@ -88,19 +88,17 @@ public class SSTableRepairedAtSetter {
             if (setIsRepaired) {
                 if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
                     FileTime f = Files.getLastModifiedTime(new File(descriptor.filenameFor(Component.DATA)).toPath());
-                    descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false,
-                            false);
+                    descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false);
                 } else if (new File(descriptor.filenameFor(Component.EC_METADATA)).exists()){
                     FileTime f = Files
                             .getLastModifiedTime(new File(descriptor.filenameFor(Component.EC_METADATA)).toPath());
-                    descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false,
-                            false);
+                    descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false);
                 }else {
                     logger.debug("[Tinoryi] Could not find both EC metadata and data");
                 }
 
             } else {
-                descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, 0, null, false, false);
+                descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, 0, null, false);
             }
         }
     }

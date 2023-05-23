@@ -403,7 +403,7 @@ public class ReadCommandTest
                 }
             };
 
-        try (PartitionIterator partitionIterator = UnfilteredPartitionIterators.filter(UnfilteredPartitionIterators.merge(iterators, listener), nowInSeconds))
+        try (PartitionIterator partitionIterator = UnfilteredPartitionIterators.filter(UnfilteredPartitionIterators.merge(iterators, listener, false, null), nowInSeconds))
         {
 
             int i = 0;
@@ -1289,7 +1289,7 @@ public class ReadCommandTest
     {
         try
         {
-            sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, repairedAt, pendingSession, false,false);
+            sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, repairedAt, pendingSession, false);
             sstable.reloadSSTableMetadata();
         }
         catch (IOException e)

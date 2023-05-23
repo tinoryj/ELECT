@@ -81,14 +81,13 @@ public class BigTableWriter extends SSTableWriter {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             TableMetadataRef metadata,
             MetadataCollector metadataCollector,
             SerializationHeader header,
             Collection<SSTableFlushObserver> observers,
             LifecycleNewTracker lifecycleNewTracker) {
         super(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, metadata, metadataCollector, header,
+                metadata, metadataCollector, header,
                 observers);
         lifecycleNewTracker.trackNew(this); // must track before any files are created
 
@@ -107,15 +106,10 @@ public class BigTableWriter extends SSTableWriter {
                     new File(descriptor.filenameFor(Component.DIGEST)),
                     writerOption);
         }
-        if (isReplicationTransferredToErasureCoding) {
-            // logger.debug("[Tinoryj] find SSTable transfered from replication to EC, sstable's EC metadata name = {}", descriptor.filenameFor(Component.EC_METADATA));
-            dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.EC_METADATA)).compressed(false)
-                    .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
-        } else {
-            // logger.debug("[Tinoryj] find original data, sstable's data name = {}", descriptor.filenameFor(Component.DATA));
-            dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA)).compressed(compression)
-                    .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
-        }
+
+        
+        dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA)).compressed(compression)
+                .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
 
         chunkCache.ifPresent(dbuilder::withChunkCache);
         iwriter = new IndexWriter(keyCount);
@@ -182,9 +176,9 @@ public class BigTableWriter extends SSTableWriter {
      */
     protected long beforeAppend(DecoratedKey decoratedKey) {
         assert decoratedKey != null : "Keys must not be null"; // empty keys ARE allowed b/c of indexed column values
-        if (lastWrittenKey != null && lastWrittenKey.compareTo(decoratedKey) >= 0)
-            throw new RuntimeException("Last written key " + lastWrittenKey + " >= current key " + decoratedKey
-                    + " writing into " + getFilename());
+        // if (lastWrittenKey != null && lastWrittenKey.compareTo(decoratedKey) >= 0)
+        //     throw new RuntimeException("Last written key " + lastWrittenKey + " >= current key " + decoratedKey
+        //             + " writing into " + getFilename());
         return (lastWrittenKey == null) ? 0 : dataFile.position();
     }
 

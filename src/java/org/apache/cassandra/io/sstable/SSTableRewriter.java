@@ -212,7 +212,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         for (SSTableWriter writer : writers)
             accumulate = writer.commit(accumulate);
 
-        accumulate = transaction.commitEC(accumulate, ecSSTable);
+        accumulate = transaction.commitEC(accumulate, ecSSTable, true);
         return accumulate;
     }
 
@@ -365,7 +365,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
     public List<SSTableReader> finish()
     {
         // updateState();
-        logger.debug("rymDebug: updated state is {}", state());
+        // logger.debug("rymDebug: updated state is {}", state());
         super.finish();
         return finished();
     }

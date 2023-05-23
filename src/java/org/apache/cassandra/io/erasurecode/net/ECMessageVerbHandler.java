@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -36,24 +37,26 @@ import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureEncoder;
 import org.apache.cassandra.io.erasurecode.NativeRSEncoder;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.ForwardingInfo;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.ParamType;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 
 public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
     public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
-    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
 
-    private static ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
+    // private static ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
 
     private void respond(Message<?> respondTo, InetAddressAndPort respondToAddress) {
         Tracing.trace("Enqueuing response to {}", respondToAddress);
@@ -80,41 +83,54 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         }
         
         ByteBuffer sstContent = message.payload.sstContent;
-        int ec_data_num = message.payload.ecDataNum;
+        int ec_data_num = message.payload.ecMessageContent.ecDataNum;
 
         
-        for (String ep : message.payload.parityNodesString.split(",")) {
-            message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
-        }
+        // for (String ep : message.payload.parityNodesString.split(",")) {
+        //     message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
+        // }
 
-        // logger.debug("rymDebug: get new message!!! message is from: {}, primaryNode is {}, parityNodes is {}",
-        //  message.from(), message.payload.replicaNodes.get(0), message.payload.parityNodes);
+        logger.debug("rymDebug: get new message!!! message is from: {}, primaryNode is {}, parityNodes is {}",
+         message.from(), message.payload.ecMessageContent.replicaNodes.get(0), message.payload.ecMessageContent.parityNodes);
 
 
-        InetAddressAndPort primaryNode = message.payload.replicaNodes.get(0);
-        // Once we have k different sstContent, do erasure coding locally
-        if(!recvQueues.containsKey(primaryNode)) {
+        InetAddressAndPort primaryNode = message.payload.ecMessageContent.replicaNodes.get(0);
+
+        // save the received data to recvQueue
+        if(!StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
             Queue<ECMessage> recvQueue = new LinkedList<ECMessage>();
             recvQueue.add(message.payload);
-            recvQueues.put(primaryNode, recvQueue);
+            StorageService.instance.globalRecvQueues.put(primaryNode, recvQueue);
         }
         else {
-            recvQueues.get(primaryNode).add(message.payload);
+            StorageService.instance.globalRecvQueues.get(primaryNode).add(message.payload);
         }
         
         // logger.debug("rymDebug: recvQueues is {}", recvQueues);
 
-        if(recvQueues.size()>=message.payload.ecDataNum) {
+
+        // StorageService.instance.globalRecvQueues.forEach((address, queue) -> System.out.print("Queue length of " + address + " is " + queue.size()));
+        logger.debug("rymDebug: Insight to global recv queue-------------------------------------------------");
+        for(Map.Entry<InetAddressAndPort, Queue<ECMessage>> entry : StorageService.instance.globalRecvQueues.entrySet()) {
+            logger.debug("rymDebug: The queue length of {} is {}", entry.getKey(), entry.getValue().size());
+        }
+        logger.debug("rymDebug: Insight to global recv queue------------------------------------------------");
+
+        // check whether we should update the parity code
+
+
+        // Once we have k different sstContent, do erasure coding locally
+        if(StorageService.instance.globalRecvQueues.size()>=message.payload.ecMessageContent.ecDataNum) {
             // logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
-            ECMessage tmpArray[] = new ECMessage[message.payload.ecDataNum];
+            ECMessage tmpArray[] = new ECMessage[message.payload.ecMessageContent.ecDataNum];
             //traverse the recvQueues
             int i = 0;
-            for (InetAddressAndPort msg : recvQueues.keySet()) {
-                tmpArray[i] = recvQueues.get(msg).poll();
-                if(recvQueues.get(msg).size() == 0) {
-                    recvQueues.remove(msg);
+            for (InetAddressAndPort msg : StorageService.instance.globalRecvQueues.keySet()) {
+                tmpArray[i] = StorageService.instance.globalRecvQueues.get(msg).poll();
+                if(StorageService.instance.globalRecvQueues.get(msg).size() == 0) {
+                    StorageService.instance.globalRecvQueues.remove(msg);
                 }
-                if (i == message.payload.ecDataNum - 1) 
+                if (i == message.payload.ecMessageContent.ecDataNum - 1) 
                     break;
                 i++;
             }
@@ -145,21 +161,27 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
     
 
 
+    /** [CASSANDRAEC]
+     * To support perform erasure coding with multiple threads, we implement the following Runnable class
+     * @param ecDataNum the value of k
+     * @param ecParity the value of m
+     * @param messages the input data to be processed, length equal to ecDataNum
+     */
     private static  class ErasureCodeRunnable implements Runnable {
         private final int ecDataNum;
         private final int ecParityNum;
         private final ECMessage[] messages;
 
         ErasureCodeRunnable(ECMessage[] message) {
-            this.ecDataNum = message[0].ecDataNum;
-            this.ecParityNum = message[0].ecParityNum;
+            this.ecDataNum = message[0].ecMessageContent.ecDataNum;
+            this.ecParityNum = message[0].ecMessageContent.ecParityNum;
             this.messages = message;
         }
 
         @Override
         public void run() {
             if(messages.length != ecDataNum) {
-                logger.error("rymError: message length is not equal to ecDataNum");
+                logger.error("rymERROR: message length is not equal to ecDataNum");
             }
             int codeLength = messages[0].sstSize;
             for (ECMessage msg : messages) {
@@ -199,38 +221,41 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             try {
                 encoder.encode(data, parity);
             } catch (IOException e) {
-                logger.error("rymError: Perform erasure code error", e);
+                logger.error("rymERROR: Perform erasure code error", e);
             }
 
             
             // generate parity hash code
-            List<String> parityHashCode = new ArrayList<String>();
+            List<String> parityHashList = new ArrayList<String>();
             for(ByteBuffer parityCode : parity) {
-                parityHashCode.add(String.valueOf(parityCode.hashCode()));
+                parityHashList.add(ECNetutils.stringToHex(String.valueOf(parityCode.hashCode())));
             }
 
             // record first parity code to current node
             try {
-                
-                FileChannel fileChannel = FileChannel.open(Paths.get(parityCodeDir, parityHashCode.get(0)),
+                String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
+                FileChannel fileChannel = FileChannel.open(Paths.get(localParityCodeDir, parityHashList.get(0)),
                                                             StandardOpenOption.WRITE,
                                                              StandardOpenOption.CREATE);
                 fileChannel.write(parity[0]);
                 fileChannel.close();
                 // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
             } catch (IOException e) {
-                logger.error("rymError: Perform erasure code error", e);
+                logger.error("rymERROR: Perform erasure code error", e);
             }
 
 
             // sync encoded data to parity nodes
             ECParityNode ecParityNode = new ECParityNode(null, null, 0);
-            ecParityNode.distributeEcDataToParityNodes(parity, messages[0].parityNodes, parityHashCode);
+            ecParityNode.distributeCodedDataToParityNodes(parity, messages[0].ecMessageContent.parityNodes, parityHashList);
 
             // Transform to ECMetadata and dispatch to related nodes
-            ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
-                        new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
-            ecMetadata.generateMetadata(messages, parity, parityHashCode);
+            // ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
+            //             new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
+            ECMetadata ecMetadata = new ECMetadata("", new ECMetadataContent("", "", new ArrayList<String>(),new ArrayList<String>(),
+                                                   new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new ArrayList<InetAddressAndPort>(),
+                                                new HashMap<String, List<InetAddressAndPort>>()));
+            ecMetadata.generateAndDistributeMetadata(messages, parityHashList);
         }
 
     }

@@ -248,10 +248,10 @@ public class Config {
 
     @Replaces(oldName = "internode_socket_send_buffer_size_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
     @Replaces(oldName = "internode_send_buff_size_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
-    public DataStorageSpec.IntBytesBound internode_socket_send_buffer_size = new DataStorageSpec.IntBytesBound("0B");
+    public DataStorageSpec.IntBytesBound internode_socket_send_buffer_size = new DataStorageSpec.IntBytesBound("8MiB");
     @Replaces(oldName = "internode_socket_receive_buffer_size_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
     @Replaces(oldName = "internode_recv_buff_size_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)
-    public DataStorageSpec.IntBytesBound internode_socket_receive_buffer_size = new DataStorageSpec.IntBytesBound("0B");
+    public DataStorageSpec.IntBytesBound internode_socket_receive_buffer_size = new DataStorageSpec.IntBytesBound("8MiB");
 
     // TODO: derive defaults from system memory settings?
     @Replaces(oldName = "internode_application_send_queue_capacity_in_bytes", converter = Converters.BYTES_DATASTORAGE, deprecated = true)

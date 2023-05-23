@@ -68,7 +68,6 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
     protected long repairedAt;
     protected TimeUUID pendingRepair;
     protected boolean isTransient;
-    protected boolean isReplicationTransferredToErasureCoding;
     protected String hashID;
     protected long maxDataAge = -1;
     protected final long keyCount;
@@ -77,6 +76,12 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
     protected final SerializationHeader header;
     protected final TransactionalProxy txnProxy = txnProxy();
     protected final Collection<SSTableFlushObserver> observers;
+    
+    // [CASSANDRAEC]
+    protected DecoratedKey firstKey = null;
+    protected DecoratedKey lastKey = null;
+    public long currentKeyCount = 0;
+    public boolean isOverlapped = false;
 
     protected abstract TransactionalProxy txnProxy();
 
@@ -93,17 +98,15 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             TableMetadataRef metadata,
             MetadataCollector metadataCollector,
             SerializationHeader header,
             Collection<SSTableFlushObserver> observers) {
-        super(descriptor, components(metadata.getLocal(), isReplicationTransferredToErasureCoding), metadata, DatabaseDescriptor.getDiskOptimizationStrategy());
+        super(descriptor, components(metadata.getLocal()), metadata, DatabaseDescriptor.getDiskOptimizationStrategy());
         this.keyCount = keyCount;
         this.repairedAt = repairedAt;
         this.pendingRepair = pendingRepair;
         this.isTransient = isTransient;
-        this.isReplicationTransferredToErasureCoding = isReplicationTransferredToErasureCoding;
         this.metadataCollector = metadataCollector;
         this.header = header;
         this.rowIndexEntrySerializer = descriptor.version.getSSTableFormat().getIndexSerializer(metadata.get(),
@@ -116,7 +119,6 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
             Long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             TableMetadataRef metadata,
             MetadataCollector metadataCollector,
             SerializationHeader header,
@@ -124,7 +126,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
             LifecycleNewTracker lifecycleNewTracker) {
         Factory writerFactory = descriptor.getFormat().getWriterFactory();
         return writerFactory.open(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, metadata,
+                metadata,
                 metadataCollector, header, observers(descriptor, indexes, lifecycleNewTracker.opType()),
                 lifecycleNewTracker);
     }
@@ -134,14 +136,13 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             int sstableLevel,
             SerializationHeader header,
             Collection<Index> indexes,
             LifecycleNewTracker lifecycleNewTracker) {
         TableMetadataRef metadata = Schema.instance.getTableMetadataRef(descriptor);
         return create(metadata, descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, sstableLevel, header,
+                sstableLevel, header,
                 indexes, lifecycleNewTracker);
     }
 
@@ -151,14 +152,13 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             int sstableLevel,
             SerializationHeader header,
             Collection<Index> indexes,
             LifecycleNewTracker lifecycleNewTracker) {
         MetadataCollector collector = new MetadataCollector(metadata.get().comparator).sstableLevel(sstableLevel);
         return create(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, metadata, collector, header,
+                metadata, collector, header,
                 indexes, lifecycleNewTracker);
     }
 
@@ -168,55 +168,33 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             SerializationHeader header,
             Collection<Index> indexes,
             LifecycleNewTracker lifecycleNewTracker) {
         return create(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, header, indexes,
+                header, indexes,
                 lifecycleNewTracker);
     }
 
-    private static Set<Component> components(TableMetadata metadata, Boolean isReplicationTransferredToErasureCoding) {
-        if(isReplicationTransferredToErasureCoding){
-            Set<Component> components = new HashSet<Component>(Arrays.asList(Component.EC_METADATA,
-            Component.PRIMARY_INDEX,
-            Component.STATS,
-            Component.SUMMARY,
-            Component.TOC,
-            Component.DIGEST));
-            if (metadata.params.bloomFilterFpChance < 1.0)
-                components.add(Component.FILTER);
+    private static Set<Component> components(TableMetadata metadata) {
+        Set<Component> components = new HashSet<Component>(Arrays.asList(Component.DATA,
+                Component.PRIMARY_INDEX,
+                Component.STATS,
+                Component.SUMMARY,
+                Component.TOC,
+                Component.DIGEST));
+        if (metadata.params.bloomFilterFpChance < 1.0)
+            components.add(Component.FILTER);
 
-            if (metadata.params.compression.isEnabled()) {
-                components.add(Component.COMPRESSION_INFO);
-            } else {
-                // it would feel safer to actually add this component later in
-                // maybeWriteDigest(),
-                // but the components are unmodifiable after construction
-                components.add(Component.CRC);
-            }
-            return components;
-        }else {
-            Set<Component> components = new HashSet<Component>(Arrays.asList(Component.DATA,
-            Component.PRIMARY_INDEX,
-            Component.STATS,
-            Component.SUMMARY,
-            Component.TOC,
-            Component.DIGEST));
-            if (metadata.params.bloomFilterFpChance < 1.0)
-                components.add(Component.FILTER);
-
-            if (metadata.params.compression.isEnabled()) {
-                components.add(Component.COMPRESSION_INFO);
-            } else {
-                // it would feel safer to actually add this component later in
-                // maybeWriteDigest(),
-                // but the components are unmodifiable after construction
-                components.add(Component.CRC);
-            }
-            return components;
+        if (metadata.params.compression.isEnabled()) {
+            components.add(Component.COMPRESSION_INFO);
+        } else {
+            // it would feel safer to actually add this component later in
+            // maybeWriteDigest(),
+            // but the components are unmodifiable after construction
+            components.add(Component.CRC);
         }
+        return components;
     }
 
     private static Collection<SSTableFlushObserver> observers(Descriptor descriptor,
@@ -327,9 +305,9 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
         }
     }
 
-    public final Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable) {
+    public final Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite) {
         try {
-            return txnProxy.commitEC(accumulate, ecSSTable);
+            return txnProxy.commitEC(accumulate, ecSSTable, isRewrite);
         } finally {
             observers.forEach(SSTableFlushObserver::complete);
         }
@@ -353,7 +331,6 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
                 repairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 header,
                 hashID);
     }
@@ -447,7 +424,6 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
                 long repairedAt,
                 TimeUUID pendingRepair,
                 boolean isTransient,
-                boolean isReplicationTransferredToErasureCoding,
                 TableMetadataRef metadata,
                 MetadataCollector metadataCollector,
                 SerializationHeader header,

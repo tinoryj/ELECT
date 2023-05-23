@@ -44,13 +44,10 @@ import org.apache.cassandra.utils.TimeUUID;
 public class PendingRepairHolder extends AbstractStrategyHolder {
     private final List<PendingRepairManager> managers = new ArrayList<>();
     private final boolean isTransient;
-    private final boolean isReplicationTransferredToErasureCoding;
 
-    public PendingRepairHolder(ColumnFamilyStore cfs, DestinationRouter router, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+    public PendingRepairHolder(ColumnFamilyStore cfs, DestinationRouter router, boolean isTransient) {
         super(cfs, router);
         this.isTransient = isTransient;
-        this.isReplicationTransferredToErasureCoding = isReplicationTransferredToErasureCoding;
     }
 
     @Override
@@ -71,12 +68,11 @@ public class PendingRepairHolder extends AbstractStrategyHolder {
     }
 
     @Override
-    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient
+            ) {
         Preconditions.checkArgument(!isPendingRepair || !isRepaired,
                 "SSTables cannot be both repaired and pending repair");
-        return isPendingRepair && (this.isTransient == isTransient)
-                && (this.isReplicationTransferredToErasureCoding == isReplicationTransferredToErasureCoding);
+        return isPendingRepair && (this.isTransient == isTransient);
     }
 
     @Override
@@ -214,7 +210,6 @@ public class PendingRepairHolder extends AbstractStrategyHolder {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             MetadataCollector collector,
             SerializationHeader header,
             Collection<Index> indexes,
@@ -232,7 +227,6 @@ public class PendingRepairHolder extends AbstractStrategyHolder {
                 repairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 collector,
                 header,
                 indexes,

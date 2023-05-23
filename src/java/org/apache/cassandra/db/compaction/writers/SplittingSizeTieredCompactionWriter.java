@@ -106,7 +106,6 @@ public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter {
                 minRepairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 cfs.metadata,
                 new MetadataCollector(allSSTables, cfs.metadata().comparator, 0),
                 SerializationHeader.make(cfs.metadata(), nonExpiredSSTables),

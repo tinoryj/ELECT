@@ -44,7 +44,6 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter {
     private final long repairedAt;
     private final TimeUUID pendingRepair;
     private final boolean isTransient;
-    private final boolean isReplicationTransferredToErasureCoding;
     private final SSTableFormat.Type format;
     private final SerializationHeader header;
     private final LifecycleNewTracker lifecycleNewTracker;
@@ -55,7 +54,7 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter {
     private SSTableMultiWriter currentWriter = null;
 
     public RangeAwareSSTableWriter(ColumnFamilyStore cfs, long estimatedKeys, long repairedAt, TimeUUID pendingRepair,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding, SSTableFormat.Type format,
+            boolean isTransient, SSTableFormat.Type format,
             int sstableLevel, long totalSize, LifecycleNewTracker lifecycleNewTracker, SerializationHeader header)
             throws IOException {
         DiskBoundaries db = cfs.getDiskBoundaries();
@@ -66,7 +65,6 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter {
         this.repairedAt = repairedAt;
         this.pendingRepair = pendingRepair;
         this.isTransient = isTransient;
-        this.isReplicationTransferredToErasureCoding = isReplicationTransferredToErasureCoding;
         this.format = format;
         this.lifecycleNewTracker = lifecycleNewTracker;
         this.header = header;
@@ -78,7 +76,7 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter {
                         FBUtilities.prettyPrintMemory(totalSize)));
             Descriptor desc = cfs.newSSTableDescriptor(cfs.getDirectories().getLocationForDisk(localDir), format);
             currentWriter = cfs.createSSTableMultiWriter(desc, estimatedKeys, repairedAt, pendingRepair, isTransient,
-                    isReplicationTransferredToErasureCoding, sstableLevel, header, lifecycleNewTracker);
+                    sstableLevel, header, lifecycleNewTracker);
         }
     }
 
@@ -99,7 +97,6 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter {
             Descriptor desc = cfs.newSSTableDescriptor(
                     cfs.getDirectories().getLocationForDisk(directories.get(currentIndex)), format);
             currentWriter = cfs.createSSTableMultiWriter(desc, estimatedKeys, repairedAt, pendingRepair, isTransient,
-                    isReplicationTransferredToErasureCoding,
                     sstableLevel, header, lifecycleNewTracker);
         }
     }
@@ -201,7 +198,7 @@ public class RangeAwareSSTableWriter implements SSTableMultiWriter {
     }
 
     @Override
-    public Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable) {
+    public Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'commitEC'");
     }

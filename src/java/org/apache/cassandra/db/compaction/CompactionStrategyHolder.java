@@ -71,8 +71,8 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder {
     }
 
     @Override
-    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient
+            ) {
         if (!isPendingRepair) {
             Preconditions.checkArgument(!isTransient, "isTransient can only be true for sstables pending repairs");
             return this.isRepaired == isRepaired;
@@ -200,7 +200,6 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             MetadataCollector collector,
             SerializationHeader header,
             Collection<Index> indexes,
@@ -222,7 +221,6 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder {
                 repairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 collector,
                 header,
                 indexes,

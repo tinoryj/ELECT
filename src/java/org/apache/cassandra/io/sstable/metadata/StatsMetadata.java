@@ -85,7 +85,6 @@ public class StatsMetadata extends MetadataComponent {
     public final UUID originatingHostId;
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
-    public boolean isReplicationTransferredToErasureCoding;
     public String hashID = null;
     // just holds the current encoding stats to avoid allocating - it is not
     // serialized
@@ -113,7 +112,6 @@ public class StatsMetadata extends MetadataComponent {
             UUID originatingHostId,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             String hashID) {
         this.estimatedPartitionSize = estimatedPartitionSize;
         this.estimatedCellPerPartitionCount = estimatedCellPerPartitionCount;
@@ -137,7 +135,6 @@ public class StatsMetadata extends MetadataComponent {
         this.originatingHostId = originatingHostId;
         this.pendingRepair = pendingRepair;
         this.isTransient = isTransient;
-        this.isReplicationTransferredToErasureCoding = isReplicationTransferredToErasureCoding;
         this.hashID = hashID;
         this.encodingStats = new EncodingStats(minTimestamp, minLocalDeletionTime, minTTL);
     }
@@ -183,12 +180,12 @@ public class StatsMetadata extends MetadataComponent {
                     // this.hashID, this.hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
-                    logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
+                    // logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
                     e.printStackTrace();
                 }
             } catch (IOException e) {
                 this.hashID = null;
-                logger.debug("[Tinoryj]: Could not read SSTable {}", fileName);
+                // logger.debug("[Tinoryj]: Could not read SSTable {}", fileName);
                 e.printStackTrace();
                 return false;
             }
@@ -241,12 +238,11 @@ public class StatsMetadata extends MetadataComponent {
                 originatingHostId,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 hashID);
     }
 
-    public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient,
-            boolean newIsReplicationTransferredToErasureCoding) {
+    public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient
+            ) {
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
@@ -269,7 +265,6 @@ public class StatsMetadata extends MetadataComponent {
                 originatingHostId,
                 newPendingRepair,
                 newIsTransient,
-                newIsReplicationTransferredToErasureCoding,
                 hashID);
     }
 
@@ -374,10 +369,6 @@ public class StatsMetadata extends MetadataComponent {
                 size += TypeSizes.sizeof(component.isTransient);
             }
 
-            if (version.hasIsReplicationTransferredToErasureCoding()) {
-                size += TypeSizes.sizeof(component.isReplicationTransferredToErasureCoding);
-            }
-
             if (version.hasOriginatingHostId()) {
                 size += 1; // boolean: is originatingHostId present
                 if (component.originatingHostId != null)
@@ -434,10 +425,6 @@ public class StatsMetadata extends MetadataComponent {
                 out.writeBoolean(component.isTransient);
             }
 
-            if (version.hasIsReplicationTransferredToErasureCoding()) {
-                out.writeBoolean(component.isReplicationTransferredToErasureCoding);
-            }
-
             if (version.hasOriginatingHostId()) {
                 if (component.originatingHostId != null) {
                     out.writeByte(1);
@@ -449,13 +436,13 @@ public class StatsMetadata extends MetadataComponent {
 
             if (version.hasHashID() && component.hashID != null) {
                 out.writeBytes(component.hashID);
-                logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
+                // logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
             } else {
                 byte[] placeHolder = new byte[32];
                 Arrays.fill(placeHolder, (byte) 0);
                 String placeHolderStr = placeHolder.toString();
                 out.writeBytes(placeHolderStr);
-                logger.debug("[Tinoryj] Write fake HashID place holder");
+                // logger.debug("[Tinoryj] Write fake HashID place holder");
             }
         }
 
@@ -534,9 +521,6 @@ public class StatsMetadata extends MetadataComponent {
 
             boolean isTransient = version.hasIsTransient() && in.readBoolean();
 
-            boolean isReplicationTransferredToErasureCoding = version.hasIsReplicationTransferredToErasureCoding()
-                    && in.readBoolean();
-
             UUID originatingHostId = null;
             if (version.hasOriginatingHostId() && in.readByte() != 0)
                 originatingHostId = UUIDSerializer.serializer.deserialize(in, 0);
@@ -548,7 +532,7 @@ public class StatsMetadata extends MetadataComponent {
                 buf[i] = in.readByte();
             }
             hashIDRawStr = new String(buf);
-            logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
+            // logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
             // in.skipBytes(32);
 
             return new StatsMetadata(partitionSizes,
@@ -573,7 +557,6 @@ public class StatsMetadata extends MetadataComponent {
                     originatingHostId,
                     pendingRepair,
                     isTransient,
-                    isReplicationTransferredToErasureCoding,
                     hashIDRawStr);
         }
     }

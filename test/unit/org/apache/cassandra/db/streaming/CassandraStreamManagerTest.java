@@ -120,10 +120,10 @@ public class CassandraStreamManagerTest {
     }
 
     private static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException {
+            boolean isTransient) throws IOException {
         Descriptor descriptor = sstable.descriptor;
-        descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding);
+        descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, repairedAt, pendingRepair, isTransient
+                );
         sstable.reloadSSTableMetadata();
 
     }
@@ -174,9 +174,9 @@ public class CassandraStreamManagerTest {
 
         TimeUUID pendingRepair = nextTimeUUID();
         long repairedAt = System.currentTimeMillis();
-        mutateRepaired(sstable2, ActiveRepairService.UNREPAIRED_SSTABLE, pendingRepair, false, false);
-        mutateRepaired(sstable3, UNREPAIRED_SSTABLE, nextTimeUUID(), false, false);
-        mutateRepaired(sstable4, repairedAt, NO_PENDING_REPAIR, false, false);
+        mutateRepaired(sstable2, ActiveRepairService.UNREPAIRED_SSTABLE, pendingRepair, false);
+        mutateRepaired(sstable3, UNREPAIRED_SSTABLE, nextTimeUUID(), false);
+        mutateRepaired(sstable4, repairedAt, NO_PENDING_REPAIR, false);
 
         // no pending repair should return all sstables
         Assert.assertEquals(Sets.newHashSet(sstable1, sstable2, sstable3, sstable4), selectReaders(NO_PENDING_REPAIR));

@@ -51,12 +51,12 @@ public class ECParityNode {
     }
 
 
-    public void distributeEcDataToParityNodes(ByteBuffer[] parity, List<InetAddressAndPort> parityNodes, List<String> parityHash) {
-        logger.debug("rymDebug: distribute ec data to parity nodes");
+    public void distributeCodedDataToParityNodes(ByteBuffer[] parity, List<InetAddressAndPort> parityNodes, List<String> parityHashList) {
+        logger.debug("rymDebug: distribute coded data to parity nodes");
         Message<ECParityNode> message = null;
         for (int i = 1; i < parityNodes.size(); i++) {
             message = Message.outWithFlag(Verb.ECPARITYNODE_REQ, 
-            new ECParityNode(parity[i], parityHash.get(i), parity[i].capacity()), MessageFlag.CALL_BACK_ON_FAILURE);
+            new ECParityNode(parity[i], parityHashList.get(i), parity[i].capacity()), MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().send(message, parityNodes.get(i));
         }
         

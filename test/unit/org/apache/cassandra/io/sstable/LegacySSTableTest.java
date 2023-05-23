@@ -173,7 +173,7 @@ public class LegacySSTableTest {
             for (ColumnFamilyStore cfs : Keyspace.open("legacy_tables").getColumnFamilyStores()) {
                 for (SSTableReader sstable : cfs.getLiveSSTables()) {
                     sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, 1234,
-                            NO_PENDING_REPAIR, false, false);
+                            NO_PENDING_REPAIR, false);
                     sstable.reloadSSTableMetadata();
                     assertEquals(1234, sstable.getRepairedAt());
                     if (sstable.descriptor.version.hasPendingRepair())
@@ -181,11 +181,10 @@ public class LegacySSTableTest {
                 }
 
                 boolean isTransient = false;
-                boolean isReplicationTransferredToErasureCoding = false;
                 for (SSTableReader sstable : cfs.getLiveSSTables()) {
                     TimeUUID random = nextTimeUUID();
                     sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor,
-                            UNREPAIRED_SSTABLE, random, isTransient, isReplicationTransferredToErasureCoding);
+                            UNREPAIRED_SSTABLE, random, isTransient);
                     sstable.reloadSSTableMetadata();
                     assertEquals(UNREPAIRED_SSTABLE, sstable.getRepairedAt());
                     if (sstable.descriptor.version.hasPendingRepair())
@@ -194,7 +193,6 @@ public class LegacySSTableTest {
                         assertEquals(isTransient, sstable.isTransient());
 
                     isTransient = !isTransient;
-                    isReplicationTransferredToErasureCoding = !isReplicationTransferredToErasureCoding;
                 }
             }
         }
@@ -217,7 +215,7 @@ public class LegacySSTableTest {
                     TimeUUID random = nextTimeUUID();
                     try {
                         cfs.getCompactionStrategyManager().mutateRepaired(Collections.singleton(sstable),
-                                UNREPAIRED_SSTABLE, random, false, false);
+                                UNREPAIRED_SSTABLE, random, false);
                         if (!sstable.descriptor.version.hasPendingRepair())
                             fail("We should fail setting pending repair on unsupported sstables " + sstable);
                     } catch (IllegalStateException e) {
@@ -230,7 +228,7 @@ public class LegacySSTableTest {
                 for (SSTableReader sstable : cfs.getLiveSSTables()) {
                     try {
                         cfs.getCompactionStrategyManager().mutateRepaired(Collections.singleton(sstable),
-                                UNREPAIRED_SSTABLE, nextTimeUUID(), true, false);
+                                UNREPAIRED_SSTABLE, nextTimeUUID(), true);
                         if (!sstable.descriptor.version.hasIsTransient())
                             fail("We should fail setting pending repair on unsupported sstables " + sstable);
                     } catch (IllegalStateException e) {

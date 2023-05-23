@@ -56,6 +56,19 @@ class LeveledGenerations {
     // TODO: changed
     static final int MAX_LEVEL_COUNT = 8;
 
+    // Reset
+    public static final String RESET = "\033[0m"; // Text Reset
+
+    // Regular Colors
+    public static final String WHITE = "\033[0;30m"; // WHITE
+    public static final String RED = "\033[0;31m"; // RED
+    public static final String GREEN = "\033[0;32m"; // GREEN
+    public static final String YELLOW = "\033[0;33m"; // YELLOW
+    public static final String BLUE = "\033[0;34m"; // BLUE
+    public static final String PURPLE = "\033[0;35m"; // PURPLE
+    public static final String CYAN = "\033[0;36m"; // CYAN
+    public static final String GREY = "\033[0;37m"; // GREY
+
     /**
      * This map is used to track the original NORMAL instances of sstables
      *
@@ -160,14 +173,30 @@ class LeveledGenerations {
             SSTableReader after = level.ceiling(sstable);
             SSTableReader before = level.floor(sstable);
 
-            if (before != null && before.last.compareTo(sstable.first) >= 0 ||
-                    after != null && after.first.compareTo(sstable.last) <= 0) {
-                logger.debug("rymDebug: sstable {}, level is {}, task id is  need to be sent to L0",
+            if ((before != null && before.last.compareTo(sstable.first) >= 0 ||
+                    after != null && after.first.compareTo(sstable.last) <= 0) //&&
+                    // sstable.isReplicationTransferredToErasureCoding() &&
+                    // sstable.getColumnFamilyName().equals("usertable")
+                    ) {
+                // if(sstable.getColumnFamilyName().contains("usertable")) {
+                //     logger.debug("rymDebug: sstable {}, level is {}, task id is  need to be sent to L0",
+                //         sstable.getFilename(), sstable.getSSTableLevel());
+                // } else {
+                //     logger.debug("rymDebug: no-usertable {} also need to be sent to L0", sstable.getColumnFamilyName());
+                // }
+                if(!sstable.getColumnFamilyName().contains("usertable"))
+                    sendToL0(sstable);
+                else {
+                    level.add(sstable);
+                    logger.debug("rymDebug: sstable {}, overlapped with its neighbors, but we still add it to level {}",
                         sstable.getFilename(), sstable.getSSTableLevel());
-                sendToL0(sstable);
+                }
+                    
             } else {
                 level.add(sstable);
             }
+            // level.add(sstable);
+            
         }
         maybeVerifyLevels();
     }
