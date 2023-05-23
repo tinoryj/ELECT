@@ -111,7 +111,7 @@ public class Tracker
 
     // METHODS FOR ATOMICALLY MODIFYING THE VIEW
 
-    public Pair<View, View> apply(Function<View, View> function)
+    Pair<View, View> apply(Function<View, View> function)
     {
         return apply(Predicates.alwaysTrue(), function);
     }

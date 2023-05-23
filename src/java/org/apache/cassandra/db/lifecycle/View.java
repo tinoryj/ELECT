@@ -270,21 +270,29 @@ public class View
             public boolean apply(View view)
             {
                 for (SSTableReader reader : readers){
-                    if(reader.isReplicationTransferredToErasureCoding() && !reader.getColumnFamilyName().equals("usertable")) {
+                    // if(reader.isReplicationTransferredToErasureCoding() && !reader.getColumnFamilyName().equals("usertable")) {
+                    //     if (reader.isReplicationTransferredToErasureCoding()) {
+                    //         logger.debug("rymDebug: the transferred sstable {} is already marked as compaction! The reason is view.compacting.contains? ({}), view.sstablesMap.get(reader) != reader? ({}), view.sstablesMap.get(reader) ({}) reader.isMarkedCompacted? ({})",
+                    //                 reader.descriptor, view.compacting.contains(reader),
+                    //                 view.sstablesMap.get(reader) != reader, view.sstablesMap.get(reader),
+                    //                 reader.isMarkedCompacted());
+                    //         if(view.compacting.contains(reader)|| reader.isMarkedCompacted())
+                    //             return false;
+                    //     }
+                    // } else {
+                    //     if (view.compacting.contains(reader) || view.sstablesMap.get(reader) != reader || reader.isMarkedCompacted()) {
+                    //         return false;
+                    //     }
+                    // }
+                    if (view.compacting.contains(reader) || view.sstablesMap.get(reader) != reader || reader.isMarkedCompacted()) {
                         if (reader.isReplicationTransferredToErasureCoding()) {
                             logger.debug("rymDebug: the transferred sstable {} is already marked as compaction! The reason is view.compacting.contains? ({}), view.sstablesMap.get(reader) != reader? ({}), view.sstablesMap.get(reader) ({}) reader.isMarkedCompacted? ({})",
                                     reader.descriptor, view.compacting.contains(reader),
                                     view.sstablesMap.get(reader) != reader, view.sstablesMap.get(reader),
                                     reader.isMarkedCompacted());
-                            if(view.compacting.contains(reader)|| reader.isMarkedCompacted())
-                                return false;
                         }
-                    } else {
-                        if (view.compacting.contains(reader) || view.sstablesMap.get(reader) != reader || reader.isMarkedCompacted()) {
-                            return false;
-                        }
+                        return false;
                     }
-                    
                 }
                     
                         
@@ -294,7 +302,7 @@ public class View
     }
 
     // construct a function to change the liveset in a Snapshot
-    public static Function<View, View> updateLiveSet(final Set<SSTableReader> remove, final Iterable<SSTableReader> add)
+    static Function<View, View> updateLiveSet(final Set<SSTableReader> remove, final Iterable<SSTableReader> add)
     {
         if (remove.isEmpty() && Iterables.isEmpty(add))
             return Functions.identity();
