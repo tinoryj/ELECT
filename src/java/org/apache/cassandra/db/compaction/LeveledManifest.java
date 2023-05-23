@@ -485,8 +485,14 @@ public class LeveledManifest {
             // this sstable is belong to primary LSM tree
             if (pair.getValue().intersects(promotedBounds)
                   && (!pair.getKey().isReplicationTransferredToErasureCoding() || !pair.getKey().getColumnFamilyName().equals("usertable"))
-                 )
+                 ) {
                 overlapped.add(pair.getKey());
+            }
+            
+            if(pair.getKey().isReplicationTransferredToErasureCoding()) {
+                logger.debug("rymDebug[transferred]: {} is a transferred sstable", pair.getKey().descriptor);
+            }
+                
         }
         return overlapped;
     }

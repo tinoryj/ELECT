@@ -39,7 +39,7 @@ import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
-import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransfferedSSTableKeyRange;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.dht.IPartitioner;
@@ -166,19 +166,19 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
             
             boolean isContainReplicationTransferredToErasureCoding = false;
-            List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+            List<TransferredSSTableKeyRange> transferredSSTableKeyRanges = new ArrayList<>();
 
             if(cfs.getColumnFamilyName().equals("usertable")) {
                 // for primary nodes
 
             } else if (cfs.getColumnFamilyName().contains("usertable")) {
-                
+
                 //for secondary node 
                 for (SSTableReader sstable : candidate.sstables) {
                     if (sstable.isReplicationTransferredToErasureCoding()) {
                         isContainReplicationTransferredToErasureCoding = true;
-                        TransfferedSSTableKeyRange range = new TransfferedSSTableKeyRange(sstable.first, sstable.last);
-                        transfferedSSTableKeyRanges.add(range);
+                        TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
+                        transferredSSTableKeyRanges.add(range);
                         logger.debug("rymDebug[transferred]: Selected transferred sstables from {}", cfs.getColumnFamilyName());
                     }
                 }
@@ -195,14 +195,14 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
                 if (!singleSSTableUplevel || op == OperationType.TOMBSTONE_COMPACTION || txn.originals().size() > 1)
                     newTask = new LeveledCompactionTask(cfs, txn, candidate.level, gcBefore, candidate.maxSSTableBytes,
-                            false, transfferedSSTableKeyRanges);
+                            false, transferredSSTableKeyRanges);
                 else
                     newTask = new SingleSSTableLCSTask(cfs, txn, candidate.level);
                 
                 if(isContainReplicationTransferredToErasureCoding == true) {
                     newTask.isContainReplicationTransferredToErasureCoding = true;
                 }
-                logger.debug("rymDebug[transferred]: task {} is contain replication ({}), isContainReplicationTransferredToErasureCoding is ({})",
+                logger.debug("rymDebug[transferred]: task {} is contain transferred ({}), isContainReplicationTransferredToErasureCoding is ({})",
                              newTask.transaction.opId(), newTask.isContainReplicationTransferredToErasureCoding, isContainReplicationTransferredToErasureCoding);
 
                 newTask.setCompactionType(op);
@@ -225,13 +225,13 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
                     
         boolean isContainReplicationTransferredToErasureCoding = false;
-        List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+        List<TransferredSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
         int size = 0;
 
         for (SSTableReader sstable : sstables) {
             if (sstable.isReplicationTransferredToErasureCoding()) {
                 isContainReplicationTransferredToErasureCoding = true;
-                TransfferedSSTableKeyRange range = new TransfferedSSTableKeyRange(sstable.first, sstable.last);
+                TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                 transfferedSSTableKeyRanges.add(range);
             }
             size++;
@@ -263,13 +263,13 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int level = sstables.size() > 1 ? 0 : sstables.iterator().next().getSSTableLevel();
 
         boolean isContainReplicationTransferredToErasureCoding = false;
-        List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+        List<TransferredSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
         int size = 0;
 
         for (SSTableReader sstable : sstables) {
             if (sstable.isReplicationTransferredToErasureCoding()) {
                 isContainReplicationTransferredToErasureCoding = true;
-                TransfferedSSTableKeyRange range = new TransfferedSSTableKeyRange(sstable.first, sstable.last);
+                TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                 transfferedSSTableKeyRanges.add(range);
             }
             size++;
@@ -289,7 +289,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int level = -1;
 
         boolean isContainReplicationTransferredToErasureCoding = false;
-        List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
+        List<TransferredSSTableKeyRange> transfferedSSTableKeyRanges = new ArrayList<>();
         int size = 0;
         
         // if all sstables are in the same level, we can set that level:
@@ -301,7 +301,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
             if (sstable.isReplicationTransferredToErasureCoding()) {
                 isContainReplicationTransferredToErasureCoding = true;
-                TransfferedSSTableKeyRange range = new TransfferedSSTableKeyRange(sstable.first, sstable.last);
+                TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                 transfferedSSTableKeyRanges.add(range);
             }
             size++;

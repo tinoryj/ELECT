@@ -37,25 +37,25 @@ public class LeveledCompactionTask extends CompactionTask
     private final boolean majorCompaction;
 
     // [CASSANDRAEC]
-    public final List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges;
+    public final List<TransferredSSTableKeyRange> transferredSSTableKeyRanges;
 
-    public static class TransfferedSSTableKeyRange {
+    public static class TransferredSSTableKeyRange {
         public final DecoratedKey first;
         public final DecoratedKey last;
 
-        public TransfferedSSTableKeyRange(DecoratedKey first, DecoratedKey last) {
+        public TransferredSSTableKeyRange(DecoratedKey first, DecoratedKey last) {
             this.first = first;
             this.last = last;
         }
     }
 
-    public LeveledCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int level, int gcBefore, long maxSSTableBytes, boolean majorCompaction, List<TransfferedSSTableKeyRange> transfferedSSTableKeyRanges)
+    public LeveledCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int level, int gcBefore, long maxSSTableBytes, boolean majorCompaction, List<TransferredSSTableKeyRange> transferredSSTableKeyRanges)
     {
         super(cfs, txn, gcBefore);
         this.level = level;
         this.maxSSTableBytes = maxSSTableBytes;
         this.majorCompaction = majorCompaction;
-        this.transfferedSSTableKeyRanges = transfferedSSTableKeyRanges;
+        this.transferredSSTableKeyRanges = transferredSSTableKeyRanges;
     }
 
     @Override
