@@ -121,9 +121,17 @@ int encodeUpdate(IsalEncoder* pCoder, unsigned char** newDataUnitAndParitys, int
         printf("\n");
     }
 
+    unsigned char* dataXOR = (unsigned char*)malloc(sizeof(unsigned char) * chunkSize);
+    for (int i = 0; i < chunkSize; i++) {
+        dataXOR[i] = newDataUnitAndParitys[0][i] ^ newDataUnitAndParitys[1][i];
+    }
     printf("Start encode update in C environment, memcpy done, target replace data block ID = %d\n", fragment_index);
-    ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, newDataUnitAndParitys[0], tempParityUnits);
-    ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, newDataUnitAndParitys[1], tempParityUnits);
+    // ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, newDataUnitAndParitys[0], tempParityUnits);
+    // ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, newDataUnitAndParitys[1], tempParityUnits)
+    printf("XOR of old and new data:\n");
+    dump(dataXOR, 8);
+    printf("\n");
+    ec_encode_data_update(chunkSize, numDataUnits, numParityUnits, fragment_index, pCoder->gftbls, dataXOR, tempParityUnits);
     printf("Encoded parity:\n");
     for (int i = 0; i < numParityUnits; i++) {
         memcpy(newParityUnits[i], tempParityUnits[i], chunkSize);
