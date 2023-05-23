@@ -13,7 +13,7 @@ pylib/src/
 **/cqlshlib.xml
 !lib/cassandra-driver-internal-only-*.zip
 !lib/puresasl-*.zip
-
+**/*.so
 # C* debs
 build-stamp
 build.properties

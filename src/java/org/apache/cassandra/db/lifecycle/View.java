@@ -271,11 +271,12 @@ public class View
             {
                 for (SSTableReader reader : readers){
                     if (view.compacting.contains(reader) || view.sstablesMap.get(reader) != reader || reader.isMarkedCompacted()) {
-                        if (reader.isReplicationTransferredToErasureCoding()) {
+                        if (reader.isReplicationTransferredToErasureCoding() && !reader.getColumnFamilyName().equals("usertable") && view.sstablesMap.get(reader) != reader) {
                             logger.debug("rymDebug: the transferred sstable {} is already marked as compaction! The reason is view.compacting.contains? ({}), view.sstablesMap.get(reader) != reader? ({}), view.sstablesMap.get(reader) ({}) reader.isMarkedCompacted? ({})",
                                     reader.descriptor, view.compacting.contains(reader),
                                     view.sstablesMap.get(reader) != reader, view.sstablesMap.get(reader),
                                     reader.isMarkedCompacted());
+                            continue;
                         }
                         return false;
                     }
