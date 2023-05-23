@@ -112,7 +112,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         // StorageService.instance.globalRecvQueues.forEach((address, queue) -> System.out.print("Queue length of " + address + " is " + queue.size()));
         String logString = "rymDebug: Insight the globalRecvQueues";
         for(Map.Entry<InetAddressAndPort, Queue<ECMessage>> entry : StorageService.instance.globalRecvQueues.entrySet()) {
-            String str = entry.getKey().toString() + " has " + entry.getValue().size() + "elements";
+            String str = entry.getKey().toString() + " has " + entry.getValue().size() + " elements, ";
             logString += str;
         }
         logger.debug(logString);
@@ -122,7 +122,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
         // Once we have k different sstContent, do erasure coding locally
         if(StorageService.instance.globalRecvQueues.size()>=message.payload.ecMessageContent.ecDataNum) {
-            // logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues is {}", recvQueues);
+            logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
             ECMessage tmpArray[] = new ECMessage[message.payload.ecMessageContent.ecDataNum];
             //traverse the recvQueues
             int i = 0;
