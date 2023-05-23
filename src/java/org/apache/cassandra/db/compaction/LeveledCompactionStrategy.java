@@ -179,7 +179,8 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                         isContainReplicationTransferredToErasureCoding = true;
                         TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                         transferredSSTableKeyRanges.add(range);
-                        logger.debug("rymDebug[transferred]: Selected transferred sstables from {}", cfs.getColumnFamilyName());
+                        logger.debug("rymDebug[transferred]: Selected transferred sstable {}, candidate count is {}",
+                                     sstable.descriptor, candidate.sstables.size());
                     }
                 }
 
@@ -207,6 +208,9 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
                 newTask.setCompactionType(op);
                 return newTask;
+            } else {
+                logger.debug("rymDebug: cannot create compaction task, please retry... contain transferred sstable ({}), candidates size is {}",
+                             isContainReplicationTransferredToErasureCoding, candidate.sstables.size());
             }
             previousCandidate = candidate.sstables;
         }
