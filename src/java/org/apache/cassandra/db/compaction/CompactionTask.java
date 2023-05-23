@@ -357,7 +357,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, cfs, fileNamePrefix);
                     ecSSTable.SetIsReplicationTransferredToErasureCoding();
                     logger.debug("rymDebug: this is rewrite SSTable method, replacing SSTable {}", ecSSTable.descriptor);
-                    transaction.update(ecSSTable, false);
+                    // transaction.update(ecSSTable, false);
                     // transaction.checkpoint();
                     newSSTables = writer.finish(ecSSTable);
                     logger.debug("[Rewrite SSTables]: rewrite SSTable is FINISHED, ecSSTable is {},", ecSSTable.descriptor);
