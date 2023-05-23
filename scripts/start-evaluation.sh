@@ -19,6 +19,16 @@ func() {
     coordinator=$1
     record_count=$2
     field_length=$3
+
+    while true; do
+        if ps aux | grep ycsb | grep -v grep | awk 'NR == 1' | awk '{print $2}' | xargs kill -9; then
+            echo "Killed ycsb process"
+        else
+            break
+        fi
+        sleep 1
+    done
+
     cd /home/yjren/ycsb-0.17.0/
     mkdir -p logs
     sed -i "s/recordcount=.*$/recordcount=${record_count}/" workloads/workload_template
