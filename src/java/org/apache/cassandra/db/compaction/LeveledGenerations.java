@@ -54,7 +54,7 @@ class LeveledGenerations {
     private final boolean strictLCSChecksTest = Boolean.getBoolean(Config.PROPERTY_PREFIX + "test.strict_lcs_checks");
     // It includes L0, i.e. we support [L0 - L8] levels
     // TODO: changed
-    static final int MAX_LEVEL_COUNT = 3;
+    static final int MAX_LEVEL_COUNT = 8;
 
     // Reset
     public static final String RESET = "\033[0m"; // Text Reset

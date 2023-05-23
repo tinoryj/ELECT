@@ -27,57 +27,15 @@ public abstract class ErasureDecoder extends ErasureCoder {
         super(coderOptions);
     }
 
-    public void decode(ByteBuffer[] inputs, int[] erasedIndexes, ByteBuffer[] outputs)
+    public void decode(ByteBuffer[] inputs, int[] decodeIndexes, int[] erasedIndexes, ByteBuffer[] outputs)
             throws IOException {
         ByteBufferDecodingState decodingState = new ByteBufferDecodingState(
-                this, inputs, erasedIndexes, outputs);
+                this, inputs, decodeIndexes, erasedIndexes, outputs);
 
-        boolean usingDirectBuffer = decodingState.usingDirectBuffer;
         int dataLen = decodingState.decodeLength;
         if (dataLen == 0) {
             return;
         }
-
-        int[] inputPositions = new int[inputs.length];
-        for (int i = 0; i < inputPositions.length; i++) {
-            if (inputs[i] != null) {
-                inputPositions[i] = inputs[i].position();
-            }
-        }
-
-        if (usingDirectBuffer) {
-            doDecode(decodingState);
-        } else {
-            ByteArrayDecodingState badState = decodingState.convertToByteArrayState();
-            doDecode(badState);
-        }
-
-        for (int i = 0; i < inputs.length; i++) {
-            if (inputs[i] != null) {
-                // dataLen bytes consumed
-                inputs[i].position(inputPositions[i] + dataLen);
-            }
-        }
-    }
-
-    /**
-     * Decode with inputs and erasedIndexes, generates outputs. More see above.
-     *
-     * @param inputs        input buffers to read data from
-     * @param erasedIndexes indexes of erased units in the inputs array
-     * @param outputs       output buffers to put decoded data into according to
-     *                      erasedIndexes, ready for read after the call
-     * @throws IOException if the decoder is closed.
-     */
-    public void decode(byte[][] inputs, int[] erasedIndexes, byte[][] outputs)
-            throws IOException {
-        ByteArrayDecodingState decodingState = new ByteArrayDecodingState(
-                this, inputs, erasedIndexes, outputs);
-
-        if (decodingState.decodeLength == 0) {
-            return;
-        }
-
         doDecode(decodingState);
     }
 
@@ -89,13 +47,4 @@ public abstract class ErasureDecoder extends ErasureCoder {
     protected abstract void doDecode(ByteBufferDecodingState decodingState)
             throws IOException;
 
-    /**
-     * Perform the real decoding using bytes array, supporting offsets and
-     * lengths.
-     * 
-     * @param decodingState the decoding state
-     * @throws IOException if the decoder is closed.
-     */
-    protected abstract void doDecode(ByteArrayDecodingState decodingState)
-            throws IOException;
 }

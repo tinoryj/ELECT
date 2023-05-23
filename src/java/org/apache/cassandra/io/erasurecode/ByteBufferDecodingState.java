@@ -30,13 +30,15 @@ public class ByteBufferDecodingState {
     boolean usingDirectBuffer;
     int[] inputOffsets;
     int[] outputOffsets;
+    int[] decodeIndexes;
     int[] erasedIndexes;
 
-    ByteBufferDecodingState(ErasureDecoder decoder, ByteBuffer[] inputs,
-            int[] erasedIndexes, ByteBuffer[] outputs) {
+    ByteBufferDecodingState(ErasureDecoder decoder, ByteBuffer[] inputs, int[] decodeIndexes, int[] erasedIndexes,
+            ByteBuffer[] outputs) {
         this.decoder = decoder;
         this.inputs = inputs;
         this.outputs = outputs;
+        this.decodeIndexes = decodeIndexes;
         this.erasedIndexes = erasedIndexes;
         ByteBuffer validInput = CoderUtil.findFirstValidInput(inputs);
         this.decodeLength = validInput.remaining();
@@ -57,35 +59,9 @@ public class ByteBufferDecodingState {
         }
 
         CoderUtil.checkParameters(inputs, erasedIndexes, outputs,
-                decoder.getNumAllUnits(), decoder.getNumParityUnits());
+                decoder.getNumDataUnits(), decoder.getNumParityUnits());
         checkInputBuffers(inputs);
         checkOutputBuffers(outputs);
-    }
-
-    ByteBufferDecodingState(ErasureDecoder decoder,
-            int decodeLength,
-            int[] erasedIndexes,
-            ByteBuffer[] inputs,
-            ByteBuffer[] outputs) {
-        this.decoder = decoder;
-        this.decodeLength = decodeLength;
-        this.erasedIndexes = erasedIndexes;
-        this.inputs = inputs;
-        this.outputs = outputs;
-
-        this.inputOffsets = new int[inputs.length];
-        this.outputOffsets = new int[outputs.length];
-        ByteBuffer buffer;
-        for (int i = 0; i < inputs.length; ++i) {
-            buffer = inputs[i];
-            if (buffer != null) {
-                inputOffsets[i] = buffer.position();
-            }
-        }
-        for (int i = 0; i < outputs.length; ++i) {
-            buffer = outputs[i];
-            outputOffsets[i] = buffer.position();
-        }
     }
 
     /**
@@ -144,33 +120,4 @@ public class ByteBufferDecodingState {
         }
     }
 
-    /**
-     * Convert to a ByteArrayDecodingState when it's backed by on-heap arrays.
-     */
-    ByteArrayDecodingState convertToByteArrayState() {
-        int[] inputOffsets = new int[inputs.length];
-        int[] outputOffsets = new int[outputs.length];
-        byte[][] newInputs = new byte[inputs.length][];
-        byte[][] newOutputs = new byte[outputs.length][];
-
-        ByteBuffer buffer;
-        for (int i = 0; i < inputs.length; ++i) {
-            buffer = inputs[i];
-            if (buffer != null) {
-                inputOffsets[i] = buffer.arrayOffset() + buffer.position();
-                newInputs[i] = buffer.array();
-            }
-        }
-
-        for (int i = 0; i < outputs.length; ++i) {
-            buffer = outputs[i];
-            outputOffsets[i] = buffer.arrayOffset() + buffer.position();
-            newOutputs[i] = buffer.array();
-        }
-
-        ByteArrayDecodingState baeState = new ByteArrayDecodingState(decoder,
-                decodeLength, erasedIndexes, newInputs,
-                inputOffsets, newOutputs, outputOffsets);
-        return baeState;
-    }
 }

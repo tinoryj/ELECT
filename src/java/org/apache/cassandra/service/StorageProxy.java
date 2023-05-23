@@ -2106,7 +2106,7 @@ public class StorageProxy implements StorageProxyMBean {
             ConsistencyLevel consistencyLevel, long queryStartNanoTime)
             throws UnavailableException, ReadFailureException, ReadTimeoutException {
         int cmdCount = commands.size();
-
+        logger.debug("[Tinoryj] total read command count: {}", cmdCount);
         AbstractReadExecutor[] reads = new AbstractReadExecutor[cmdCount];
 
         // Get the replica locations, sorted by response time according to the snitch,
@@ -2126,6 +2126,7 @@ public class StorageProxy implements StorageProxyMBean {
         // read executoe, we'll only send read requests to enough replicas to satisfy
         // the consistency level
         for (int i = 0; i < cmdCount; i++) {
+            // the command we'll actually query the replica
             reads[i].executeAsync();
         }
 
@@ -2187,15 +2188,17 @@ public class StorageProxy implements StorageProxyMBean {
             this.command = command;
             this.handler = handler;
             this.trackRepairedStatus = trackRepairedStatus;
-            if (command instanceof SinglePartitionReadCommand) {
-                logger.debug("[Tinoryj] touch SinglePartitionReadCommand in storage proxy");
-            } else {
-                logger.debug("[Tinoryj] touch PartitionRangeReadCommand in storage proxy");
-            }
+            // if (command instanceof SinglePartitionReadCommand) {
+            // logger.debug("[Tinoryj] touch SinglePartitionReadCommand in storage proxy");
+            // } else {
+            // logger.debug("[Tinoryj] touch PartitionRangeReadCommand in storage proxy");
+            // }
         }
 
         protected void runMayThrow() {
-            logger.debug("[Tinoryj] touch read run may throw in storage proxy");
+            logger.debug(
+                    "[Tinoryj] touch read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}",
+                    command.metadata().name, command.metadata().keyspace);
             try {
                 MessageParams.reset();
 
@@ -2207,10 +2210,13 @@ public class StorageProxy implements StorageProxyMBean {
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     response = command.createResponse(iterator, controller.getRepairedDataInfo());
+                    logger.debug("[Tinoryj] get read response in storage proxy: {}", response);
                 } catch (RejectException e) {
                     if (!command.isTrackingWarnings())
                         throw e;
-
+                    logger.debug(
+                            "[Tinoryj] In read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}, could not get key, created empty response",
+                            command.metadata().name, command.metadata().keyspace);
                     response = command.createEmptyResponse();
                     readRejected = true;
                 }

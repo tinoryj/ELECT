@@ -43,7 +43,7 @@ Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_initImpl(
 JNIEXPORT void JNICALL
 Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_decodeImpl(
     JNIEnv* env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
-    jint dataLen, jintArray erasedIndexes, jobjectArray outputs,
+    jint dataLen, jintArray decodeIndexes, jintArray erasedIndexes, jobjectArray outputs,
     jintArray outputOffsets)
 {
     RSDecoder* rsDecoder = (RSDecoder*)getCoder(env, thiz);
@@ -54,15 +54,19 @@ Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_decodeImpl(
     int numDataUnits = rsDecoder->decoder.coder.numDataUnits;
     int numParityUnits = rsDecoder->decoder.coder.numParityUnits;
     int chunkSize = (int)dataLen;
+    // printf("NativeRSDecoder_decodeImpl, start to process: data unit = %d, parity unit = %d, data block size = %d\n", numDataUnits, numParityUnits, chunkSize);
 
+    int* tmpDecodeIndexes = (int*)(*env)->GetIntArrayElements(env,
+        decodeIndexes, NULL);
     int* tmpErasedIndexes = (int*)(*env)->GetIntArrayElements(env,
         erasedIndexes, NULL);
+    int numUsedForDecode = (*env)->GetArrayLength(env, decodeIndexes);
     int numErased = (*env)->GetArrayLength(env, erasedIndexes);
-    getInputs(env, inputs, inputOffsets, rsDecoder->inputs,
-        numDataUnits + numParityUnits);
+    // printf("NativeRSDecoder_decodeImpl, read data: target recovery data block number = %d, the first recovery request block ID = %d\n", numErased, tmpErasedIndexes[0]);
+    getInputs(env, inputs, inputOffsets, rsDecoder->inputs, numDataUnits);
     getOutputs(env, outputs, outputOffsets, rsDecoder->outputs, numErased);
-
-    decode(&rsDecoder->decoder, rsDecoder->inputs, tmpErasedIndexes,
+    // printf("NativeRSDecoder_decodeImpl, start do decode\n");
+    decode(&rsDecoder->decoder, rsDecoder->inputs, tmpDecodeIndexes, tmpErasedIndexes,
         numErased, rsDecoder->outputs, chunkSize);
 }
 
