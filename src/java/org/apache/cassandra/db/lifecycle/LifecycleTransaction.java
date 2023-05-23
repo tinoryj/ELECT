@@ -569,7 +569,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
     private Throwable unmarkCompacting(Set<SSTableReader> unmark, Throwable accumulate, SSTableReader ecSSTable)
     {
         logger.debug("This is ummarkCompacting for ec sstable {}", ecSSTable.descriptor);
-        unmark.add(ecSSTable);
+        // unmark.add(ecSSTable);
         accumulate = tracker.apply(updateCompacting(unmark, emptySet()), accumulate);
         // when the CFS is invalidated, it will call unreferenceSSTables().  However, unreferenceSSTables only deals
         // with sstables that aren't currently being compacted.  If there are ongoing compactions that finish or are
