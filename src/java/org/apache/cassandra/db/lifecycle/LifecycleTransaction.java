@@ -377,7 +377,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         identities.add(reader.instanceId);
         if (!isOffline())
             reader.setupOnline();
-        throw new IllegalStateException("rymDebug: debug for update method");
+        //throw new IllegalStateException("rymDebug: debug for update method");
     }
 
     public void update(Collection<SSTableReader> readers, boolean original)
