@@ -738,9 +738,9 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         // we restore state by obsoleting our obsolete files, releasing our references to them, and updating our size
         // and notification status for the obsolete and new files
         logger.debug("rymDebug: commit ec_metadata {}", ecSSTable.descriptor);
-        logger.debug("rymDebug: Before update live set, the size of sstables map is {}", tracker.view.get().sstablesMap.size());
-        accumulate = tracker.apply(updateLiveSet(Collections.emptySet(), Collections.singletonList(ecSSTable)), accumulate);
-        logger.debug("rymDebug: After update live set, the size of sstables map is {}", tracker.view.get().sstablesMap.size());
+        // logger.debug("rymDebug: Before update live set, the size of sstables map is {}", tracker.view.get().sstablesMap.size());
+        // accumulate = tracker.apply(updateLiveSet(Collections.emptySet(), Collections.singletonList(ecSSTable)), accumulate);
+        // logger.debug("rymDebug: After update live set, the size of sstables map is {}", tracker.view.get().sstablesMap.size());
         accumulate = markObsolete(obsoletions, accumulate);
         accumulate = tracker.updateSizeTracking(logged.obsolete, logged.update, accumulate, ecSSTable);
         accumulate = runOnCommitHooks(accumulate);

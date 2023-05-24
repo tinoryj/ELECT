@@ -361,6 +361,9 @@ public class CompactionTask extends AbstractCompactionTask {
                     }
                     logger.debug("rymDebug: this is rewrite SSTable method, replacing SSTable {}", ecSSTable.descriptor);
                     
+                    transaction.update(ecSSTable, false);
+                    ecSSTable.setupOnline();
+                    transaction.checkpoint();
                     // transaction.tracker.addSSTables(Collections.singleton(ecSSTable));
                     // transaction.tracker.apply(View.updateLiveSet(Collections.emptySet(), Collections.singleton(ecSSTable)));
                     newSSTables = writer.finish(ecSSTable);
@@ -436,6 +439,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
             // update the metrics
             cfs.metric.compactionBytesWritten.inc(endsize);
+            logger.debug("Compaction is really done.");
         }
     }
 
