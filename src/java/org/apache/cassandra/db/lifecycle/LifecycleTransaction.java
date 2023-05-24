@@ -370,7 +370,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
     public void update(SSTableReader reader, boolean original)
     {
         // [rymDebug]
-        // ECNetutils.printStackTace();
+        ECNetutils.printStackTace();
         if(reader.isReplicationTransferredToErasureCoding()) {
             logger.debug("update a transferred sstable {}", reader.descriptor);
         }
@@ -386,7 +386,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         if (!isOffline())
             reader.setupOnline();
         
-        throw new IllegalStateException("Debug method LifcycleTransaction.update");
+        // throw new IllegalStateException("Debug method LifcycleTransaction.update");
     }
 
     public void update(Collection<SSTableReader> readers, boolean original)
