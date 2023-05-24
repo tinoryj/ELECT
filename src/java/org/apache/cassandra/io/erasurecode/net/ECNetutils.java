@@ -240,14 +240,15 @@ public final class ECNetutils {
         }
     }
 
-    public static synchronized void printStackTace(String msg) {
-        logger.debug(msg);
-        Throwable throwable =new Throwable();
-        throwable.printStackTrace();
+    public static void printStackTace(String msg) {
+        // logger.debug(msg);
+        // Throwable throwable =new Throwable();
+        // throwable.printStackTrace();
+        logger.debug("stack trace {}", new Exception("test"));
     }
 
     public static void test() throws Exception{
-        throw new Exception("test");
+        logger.debug("stack trace {}", new Exception("test"));
     }
 
     public static void main(String[] args) throws Exception{
