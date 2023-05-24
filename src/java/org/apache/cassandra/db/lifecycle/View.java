@@ -299,15 +299,18 @@ public class View
     // construct a function to change the liveset in a Snapshot
     static Function<View, View> updateLiveSet(final Set<SSTableReader> remove, final Iterable<SSTableReader> add)
     {
+        // [CASSANDRAEC]
+        logger.debug("Invoke updateLiveSet method.");
+        Throwable throwable =new Throwable();
+        throwable.printStackTrace();
+        ECNetutils.printStackTace();
         if (remove.isEmpty() && Iterables.isEmpty(add))
             return Functions.identity();
         return new Function<View, View>()
         {
             public View apply(View view)
             {
-                // [CASSANDRAEC]
-                Throwable throwable =new Throwable();
-                throwable.printStackTrace();
+
                 
                 Map<SSTableReader, SSTableReader> sstableMap = replace(view.sstablesMap, remove, add);
                 return new View(view.liveMemtables, view.flushingMemtables, sstableMap, view.compactingMap,
