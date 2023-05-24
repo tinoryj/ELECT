@@ -242,7 +242,9 @@ public final class ECNetutils {
 
     public static void printStackTace() {
         Throwable throwable =new Throwable();
-        throwable.printStackTrace();
+        for (StackTraceElement element : throwable.getStackTrace()) {
+            System.out.println(element.toString());
+        }
     }
 
 
