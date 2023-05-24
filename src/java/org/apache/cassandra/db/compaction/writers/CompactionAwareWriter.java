@@ -109,6 +109,10 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     protected void doPrepare(SSTableReader ecSSTable) {
         sstableWriter.prepareToCommit(ecSSTable);
     }
+
+    public SSTableRewriter getSSTableWriter() {
+        return sstableWriter;
+    }
     /**
      * we are done, return the finished sstables so that the caller can mark the old
      * ones as compacted

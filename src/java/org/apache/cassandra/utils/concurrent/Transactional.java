@@ -220,6 +220,7 @@ public interface Transactional extends AutoCloseable
                 throw new IllegalStateException("Cannot prepare to commit unless IN_PROGRESS; state is " + state);
 
             doPrepare(ecSSTable);
+            // doPrepare();
             maybeFail(doPreCleanup(null));
             state = State.READY_TO_COMMIT;
         }
@@ -228,7 +229,8 @@ public interface Transactional extends AutoCloseable
         // [CASSANDRAEC]
         public Object finish(SSTableReader ecSSTable)
         {
-            prepareToCommit(ecSSTable);
+            // prepareToCommit(ecSSTable);
+            prepareToCommit();
             commitEC(ecSSTable);
             return this;
         }

@@ -229,7 +229,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
      * @param newReader the rewritten reader that replaces them for this region
      * @param lowerbound if !reset, must be non-null, and marks the exclusive lowerbound of the start for each sstable
      */
-    private void moveStarts(SSTableReader newReader, DecoratedKey lowerbound)
+    public void moveStarts(SSTableReader newReader, DecoratedKey lowerbound)
     {
         if (transaction.isOffline() || preemptiveOpenInterval == Long.MAX_VALUE)
             return;
@@ -431,7 +431,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         }
         transaction.update(ecSSTable, false);
         preparedForCommit.add(ecSSTable);
-        
+
         transaction.checkpoint();
 
         if (throwLate)
