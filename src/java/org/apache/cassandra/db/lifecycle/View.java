@@ -31,6 +31,7 @@ import org.apache.cassandra.db.PartitionPosition;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.Interval;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -253,7 +254,15 @@ public class View
         {
             public View apply(View view)
             {
-                assert all(mark, Helpers.idIn(view.sstablesMap));
+                // [CASSANDRAEC]
+                Iterable<SSTableReader> markWithOutECSSTables = Iterables.filter(mark, new Predicate<SSTableReader>() {
+                    @Override
+                    public boolean apply(@Nullable SSTableReader input) {
+                        return input.isReplicationTransferredToErasureCoding() && !input.getColumnFamilyName().equals("usertable");
+                    }
+                });
+
+                assert all(markWithOutECSSTables, Helpers.idIn(view.sstablesMap));
                 return new View(view.liveMemtables, view.flushingMemtables, view.sstablesMap,
                                 replace(view.compactingMap, unmark, mark),
                                 view.intervalTree);
