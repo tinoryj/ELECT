@@ -258,7 +258,7 @@ public class View
                 Iterable<SSTableReader> markWithOutECSSTables = Iterables.filter(mark, new Predicate<SSTableReader>() {
                     @Override
                     public boolean apply(@Nullable SSTableReader input) {
-                        return input.isReplicationTransferredToErasureCoding() && !input.getColumnFamilyName().equals("usertable");
+                        return !input.isReplicationTransferredToErasureCoding() || input.getColumnFamilyName().equals("usertable");
                     }
                 });
 
