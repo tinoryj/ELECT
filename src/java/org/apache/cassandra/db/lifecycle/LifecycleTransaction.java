@@ -345,6 +345,48 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         // ensure any new readers are in the compacting set, since we aren't done with them yet
         // and don't want anyone else messing with them
         // apply atomically along with updating the live set of readers
+        ECNetutils.printStackTace("Invoke checkpoint()");
+        tracker.apply(compose(updateCompacting(emptySet(), fresh),
+                              updateLiveSet(toUpdate, staged.update)));
+
+        // log the staged changes and our newly marked readers
+        marked.addAll(fresh);
+        logged.log(staged);
+
+        // setup our tracker, and mark our prior versions replaced, also releasing our references to them
+        // we do not replace/release obsoleted readers, since we may need to restore them on rollback
+        accumulate = setReplaced(filterOut(toUpdate, staged.obsolete), accumulate);
+        accumulate = release(selfRefs(filterOut(toUpdate, staged.obsolete)), accumulate);
+
+        staged.clear();
+        return accumulate;
+    }
+
+    // [CASSANDRAEC]
+    public void checkpointEC(SSTableReader ecSStable)
+    {
+        maybeFail(checkpointEC(null, ecSStable));
+    }
+    private Throwable checkpointEC(Throwable accumulate, SSTableReader ecSStable)
+    {
+        if (logger.isTraceEnabled())
+            logger.trace("Checkpointing staged {}", staged);
+
+        if (staged.isEmpty())
+            return accumulate;
+
+        Set<SSTableReader> toUpdate = toUpdate();
+        Set<SSTableReader> fresh = copyOf(fresh());
+        fresh.add(ecSStable);
+
+        staged.update.add(ecSStable);
+
+        // check the current versions of the readers we're replacing haven't somehow been replaced by someone else
+        checkNotReplaced(filterIn(toUpdate, staged.update));
+
+        // ensure any new readers are in the compacting set, since we aren't done with them yet
+        // and don't want anyone else messing with them
+        // apply atomically along with updating the live set of readers
         // ECNetutils.printStackTace();
         tracker.apply(compose(updateCompacting(emptySet(), fresh),
                               updateLiveSet(toUpdate, staged.update)));
@@ -370,7 +412,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
     public void update(SSTableReader reader, boolean original)
     {
         // [rymDebug]
-        // ECNetutils.printStackTace("Invoke LifecycleTransaction.update method");
+        ECNetutils.printStackTace("Invoke LifecycleTransaction.update method");
         if(reader.isReplicationTransferredToErasureCoding()) {
             logger.debug("update a transferred sstable {}", reader.descriptor);
         }
@@ -765,7 +807,15 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
 
     @Override
     protected void doPrepare(SSTableReader ecSSTable) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'doPrepare'");
+        // note for future: in anticompaction two different operations use the same Transaction, and both prepareToCommit()
+        // separately: the second prepareToCommit is ignored as a "redundant" transition. since it is only a checkpoint
+        // (and these happen anyway) this is fine but if more logic gets inserted here than is performed in a checkpoint,
+        // it may break this use case, and care is needed
+        checkpointEC(ecSSTable);
+
+        // prepare for compaction obsolete readers as long as they were part of the original set
+        // since those that are not original are early readers that share the same desc with the finals
+        maybeFail(prepareForObsoletion(filterIn(logged.obsolete, originals), log, obsoletions = new ArrayList<>(), null));
+        log.prepareToCommit(ecSSTable);
     }
 }
