@@ -412,7 +412,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
     public synchronized void update(SSTableReader reader, boolean original)
     {
         // [rymDebug]
-        ECNetutils.printStackTace("Invoke LifecycleTransaction.update method");
+        // ECNetutils.printStackTace("Invoke LifecycleTransaction.update method");
         if(reader.isReplicationTransferredToErasureCoding()) {
             logger.debug("update a transferred sstable {}", reader.descriptor);
         }
