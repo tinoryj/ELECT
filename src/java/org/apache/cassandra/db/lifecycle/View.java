@@ -306,7 +306,9 @@ public class View
             public View apply(View view)
             {
                 // [CASSANDRAEC]
-                ECNetutils.printStackTace();
+                Throwable throwable =new Throwable();
+                throwable.printStackTrace();
+                
                 Map<SSTableReader, SSTableReader> sstableMap = replace(view.sstablesMap, remove, add);
                 return new View(view.liveMemtables, view.flushingMemtables, sstableMap, view.compactingMap,
                                 SSTableIntervalTree.build(sstableMap.keySet()));
