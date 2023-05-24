@@ -240,6 +240,20 @@ public final class ECNetutils {
         }
     }
 
+    public static void printStackTace() {
+        StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+
+        // 从索引1开始，跳过printStackTrace()方法自身
+        for (int i = 1; i < stackTrace.length; i++) {
+            StackTraceElement element = stackTrace[i];
+            System.out.println("Class: " + element.getClassName());
+            System.out.println("Method: " + element.getMethodName());
+            System.out.println("File: " + element.getFileName());
+            System.out.println("Line: " + element.getLineNumber());
+            System.out.println("-----------------------------");
+        }
+    }
+
 
     public static void main(String[] args) throws IOException {
         Set<Integer> set = new HashSet<>();

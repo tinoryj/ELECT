@@ -29,6 +29,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.memtable.Memtable;
 import org.apache.cassandra.db.PartitionPosition;
 import org.apache.cassandra.dht.AbstractBounds;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.Interval;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -304,6 +305,8 @@ public class View
         {
             public View apply(View view)
             {
+                // [CASSANDRAEC]
+                ECNetutils.printStackTace();
                 Map<SSTableReader, SSTableReader> sstableMap = replace(view.sstablesMap, remove, add);
                 return new View(view.liveMemtables, view.flushingMemtables, sstableMap, view.compactingMap,
                                 SSTableIntervalTree.build(sstableMap.keySet()));
