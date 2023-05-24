@@ -244,7 +244,7 @@ public final class ECNetutils {
         logger.debug(msg);
         Throwable throwable =new Throwable();
         for (StackTraceElement element : throwable.getStackTrace()) {
-            System.out.println(element.toString());
+            System.out.println(element.toString() + "\n");
         }
     }
 

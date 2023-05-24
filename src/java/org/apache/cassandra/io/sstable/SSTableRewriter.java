@@ -411,4 +411,35 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         else
             throwLate = true;
     }
+
+    // [CASSANDRAEC]
+    @Override
+    protected void doPrepare(SSTableReader ecSSTable) {
+        switchWriter(null);
+
+        if (throwEarly)
+            throw new RuntimeException("exception thrown early in finish, for testing");
+
+        // No early open to finalize and replace
+        for (SSTableWriter writer : writers)
+        {
+            assert writer.getFilePointer() > 0;
+            writer.setRepairedAt(repairedAt).setOpenResult(true).prepareToCommit();
+            SSTableReader reader = writer.finished();
+            transaction.update(reader, false);
+            preparedForCommit.add(reader);
+        }
+        transaction.update(ecSSTable, false);
+        preparedForCommit.add(ecSSTable);
+        
+        transaction.checkpoint();
+
+        if (throwLate)
+            throw new RuntimeException("exception thrown after all sstables finished, for testing");
+
+        if (!keepOriginals)
+            transaction.obsoleteOriginals();
+
+        transaction.prepareToCommit();
+    }
 }

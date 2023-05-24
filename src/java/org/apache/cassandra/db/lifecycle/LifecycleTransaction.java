@@ -762,4 +762,19 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         log.close();
         return unmarkCompacting(marked, accumulate, ecSSTable);
     }
+
+    @Override
+    protected void doPrepare(SSTableReader ecSSTable) {
+        
+        // note for future: in anticompaction two different operations use the same Transaction, and both prepareToCommit()
+        // separately: the second prepareToCommit is ignored as a "redundant" transition. since it is only a checkpoint
+        // (and these happen anyway) this is fine but if more logic gets inserted here than is performed in a checkpoint,
+        // it may break this use case, and care is needed
+        checkpoint();
+
+        // prepare for compaction obsolete readers as long as they were part of the original set
+        // since those that are not original are early readers that share the same desc with the finals
+        maybeFail(prepareForObsoletion(filterIn(logged.obsolete, originals), log, obsoletions = new ArrayList<>(), null));
+        log.prepareToCommit(ecSSTable);
+    }
 }

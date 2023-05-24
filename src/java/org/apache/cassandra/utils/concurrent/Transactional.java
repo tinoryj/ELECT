@@ -115,6 +115,9 @@ public interface Transactional extends AutoCloseable
          */
         protected abstract void doPrepare();
 
+        // [CASSANDRAEC]
+        protected abstract void doPrepare(SSTableReader ecSSTable);
+
         /**
          * commit any effects of this transaction object graph, then cleanup; delegates first to doCommit, then to doCleanup
          */
@@ -210,10 +213,22 @@ public interface Transactional extends AutoCloseable
             return this;
         }
 
+        // [CASSANDRA]
+        public final void prepareToCommit(SSTableReader ecSSTable)
+        {
+            if (state != State.IN_PROGRESS)
+                throw new IllegalStateException("Cannot prepare to commit unless IN_PROGRESS; state is " + state);
+
+            doPrepare(ecSSTable);
+            maybeFail(doPreCleanup(null));
+            state = State.READY_TO_COMMIT;
+        }
+
+
         // [CASSANDRAEC]
         public Object finish(SSTableReader ecSSTable)
         {
-            prepareToCommit();
+            prepareToCommit(ecSSTable);
             commitEC(ecSSTable);
             return this;
         }

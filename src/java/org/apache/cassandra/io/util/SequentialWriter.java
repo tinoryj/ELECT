@@ -104,6 +104,12 @@ public class SequentialWriter extends BufferedDataOutputStreamPlus implements Tr
             // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
         }
+
+        @Override
+        protected void doPrepare(SSTableReader ecSSTable) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'doPrepare'");
+        }
     }
 
     // TODO: we should specify as a parameter if we permit an existing file or not
