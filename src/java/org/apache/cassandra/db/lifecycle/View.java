@@ -300,16 +300,14 @@ public class View
     static Function<View, View> updateLiveSet(final Set<SSTableReader> remove, final Iterable<SSTableReader> add)
     {
         // [CASSANDRAEC]
-        ECNetutils.printStackTace();
-        
+        // ECNetutils.printStackTace();
+
         if (remove.isEmpty() && Iterables.isEmpty(add))
             return Functions.identity();
         return new Function<View, View>()
         {
             public View apply(View view)
             {
-
-                
                 Map<SSTableReader, SSTableReader> sstableMap = replace(view.sstablesMap, remove, add);
                 return new View(view.liveMemtables, view.flushingMemtables, sstableMap, view.compactingMap,
                                 SSTableIntervalTree.build(sstableMap.keySet()));

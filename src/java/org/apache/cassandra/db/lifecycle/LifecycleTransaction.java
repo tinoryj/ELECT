@@ -33,6 +33,7 @@ import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.compaction.OperationType;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableReader.UniqueIdentifier;
@@ -367,6 +368,8 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
      */
     public void update(SSTableReader reader, boolean original)
     {
+        // [rymDebug]
+        ECNetutils.printStackTace();
         if(reader.isReplicationTransferredToErasureCoding()) {
             logger.debug("update a transferred sstable {}", reader.descriptor);
         }
@@ -381,7 +384,6 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         identities.add(reader.instanceId);
         if (!isOffline())
             reader.setupOnline();
-        //throw new IllegalStateException("rymDebug: debug for update method");
     }
 
     public void update(Collection<SSTableReader> readers, boolean original)
