@@ -300,10 +300,8 @@ public class View
     static Function<View, View> updateLiveSet(final Set<SSTableReader> remove, final Iterable<SSTableReader> add)
     {
         // [CASSANDRAEC]
-        logger.debug("Invoke updateLiveSet method.");
-        Throwable throwable =new Throwable();
-        throwable.printStackTrace();
         ECNetutils.printStackTace();
+        
         if (remove.isEmpty() && Iterables.isEmpty(add))
             return Functions.identity();
         return new Function<View, View>()
