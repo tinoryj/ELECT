@@ -409,7 +409,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
      * update a reader: if !original, this is a reader that is being introduced by this transaction;
      * otherwise it must be in the originals() set, i.e. a reader guarded by this transaction
      */
-    public void update(SSTableReader reader, boolean original)
+    public synchronized void update(SSTableReader reader, boolean original)
     {
         // [rymDebug]
         ECNetutils.printStackTace("Invoke LifecycleTransaction.update method");
