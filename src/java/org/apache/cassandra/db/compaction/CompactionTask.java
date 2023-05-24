@@ -508,10 +508,12 @@ public class CompactionTask extends AbstractCompactionTask {
 
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
 
-            for (SSTableReader sstable : actuallyCompact) {
+            Iterator<SSTableReader> actuallyCompactIterator = actuallyCompact.iterator();
+            while (actuallyCompactIterator.hasNext()) {
+                SSTableReader sstable = actuallyCompactIterator.next();
                 if(sstable.isReplicationTransferredToErasureCoding()) {
-                    logger.debug("rymDebug: removing sstable ({}) from acuallyCompact", sstable.descriptor);
-                    actuallyCompact.remove(sstable);
+                    logger.debug("rymDebug: removing sstable ({}) from actuallyCompact, actuallyCompact contain this sstable? ({})", sstable.descriptor, actuallyCompact.contains(sstable));
+                    actuallyCompactIterator.remove();
                 }
             }
             

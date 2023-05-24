@@ -36,9 +36,11 @@ import java.net.Inet4Address;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.db.DecoratedKey;
@@ -240,47 +242,17 @@ public final class ECNetutils {
 
 
     public static void main(String[] args) throws IOException {
-        // SSTableMetadataViewer metawriter = new SSTableMetadataViewer(false, false, Integer.MAX_VALUE, TimeUnit.MICROSECONDS, System.out);
-        
-        // String fname = System.getProperty("user.dir")+"/data/data/nb-1712-big-Statistics.db";
-        // File sstable = new File(fname);
-        // logger.info("absolutePath is {}, path is {}, parentPath is {}, parent is {}",
-        //  sstable.absolutePath(), sstable.path(), sstable.parentPath(),sstable.parent());
-        // Descriptor desc = Descriptor.fromFilename(fname);
-        // logger.info("read from {}, desc is {}, id is {}, version is {}, format type is {}, TOC file name is {}",
-        //  fname, desc, desc.id, desc.version, desc.formatType, desc.filenameFor(Component.TOC));
+        Set<Integer> set = new HashSet<>();
+        set.add(1);
+        set.add(2);
+        set.add(3);
 
+        int elementToRemove = 2;
 
-        // read Statistics.db
-        // EnumSet<MetadataType> types = EnumSet.of(MetadataType.VALIDATION, MetadataType.STATS, MetadataType.HEADER);
+        boolean removed = set.remove(elementToRemove);
 
-        // Map<MetadataType, MetadataComponent> sstableMetadata;
-        // try {
-        //     sstableMetadata = desc.getMetadataSerializer().deserialize(desc, types);
-        //     logger.info("statsmetadata is {}", sstableMetadata.toString());
-        // } catch (Throwable t) {
-        //     throw new CorruptSSTableException(t, desc.filenameFor(Component.STATS));
-        // }
-
-
-        // try {
-        //     byte[] data = Files.readAllBytes(Paths.get(fname));
-        //     logger.info("data length is {}, content is {}", data.length, data);
-        // } catch (IOException e) {
-        //     // TODO Auto-generated catch block
-        //     e.printStackTrace();
-        // }
-
-        byte[] bytes = {0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02};
-
-
-        ByteArrayInputStream in = new ByteArrayInputStream(bytes);
-        DataInput dataIn = new DataInputStream(in);
-
-        int value1 = dataIn.readInt();
-        int value2 = dataIn.readInt();
-        
-        logger.debug(" read value1 {}, value2 {}", value1, value2);
+        System.out.println("Set after removal: " + set);
+        System.out.println("Element removed: " + removed);
 
 
     }
