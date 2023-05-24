@@ -510,6 +510,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
             for (SSTableReader sstable : actuallyCompact) {
                 if(sstable.isReplicationTransferredToErasureCoding()) {
+                    logger.debug("rymDebug: removing sstable ({}) from acuallyCompact", sstable.descriptor);
                     actuallyCompact.remove(sstable);
                 }
             }
