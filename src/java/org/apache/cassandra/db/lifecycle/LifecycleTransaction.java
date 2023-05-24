@@ -345,6 +345,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         // ensure any new readers are in the compacting set, since we aren't done with them yet
         // and don't want anyone else messing with them
         // apply atomically along with updating the live set of readers
+        ECNetutils.printStackTace();
         tracker.apply(compose(updateCompacting(emptySet(), fresh),
                               updateLiveSet(toUpdate, staged.update)));
 
@@ -369,7 +370,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
     public void update(SSTableReader reader, boolean original)
     {
         // [rymDebug]
-        ECNetutils.printStackTace();
+        // ECNetutils.printStackTace();
         if(reader.isReplicationTransferredToErasureCoding()) {
             logger.debug("update a transferred sstable {}", reader.descriptor);
         }
@@ -384,6 +385,8 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         identities.add(reader.instanceId);
         if (!isOffline())
             reader.setupOnline();
+        
+        throw new IllegalStateException("Debug method LifcycleTransaction.update");
     }
 
     public void update(Collection<SSTableReader> readers, boolean original)
