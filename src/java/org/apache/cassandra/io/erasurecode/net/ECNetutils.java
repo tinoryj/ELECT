@@ -244,7 +244,7 @@ public final class ECNetutils {
         // logger.debug(msg);
         // Throwable throwable =new Throwable();
         // throwable.printStackTrace();
-        logger.debug("stack trace {}", new Exception("test"));
+        logger.debug("stack trace {}", new Exception(msg));
     }
 
     public static void test() throws Exception{

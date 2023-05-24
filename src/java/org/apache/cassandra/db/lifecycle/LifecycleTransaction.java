@@ -345,7 +345,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         // ensure any new readers are in the compacting set, since we aren't done with them yet
         // and don't want anyone else messing with them
         // apply atomically along with updating the live set of readers
-        ECNetutils.printStackTace("Invoke checkpoint()");
+        // ECNetutils.printStackTace("Invoke checkpoint()");
         tracker.apply(compose(updateCompacting(emptySet(), fresh),
                               updateLiveSet(toUpdate, staged.update)));
 
