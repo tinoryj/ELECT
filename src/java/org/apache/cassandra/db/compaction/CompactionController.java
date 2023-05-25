@@ -337,7 +337,8 @@ public class CompactionController extends AbstractCompactionController
      */
     protected boolean ignoreOverlaps()
     {
-        return false;
+        boolean ignoreOverlaps = true;
+        return ignoreOverlaps;
     }
 
     private FileDataInput openDataFile(SSTableReader reader)
