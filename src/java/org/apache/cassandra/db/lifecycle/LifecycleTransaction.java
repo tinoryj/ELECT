@@ -428,6 +428,9 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         if (!isOffline())
             reader.setupOnline();
         
+        if(reader.isReplicationTransferredToErasureCoding()) {
+            logger.debug("successfully update a transferred sstable {}", reader.descriptor);
+        }
         // throw new IllegalStateException("Debug method LifcycleTransaction.update");
     }
 
