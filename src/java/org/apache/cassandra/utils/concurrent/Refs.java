@@ -204,7 +204,7 @@ public final class Refs<T extends RefCounted<T>> extends AbstractCollection<T> i
     /**
      * Acquire a reference to all of the provided objects, or none
      */
-    public static <T extends RefCounted<T>> Refs<T> tryRef(Iterable<T> reference)
+    public static synchronized <T extends RefCounted<T>> Refs<T> tryRef(Iterable<T> reference)
     {
         HashMap<T, Ref<T>> refs = new HashMap<>();
         for (T rc : reference)
