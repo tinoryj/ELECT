@@ -85,6 +85,7 @@ import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.service.CacheService;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.concurrent.*;
 
@@ -179,6 +180,20 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     private static final ScheduledExecutorPlus syncExecutor = initSyncExecutor();
 
+
+        // Reset
+        public static final String RESET = "\033[0m"; // Text Reset
+
+        // Regular Colors
+        public static final String WHITE = "\033[0;30m"; // WHITE
+        public static final String RED = "\033[0;31m"; // RED
+        public static final String GREEN = "\033[0;32m"; // GREEN
+        public static final String YELLOW = "\033[0;33m"; // YELLOW
+        public static final String BLUE = "\033[0;34m"; // BLUE
+        public static final String PURPLE = "\033[0;35m"; // PURPLE
+        public static final String CYAN = "\033[0;36m"; // CYAN
+        public static final String GREY = "\033[0;37m"; // GREY
+
     private static ScheduledExecutorPlus initSyncExecutor() {
         if (DatabaseDescriptor.isClientOrToolInitialized())
             return null;
@@ -267,6 +282,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     // not final since we need to be able to change level on a file.
     protected volatile StatsMetadata sstableMetadata;
+
+    protected Boolean isReplicationTransferredToErasureCoding = false;
+    protected Boolean isParityUpdate = false;
 
     public final SerializationHeader header;
 
@@ -397,8 +415,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRAEC]
-    public static SSTableReader openECSSTable(ECMetadata message, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
-        // TODO: modify the sstables, e.g. TOC.txt
+    public static SSTableReader openECSSTable(ECMetadata ecMetadata, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
 
         // Get a correct generation id
         SSTableId ecSSTableId = cfs.sstableIdGenerator.get();
@@ -408,34 +425,48 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // String dataDir = cfs.getDirectories().toString();
 
         String dataDir = directory.get().toString();
-        logger.debug("rymDebug: get data directory  {} (by prefix) for cf {}", dataDir, cfs.name);
+        // logger.debug("rymDebug: get data directory  {} (by prefix) for cf {}", dataDir, cfs.name);
       
-        List<String> sstables = List.of("Filter.db", "Index.db", "Statistics.db");
-        logger.debug("rymDebug: get sstable id {} for ecMetadata!", ecSSTableId);
+        List<String> sstables = List.of("Filter.db", "Index.db", "Statistics.db", "Summary.db");
+        // logger.debug("rymDebug: get sstable id {} for ecMetadata!", ecSSTableId);
         for (String sst : sstables) {
             String sourceFileName = dataForRewriteDir + fileNamePrefix + sst;
             String destFileName = dataDir + "/nb-" + ecSSTableId + "-big-" + sst;
             Path sourcePath = Paths.get(sourceFileName);
             Path destPath = Paths.get(destFileName);
-            Files.move(sourcePath, destPath);
+            if(Files.exists(sourcePath)) {
+                Files.move(sourcePath, destPath);
+            } else {
+                throw new IOException("No such a path for "+sourceFileName);
+            }
+            
         }
 
         // Write a TOC.txt file and rename other files
         String tocFileName = dataDir + "/nb-" + ecSSTableId + "-big-TOC.txt";
-        List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt", "EC.db");
+        List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt", "EC.db", "Summary.db");
         Path tocFile = Paths.get(tocFileName);
         Files.write(tocFile, lines);
 
         // get descriptor from toc file name
         Descriptor desc = Descriptor.fromFilename(tocFileName);
         // write ECMetadata
+        loadECMetadata(ecMetadata, desc);
+        
+        SSTableReader ecSSTable = open(desc);
+        StorageService.instance.globalSSTHashToECSSTable.putIfAbsent(ecSSTable.getSSTableHashID(), ecSSTable);
+        return ecSSTable;
+    }
+
+    public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc) {
+
         File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
         if (ecMetadataFile.exists())
             FileUtils.deleteWithConfirm(ecMetadataFile);
 
         try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
 
-            byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) message);
+            byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata);
             ByteBufferUtil.writeWithLength(ByteBuffer.wrap(buffer), oStream);
 
         } catch (IOException e) {
@@ -445,9 +476,6 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             if (ecMetadataFile.exists())
                 FileUtils.deleteWithConfirm(ecMetadataFile);
         }
-        
-
-        return open(desc);
     }
 
     public static SSTableReader open(Descriptor desc, TableMetadataRef metadata) {
@@ -601,7 +629,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             if (sstable.getKeyCache() != null)
                 logger.trace("key cache contains {}/{} keys", sstable.getKeyCache().size(),
                         sstable.getKeyCache().getCapacity());
-
+            if(components.contains(Component.EC_METADATA)) {
+                logger.info(RESET+"Open EC SSTables successfully! {}", sstable.getFilename()+YELLOW);
+            }
             return sstable;
         } catch (Throwable t) {
             sstable.selfRef().release();
@@ -774,7 +804,17 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         if(!readAndSetHashIDIfNotExists()){
             logger.debug("[Tinoryj] could not setup hash ID for current sstable = {}",descriptor.filenameFor(Component.DATA));
         }
-        return sstableMetadata.hashID();
+        return stringToHex(sstableMetadata.hashID());
+    }
+
+    public static String stringToHex(String str) {
+        byte[] bytes = str.getBytes();
+        StringBuilder hex = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            hex.append(Character.forDigit((b >> 4) & 0xF, 16))
+                    .append(Character.forDigit((b & 0xF), 16));
+        }
+        return hex.toString();
     }
 
     public void updateBloomFilter(ColumnFamilyStore cfs, List<DecoratedKey> allKeys) throws IOException {
@@ -1611,7 +1651,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     public List<String> getAllKeys() {
         // final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
         //         Collections.singletonList(fullRange()));
-        logger.debug("rymDebug: this is get all keys");
+        // logger.debug("rymDebug: this is get all keys");
         
         ISSTableScanner scanner = this.getScanner();
         List<String> allKeys = new ArrayList<String>();
@@ -1621,7 +1661,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         }
         scanner.close();
         
-        logger.debug("rymDebug: this is get all keys successfully, key number is {}", allKeys.size());
+        // logger.debug("rymDebug: this is get all keys successfully, key number is {}", allKeys.size());
         return allKeys;
     }
 
@@ -1764,12 +1804,24 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public boolean isReplicationTransferredToErasureCoding() {
-        return sstableMetadata.isReplicationTransferredToErasureCoding;
+        return this.isReplicationTransferredToErasureCoding;
     }
 
     public boolean SetIsReplicationTransferredToErasureCoding() {
-        sstableMetadata.isReplicationTransferredToErasureCoding = true;
-        if (sstableMetadata.isReplicationTransferredToErasureCoding) {
+        this.isReplicationTransferredToErasureCoding = true;
+        if (this.isReplicationTransferredToErasureCoding) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    public boolean isParityUpdate() {
+        return this.isParityUpdate;
+    }
+
+    public boolean setIsParityUpdate() {
+        this.isParityUpdate = true;
+        if (this.isParityUpdate) {
             return true;
         } else {
             return false;
@@ -1943,12 +1995,11 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
      * Mutate sstable repair metadata with a lock to avoid racing with
      * entire-sstable-streaming and then reload sstable metadata
      */
-    public void mutateRepairedAndReload(long newRepairedAt, TimeUUID newPendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding)
+    public void mutateRepairedAndReload(long newRepairedAt, TimeUUID newPendingRepair, boolean isTransient)
             throws IOException {
         synchronized (tidy.global) {
             descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, newRepairedAt, newPendingRepair,
-                    isTransient, isReplicationTransferredToErasureCoding);
+                    isTransient);
             reloadSSTableMetadata();
         }
     }

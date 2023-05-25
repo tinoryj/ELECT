@@ -18,9 +18,11 @@
 
 package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.DecoratedKeyComparator;
@@ -40,17 +42,21 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     public static final ECSyncSSTableVerbHandler instance = new ECSyncSSTableVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECSyncSSTableVerbHandler.class);
 
-    private static int GLOBAL_COUNTER = 0;
+    private static AtomicInteger GLOBAL_COUNTER = new AtomicInteger(0);
 
 
 
     public static class DataForRewrite {
-        public final List<DecoratedKey> sourceKeys;
+        // public final List<DecoratedKey> sourceKeys;
+        public final DecoratedKey firstKey;
+        public final DecoratedKey lastKey;
         // public final SSTablesInBytes sstInBytes;
         public String fileNamePrefix;
 
-        public DataForRewrite(List<DecoratedKey> sourceKeys, String fileNamePrefix) {
-            this.sourceKeys = sourceKeys;
+        public DataForRewrite(DecoratedKey firstKey, DecoratedKey lastKey, String fileNamePrefix) {
+            this.firstKey = firstKey;
+            this.lastKey = lastKey;
+            // this.sourceKeys = sourceKeys;
             // this.sstInBytes = sstInBytes;
             this.fileNamePrefix = fileNamePrefix;
         }
@@ -62,9 +68,12 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         // Check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
+            logger.debug("rymDebug: ECSyncSSTableVerbHandler this is a forwarding header, message {} is from {} to {}",
+                            message.payload.sstHashID ,message.from(), forwardTo);
             forwardToLocalNodes(message, forwardTo);
-            logger.debug("rymDebug: this is a forwarding header");
-        }  
+        }
+        logger.debug("rymDebug: ECSyncSSTableVerbHandler received {} from {}", 
+                        message.payload.sstHashID, message.from());
 
         // collect sstcontent
         List<String> allKey = message.payload.allKey;
@@ -72,38 +81,43 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         String cfName = message.payload.targetCfName;
 
         // Get all keys 
-        List<DecoratedKey> sourceKeys = new ArrayList<DecoratedKey>();
-        for(String key : allKey) {
-            sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
-        }
-        Collections.sort(sourceKeys, new DecoratedKeyComparator());
+        // List<DecoratedKey> sourceKeys = new ArrayList<DecoratedKey>();
+        // for(String key : allKey) {
+        //     sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
+        // }
+        // Collections.sort(sourceKeys, new DecoratedKeyComparator());
+        DecoratedKey firstKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, allKey.get(0));
+        DecoratedKey lastKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, allKey.get(allKey.size() - 1));
 
         // Get sstales in byte.
         // TODO: save the recieved data to a certain location based on the keyspace name and cf name
+        String hostName = InetAddress.getLocalHost().getHostName();
+        int fileCount = GLOBAL_COUNTER.getAndIncrement();
         String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
-        // the full name is user.dir/data/tmp/${COUNTER}-XXX.db
-        String tmpFileName = dataForRewriteDir + String.valueOf(GLOBAL_COUNTER) + "-";
+        // the full name is user.dir/data/tmp/${HostName}-${COUNTER}-XXX.db
+        String fileNamePrefix = hostName + "-" + String.valueOf(fileCount) + "-";
+        StorageService.instance.globalSSTMap.put(message.payload.sstHashID, 
+                                                         new DataForRewrite(firstKey, lastKey, fileNamePrefix));
+        
+        String tmpFileName = dataForRewriteDir + fileNamePrefix;
         String filterFileName = tmpFileName + "Filter.db";
         ECNetutils.writeBytesToFile(filterFileName, sstInBytes.sstFilter);
         String indexFileName = tmpFileName + "Index.db";
         ECNetutils.writeBytesToFile(indexFileName, sstInBytes.sstIndex);
         String statsFileName = tmpFileName + "Statistics.db";
         ECNetutils.writeBytesToFile(statsFileName, sstInBytes.sstStats);
+        String summaryFileName = tmpFileName + "Summary.db";
+        ECNetutils.writeBytesToFile(summaryFileName, sstInBytes.sstSummary);
 
-        StorageService.instance.globalSSTMap.putIfAbsent(message.payload.sstHashID, 
-                                                         new DataForRewrite(sourceKeys, String.valueOf(GLOBAL_COUNTER) + "-"));
-        GLOBAL_COUNTER++;
-        if(GLOBAL_COUNTER == Integer.MAX_VALUE) {
-            GLOBAL_COUNTER = 0;
-        }
+    
 
 
-        // logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, received key num is {}, targetCfName is {}, sstHash is {}", 
-        //              message.from(),
-        //              StorageService.instance.globalSSTMap.size(), 
-        //              message.payload.allKey.size(),
-        //              message.payload.targetCfName,
-        //              message.payload.sstHashID);
+        logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, received key num is {}, targetCfName is {}, sstHash is {}", 
+                     message.from(),
+                     StorageService.instance.globalSSTMap.size(), 
+                     message.payload.allKey.size(),
+                     message.payload.targetCfName,
+                     message.payload.sstHashID);
     }
 
 
@@ -121,5 +135,9 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
             Tracing.trace("Enqueuing forwarded write to {}", target);
             MessagingService.instance().send(useSameMessageID ? message : builder.withId(id).build(), target);
         });
+    }
+    public static void main(String[] args) throws Exception {
+        String hostName = InetAddress.getLocalHost().getHostName();
+        logger.debug(hostName);
     }
 }

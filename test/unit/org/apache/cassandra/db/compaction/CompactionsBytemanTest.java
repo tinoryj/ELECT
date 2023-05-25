@@ -170,7 +170,7 @@ public class CompactionsBytemanTest extends CQLTester {
             Util.flush(cfs);
         }
         cfs.getCompactionStrategyManager().mutateRepaired(cfs.getLiveSSTables(), System.currentTimeMillis(), null,
-                false, false);
+                false);
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 10; j++) {
                 execute("insert into %s (k, c, v) values (?, ?, ?)", i, j, i * j);

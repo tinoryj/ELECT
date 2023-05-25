@@ -31,6 +31,8 @@ import org.apache.cassandra.db.PartitionPosition;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.Interval;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Predicates.equalTo;
 import static com.google.common.base.Predicates.not;
@@ -55,6 +57,8 @@ import static org.apache.cassandra.db.lifecycle.Helpers.replace;
  */
 public class View
 {
+    private static final Logger logger = LoggerFactory.getLogger(View.class);
+
     /**
      * ordinarily a list of size 1, but when preparing to flush will contain both the memtable we will flush
      * and the new replacement memtable, until all outstanding write operations on the old table complete.
@@ -266,15 +270,21 @@ public class View
             public boolean apply(View view)
             {
                 for (SSTableReader reader : readers)
-                    if (view.compacting.contains(reader) || view.sstablesMap.get(reader) != reader || reader.isMarkedCompacted())
+                    if (view.compacting.contains(reader) || view.sstablesMap.get(reader) != reader || reader.isMarkedCompacted()){
+                        if(reader.isReplicationTransferredToErasureCoding()) {
+                            logger.debug("rymDebug: the transferred sstable {} is already marked as compaction! The reason is view.compacting.contains? ({}), view.sstablesMap.get(reader) != reader? ({}), view.sstablesMap.get(reader) ({}) reader.isMarkedCompacted? ({})",
+                                         reader.descriptor, view.compacting.contains(reader), view.sstablesMap.get(reader) != reader, view.sstablesMap.get(reader), reader.isMarkedCompacted());
+                        }
                         return false;
+                    }
+                        
                 return true;
             }
         };
     }
 
     // construct a function to change the liveset in a Snapshot
-    static Function<View, View> updateLiveSet(final Set<SSTableReader> remove, final Iterable<SSTableReader> add)
+    public static Function<View, View> updateLiveSet(final Set<SSTableReader> remove, final Iterable<SSTableReader> add)
     {
         if (remove.isEmpty() && Iterables.isEmpty(add))
             return Functions.identity();

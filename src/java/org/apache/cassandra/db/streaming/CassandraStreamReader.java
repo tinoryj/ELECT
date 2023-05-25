@@ -163,7 +163,7 @@ public class CassandraStreamReader implements IStreamReader {
                 .createLifecycleNewTracker();
 
         RangeAwareSSTableWriter writer = new RangeAwareSSTableWriter(cfs, estimatedKeys, repairedAt, pendingRepair,
-                false, false, format, sstableLevel, totalSize, lifecycleNewTracker, getHeader(cfs.metadata()));
+                false, format, sstableLevel, totalSize, lifecycleNewTracker, getHeader(cfs.metadata()));
         return writer;
     }
 

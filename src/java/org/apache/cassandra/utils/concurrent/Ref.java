@@ -234,12 +234,17 @@ public final class Ref<T> implements RefCounted<T>
             if (leak)
             {
                 String id = this.toString();
-                logger.error("LEAK DETECTED: a reference ({}) to {} was not released before the reference was garbage collected", id, globalState);
+                if(id.contains("usertable1") || id.contains("usertable2")) {
+                    logger.error("LEAK DETECTED IN SECONDARY NODE: a reference ({}) to {} was not released before the reference was garbage collected", id, globalState);
+                } else {
+                    logger.error("LEAK DETECTED: a reference ({}) to {} was not released before the reference was garbage collected", id, globalState);
+                }
                 if (DEBUG_ENABLED)
                     debug.log(id);
                 OnLeak onLeak = ON_LEAK;
                 if (onLeak != null)
                     onLeak.onLeak(this);
+                // throw new IllegalStateException(String.format("LEAK DETECTED: a reference ({}) to {} was not released before the reference was garbage collected", id, globalState));
             }
             else if (DEBUG_ENABLED)
             {

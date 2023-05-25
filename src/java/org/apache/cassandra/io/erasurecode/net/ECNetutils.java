@@ -32,6 +32,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.net.Inet4Address;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
@@ -40,24 +42,30 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.StorageHook;
 import org.apache.cassandra.index.Index.Indexer;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.sstable.Descriptor;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataComponent;
 import org.apache.cassandra.io.sstable.metadata.MetadataType;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ECNetutils {
+public final class ECNetutils {
     private static final Logger logger = LoggerFactory.getLogger(ECNetutils.class);
     
     private static final String dataForRewriteDir = System.getProperty("user.dir")+"/data/tmp/";
-    private static final String parityCodeDir = System.getProperty("user.dir")+"/data/parityHashes/";
+    private static final String receivedParityCodeDir = System.getProperty("user.dir")+"/data/receivedParityHashes/";
     private static final String dataDir = System.getProperty("user.dir")+"/data/data/";
+    private static final String localParityCodeDir = System.getProperty("user.dir")+"/data/localParityHashes/";
 
     public static class ByteObjectConversion {
         public static byte[] objectToByteArray(Serializable obj) throws IOException {
@@ -78,6 +86,17 @@ public class ECNetutils {
             bis.close();
             ois.close();
             return obj;
+        }
+    }
+
+    public static class StripIDToSSTHashAndParityNodes implements Serializable {
+        public final String stripID;
+        public final String sstHash;
+        public final List<InetAddressAndPort> parityNodes;
+        public StripIDToSSTHashAndParityNodes(String stripID, String sstHash, List<InetAddressAndPort> parityNodes) {
+            this.stripID = stripID;
+            this.sstHash = sstHash;
+            this.parityNodes = parityNodes;
         }
     }
 
@@ -110,12 +129,54 @@ public class ECNetutils {
         return dataForRewriteDir;
     }
 
-    public static String getParityCodeDir() {
-        return parityCodeDir;
+    public static String getReceivedParityCodeDir() {
+        return receivedParityCodeDir;
     }
 
     public static String getDataDir() {
         return dataDir;
+    }
+
+    public static String getLocalParityCodeDir() {
+        return localParityCodeDir;
+    }
+
+    /**
+     * This method is to sync a given sstable's file (without Data.db) with secondary nodes during erasure coding and parity update.
+     * @param sstable
+     * @param replicaNodes
+     * @param sstHashID
+     * @return
+     * @throws Exception
+     */
+    public static void syncSSTableWithSecondaryNodes(SSTableReader sstable,
+                                                     List<InetAddressAndPort> replicaNodes,
+                                                     String sstHashID) throws Exception {
+
+        // Read a given sstable's Filter.db, Index.db, Statistics.db and Summary.db
+        byte[] filterFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
+        byte[] indexFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
+        byte[] statsFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.STATS));
+        byte[] summaryFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.SUMMARY));
+
+        SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile, summaryFile);
+        List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
+        InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
+
+        for (InetAddressAndPort rpn : replicaNodes) {
+            if (!rpn.equals(locaIP)) {
+                String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
+                ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys, sstInBytes);
+                ecSync.sendSSTableToSecondary(rpn);
+            }
+        }
+
+        logger.debug(
+            "rymDebug: send sstables ({}), replicaNodes are {}, row num is {}, allKeys num is {}",
+            sstHashID,
+            replicaNodes, sstable.getTotalRows(),
+            allKeys.size());
+
     }
 
     public static byte[] readBytesFromFile(String fileName) throws IOException
@@ -143,7 +204,7 @@ public class ECNetutils {
         try (FileOutputStream outputStream = new FileOutputStream(fileName)) {
             outputStream.write(buffer);
         } catch (Exception e) {
-            logger.error("rymError: failed to write bytes to file, {}", e);
+            logger.error("rymERROR: failed to write bytes to file, {}", e);
         }
     }
 
@@ -156,6 +217,26 @@ public class ECNetutils {
     }
 
 
+    public static String stringToHex(String str) {
+        byte[] bytes = str.getBytes();
+        StringBuilder hex = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            hex.append(Character.forDigit((b >> 4) & 0xF, 16))
+                    .append(Character.forDigit((b & 0xF), 16));
+        }
+        return hex.toString();
+    }
+
+    public static void deleteFileByName(String fileName) {
+        Path path = Paths.get(fileName);
+        try {
+            Files.delete(path);
+            logger.debug("rymDebug: delete file {} successfully", fileName);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
 
 
     public static void main(String[] args) throws IOException {

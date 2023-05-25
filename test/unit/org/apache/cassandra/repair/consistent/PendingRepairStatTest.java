@@ -117,7 +117,7 @@ public class PendingRepairStatTest extends AbstractRepairTest {
     private static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair) {
         try {
             cfs.getCompactionStrategyManager().mutateRepaired(Collections.singleton(sstable), repairedAt, pendingRepair,
-                    false, false);
+                    false);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -43,6 +43,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -452,7 +453,7 @@ public abstract class SSTableReaderBuilder {
                 DiskOptimizationStrategy optimizationStrategy,
                 StatsMetadata statsMetadata,
                 Set<Component> components) throws IOException {
-            if (!(new File(descriptor.filenameFor(Component.DATA)).exists())) {
+            if (Files.exists(Paths.get(descriptor.filenameFor(Component.DATA)))) {
                 try (FileHandle.Builder ibuilder = new FileHandle.Builder(
                         descriptor.filenameFor(Component.PRIMARY_INDEX))
                         .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
@@ -499,7 +500,7 @@ public abstract class SSTableReaderBuilder {
 
                     throw t;
                 }
-            } else if (!(new File(descriptor.filenameFor(Component.EC_METADATA)).exists())) {
+            } else if (Files.exists(Paths.get(descriptor.filenameFor(Component.EC_METADATA)))) {
                 // No data file, this sst may be changed to ec metadata
                 logger.debug("[Tinoryj] Find only ec metadata path = {}", descriptor.filenameFor(Component.EC_METADATA));
                 try (FileHandle.Builder ibuilder = new FileHandle.Builder(

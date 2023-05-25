@@ -436,7 +436,7 @@ public class Verifier implements Closeable {
         {
             try {
                 sstable.mutateRepairedAndReload(ActiveRepairService.UNREPAIRED_SSTABLE, sstable.getPendingRepair(),
-                        sstable.isTransient(), sstable.isReplicationTransferredToErasureCoding());
+                        sstable.isTransient());
                 cfs.getTracker().notifySSTableRepairedStatusChanged(Collections.singleton(sstable));
             } catch (IOException ioe) {
                 outputHandler.output(

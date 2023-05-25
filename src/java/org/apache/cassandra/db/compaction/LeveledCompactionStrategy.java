@@ -39,6 +39,7 @@ import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.dht.IPartitioner;
@@ -74,7 +75,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;
         boolean configuredSingleSSTableUplevel = false;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
-        logger.debug("rymDebug: SizeTieredCompaction Strategy Options is: {}, localoption is: {}", options, localOptions);
+        // logger.debug("rymDebug: SizeTieredCompaction Strategy Options is: {}, localoption is: {}", options, localOptions);
         if (options != null) {
             if (options.containsKey(SSTABLE_SIZE_OPTION)) {
                 configuredMaxSSTableSize = Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));
@@ -164,18 +165,52 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             }
 
             
+            boolean isContainReplicationTransferredToErasureCoding = false;
+            List<TransferredSSTableKeyRange> transferredSSTableKeyRanges = new ArrayList<>();
+
+            if(cfs.getColumnFamilyName().equals("usertable")) {
+                // for primary nodes
+
+            } else if (cfs.getColumnFamilyName().contains("usertable")) {
+
+                //for secondary node 
+                for (SSTableReader sstable : candidate.sstables) {
+                    if (sstable.isReplicationTransferredToErasureCoding()) {
+                        isContainReplicationTransferredToErasureCoding = true;
+                        TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
+                        transferredSSTableKeyRanges.add(range);
+                        logger.debug("rymDebug[transferred]: Selected transferred sstable {}, candidate count is {}",
+                                     sstable.descriptor, candidate.sstables.size());
+                    }
+                }
+
+                if (candidate.sstables.size() == 1 && isContainReplicationTransferredToErasureCoding) {
+                    return null;
+                }
+            }
 
             LifecycleTransaction txn = cfs.getTracker().tryModify(candidate.sstables, OperationType.COMPACTION);
             if (txn != null) {
                 AbstractCompactionTask newTask;
+                // get isContainReplicationTransferredToErasureCoding and selected transient sstable key ranges 
+
                 if (!singleSSTableUplevel || op == OperationType.TOMBSTONE_COMPACTION || txn.originals().size() > 1)
                     newTask = new LeveledCompactionTask(cfs, txn, candidate.level, gcBefore, candidate.maxSSTableBytes,
-                            false);
+                            false, transferredSSTableKeyRanges);
                 else
                     newTask = new SingleSSTableLCSTask(cfs, txn, candidate.level);
+                
+                if(isContainReplicationTransferredToErasureCoding == true) {
+                    newTask.isContainReplicationTransferredToErasureCoding = true;
+                }
+                logger.debug("rymDebug[transferred]: task {} is contain transferred ({}), isContainReplicationTransferredToErasureCoding is ({})",
+                             newTask.transaction.opId(), newTask.isContainReplicationTransferredToErasureCoding, isContainReplicationTransferredToErasureCoding);
 
                 newTask.setCompactionType(op);
                 return newTask;
+            } else {
+                logger.debug("rymDebug: cannot create compaction task, please retry... contain transferred sstable ({}), candidates size is {}",
+                             isContainReplicationTransferredToErasureCoding, candidate.sstables.size());
             }
             previousCandidate = candidate.sstables;
         }
@@ -191,8 +226,27 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         LifecycleTransaction txn = cfs.getTracker().tryModify(filteredSSTables, OperationType.COMPACTION);
         if (txn == null)
             return null;
+
+                    
+        boolean isContainReplicationTransferredToErasureCoding = false;
+        List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = new ArrayList<>();
+        int size = 0;
+
+        for (SSTableReader sstable : sstables) {
+            if (sstable.isReplicationTransferredToErasureCoding()) {
+                isContainReplicationTransferredToErasureCoding = true;
+                TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
+                TransferredSSTableKeyRanges.add(range);
+            }
+            size++;
+        }
+
+        if (size == 1 && isContainReplicationTransferredToErasureCoding) {
+            return null;
+        }
+
         return Arrays.<AbstractCompactionTask>asList(
-                new LeveledCompactionTask(cfs, txn, 0, gcBefore, getMaxSSTableBytes(), true));
+                new LeveledCompactionTask(cfs, txn, 0, gcBefore, getMaxSSTableBytes(), true, TransferredSSTableKeyRanges));
 
     }
 
@@ -211,22 +265,58 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             return null;
         }
         int level = sstables.size() > 1 ? 0 : sstables.iterator().next().getSSTableLevel();
+
+        boolean isContainReplicationTransferredToErasureCoding = false;
+        List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = new ArrayList<>();
+        int size = 0;
+
+        for (SSTableReader sstable : sstables) {
+            if (sstable.isReplicationTransferredToErasureCoding()) {
+                isContainReplicationTransferredToErasureCoding = true;
+                TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
+                TransferredSSTableKeyRanges.add(range);
+            }
+            size++;
+        }
+
+        if (size == 1 && isContainReplicationTransferredToErasureCoding) {
+            return null;
+        }
+
         return new LeveledCompactionTask(cfs, transaction, level, gcBefore,
-                level == 0 ? Long.MAX_VALUE : getMaxSSTableBytes(), false);
+                level == 0 ? Long.MAX_VALUE : getMaxSSTableBytes(), false, TransferredSSTableKeyRanges);
     }
 
     @Override
     public AbstractCompactionTask getCompactionTask(LifecycleTransaction txn, int gcBefore, long maxSSTableBytes) {
         assert txn.originals().size() > 0;
         int level = -1;
+
+        boolean isContainReplicationTransferredToErasureCoding = false;
+        List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = new ArrayList<>();
+        int size = 0;
+        
         // if all sstables are in the same level, we can set that level:
         for (SSTableReader sstable : txn.originals()) {
             if (level == -1)
                 level = sstable.getSSTableLevel();
             if (level != sstable.getSSTableLevel())
                 level = 0;
+
+            if (sstable.isReplicationTransferredToErasureCoding()) {
+                isContainReplicationTransferredToErasureCoding = true;
+                TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
+                TransferredSSTableKeyRanges.add(range);
+            }
+            size++;
         }
-        return new LeveledCompactionTask(cfs, txn, level, gcBefore, maxSSTableBytes, false);
+
+
+        if (size == 1 && isContainReplicationTransferredToErasureCoding) {
+            return null;
+        }
+
+        return new LeveledCompactionTask(cfs, txn, level, gcBefore, maxSSTableBytes, false, TransferredSSTableKeyRanges);
     }
 
     /**
@@ -311,27 +401,32 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
         List<ISSTableScanner> scanners = new ArrayList<ISSTableScanner>(sstables.size());
         try {
-            for (Integer level : byLevel.keySet()) {
-                // level can be -1 when sstables are added to Tracker but not to LeveledManifest
-                // since we don't know which level those sstable belong yet, we simply do the
-                // same as L0 sstables.
-                if (level <= 0) {
-                    // L0 makes no guarantees about overlapping-ness. Just create a direct scanner
-                    // for each
-                    for (SSTableReader sstable : byLevel.get(level))
-                        scanners.add(sstable.getScanner(ranges));
-                } else {
-                    // Create a LeveledScanner that only opens one sstable at a time, in sorted
-                    // order
-                    Collection<SSTableReader> intersecting = LeveledScanner.intersecting(byLevel.get(level), ranges);
-                    if (!intersecting.isEmpty()) {
-                        @SuppressWarnings("resource") // The ScannerList will be in charge of closing (and we close
-                                                      // properly on errors)
-                        ISSTableScanner scanner = new LeveledScanner(cfs.metadata(), intersecting, ranges);
-                        scanners.add(scanner);
-                    }
-                }
+
+            for (SSTableReader sstable : sstables) {
+                scanners.add(sstable.getScanner(ranges));
             }
+
+            // for (Integer level : byLevel.keySet()) {
+            //     // level can be -1 when sstables are added to Tracker but not to LeveledManifest
+            //     // since we don't know which level those sstable belong yet, we simply do the
+            //     // same as L0 sstables.
+            //     if (level <= 0) {
+            //         // L0 makes no guarantees about overlapping-ness. Just create a direct scanner
+            //         // for each
+            //         for (SSTableReader sstable : byLevel.get(level))
+            //             scanners.add(sstable.getScanner(ranges));
+            //     } else {
+            //         // Create a LeveledScanner that only opens one sstable at a time, in sorted
+            //         // order
+            //         Collection<SSTableReader> intersecting = LeveledScanner.intersecting(byLevel.get(level), ranges);
+            //         if (!intersecting.isEmpty()) {
+            //             @SuppressWarnings("resource") // The ScannerList will be in charge of closing (and we close
+            //                                           // properly on errors)
+            //             ISSTableScanner scanner = new LeveledScanner(cfs.metadata(), intersecting, ranges);
+            //             scanners.add(scanner);
+            //         }
+            //     }
+            // }
         } catch (Throwable t) {
             ISSTableScanner.closeAllAndPropagate(scanners, t);
         }

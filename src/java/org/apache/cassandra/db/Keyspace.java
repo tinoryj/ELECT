@@ -62,6 +62,7 @@ import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.ReplicationFactor;
 import org.apache.cassandra.metrics.KeyspaceMetrics;
 import org.apache.cassandra.repair.KeyspaceRepairManager;
 import org.apache.cassandra.schema.KeyspaceMetadata;
@@ -901,6 +902,13 @@ public class Keyspace {
 
     public AbstractReplicationStrategy getReplicationStrategy() {
         return replicationStrategy;
+    }
+
+    // [CASSANDRAEC]
+    public int getAllReplicationFactor() {
+        String rfString = replicationStrategy.configOptions.get("replication_factor");
+        int rf = ReplicationFactor.fromString(rfString).allReplicas;
+        return rf;
     }
 
     public List<Future<?>> flush(ColumnFamilyStore.FlushReason reason) {

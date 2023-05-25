@@ -206,7 +206,7 @@ public class SSTableUtils {
             ColumnFamilyStore cfs = Schema.instance.getColumnFamilyStoreInstance(metadata.id);
             SerializationHeader header = appender.header();
             SSTableTxnWriter writer = SSTableTxnWriter.create(cfs, Descriptor.fromFilename(datafile.absolutePath()),
-                    expectedSize, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false, false, 0, header);
+                    expectedSize, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false, 0, header);
             while (appender.append(writer)) {
                 /* pass */ }
             Collection<SSTableReader> readers = writer.finish(true);

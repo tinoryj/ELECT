@@ -95,7 +95,6 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 null,
                 null,
                 false,
-                false,
                 null);
     }
 
@@ -257,7 +256,6 @@ public class MetadataCollector implements PartitionStatisticsCollector {
 
     public Map<MetadataType, MetadataComponent> finalizeMetadata(String partitioner, double bloomFilterFPChance,
             long repairedAt, TimeUUID pendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             SerializationHeader header,
             String hashID) {
                 // logger.debug("[Tinoryj] new sstable level = {}", sstableLevel);
@@ -289,7 +287,6 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 originatingHostId,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 hashID));
         components.put(MetadataType.COMPACTION, new CompactionMetadata(cardinality));
         components.put(MetadataType.HEADER, header.toComponent());

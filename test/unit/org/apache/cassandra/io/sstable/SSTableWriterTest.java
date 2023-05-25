@@ -215,15 +215,14 @@ public class SSTableWriterTest extends SSTableWriterTestBase {
         }
     }
 
-    private static void assertValidRepairMetadata(long repairedAt, TimeUUID pendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+    private static void assertValidRepairMetadata(long repairedAt, TimeUUID pendingRepair, boolean isTransient) {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_SMALL_MAX_VALUE);
         File dir = cfs.getDirectories().getDirectoryForNewSSTables();
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.STREAM);
 
-        try (SSTableWriter writer = getWriter(cfs, dir, txn, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding)) {
+        try (SSTableWriter writer = getWriter(cfs, dir, txn, repairedAt, pendingRepair, isTransient
+                )) {
             // expected
         } catch (IllegalArgumentException e) {
             throw new AssertionError("Unexpected IllegalArgumentException", e);
@@ -233,15 +232,15 @@ public class SSTableWriterTest extends SSTableWriterTestBase {
         LifecycleTransaction.waitForDeletions();
     }
 
-    private static void assertInvalidRepairMetadata(long repairedAt, TimeUUID pendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+    private static void assertInvalidRepairMetadata(long repairedAt, TimeUUID pendingRepair, boolean isTransient
+            ) {
         Keyspace keyspace = Keyspace.open(KEYSPACE);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(CF_SMALL_MAX_VALUE);
         File dir = cfs.getDirectories().getDirectoryForNewSSTables();
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.STREAM);
 
-        try (SSTableWriter writer = getWriter(cfs, dir, txn, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding)) {
+        try (SSTableWriter writer = getWriter(cfs, dir, txn, repairedAt, pendingRepair, isTransient
+                )) {
             fail("Expected IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             // expected
@@ -257,14 +256,14 @@ public class SSTableWriterTest extends SSTableWriterTestBase {
      */
     @Test
     public void testRepairMetadataValidation() {
-        assertValidRepairMetadata(UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false, false);
-        assertValidRepairMetadata(1, NO_PENDING_REPAIR, false, false);
-        assertValidRepairMetadata(UNREPAIRED_SSTABLE, nextTimeUUID(), false, false);
-        assertValidRepairMetadata(UNREPAIRED_SSTABLE, nextTimeUUID(), true, false);
+        assertValidRepairMetadata(UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false);
+        assertValidRepairMetadata(1, NO_PENDING_REPAIR, false);
+        assertValidRepairMetadata(UNREPAIRED_SSTABLE, nextTimeUUID(), false);
+        assertValidRepairMetadata(UNREPAIRED_SSTABLE, nextTimeUUID(), true);
 
-        assertInvalidRepairMetadata(UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, true, false);
-        assertInvalidRepairMetadata(1, nextTimeUUID(), false, false);
-        assertInvalidRepairMetadata(1, NO_PENDING_REPAIR, true, false);
+        assertInvalidRepairMetadata(UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, true);
+        assertInvalidRepairMetadata(1, nextTimeUUID(), false);
+        assertInvalidRepairMetadata(1, NO_PENDING_REPAIR, true);
 
     }
 }

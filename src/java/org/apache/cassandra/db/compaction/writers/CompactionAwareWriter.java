@@ -56,7 +56,6 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     protected final long minRepairedAt;
     protected final TimeUUID pendingRepair;
     protected final boolean isTransient;
-    protected final boolean isReplicationTransferredToErasureCoding;
 
     protected final SSTableRewriter sstableWriter;
     protected final LifecycleTransaction txn;
@@ -80,8 +79,6 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         minRepairedAt = CompactionTask.getMinRepairedAt(nonExpiredSSTables);
         pendingRepair = CompactionTask.getPendingRepair(nonExpiredSSTables);
         isTransient = CompactionTask.getIsTransient(nonExpiredSSTables);
-        isReplicationTransferredToErasureCoding = CompactionTask
-                .getIsReplicationTransferredToErasureCoding(nonExpiredSSTables);
         DiskBoundaries db = cfs.getDiskBoundaries();
         diskBoundaries = db.positions;
         locations = db.directories;
@@ -100,7 +97,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
 
     @Override
     protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
-        return sstableWriter.commitEC(accumulate, ecSSTable);
+        return sstableWriter.commitEC(accumulate, ecSSTable, true);
     }
 
     @Override

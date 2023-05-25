@@ -17,10 +17,12 @@
  */
 package org.apache.cassandra.db.compaction;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.compaction.writers.MajorLeveledCompactionWriter;
@@ -34,12 +36,26 @@ public class LeveledCompactionTask extends CompactionTask
     private final long maxSSTableBytes;
     private final boolean majorCompaction;
 
-    public LeveledCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int level, int gcBefore, long maxSSTableBytes, boolean majorCompaction)
+    // [CASSANDRAEC]
+    public final List<TransferredSSTableKeyRange> transferredSSTableKeyRanges;
+
+    public static class TransferredSSTableKeyRange {
+        public final DecoratedKey first;
+        public final DecoratedKey last;
+
+        public TransferredSSTableKeyRange(DecoratedKey first, DecoratedKey last) {
+            this.first = first;
+            this.last = last;
+        }
+    }
+
+    public LeveledCompactionTask(ColumnFamilyStore cfs, LifecycleTransaction txn, int level, int gcBefore, long maxSSTableBytes, boolean majorCompaction, List<TransferredSSTableKeyRange> transferredSSTableKeyRanges)
     {
         super(cfs, txn, gcBefore);
         this.level = level;
         this.maxSSTableBytes = maxSSTableBytes;
         this.majorCompaction = majorCompaction;
+        this.transferredSSTableKeyRanges = transferredSSTableKeyRanges;
     }
 
     @Override

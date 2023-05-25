@@ -129,12 +129,16 @@ public interface Transactional extends AutoCloseable
         }
 
         // [CASSANDRAEC]
-        public final Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable)
+        public final Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite)
         {
-            if (state != State.READY_TO_COMMIT)
-                throw new IllegalStateException("Cannot commit unless READY_TO_COMMIT; state is " + state);
+            if(!isRewrite) {
+                state = State.READY_TO_COMMIT;
+            }
+            if (state != State.READY_TO_COMMIT) 
+                throw new IllegalStateException(String.format("Cannot commit unless READY_TO_COMMIT; state is {%s}, isRewrite {%s}", state, isRewrite));
             accumulate = doCommit(accumulate, ecSSTable);
             accumulate = doPostCleanup(accumulate, ecSSTable);
+            logger.debug("rymDebug: successful commit ec_metadata {}", ecSSTable.descriptor);
             state = State.COMMITTED;
             return accumulate;
         }
@@ -231,14 +235,14 @@ public interface Transactional extends AutoCloseable
         // [CASSANDRAEC]
         public final void commitEC(SSTableReader ecSSTable)
         {
-            maybeFail(commitEC(null, ecSSTable));
+            maybeFail(commitEC(null, ecSSTable, true));
         }
 
 
         // [CASSANDRAEC]
-        // public void updateState(){
-        //     state = State.IN_PROGRESS;
-        // }
+        public void updateState(){
+            state = State.READY_TO_COMMIT;
+        }
 
         public final State state()
         {
@@ -253,7 +257,7 @@ public interface Transactional extends AutoCloseable
     Throwable commit(Throwable accumulate);
 
     // [CASSANDRAEC]
-    Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable);
+    Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite);
 
     // release any resources, then rollback all state changes (unless commit() has already been invoked)
     Throwable abort(Throwable accumulate);

@@ -397,7 +397,6 @@ public class SSTableMetadataViewer {
             field("StaticColumns", FBUtilities.toString(statics));
             field("RegularColumns", FBUtilities.toString(regulars));
             field("IsTransient", stats.isTransient);
-            field("IsReplicationTransferredToErasureCoding", stats.isReplicationTransferredToErasureCoding);
         }
     }
 

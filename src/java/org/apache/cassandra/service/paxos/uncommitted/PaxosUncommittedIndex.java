@@ -128,7 +128,7 @@ public class PaxosUncommittedIndex implements Index, PaxosUncommittedTracker.Upd
     {
         Preconditions.checkArgument((filterByTableId == null) == materializeLazily);
 
-        return PaxosRows.toIterator(UnfilteredPartitionIterators.merge(iterators, UnfilteredPartitionIterators.MergeListener.NOOP), filterByTableId, materializeLazily);
+        return PaxosRows.toIterator(UnfilteredPartitionIterators.merge(iterators, UnfilteredPartitionIterators.MergeListener.NOOP, false, null), filterByTableId, materializeLazily);
     }
 
     public CloseableIterator<PaxosKeyState> repairIterator(TableId tableId, Collection<Range<Token>> ranges)

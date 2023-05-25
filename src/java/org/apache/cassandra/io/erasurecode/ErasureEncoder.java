@@ -47,6 +47,9 @@ public abstract class ErasureEncoder extends ErasureCoder {
 
     /**
      * Encode with inputs and generates outputs
+     * @param inputs the new data for parity update
+     * @param outputs outputs is old parity code when first call this method, after execute this method, outputs is new parity code
+     * @param targetDataIndex the index of the inputs in the coding blocks
      */
     public void encodeUpdate(ByteBuffer[] targetCodingBlock, ByteBuffer[] parityBuffers, int targetDataIndex)
             throws IOException {

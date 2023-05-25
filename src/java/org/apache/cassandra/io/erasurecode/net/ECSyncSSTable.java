@@ -34,6 +34,7 @@ import org.apache.cassandra.io.erasurecode.net.ECNetutils.SSTablesInBytesConvert
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.net.AsyncOneResponse;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessageFlag;
 import org.apache.cassandra.net.MessagingService;
@@ -76,13 +77,16 @@ public class ECSyncSSTable {
         public final byte[] sstIndex;
         // Statistics.db in bytes
         public final byte[] sstStats;
+        // Summary.db in bytes
+        public final byte[] sstSummary;
 
-        public SSTablesInBytes(byte[] sstFilter, byte[] sstIndex, byte[] sstStats) 
+        public SSTablesInBytes(byte[] sstFilter, byte[] sstIndex, byte[] sstStats, byte[] sstSummary) 
         {
             //this.allKey = allKey;
             this.sstFilter = sstFilter;
             this.sstIndex = sstIndex;
             this.sstStats = sstStats;
+            this.sstSummary = sstSummary;
         }
     };
 
@@ -100,21 +104,18 @@ public class ECSyncSSTable {
             this.allKeysInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
             this.allKeysInBytesSize = this.allKeysInBytes.length;
             // logger.debug("rymDebug: try to serialize allKey, allKey num is {}", this.allKey.size());
-            logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
-
-
+            // logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
             //logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstContent.length);
+            if (rpn != null) {
+                Message<ECSyncSSTable> message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
+                MessagingService.instance().sendECNetRequestWithCallback(message, rpn);
+            } else {
+                logger.error("rymERROR: replicaNodes is null!!");
+            }
+            logger.debug("rymDebug: ECSyncSSTable send sstable {} to {}", this.sstHashID, rpn);
 
         } catch (Exception e) {
-            logger.error("rymError: cannot get the bytes array from key!!!, error info {}", e);
-        }
-        Message<ECSyncSSTable> message = null;
-        InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
-        if (rpn != null && !rpn.equals(locaIP)) {
-            message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
-            MessagingService.instance().sendSSTContentWithoutCallback(message, rpn);
-        } else {
-            logger.debug("rymError: replicaNodes is null!!");
+            logger.error("rymERROR: cannot get the bytes array from key!!!, error info {}", e);
         }
     }
 
@@ -169,28 +170,28 @@ public class ECSyncSSTable {
     
     }
 
-    public static void main(String[] args) {
-        byte[] test1 = new byte[] {1,2,3};
-        byte[] test2 = new byte[] {4,5,6};
-        byte[] test3 = new byte[] {7,8,9};
+    // public static void main(String[] args) {
+    //     byte[] test1 = new byte[] {1,2,3};
+    //     byte[] test2 = new byte[] {4,5,6};
+    //     byte[] test3 = new byte[] {7,8,9};
 
-        SSTablesInBytes test = new SSTablesInBytes(test1, test2, test3);
+    //     SSTablesInBytes test = new SSTablesInBytes(test1, test2, test3);
 
-        byte[] res;
-        try {
-            // res = converter.toByteArray(test);
-            res = ByteObjectConversion.objectToByteArray((Serializable) test);
-            logger.info("rymDebug: res length is {}", res.length);
-            SSTablesInBytes sstInBytes = (SSTablesInBytes) ByteObjectConversion.byteArrayToObject(res);
-            logger.info("rymDebug: sstable in bytes filter {}, index {}, statistics {}", sstInBytes.sstFilter, sstInBytes.sstIndex, sstInBytes.sstStats);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            logger.error("error info : {}", e);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
+    //     byte[] res;
+    //     try {
+    //         // res = converter.toByteArray(test);
+    //         res = ByteObjectConversion.objectToByteArray((Serializable) test);
+    //         logger.info("rymDebug: res length is {}", res.length);
+    //         SSTablesInBytes sstInBytes = (SSTablesInBytes) ByteObjectConversion.byteArrayToObject(res);
+    //         logger.info("rymDebug: sstable in bytes filter {}, index {}, statistics {}", sstInBytes.sstFilter, sstInBytes.sstIndex, sstInBytes.sstStats);
+    //     } catch (IOException e) {
+    //         // TODO Auto-generated catch block
+    //         logger.error("error info : {}", e);
+    //     } catch (Exception e) {
+    //         // TODO Auto-generated catch block
+    //         e.printStackTrace();
+    //     }
+    // }
     
 }
 

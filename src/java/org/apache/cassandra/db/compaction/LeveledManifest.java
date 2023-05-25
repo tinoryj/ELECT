@@ -19,6 +19,8 @@ package org.apache.cassandra.db.compaction;
 
 import java.util.*;
 
+import javax.xml.stream.events.StartDocument;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
@@ -274,7 +276,8 @@ public class LeveledManifest {
                     return l0Compaction;
 
                 // L0 is fine, proceed with this level
-                Collection<SSTableReader> candidates = getCandidatesFor(i);
+                // Collection<SSTableReader> candidates = getCandidatesFor(i);
+                Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(i);
                 if (!candidates.isEmpty()) {
                     int nextLevel = getNextLevel(candidates);
                     candidates = getOverlappingStarvedSSTables(nextLevel, candidates);
@@ -291,6 +294,7 @@ public class LeveledManifest {
         if (generations.get(0).isEmpty())
             return null;
         Collection<SSTableReader> candidates = getCandidatesFor(0);
+        // Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(0);
         if (candidates.isEmpty()) {
             // Since we don't have any other compactions to do, see if there is a STCS
             // compaction to perform in L0; if
@@ -299,6 +303,16 @@ public class LeveledManifest {
             // small in L0.
             return l0Compaction;
         }
+
+        // [CASSANDRAEC]
+        // TODO: Wrong place for remove sstables of transient sstables.
+        // for(SSTableReader sstable : candidates) {
+        //     if(!sstable.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
+        //         candidates.remove(sstable);
+        //     }
+        // }
+
+
         return new CompactionCandidate(candidates, getNextLevel(candidates), maxSSTableSizeInBytes);
     }
 
@@ -467,8 +481,22 @@ public class LeveledManifest {
         Bounds<Token> promotedBounds = new Bounds<>(start, end);
 
         for (Map.Entry<SSTableReader, Bounds<Token>> pair : sstables.entrySet()) {
-            if (pair.getValue().intersects(promotedBounds))
-                overlapped.add(pair.getKey());
+            // we cannot select the sstables that isReplicationTransferredToErasureCoding is (true) and 
+            // this sstable is belong to primary LSM tree
+            if (pair.getValue().intersects(promotedBounds)) {
+
+                if((pair.getKey().isReplicationTransferredToErasureCoding() &&
+                    pair.getKey().getColumnFamilyName().equals("usertable"))){
+                    logger.debug("rymDebug: we cannot select sstable {}", pair.getKey().descriptor);
+                } else {
+                    overlapped.add(pair.getKey());
+                    if(pair.getKey().isReplicationTransferredToErasureCoding()) {
+                        logger.debug("rymDebug[transferred]: select a transferred sstable {}", pair.getKey().descriptor);
+                    }
+                }
+                
+            }
+                
         }
         return overlapped;
     }
@@ -576,6 +604,7 @@ public class LeveledManifest {
         // look for a non-suspect keyspace to compact with, starting with where we left
         // off last time,
         // and wrapping back to the beginning of the generation if necessary
+        // TODO: get sstables from current level
         Map<SSTableReader, Bounds<Token>> sstablesNextLevel = genBounds(generations.get(level + 1));
         Iterator<SSTableReader> levelIterator = generations.wrappingIterator(level, lastCompactedSSTables[level]);
         while (levelIterator.hasNext()) {
@@ -592,6 +621,138 @@ public class LeveledManifest {
         // all the sstables were suspect or overlapped with something suspect
         return Collections.emptyList();
     }
+
+    /**
+     * A leveled compaction strategy implemented by the idea of RocksDB for CASSANDRAEC.
+     * @return highest-priority sstables to compact for the given level.
+     *         If no compactions are possible (because of concurrent compactions or
+     *         because some sstables are excluded
+     *         for prior failure), will return an empty list. Never returns null.
+     */
+    private Collection<SSTableReader> getCandidatesForCASSANDRAEC(int level) {
+        assert !generations.get(level).isEmpty();
+        logger.trace("Choosing candidates for L{}", level);
+
+        final Set<SSTableReader> compacting = cfs.getTracker().getCompacting();
+
+        if (level == 0) {
+            Set<SSTableReader> compactingL0 = getCompactingL0();
+
+            PartitionPosition lastCompactingKey = null;
+            PartitionPosition firstCompactingKey = null;
+            for (SSTableReader candidate : compactingL0) {
+                if (firstCompactingKey == null || candidate.first.compareTo(firstCompactingKey) < 0)
+                    firstCompactingKey = candidate.first;
+                if (lastCompactingKey == null || candidate.last.compareTo(lastCompactingKey) > 0)
+                    lastCompactingKey = candidate.last;
+            }
+
+            // L0 is the dumping ground for new sstables which thus may overlap each other.
+            //
+            // We treat L0 compactions specially:
+            // 1a. add sstables to the candidate set until we have at least
+            // maxSSTableSizeInMB
+            // 1b. prefer choosing older sstables as candidates, to newer ones
+            // 1c. any L0 sstables that overlap a candidate, will also become candidates
+            // 2. At most max_threshold sstables from L0 will be compacted at once
+            // 3. If total candidate size is less than maxSSTableSizeInMB, we won't bother
+            // compacting with L1,
+            // and the result of the compaction will stay in L0 instead of being promoted
+            // (see promote())
+            //
+            // Note that we ignore suspect-ness of L1 sstables here, since if an L1 sstable
+            // is suspect we're
+            // basically screwed, since we expect all or most L0 sstables to overlap with
+            // each L1 sstable.
+            // So if an L1 sstable is suspect we can't do much besides try anyway and hope
+            // for the best.
+            Set<SSTableReader> candidates = new HashSet<>();
+            Map<SSTableReader, Bounds<Token>> remaining = genBounds(
+                    Iterables.filter(generations.get(0), Predicates.not(SSTableReader::isMarkedSuspect)));
+
+            for (SSTableReader sstable : ageSortedSSTables(remaining.keySet())) {
+                if (candidates.contains(sstable))
+                    continue;
+
+                Sets.SetView<SSTableReader> overlappedL0 = Sets.union(Collections.singleton(sstable),
+                        overlappingWithBounds(sstable, remaining));
+                if (!Sets.intersection(overlappedL0, compactingL0).isEmpty())
+                    continue;
+
+                for (SSTableReader newCandidate : overlappedL0) {
+                    if (firstCompactingKey == null || lastCompactingKey == null
+                            || overlapping(firstCompactingKey.getToken(), lastCompactingKey.getToken(),
+                                    Collections.singleton(newCandidate)).size() == 0)
+                        candidates.add(newCandidate);
+                    remaining.remove(newCandidate);
+                }
+
+                if (candidates.size() > cfs.getMaximumCompactionThreshold()) {
+                    // limit to only the cfs.getMaximumCompactionThreshold() oldest candidates
+                    candidates = new HashSet<>(
+                            ageSortedSSTables(candidates).subList(0, cfs.getMaximumCompactionThreshold()));
+                    break;
+                }
+            }
+
+            // leave everything in L0 if we didn't end up with a full sstable's worth of
+            // data
+            if (SSTableReader.getTotalBytes(candidates) > maxSSTableSizeInBytes) {
+                // add sstables from L1 that overlap candidates
+                // if the overlapping ones are already busy in a compaction, leave it out.
+                // TODO try to find a set of L0 sstables that only overlaps with non-busy L1
+                // sstables
+                Set<SSTableReader> l1overlapping = overlapping(candidates, generations.get(1));
+                if (Sets.intersection(l1overlapping, compacting).size() > 0)
+                    return Collections.emptyList();
+                if (!overlapping(candidates, compactingL0).isEmpty())
+                    return Collections.emptyList();
+                candidates = Sets.union(candidates, l1overlapping);
+            }
+            if (candidates.size() < 2)
+                return Collections.emptyList();
+            else
+                return candidates;
+        }
+
+        // look for a non-suspect keyspace to compact with, starting with where we left
+        // off last time,
+        // and wrapping back to the beginning of the generation if necessary
+        // Map<SSTableReader, Bounds<Token>> sstablesNextLevel = genBounds(generations.get(level + 1));
+        // TODO: for primary node
+        // [CASSANDRAEC]
+        Set<SSTableReader> sstablesNextLevel = generations.get(level + 1);
+        Set<SSTableReader> sstablesCurrentLevel = generations.get(level);
+        Iterator<SSTableReader> levelIterator = generations.wrappingIterator(level, lastCompactedSSTables[level]);
+        while (levelIterator.hasNext()) {
+            SSTableReader sstable = levelIterator.next();
+            if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
+                continue;
+            Token startInputToken = sstable.first.getToken();
+            Token endInputToken = sstable.last.getToken();
+            Set<SSTableReader> outputLevel = Sets.union(Collections.singleton(sstable),
+                    overlapping(startInputToken, endInputToken, sstablesNextLevel));
+
+            // further select sstable from input level
+            Token startOutputToken = outputLevel.iterator().next().first.getToken();
+            Token endOutputToken = outputLevel.iterator().next().last.getToken();
+            for (SSTableReader sst : outputLevel) {
+                startOutputToken = startOutputToken.compareTo(sst.first.getToken()) > 0 ? sst.first.getToken() : startOutputToken;
+                endOutputToken = endOutputToken.compareTo(sst.last.getToken()) < 0 ? sst.last.getToken() : endOutputToken;
+            }
+            Set<SSTableReader> candidates = Sets.union(outputLevel, 
+                    overlapping(startOutputToken, endOutputToken, sstablesCurrentLevel));
+
+            if (Iterables.any(candidates, SSTableReader::isMarkedSuspect))
+                continue;
+            if (Sets.intersection(candidates, compacting).isEmpty())
+                return candidates;
+        }
+
+        // all the sstables were suspect or overlapped with something suspect
+        return Collections.emptyList();
+    }
+
 
     private Set<SSTableReader> getCompactingL0() {
         Set<SSTableReader> sstables = new HashSet<>();
@@ -706,6 +867,7 @@ public class LeveledManifest {
         public final Collection<SSTableReader> sstables;
         public final int level;
         public final long maxSSTableBytes;
+        public boolean isContainTransferredSSTable = false;
 
         public CompactionCandidate(Collection<SSTableReader> sstables, int level, long maxSSTableBytes) {
             this.sstables = sstables;

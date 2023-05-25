@@ -549,7 +549,7 @@ public class CompactionsCQLTest extends CQLTester
     {
         public NotifyingCompactionTask(LeveledCompactionTask task)
         {
-            super(task.cfs, task.transaction, task.getLevel(), task.gcBefore, task.getLevel(), false);
+            super(task.cfs, task.transaction, task.getLevel(), task.gcBefore, task.getLevel(), false, null);
         }
 
         @Override
