@@ -1824,9 +1824,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
             }
             logger.debug("rymDebug: this is replace SSTable method, replacing SSTable {}", ecSSTable.descriptor);
-            // txn.update(ecSSTable, false);
-            // // ecSSTable.setupOnline();
-            // txn.checkpoint();
+            txn.update(ecSSTable, false);
+            // ecSSTable.setupOnline();
+            txn.checkpoint();
             // txn.tracker.apply(View.updateLiveSet(Collections.emptySet(), Collections.singleton(ecSSTable)));
             // txn.prepareToCommit(ecSSTable);
             maybeFail(txn.commitEC(null, ecSSTable, false));
