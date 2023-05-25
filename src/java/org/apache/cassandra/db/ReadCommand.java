@@ -312,7 +312,18 @@ public abstract class ReadCommand extends AbstractReadQuery {
         return copyAsDigestQuery();
     }
 
+    /**
+     * Returns a copy of this command with isDigestQuery set to true.
+     */
+    public ReadCommand copyAsDigestQuery(Replica replica, int replicationIDIndicator) {
+        Preconditions.checkArgument(replica.isFull(),
+                "Can't make a digest request on a transient replica " + replica);
+        return copyAsDigestQuery(replicationIDIndicator);
+    }
+
     protected abstract ReadCommand copyAsDigestQuery();
+
+    protected abstract ReadCommand copyAsDigestQuery(int replicationIDIndicator);
 
     protected abstract UnfilteredPartitionIterator queryStorage(ColumnFamilyStore cfs,
             ReadExecutionController executionController);
@@ -784,18 +795,21 @@ public abstract class ReadCommand extends AbstractReadQuery {
     }
 
     @SuppressWarnings("resource") // resultant iterators are closed by their callers
-    InputCollector<UnfilteredPartitionIterator> iteratorsForRange(ColumnFamilyStore.ViewFragment view, ReadExecutionController controller)
-    {
-        final BiFunction<List<UnfilteredPartitionIterator>, RepairedDataInfo, UnfilteredPartitionIterator> merge =
-            (unfilteredPartitionIterators, repairedDataInfo) -> {
-                UnfilteredPartitionIterator repaired = UnfilteredPartitionIterators.merge(unfilteredPartitionIterators,
-                                                                                          NOOP, false, null);
-                return repairedDataInfo.withRepairedDataInfo(repaired);
-            };
+    InputCollector<UnfilteredPartitionIterator> iteratorsForRange(ColumnFamilyStore.ViewFragment view,
+            ReadExecutionController controller) {
+        final BiFunction<List<UnfilteredPartitionIterator>, RepairedDataInfo, UnfilteredPartitionIterator> merge = (
+                unfilteredPartitionIterators, repairedDataInfo) -> {
+            UnfilteredPartitionIterator repaired = UnfilteredPartitionIterators.merge(unfilteredPartitionIterators,
+                    NOOP, false, null);
+            return repairedDataInfo.withRepairedDataInfo(repaired);
+        };
 
-        // Uses identity function to provide additional partitions to be consumed after the command's
-        // DataLimits are satisfied. The input to the function will be the iterator of merged, repaired partitions
-        // which we'll keep reading until the RepairedDataInfo's internal counter is satisfied.
+        // Uses identity function to provide additional partitions to be consumed after
+        // the command's
+        // DataLimits are satisfied. The input to the function will be the iterator of
+        // merged, repaired partitions
+        // which we'll keep reading until the RepairedDataInfo's internal counter is
+        // satisfied.
         return new InputCollector<>(view, controller, merge, Function.identity());
     }
 

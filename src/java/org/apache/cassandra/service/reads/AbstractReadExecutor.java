@@ -133,6 +133,7 @@ public abstract class AbstractReadExecutor {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> message = null;
         logger.debug("[Tinoryj] Read make request replicas: {}", replicas);
+        int replicationIDIndicatorForSendRequest = 0;
         for (Replica replica : replicas) {
             assert replica.isFull() || readCommand.acceptsTransient();
             InetAddressAndPort endpoint = replica.endpoint();
@@ -144,12 +145,20 @@ public abstract class AbstractReadExecutor {
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
 
+            if (replicationIDIndicatorForSendRequest != 0) {
+                logger.debug(
+                        "[Tinoryj] Send read request to replica ID: {}, reading {} from {}, the target key space is {}, column family is {}",
+                        replicationIDIndicatorForSendRequest,
+                        readCommand.isDigestQuery() ? "digest" : "data", endpoint, readCommand.metadata().keyspace,
+                        readCommand.metadata().name);
+            }
             if (null == message)
                 message = readCommand.createMessage(false);
 
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
             logger.debug("[Tinoryj] Read make request from replica ID: {}, reading {} from {}", replica,
                     readCommand.isDigestQuery() ? "digest" : "data", endpoint);
+            replicationIDIndicatorForSendRequest++;
         }
 
         // We delay the local (potentially blocking) read till the end to avoid stalling
