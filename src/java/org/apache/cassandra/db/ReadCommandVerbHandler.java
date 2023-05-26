@@ -95,7 +95,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         if (command instanceof SinglePartitionReadCommand) {
             token = ((SinglePartitionReadCommand) command).partitionKey().getToken();
             logger.debug("[Tinoryj] touch SinglePartitionReadCommand, token is {}, the partition key is {}",
-                    token, ((SinglePartitionReadCommand) command).partitionKey().toString());
+                    token, ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata()));
         } else {
             token = ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken();
             logger.debug("[Tinoryj] touch PartitionRangeReadCommand, token is {}",

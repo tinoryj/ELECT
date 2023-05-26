@@ -147,13 +147,22 @@ public abstract class AbstractReadExecutor {
 
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
-            logger.debug(
-                    "[Tinoryj] Send {} read request to replica ID: {}, reading from {}, the target key space is {}, column family is {}",
-                    readCommand.isDigestQuery() ? "digest" : "data", replicationIDIndicatorForSendRequest, endpoint,
-                    readCommand.metadata().keyspace,
-                    readCommand.metadata().name);
 
-            readCommand.metadata().name = "usertable" + Integer.toString(replicationIDIndicatorForSendRequest);
+            if (readCommand.isDigestQuery() == false) {
+                readCommand.metadata().name = "usertable" + Integer.toString(replicationIDIndicatorForSendRequest);
+                logger.debug(
+                        "[Tinoryj] Send {} read request to replica ID: {}, reading from {}, the target key space is {}, column family is {}",
+                        readCommand.isDigestQuery() ? "digest" : "data", replicationIDIndicatorForSendRequest, endpoint,
+                        readCommand.metadata().keyspace,
+                        readCommand.metadata().name);
+            } else {
+                readCommand.metadata().name = "usertable";
+                logger.debug(
+                        "[Tinoryj] Send {} read request to replica ID: {}, reading from {}, the target key space is {}, column family is {}",
+                        readCommand.isDigestQuery() ? "digest" : "data", replicationIDIndicatorForSendRequest, endpoint,
+                        readCommand.metadata().keyspace,
+                        readCommand.metadata().name);
+            }
 
             if (null == message)
                 message = readCommand.createMessage(false);
@@ -208,14 +217,19 @@ public abstract class AbstractReadExecutor {
         List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
                 .metadata().keyspace,
                 command.partitionKey().getKey());
-        if (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0))) {
-            logger.debug("[Tinoryj] the primary node is the first node in the natural storage node list");
-        } else {
-            logger.debug(
-                    "[Tinoryj-ERROR] the primary node is not the first node in the natural storage node list ++ the replication plan for read is {}, natural storage node list = {}",
-                    replicaPlan,
-                    sendRequestAddresses);
-        }
+        // if
+        // (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0)))
+        // {
+        // logger.debug("[Tinoryj] the primary node is the first node in the natural
+        // storage node list");
+        // } else {
+        // logger.debug(
+        // "[Tinoryj-ERROR] the primary node is not the first node in the natural
+        // storage node list ++ the replication plan for read is {}, natural storage
+        // node list = {}",
+        // replicaPlan,
+        // sendRequestAddresses);
+        // }
 
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent

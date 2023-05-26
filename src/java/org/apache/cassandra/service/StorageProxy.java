@@ -2188,11 +2188,6 @@ public class StorageProxy implements StorageProxyMBean {
             this.command = command;
             this.handler = handler;
             this.trackRepairedStatus = trackRepairedStatus;
-            // if (command instanceof SinglePartitionReadCommand) {
-            // logger.debug("[Tinoryj] touch SinglePartitionReadCommand in storage proxy");
-            // } else {
-            // logger.debug("[Tinoryj] touch PartitionRangeReadCommand in storage proxy");
-            // }
         }
 
         protected void runMayThrow() {
