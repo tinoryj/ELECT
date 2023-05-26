@@ -148,7 +148,7 @@ public abstract class AbstractReadExecutor {
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
 
-            if (readCommand.isDigestQuery() == false) {
+            if (readCommand.isDigestQuery() == true) {
                 readCommand.metadata().name = "usertable" + Integer.toString(replicationIDIndicatorForSendRequest);
                 logger.debug(
                         "[Tinoryj] Send {} read request to replica ID: {}, reading from {}, the target key space is {}, column family is {}",
