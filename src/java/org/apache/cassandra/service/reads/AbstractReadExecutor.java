@@ -51,6 +51,7 @@ import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.service.StorageService;
 import static com.google.common.collect.Iterables.all;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import java.lang.reflect.Field;
 
 /**
  * Sends a read request to the replicas needed to satisfy a given
@@ -135,7 +136,7 @@ public abstract class AbstractReadExecutor {
     private void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> message = null;
-        int replicationIDIndicatorForSendRequest = 0;
+        int replicationIDIndicatorForSendRequest = 1;
         for (Replica replica : replicas) {
             assert replica.isFull() || readCommand.acceptsTransient();
             InetAddressAndPort endpoint = replica.endpoint();
@@ -148,15 +149,16 @@ public abstract class AbstractReadExecutor {
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
             logger.debug(
                     "[Tinoryj] Send {} read request to replica ID: {}, reading from {}, the target key space is {}, column family is {}",
-                    replicationIDIndicatorForSendRequest,
-                    readCommand.isDigestQuery() ? "digest" : "data", endpoint, readCommand.metadata().keyspace,
+                    readCommand.isDigestQuery() ? "digest" : "data", replicationIDIndicatorForSendRequest, endpoint,
+                    readCommand.metadata().keyspace,
                     readCommand.metadata().name);
+
+            readCommand.metadata().name += Integer.toString(replicationIDIndicatorForSendRequest);
+
             if (null == message)
                 message = readCommand.createMessage(false);
 
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
-            logger.debug("[Tinoryj] Read make request from replica ID: {}, reading {} from {}", replica,
-                    readCommand.isDigestQuery() ? "digest" : "data", endpoint);
             replicationIDIndicatorForSendRequest++;
         }
 
