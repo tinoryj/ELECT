@@ -153,7 +153,7 @@ public abstract class AbstractReadExecutor {
                     readCommand.metadata().keyspace,
                     readCommand.metadata().name);
 
-            readCommand.metadata().name += Integer.toString(replicationIDIndicatorForSendRequest);
+            readCommand.metadata().name = "usertable" + Integer.toString(replicationIDIndicatorForSendRequest);
 
             if (null == message)
                 message = readCommand.createMessage(false);
