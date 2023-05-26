@@ -1637,6 +1637,15 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     public Refs<SSTableReader> getAndReferenceOverlappingLiveSSTables(Iterable<SSTableReader> sstables) {
         while (true) {
             Iterable<SSTableReader> overlapped = getOverlappingLiveSSTables(sstables);
+
+            // [CASSANDRAEC]
+            for(SSTableReader sstable : overlapped) {
+                if(sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable")) {
+                    String msg = String.format("rymDebug: select a transferred sstable %s into overlapped set", sstable.descriptor);
+                    ECNetutils.printStackTace(msg);
+                }
+            }
+
             Refs<SSTableReader> refs = Refs.tryRef(overlapped);
             if (refs != null)
                 return refs;

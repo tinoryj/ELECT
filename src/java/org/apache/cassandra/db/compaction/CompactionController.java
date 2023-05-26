@@ -337,7 +337,7 @@ public class CompactionController extends AbstractCompactionController
      */
     protected boolean ignoreOverlaps()
     {
-        boolean ignoreOverlaps = true;
+        boolean ignoreOverlaps = false;
         return ignoreOverlaps;
     }
 
