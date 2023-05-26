@@ -115,10 +115,12 @@ public abstract class AbstractReadExecutor {
 
     protected void makeFullDataRequests(ReplicaCollection<?> replicas) {
         assert all(replicas, Replica::isFull);
+        logger.debug("[Tinoryj] Read make full data request replicas: {}", replicas);
         makeRequests(command, replicas);
     }
 
     protected void makeTransientDataRequests(Iterable<Replica> replicas) {
+        logger.debug("[Tinoryj] Read make transient request replicas: {}", replicas);
         makeRequests(command.copyAsTransientQuery(replicas), replicas);
     }
 
@@ -126,13 +128,13 @@ public abstract class AbstractReadExecutor {
         assert all(replicas, Replica::isFull);
         // only send digest requests to full replicas, send data requests instead to the
         // transient replicas
+        logger.debug("[Tinoryj] Read make digest request replicas: {}", replicas);
         makeRequests(command.copyAsDigestQuery(replicas), replicas);
     }
 
     private void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> message = null;
-        logger.debug("[Tinoryj] Read make request replicas: {}", replicas);
         int replicationIDIndicatorForSendRequest = 0;
         for (Replica replica : replicas) {
             assert replica.isFull() || readCommand.acceptsTransient();
@@ -144,14 +146,11 @@ public abstract class AbstractReadExecutor {
 
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
-
-            if (replicationIDIndicatorForSendRequest != 0) {
-                logger.debug(
-                        "[Tinoryj] Send read request to replica ID: {}, reading {} from {}, the target key space is {}, column family is {}",
-                        replicationIDIndicatorForSendRequest,
-                        readCommand.isDigestQuery() ? "digest" : "data", endpoint, readCommand.metadata().keyspace,
-                        readCommand.metadata().name);
-            }
+            logger.debug(
+                    "[Tinoryj] Send {} read request to replica ID: {}, reading from {}, the target key space is {}, column family is {}",
+                    replicationIDIndicatorForSendRequest,
+                    readCommand.isDigestQuery() ? "digest" : "data", endpoint, readCommand.metadata().keyspace,
+                    readCommand.metadata().name);
             if (null == message)
                 message = readCommand.createMessage(false);
 
@@ -181,7 +180,7 @@ public abstract class AbstractReadExecutor {
      */
     public void executeAsync() {
         logger.debug(
-                "[Tinoryj] Read executeAsync replicas: {}, initialDataRequestCount: {}, target primary and secondary nodes info = {}",
+                "[Tinoryj] Read executeAsync replicas: {}, initialDataRequestCount: {}",
                 replicaPlan().contacts(),
                 initialDataRequestCount);
         EndpointsForToken selected = replicaPlan().contacts();
