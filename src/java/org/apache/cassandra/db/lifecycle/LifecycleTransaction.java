@@ -20,6 +20,9 @@ package org.apache.cassandra.db.lifecycle;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiPredicate;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.collect.*;
@@ -205,7 +208,13 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
 
         // prepare for compaction obsolete readers as long as they were part of the original set
         // since those that are not original are early readers that share the same desc with the finals
-        maybeFail(prepareForObsoletion(filterIn(logged.obsolete, originals), log, obsoletions = new ArrayList<>(), null));
+        // [CASSANDRAEC]
+        // Do not release the reference of transferred readers until parity update
+        Set<SSTableReader> filteredOriginals = originals.stream()
+                                                        .filter(sstable -> (!sstable.isReplicationTransferredToErasureCoding() || sstable.getColumnFamilyName().equals("usertable")))
+                                                        .collect(Collectors.toSet());
+
+        maybeFail(prepareForObsoletion(filterIn(logged.obsolete, filteredOriginals), log, obsoletions = new ArrayList<>(), null));
         log.prepareToCommit();
     }
 
