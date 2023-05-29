@@ -371,6 +371,7 @@ public class StorageProxy implements StorageProxyMBean {
             long queryStartNanoTime)
             throws UnavailableException, IsBootstrappingException, RequestFailureException, RequestTimeoutException,
             InvalidRequestException {
+        logger.debug("[Tinoryj] legacyCas");
         final long startTimeForMetrics = nanoTime();
         try {
             TableMetadata metadata = Schema.instance.validateTable(keyspaceName, cfName);
