@@ -100,21 +100,29 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         ByteBuffer digest = null;
         Collection<Message<ReadResponse>> snapshot = responses.snapshot();
         assert snapshot.size() > 0 : "Attempted response match comparison while no responses have been received.";
-        if (snapshot.size() == 1)
+        if (snapshot.size() == 1) {
             return true;
-
-        logger.debug("[Tinoryj] responsesMatch: snapshot.size() = {}", snapshot.size());
+        } else if (snapshot.size() == 3) {
+            logger.debug("[Tinoryj] responsesMatch: snapshot.size() = {}", snapshot.size());
+        }
         // TODO: should also not calculate if only one full node
         for (Message<ReadResponse> message : snapshot) {
             if (replicaPlan().lookup(message.from()).isTransient())
                 continue;
 
             ByteBuffer newDigest = message.payload.digest(command);
-            if (digest == null)
+            if (newDigest == null) {
+                logger.debug(
+                        "[Tinoryj] Read touch response empty digest from {}, should be read from metadata SSTables",
+                        message.from());
+                return true;
+            }
+            if (digest == null) {
                 digest = newDigest;
-            else if (!digest.equals(newDigest))
+            } else if (!digest.equals(newDigest)) {
                 // rely on the fact that only single partition queries use digests
                 return false;
+            }
         }
 
         if (logger.isTraceEnabled())

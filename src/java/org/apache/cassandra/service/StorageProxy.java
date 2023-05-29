@@ -371,7 +371,7 @@ public class StorageProxy implements StorageProxyMBean {
             long queryStartNanoTime)
             throws UnavailableException, IsBootstrappingException, RequestFailureException, RequestTimeoutException,
             InvalidRequestException {
-        logger.debug("[Tinoryj] legacyCas read command to column family {}", cfName);
+        // logger.debug("[Tinoryj] legacyCas read command to column family {}", cfName);
         final long startTimeForMetrics = nanoTime();
         try {
             TableMetadata metadata = Schema.instance.validateTable(keyspaceName, cfName);
@@ -2107,7 +2107,7 @@ public class StorageProxy implements StorageProxyMBean {
             ConsistencyLevel consistencyLevel, long queryStartNanoTime)
             throws UnavailableException, ReadFailureException, ReadTimeoutException {
         int cmdCount = commands.size();
-        logger.debug("[Tinoryj] total read command count: {}", cmdCount);
+        // logger.debug("[Tinoryj] total read command count: {}", cmdCount);
         AbstractReadExecutor[] reads = new AbstractReadExecutor[cmdCount];
 
         // Get the replica locations, sorted by response time according to the snitch,
@@ -2192,9 +2192,6 @@ public class StorageProxy implements StorageProxyMBean {
         }
 
         protected void runMayThrow() {
-            logger.debug(
-                    "[Tinoryj] touch read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}",
-                    command.metadata().name, command.metadata().keyspace);
             try {
                 MessageParams.reset();
 
@@ -2206,7 +2203,7 @@ public class StorageProxy implements StorageProxyMBean {
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                    logger.debug("[Tinoryj] get read response in storage proxy: {}", response);
+                    // logger.debug("[Tinoryj] get read response in storage proxy: {}", response);
                 } catch (RejectException e) {
                     if (!command.isTrackingWarnings())
                         throw e;
