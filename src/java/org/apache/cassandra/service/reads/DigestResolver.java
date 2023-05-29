@@ -94,7 +94,6 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
     }
 
     public boolean responsesMatch() {
-        return true;
         long start = nanoTime();
 
         // validate digests against each other; return false immediately on mismatch.

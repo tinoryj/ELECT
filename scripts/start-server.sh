@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+unset JAVA_HOME
 . /etc/profile
 
 cd /mnt/ssd/Debug/CassandraEC
