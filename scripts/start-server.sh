@@ -17,8 +17,8 @@
 . /etc/profile
 
 cd /mnt/ssd/Debug/CassandraEC
-git pull origin yuanming
-kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
+git pull
+kill -9 $(ps aux | grep cassandra | grep -v grep | awk 'NR == 1' | awk {'print $2'})
 rm -rf data logs
 mkdir -p data/receivedParityHashes/
 mkdir -p data/localParityHashes/
@@ -27,4 +27,4 @@ mkdir -p data/tmp/
 mkdir -p logs
 ant realclean && ant -Duse.jdk11=true
 cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
-nohup bin/cassandra &> logs/debug.log &
+nohup bin/cassandra &>logs/debug.log &

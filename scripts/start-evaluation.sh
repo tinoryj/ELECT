@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 func() {
     coordinator=$1
     record_count=$2
@@ -34,7 +33,11 @@ func() {
     sed -i "s/recordcount=.*$/recordcount=${record_count}/" workloads/workload_template
     sed -i "s/fieldlength=.*$/fieldlength=${field_length}/" workloads/workload_template
     file_name="$(date +%s)-${record_count}-${field_length}"
-    nohup bin/ycsb load cassandra-cql -p hosts=$coordinator -s -P workloads/workload_template > logs/${file_name}.log 2>&1 &
+    nohup bin/ycsb load cassandra-cql -p hosts=$coordinator -s -P workloads/workload_template >logs/${file_name}.log 2>&1 &
+    tail -f logs/${file_name}.log
+    sleep 60
+    nohup bin/ycsb run cassandra-cql -p hosts=$coordinator -s -P workloads/workload_template >logs/${file_name}.log 2>&1 &
+    tail -f logs/${file_name}.log
 }
 
 func "$1" "$2" "$3"
