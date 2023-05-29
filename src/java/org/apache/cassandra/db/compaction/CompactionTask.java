@@ -586,6 +586,9 @@ public class CompactionTask extends AbstractCompactionTask {
                     }
                     timeSpentWritingKeys = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
 
+                    if(!transferredSSTables.isEmpty()) {
+                        transaction.cancel(transferredSSTables);
+                    }
                     // point of no return
                     newSStables = writer.finish();
 
@@ -630,7 +633,7 @@ public class CompactionTask extends AbstractCompactionTask {
             logger.info(String.format(
                     "[Compaction for CassandraEC secondary nodes]: Compacted (%s) %d sstables to %d [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
                     taskId,
-                    transaction.originals().size(),
+                    transaction.originals().size() + transferredSSTables.size(),
                     newSStables.size(),
                     newSSTableNames.toString(),
                     getLevel(),
