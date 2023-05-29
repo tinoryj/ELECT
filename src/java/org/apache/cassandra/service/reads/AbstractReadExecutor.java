@@ -79,6 +79,10 @@ public abstract class AbstractReadExecutor {
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
 
+    public final String primaryLSMTreeName = "usertable";
+    public final String secondaryLSMTreeName1 = "usertable1";
+    public final String secondaryLSMTreeName2 = "usertable2";
+
     AbstractReadExecutor(ColumnFamilyStore cfs, ReadCommand command, ReplicaPlan.ForTokenRead replicaPlan,
             int initialDataRequestCount, long queryStartNanoTime) {
         this.command = command;
@@ -149,14 +153,18 @@ public abstract class AbstractReadExecutor {
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
 
             if (readCommand.isDigestQuery() == true) {
-                readCommand.metadata().name = "usertable" + Integer.toString(replicationIDIndicatorForSendRequest);
+                if (replicationIDIndicatorForSendRequest == 1) {
+                    readCommand.metadata().name = secondaryLSMTreeName1;
+                } else if (replicationIDIndicatorForSendRequest == 2) {
+                    readCommand.metadata().name = secondaryLSMTreeName2;
+                }
                 logger.debug(
                         "[Tinoryj] Send {} read request to replica ID: {}, reading from {}, the target key space is {}, column family is {}",
                         readCommand.isDigestQuery() ? "digest" : "data", replicationIDIndicatorForSendRequest, endpoint,
                         readCommand.metadata().keyspace,
                         readCommand.metadata().name);
             } else {
-                readCommand.metadata().name = "usertable";
+                readCommand.metadata().name = primaryLSMTreeName;
                 logger.debug(
                         "[Tinoryj] Send {} read request to replica ID: {}, reading from {}, the target key space is {}, column family is {}",
                         readCommand.isDigestQuery() ? "digest" : "data", replicationIDIndicatorForSendRequest, endpoint,

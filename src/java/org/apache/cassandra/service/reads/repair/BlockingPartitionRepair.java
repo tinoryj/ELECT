@@ -151,6 +151,7 @@ public class BlockingPartitionRepair
     }
 
     public void sendInitialRepairs() {
+        logger.debug("[Tinoryj] Send initial repairs, pendingRepairs: {}", pendingRepairs);
         mutationsSentTime = nanoTime();
         Replicas.assertFull(pendingRepairs.keySet());
 
@@ -208,6 +209,7 @@ public class BlockingPartitionRepair
      * monotonic quorum reads
      */
     public void maybeSendAdditionalWrites(long timeout, TimeUnit timeoutUnit) {
+        logger.debug("[Tinoryj] Send additional writes, timeout: {}, timeoutUnit: {}", timeout, timeoutUnit);
         if (awaitRepairsUntil(timeout + timeoutUnit.convert(mutationsSentTime, TimeUnit.NANOSECONDS), timeoutUnit))
             return;
 
