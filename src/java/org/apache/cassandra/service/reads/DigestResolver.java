@@ -102,7 +102,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         assert snapshot.size() > 0 : "Attempted response match comparison while no responses have been received.";
         if (snapshot.size() == 1) {
             return true;
-        } else if (snapshot.size() == 3) {
+        } else if (snapshot.size() != 3) {
             logger.debug("[Tinoryj] responsesMatch: snapshot.size() = {}", snapshot.size());
         }
         // TODO: should also not calculate if only one full node

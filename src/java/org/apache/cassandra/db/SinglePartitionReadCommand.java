@@ -349,8 +349,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
     @Override
     protected SinglePartitionReadCommand copyAsDigestQuery() {
-        logger.debug("[Tinoryj] SinglePartitionReadCommand copyAsDigestQuery() for partation key: {}",
-                partitionKey().getRawKey(metadata()));
         return create(true,
                 digestVersion(),
                 acceptsTransient(),
@@ -367,9 +365,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
     @Override
     protected SinglePartitionReadCommand copyAsDigestQuery(int replicationIDIndicator) {
-        logger.debug(
-                "[Tinoryj] SinglePartitionReadCommand copyAsDigestQuery() for partation key: {}, the replication ID indicator is {}",
-                partitionKey().getRawKey(metadata()), replicationIDIndicator);
         return create(true,
                 digestVersion(),
                 acceptsTransient(),

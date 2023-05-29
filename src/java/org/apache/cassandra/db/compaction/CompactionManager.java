@@ -209,10 +209,10 @@ public class CompactionManager implements CompactionManagerMBean {
     public List<Future<?>> submitBackground(final ColumnFamilyStore cfs) {
         if (cfs.isAutoCompactionDisabled()) {
             logger.trace("Autocompaction is disabled");
-            logger.debug("[Tinoryj] Autocompaction is enabled, current cfs = {}", cfs.name);
             return Collections.emptyList();
-        }else {
-            // logger.debug("[Tinoryj] Autocompaction is enabled, current cfs = {}", cfs.name);
+        } else {
+            // logger.debug("[Tinoryj] Autocompaction is enabled, current cfs = {}",
+            // cfs.name);
         }
 
         /**
@@ -317,7 +317,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 if (task == null) {
                     if (DatabaseDescriptor.automaticSSTableUpgrade())
                         ranCompaction = maybeRunUpgradeTask(strategy);
-                } else if(task.isContainReplicationTransferredToErasureCoding){
+                } else if (task.isContainReplicationTransferredToErasureCoding) {
                     logger.debug("rymDebug[transferred]: this task contains transferred sstables.");
                     List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = ((LeveledCompactionTask) task).transferredSSTableKeyRanges;
                     task.execute(active, TransferredSSTableKeyRanges);
@@ -329,7 +329,7 @@ public class CompactionManager implements CompactionManagerMBean {
             } finally {
                 compactingCF.remove(cfs);
             }
-            if (ranCompaction){ // only submit background if we actually ran a compaction - otherwise we end up
+            if (ranCompaction) { // only submit background if we actually ran a compaction - otherwise we end up
                 // in an infinite loop submitting noop background tasks
                 submitBackground(cfs);
             }
@@ -429,7 +429,7 @@ public class CompactionManager implements CompactionManagerMBean {
     }
 
     // [CASSANDRAEC]
-    private AllSSTableOpStatus rewriteSSTables(final ColumnFamilyStore cfs, 
+    private AllSSTableOpStatus rewriteSSTables(final ColumnFamilyStore cfs,
             final DecoratedKey first,
             final DecoratedKey last,
             List<SSTableReader> rewriteSSTables,
@@ -439,7 +439,8 @@ public class CompactionManager implements CompactionManagerMBean {
             final OneSSTableOperation operation,
             OperationType operationType)
             throws ExecutionException, InterruptedException {
-        // logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
+        // logger.info("rymDebug: Starting {} for {}.{}", operationType,
+        // cfs.keyspace.getName(), cfs.getTableName());
         List<LifecycleTransaction> transactions = new ArrayList<>();
         List<Future<?>> futures = new ArrayList<>();
         try (txn) {
@@ -449,15 +450,15 @@ public class CompactionManager implements CompactionManagerMBean {
             rewriteSSTables = Lists.newArrayList(operation.filterSSTables(txn));
             int originalRewriteSSTablesNum = rewriteSSTables.size();
             if (Iterables.isEmpty(rewriteSSTables)) {
-                // logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
+                // logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(),
+                // cfs.keyspace.getName(), cfs.name);
                 return AllSSTableOpStatus.SUCCESSFUL;
             }
 
             transactions.add(txn);
             Callable<Object> callable = new Callable<Object>() {
                 @Override
-                public Object call() throws Exception
-                {
+                public Object call() throws Exception {
                     operation.execute(txn);
                     return this;
                 }
@@ -469,12 +470,12 @@ public class CompactionManager implements CompactionManagerMBean {
                 return AllSSTableOpStatus.ABORTED;
 
             FBUtilities.waitOnFutures(futures);
-            if(txn.originals().isEmpty()) {
+            if (txn.originals().isEmpty()) {
                 logger.info("Finished rewrite {} sstables successfully!", originalRewriteSSTablesNum);
             } else {
                 logger.warn("Still remaining {} sstables in this transaction {}, original sstables number is {}",
-                 txn.originals().size(), txn.opId(), rewriteSSTables.size());
-                txn.removeAll(rewriteSSTables);                
+                        txn.originals().size(), txn.opId(), rewriteSSTables.size());
+                txn.removeAll(rewriteSSTables);
             }
             return AllSSTableOpStatus.SUCCESSFUL;
 
@@ -583,7 +584,7 @@ public class CompactionManager implements CompactionManagerMBean {
     // rewrite sstables based source decorated keys
     public AllSSTableOpStatus performSSTableRewrite(final ColumnFamilyStore cfs,
             final DecoratedKey first,
-            final DecoratedKey last, 
+            final DecoratedKey last,
             List<SSTableReader> sstables,
             // SSTableReader ecSSTable,
             ECMetadata ecMetadata, String fileNamePrefix,
@@ -613,63 +614,65 @@ public class CompactionManager implements CompactionManagerMBean {
                             (sstable.compression && metadata.params.compression
                                     .equals(sstable.getCompressionMetadata().parameters))))
                 return false;
-            
+
             // Skip if sstable contain EC_Metadata
-            if(Files.exists(Paths.get(sstable.descriptor.filenameFor(Component.EC_METADATA))))
+            if (Files.exists(Paths.get(sstable.descriptor.filenameFor(Component.EC_METADATA))))
                 return false;
 
-            
             return true;
         }, jobs);
     }
 
     public AllSSTableOpStatus performSSTableRewrite(final ColumnFamilyStore cfs,
             final DecoratedKey first,
-            final DecoratedKey last, 
-            List<SSTableReader> sstables, 
+            final DecoratedKey last,
+            List<SSTableReader> sstables,
             // SSTableReader ecSSTable,
             ECMetadata ecMetadata, String fileNamePrefix,
             final LifecycleTransaction updateTxn,
             Predicate<SSTableReader> sstableFilter,
             int jobs) throws InterruptedException, ExecutionException {
         // return rewriteSSTables(cfs, sourceKeys, sstables, OperationType.COMPACTION);
-        return rewriteSSTables(cfs, first, last, sstables, ecMetadata, fileNamePrefix, updateTxn, new OneSSTableOperation() {
-            @Override
-            public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
-                List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
-                Collections.sort(sortedSSTables, SSTableReader.sizeComparator.reversed());
-                Iterator<SSTableReader> iter = sortedSSTables.iterator();
-                // final Set<SSTableReader> compacting = cfs.getTracker().getCompacting();
-                while (iter.hasNext()) {
-                    SSTableReader sstable = iter.next();
-                    if (!sstableFilter.test(sstable)) {
-                        logger.warn(BLUE+"rymWarning: sstable {} is not qualified, cannot be rewritten!!!", sstable.getFilename()+RESET);
-                        transaction.cancel(sstable);
-                        iter.remove();
-                    } 
-                    // else if (compacting.contains(sstable)) {
-                    //     logger.warn(BLUE+"rymWarning: sstable {} is compacting, cannot be rewritten!!!", sstable.getFilename()+RESET);
-                    //     transaction.cancel(sstable);
-                    //     iter.remove();
-                    // }
-                }
-                return sortedSSTables;
-            }
+        return rewriteSSTables(cfs, first, last, sstables, ecMetadata, fileNamePrefix, updateTxn,
+                new OneSSTableOperation() {
+                    @Override
+                    public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
+                        List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
+                        Collections.sort(sortedSSTables, SSTableReader.sizeComparator.reversed());
+                        Iterator<SSTableReader> iter = sortedSSTables.iterator();
+                        // final Set<SSTableReader> compacting = cfs.getTracker().getCompacting();
+                        while (iter.hasNext()) {
+                            SSTableReader sstable = iter.next();
+                            if (!sstableFilter.test(sstable)) {
+                                logger.warn(BLUE + "rymWarning: sstable {} is not qualified, cannot be rewritten!!!",
+                                        sstable.getFilename() + RESET);
+                                transaction.cancel(sstable);
+                                iter.remove();
+                            }
+                            // else if (compacting.contains(sstable)) {
+                            // logger.warn(BLUE+"rymWarning: sstable {} is compacting, cannot be
+                            // rewritten!!!", sstable.getFilename()+RESET);
+                            // transaction.cancel(sstable);
+                            // iter.remove();
+                            // }
+                        }
+                        return sortedSSTables;
+                    }
 
-            @Override
-            public void execute(LifecycleTransaction txn) {
-                
-                AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC,
-                        Long.MAX_VALUE);
-                task.setUserDefined(true);
-                task.setCompactionType(OperationType.COMPACTION);
-                // SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, cfs,
-                // fileNamePrefix);
-                // logger.debug("rymDebug: open ec sstable {} successfully.",
-                // ecSSTable.descriptor);
-                task.execute(active, first, last, ecMetadata, fileNamePrefix);
-            }
-        }, OperationType.COMPACTION);
+                    @Override
+                    public void execute(LifecycleTransaction txn) {
+
+                        AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC,
+                                Long.MAX_VALUE);
+                        task.setUserDefined(true);
+                        task.setCompactionType(OperationType.COMPACTION);
+                        // SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, cfs,
+                        // fileNamePrefix);
+                        // logger.debug("rymDebug: open ec sstable {} successfully.",
+                        // ecSSTable.descriptor);
+                        task.execute(active, first, last, ecMetadata, fileNamePrefix);
+                    }
+                }, OperationType.COMPACTION);
     }
 
     /**
@@ -889,7 +892,8 @@ public class CompactionManager implements CompactionManagerMBean {
             }
 
             @Override
-            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                    throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
@@ -1091,7 +1095,8 @@ public class CompactionManager implements CompactionManagerMBean {
                 }
 
                 @Override
-                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                        throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1150,7 +1155,8 @@ public class CompactionManager implements CompactionManagerMBean {
                 }
 
                 @Override
-                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                        throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1344,7 +1350,8 @@ public class CompactionManager implements CompactionManagerMBean {
             }
 
             @Override
-            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                    throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
