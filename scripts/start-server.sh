@@ -17,7 +17,7 @@
 . /etc/profile
 
 cd /mnt/ssd/Debug/CassandraEC
-git pull
+git pull origin yanjing
 kill -9 $(ps aux | grep cassandra | grep -v grep | awk 'NR == 1' | awk {'print $2'})
 rm -rf data logs
 mkdir -p data/receivedParityHashes/
