@@ -103,6 +103,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         if (snapshot.size() == 1)
             return true;
 
+        logger.debug("[Tinoryj] responsesMatch: snapshot.size() = {}", snapshot.size());
         // TODO: should also not calculate if only one full node
         for (Message<ReadResponse> message : snapshot) {
             if (replicaPlan().lookup(message.from()).isTransient())

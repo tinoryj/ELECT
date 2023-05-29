@@ -38,7 +38,7 @@
 
   tasks:
   - name: Execute script start-client.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-client.sh {{ ansible_hostname }} 4 4 # <coordinator address>, <sstable size in MB>, <fanout size>
+    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-client.sh {{ ansible_hostname }} 4 10 # <coordinator address>, <sstable size in MB>, <fanout size>
     register: command_result
     ignore_errors: True
 

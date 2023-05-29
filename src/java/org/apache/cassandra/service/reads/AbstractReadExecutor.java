@@ -443,6 +443,8 @@ public abstract class AbstractReadExecutor {
         if (digestResolver.responsesMatch()) {
             setResult(digestResolver.getData());
         } else {
+            logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch, starting read repair for key {}",
+                    getKey());
             Tracing.trace("Digest mismatch: Mismatch for key {}", getKey());
             readRepair.startRepair(digestResolver, this::setResult);
             if (logBlockingReadRepairAttempt) {
