@@ -516,6 +516,10 @@ public class CompactionTask extends AbstractCompactionTask {
                 }
             }
 
+            if(!transferredSSTables.isEmpty()) {
+                transaction.cancel(transferredSSTables);
+            }
+
             actuallyCompact = Sets.difference(actuallyCompact, transferredSSTables);
             
 
@@ -586,9 +590,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     }
                     timeSpentWritingKeys = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
 
-                    if(!transferredSSTables.isEmpty()) {
-                        transaction.cancel(transferredSSTables);
-                    }
+                    
                     // point of no return
                     newSStables = writer.finish();
 
