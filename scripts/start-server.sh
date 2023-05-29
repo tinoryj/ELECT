@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-unset JAVA_HOME
 . /etc/profile
+unset JAVA_HOME
 
 cd /mnt/ssd/Debug/CassandraEC
 git pull origin yanjing
