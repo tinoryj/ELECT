@@ -117,28 +117,41 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
     private static class ConsumeBlockedECMetadataRunnable implements Runnable {
 
+        private final Object lock = new Object();
+        private volatile boolean exitThread = false;
+
         @Override
         public void run() {
-            for(Map.Entry<String, List<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata.entrySet()) {
-                String ks = "ycsb";
-                String cfName = entry.getKey();
-                List<BlockedECMetadata> metadatas = entry.getValue();
-                Iterator<BlockedECMetadata> metadatasIterator = metadatas.iterator();
-                
-                while(metadatasIterator.hasNext()) {
-                    BlockedECMetadata metadata = metadatasIterator.next();
-                    if(!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash, metadata.sourceIP)) {
-                        metadatasIterator.remove();
-                    } else {
-                        logger.debug("rymERROR: Still cannot create transactions, try it later.");
+            if (!exitThread) {
+                exitThread = true;
+                synchronized (lock) {
+                    for (Map.Entry<String, List<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata
+                            .entrySet()) {
+                        String ks = "ycsb";
+                        String cfName = entry.getKey();
+                        List<BlockedECMetadata> metadatas = entry.getValue();
+                        Iterator<BlockedECMetadata> metadatasIterator = metadatas.iterator();
+
+                        while (metadatasIterator.hasNext()) {
+                            BlockedECMetadata metadata = metadatasIterator.next();
+                            if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash,
+                                    metadata.sourceIP)) {
+                                metadatasIterator.remove();
+                            } else {
+                                logger.debug("rymERROR: Still cannot create transactions, try it later.");
+                            }
+                        }
+
                     }
                 }
-                
+                exitThread = false;
+            } else {
+                return;
             }
-        }
-        
-    }
 
+        }
+
+    }
 
     /**
      * 
