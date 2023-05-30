@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 
 
@@ -125,7 +126,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             if (!exitThread) {
                 exitThread = true;
                 synchronized (lock) {
-                    for (Map.Entry<String, List<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata
+                    for (Map.Entry<String, CopyOnWriteArrayList<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata
                             .entrySet()) {
                         String ks = "ycsb";
                         String cfName = entry.getKey();
@@ -141,6 +142,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                 logger.debug("rymERROR: Still cannot create transactions, try it later.");
                             }
                         }
+                        // entry.setValue(metadatas);
 
                     }
                 }

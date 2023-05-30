@@ -203,7 +203,7 @@ public class StorageService extends NotificationBroadcasterSupport
     // [In every node] Record the sstHash to SSTableReader map
     public Map<String, SSTableReader> globalSSTHashToECSSTable = new HashMap<String, SSTableReader>();
     // [In secondary node] Record the rewrite data
-    public ConcurrentHashMap<String, List<BlockedECMetadata>> globalBlockedECMetadata = new ConcurrentHashMap<String, List<BlockedECMetadata>>();
+    public ConcurrentHashMap<String, CopyOnWriteArrayList<BlockedECMetadata>> globalBlockedECMetadata = new ConcurrentHashMap<String, CopyOnWriteArrayList<BlockedECMetadata>>();
 
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 
