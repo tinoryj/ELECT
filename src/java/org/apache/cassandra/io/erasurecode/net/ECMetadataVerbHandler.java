@@ -133,6 +133,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         @Override
         public void run() {
             isConsumeBlockedECMetadataOccupied = true;
+            logger.debug("rymDebug: This is ConsumeBlockedECMetadataRunnable");
             synchronized (lock) {
 
                 for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata

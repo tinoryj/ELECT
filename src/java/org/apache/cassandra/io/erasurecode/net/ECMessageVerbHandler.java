@@ -34,6 +34,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.cassandra.concurrent.Stage;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureEncoder;
 import org.apache.cassandra.io.erasurecode.NativeRSEncoder;
@@ -122,7 +123,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
         // Once we have k different sstContent, do erasure coding locally
         // TODO: need a while loop
-        if(StorageService.instance.globalRecvQueues.size()>=message.payload.ecMessageContent.ecDataNum) {
+        if(StorageService.instance.globalRecvQueues.size() >= message.payload.ecMessageContent.ecDataNum) {
             logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
             ECMessage tmpArray[] = new ECMessage[message.payload.ecMessageContent.ecDataNum];
             //traverse the recvQueues
@@ -137,7 +138,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 i++;
             }
             // compute erasure coding locally;
-            Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeRunnable(tmpArray));
+            if(tmpArray.length == message.payload.ecMessageContent.ecDataNum){
+                Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeRunnable(tmpArray));
+            } else {
+                logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);
+            }
+                
         }
 
         Tracing.trace("recieved sstContent is: {}, ec_data_num is: {}, sourceEdpoint is: {}, header is: {}",
@@ -175,8 +181,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         private final ECMessage[] messages;
 
         ErasureCodeRunnable(ECMessage[] message) {
-            this.ecDataNum = message[0].ecMessageContent.ecDataNum;
-            this.ecParityNum = message[0].ecMessageContent.ecParityNum;
+            this.ecDataNum = DatabaseDescriptor.getEcDataNodes();
+            this.ecParityNum = DatabaseDescriptor.getParityNodes();
             this.messages = message;
         }
 
