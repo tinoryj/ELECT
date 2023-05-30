@@ -62,6 +62,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     public static List<ECMetadata> ecMetadatas = new ArrayList<ECMetadata>();
 
     private static final Logger logger = LoggerFactory.getLogger(ECMetadataVerbHandler.class);
+    
+    private volatile static boolean isConsumeBlockedECMetadataOccupied = false;
 
     // Reset
     public static final String RESET = "\033[0m"; // Text Reset
@@ -104,13 +106,15 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 String ks = ecMetadata.ecMetadataContent.keyspace;
                 int index = entry.getValue().indexOf(localIP);
                 String cfName = ecMetadata.ecMetadataContent.cfName + index;
+                // logger.debug("rymDebug: ECMetadataVerbHandler get sstHash {} from {}", sstableHash, sourceIP);
+
                 transformECMetadataToECSSTable(ecMetadata, ks, cfName, sstableHash, sourceIP);
             }
 
         }
 
         // Consume the blocked ecMetadata if needed
-        if(!StorageService.instance.globalBlockedECMetadata.isEmpty()) {
+        if(!StorageService.instance.globalBlockedECMetadata.isEmpty() && !isConsumeBlockedECMetadataOccupied) {
             Stage.ERASURECODE.maybeExecuteImmediately(new ConsumeBlockedECMetadataRunnable());
         }
 
@@ -120,45 +124,51 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     private static class ConsumeBlockedECMetadataRunnable implements Runnable {
 
         private final Object lock = new Object();
-        private volatile boolean exitThread = false;
 
         @Override
         public void run() {
-            if (!exitThread) {
-                exitThread = true;
-                synchronized (lock) {
+            isConsumeBlockedECMetadataOccupied = true;
+            synchronized (lock) {
+                try {
+                    Thread.sleep(30000);
                     for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata
                             .entrySet()) {
                         String ks = "ycsb";
                         String cfName = entry.getKey();
-                        // ConcurrentLinkedQueue<BlockedECMetadata> metadatas = entry.getValue();
-                        // Iterator<BlockedECMetadata> metadatasIterator = metadatas.iterator();
-                        // while (metadatasIterator.hasNext()) {
-                        //     BlockedECMetadata metadata = metadatasIterator.next();
-                        //     if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash,
-                        //             metadata.sourceIP)) {
-                        //         metadatasIterator.remove();
-                        //     } else {
-                        //         logger.debug("rymERROR: Still cannot create transactions, try it later.");
-                        //     }
-                        // }
-                        // entry.setValue(metadatas);
 
-                        for(BlockedECMetadata metadata : entry.getValue()) {
-                            if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash,
-                                    metadata.sourceIP)) {
+                        for (BlockedECMetadata metadata : entry.getValue()) {
+                            if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash, metadata.sourceIP)) {
+                                logger.debug("rymDebug: Redo transformECMetadataToECSSTable successfully");
                                 entry.getValue().remove(metadata);
                             } else {
-                                logger.debug("rymERROR: Still cannot create transactions, try it later.");
+                                logger.debug("rymERROR: Still cannot create transactions, but we won't try it again.");
+                                ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
+                                DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap
+                                        .get(metadata.sstableHash);
+
+                                if (dataForRewrite != null) {
+                                    String fileNamePrefix = dataForRewrite.fileNamePrefix;
+                                    final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(new ArrayList<SSTableReader>(), OperationType.COMPACTION);
+                                    cfs.replaceSSTable(metadata.ecMetadata, cfs, fileNamePrefix, updateTxn);
+                                    StorageService.instance.globalSSTMap.remove(metadata.sstableHash);
+                                    entry.getValue().remove(metadata);
+                                } else {
+                                    logger.warn("rymERROR: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
+                                            metadata.sstableHash);
+                                }
                             }
+
+                            // entry.getValue().remove(metadata);
                         }
 
                     }
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
                 }
-                exitThread = false;
-            } else {
-                return;
+
             }
+            isConsumeBlockedECMetadataOccupied = false;
 
         }
 
@@ -181,8 +191,6 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             // [In progress of erasure coding]
 
             DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
-            logger.debug("rymDebug: ECMetadataVerbHandler get sstHash {} from {}",
-                    sstableHash, sourceIP);
 
             if (dataForRewrite != null) {
 
@@ -199,8 +207,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     // TODO: mark this sstable COMPACTION
                     // logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}",
                     // ecSSTable.getFilename());
-                    final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(rewriteSStables,
-                            OperationType.COMPACTION);
+                    final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(rewriteSStables, OperationType.COMPACTION);
 
                     // M is the sstable from primary node, M` is the corresponding sstable of
                     // secondary node
