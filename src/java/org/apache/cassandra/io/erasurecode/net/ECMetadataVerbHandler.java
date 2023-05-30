@@ -130,7 +130,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     if(!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash, metadata.sourceIP)) {
                         metadatasIterator.remove();
                     } else {
-                        logger.debug("rymDebug: Still cannot create transactions.");
+                        logger.debug("rymERROR: Still cannot create transactions, try it later.");
                     }
                 }
                 
@@ -394,17 +394,4 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
     }
 
-    public static void main(String[] args) {
-        System.out.println("Before calling doSomething()");
-        doSomething();
-        System.out.println("After calling doSomething()");
-    }
-    
-    public static void doSomething() {
-        System.out.println("Inside doSomething()");
-        if (true) {
-            return; // 结束当前函数体，继续执行后面代码
-        }
-        System.out.println("After conditional check");
-    }
 }
