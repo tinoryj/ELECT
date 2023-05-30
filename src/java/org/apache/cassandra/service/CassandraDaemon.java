@@ -444,7 +444,7 @@ public class CassandraDaemon {
 
         // schedule periodic tasks for consume blocked ecMetadata
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.instance.getConsumeBlockedECMetadataRunnable(),
-                                                                DatabaseDescriptor.getInitialDelay() * 60,
+                                                                (DatabaseDescriptor.getInitialDelay() + 1) * 60,
                                                                 DatabaseDescriptor.getTaskDelay() * 60 / 2,
                                                                 TimeUnit.SECONDS);
 

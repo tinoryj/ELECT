@@ -146,7 +146,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             logger.debug("rymDebug: Redo transformECMetadataToECSSTable successfully");
                             entry.getValue().remove(metadata);
                         } else {
-                            logger.debug("rymDebug: Still cannot create transactions, but we won't try it again.");
+                            logger.debug("rymERROR: Still cannot create transactions, but we won't try it again, write the data down immediately.");
                             ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
 
                             // If the ecMetadata is for erasure coding, just transform it
@@ -278,7 +278,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             StorageService.instance.globalSSTMap.remove(sstableHash);
         } else {
             // Save ECMetadata and redo ec transition later
-            logger.debug("rymERROR: failed to get transactions for the sstables during erasure coding, we will try it later");
+            logger.debug("rymDebug: failed to get transactions for the sstables during erasure coding, we will try it later");
             BlockedECMetadata blockedECMetadata = new BlockedECMetadata(sstableHash, sourceIP, ecMetadata);
             saveECMetadataToBlockList(cfs.getColumnFamilyName(), blockedECMetadata);
             return true;

@@ -542,7 +542,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 }
                             }
                         } else {
-                            logger.info("SSTable is transferred");
+                            // logger.info("SSTable is transferred");
                             continue;
                         }
                     } else {
