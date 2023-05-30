@@ -189,7 +189,7 @@ public class StorageService extends NotificationBroadcasterSupport
 
     // [CASSANDRAEC] The following properties belong to CassandraEC.
     // [In parity node] This queue is used to receive ECMessages for erasure coding.
-    public ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
+    public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>>();
     // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
     public Map<String, DataForRewrite> globalSSTMap = new HashMap<String, DataForRewrite>();
     // [In parity node] This map is used to store <stripID, ECMetadataContent>, generate after erasure coding, use during parity update.

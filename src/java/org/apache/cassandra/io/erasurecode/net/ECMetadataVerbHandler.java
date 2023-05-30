@@ -118,6 +118,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
     public Runnable getConsumeBlockedECMetadataRunnable() {
         // Consume the blocked ecMetadata if needed
+        logger.debug("rymDebug: This is getConsumeBlockedECMetadataRunnable, the globalBlockedECMetadata is {}, isConsumeBlockedECMetadataOccupied is ({})",
+                     StorageService.instance.globalBlockedECMetadata.size(),
+                     isConsumeBlockedECMetadataOccupied);
         if (!StorageService.instance.globalBlockedECMetadata.isEmpty() && !isConsumeBlockedECMetadataOccupied) {
             return new ConsumeBlockedECMetadataRunnable();
         } else {

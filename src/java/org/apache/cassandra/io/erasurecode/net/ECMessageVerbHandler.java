@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -99,7 +100,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
         // save the received data to recvQueue
         if(!StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
-            Queue<ECMessage> recvQueue = new LinkedList<ECMessage>();
+            ConcurrentLinkedQueue<ECMessage> recvQueue = new ConcurrentLinkedQueue<ECMessage>();
             recvQueue.add(message.payload);
             StorageService.instance.globalRecvQueues.put(primaryNode, recvQueue);
         }
@@ -112,7 +113,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
         // StorageService.instance.globalRecvQueues.forEach((address, queue) -> System.out.print("Queue length of " + address + " is " + queue.size()));
         String logString = "rymDebug: Insight the globalRecvQueues";
-        for(Map.Entry<InetAddressAndPort, Queue<ECMessage>> entry : StorageService.instance.globalRecvQueues.entrySet()) {
+        for(Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> entry : StorageService.instance.globalRecvQueues.entrySet()) {
             String str = entry.getKey().toString() + " has " + entry.getValue().size() + " elements, ";
             logString += str;
         }
@@ -128,10 +129,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             ECMessage tmpArray[] = new ECMessage[message.payload.ecMessageContent.ecDataNum];
             //traverse the recvQueues
             int i = 0;
-            for (InetAddressAndPort msg : StorageService.instance.globalRecvQueues.keySet()) {
-                tmpArray[i] = StorageService.instance.globalRecvQueues.get(msg).poll();
-                if(StorageService.instance.globalRecvQueues.get(msg).size() == 0) {
-                    StorageService.instance.globalRecvQueues.remove(msg);
+            for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
+                tmpArray[i] = StorageService.instance.globalRecvQueues.get(addr).poll();
+                if(StorageService.instance.globalRecvQueues.get(addr).size() == 0) {
+                    StorageService.instance.globalRecvQueues.remove(addr);
                 }
                 if (i == message.payload.ecMessageContent.ecDataNum - 1) 
                     break;
