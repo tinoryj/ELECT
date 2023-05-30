@@ -1913,9 +1913,38 @@ public class DatabaseDescriptor
     {
         if (compaction_threshold < 0)
         {
-            throw new IllegalArgumentException("Parity nodes must be non-negative");
+            throw new IllegalArgumentException("Compaction threshold nodes must be non-negative");
         }
         conf.compaction_threshold = compaction_threshold;
+    }
+
+    
+    public static int getInitialDelay() 
+    {
+        return conf.initial_delay;
+    }
+
+    public static void setInitialDelay(int initial_delay)
+    {
+        if (initial_delay < 0)
+        {
+            throw new IllegalArgumentException("Initial delay must be non-negative");
+        }
+        conf.initial_delay = initial_delay;
+    }
+
+    public static int getTaskDelay() 
+    {
+        return conf.task_delay;
+    }
+
+    public static void setTaskDelay(int task_delay)
+    {
+        if (task_delay < 0)
+        {
+            throw new IllegalArgumentException("Task delay must be non-negative");
+        }
+        conf.task_delay = task_delay;
     }
 
     public static int getEcDataNodes() 
@@ -1927,7 +1956,7 @@ public class DatabaseDescriptor
     {
         if (ecDataNodes < 0)
         {
-            throw new IllegalArgumentException("Parity nodes must be non-negative");
+            throw new IllegalArgumentException("Data nodes num must be non-negative");
         }
         conf.ec_data_nodes = ecDataNodes;
     }

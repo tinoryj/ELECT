@@ -182,6 +182,9 @@ public class Config {
     public int ec_data_nodes = 4;
     public int parity_nodes = 2;
     public int compaction_threshold = 1;
+    public int initial_delay = 2; // in minute
+    public int task_delay = 1; // in minute
+
 
     public int concurrent_ec = 3;
     public int concurrent_reads = 32;

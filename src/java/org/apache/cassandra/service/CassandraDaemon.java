@@ -68,6 +68,7 @@ import org.apache.cassandra.db.virtual.VirtualSchemaKeyspace;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.StartupException;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler;
 import org.apache.cassandra.io.sstable.SSTableHeaderFix;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
@@ -433,10 +434,19 @@ public class CassandraDaemon {
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
                 ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(), 5, 1, TimeUnit.MINUTES);
 
+        
         // schedule periodic send sstable content task submission
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
-            ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable",
-                                                 DatabaseDescriptor.getCompactionThreshold(), 1), 2, 1, TimeUnit.MINUTES);
+            ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", DatabaseDescriptor.getCompactionThreshold(), DatabaseDescriptor.getTaskDelay()),
+                                                 DatabaseDescriptor.getInitialDelay(),
+                                                 DatabaseDescriptor.getTaskDelay(),
+                                                 TimeUnit.MINUTES);
+
+        // schedule periodic tasks for consume blocked ecMetadata
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.instance.getConsumeBlockedECMetadataRunnable(),
+                                                                DatabaseDescriptor.getInitialDelay() * 60,
+                                                                DatabaseDescriptor.getTaskDelay() * 60 / 2,
+                                                                TimeUnit.SECONDS);
 
         // schedule periodic recomputation of speculative retry thresholds
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(SPECULATION_THRESHOLD_UPDATER,

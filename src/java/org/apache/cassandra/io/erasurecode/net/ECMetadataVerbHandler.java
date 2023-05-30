@@ -113,13 +113,18 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         }
 
-        // Consume the blocked ecMetadata if needed
-        if(!StorageService.instance.globalBlockedECMetadata.isEmpty() && !isConsumeBlockedECMetadataOccupied) {
-            Stage.ERASURECODE.maybeExecuteImmediately(new ConsumeBlockedECMetadataRunnable());
-        }
-
     }
 
+
+    public Runnable getConsumeBlockedECMetadataRunnable() {
+        // Consume the blocked ecMetadata if needed
+        if (!StorageService.instance.globalBlockedECMetadata.isEmpty() && !isConsumeBlockedECMetadataOccupied) {
+            return new ConsumeBlockedECMetadataRunnable();
+        } else {
+            Runnable nullRunnable = () -> {};
+            return nullRunnable;
+        }
+    }
 
     private static class ConsumeBlockedECMetadataRunnable implements Runnable {
 
@@ -129,42 +134,47 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         public void run() {
             isConsumeBlockedECMetadataOccupied = true;
             synchronized (lock) {
-                try {
-                    Thread.sleep(30000);
-                    for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata
-                            .entrySet()) {
-                        String ks = "ycsb";
-                        String cfName = entry.getKey();
 
-                        for (BlockedECMetadata metadata : entry.getValue()) {
-                            if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash, metadata.sourceIP)) {
-                                logger.debug("rymDebug: Redo transformECMetadataToECSSTable successfully");
-                                entry.getValue().remove(metadata);
-                            } else {
-                                logger.debug("rymERROR: Still cannot create transactions, but we won't try it again.");
-                                ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
-                                DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap
-                                        .get(metadata.sstableHash);
+                for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata
+                        .entrySet()) {
+                    String ks = "ycsb";
+                    String cfName = entry.getKey();
 
+                    for (BlockedECMetadata metadata : entry.getValue()) {
+                        if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash,
+                                metadata.sourceIP)) {
+                            logger.debug("rymDebug: Redo transformECMetadataToECSSTable successfully");
+                            entry.getValue().remove(metadata);
+                        } else {
+                            logger.debug("rymDebug: Still cannot create transactions, but we won't try it again.");
+                            ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
+
+                            // If the ecMetadata is for erasure coding, just transform it
+                            if (!metadata.ecMetadata.ecMetadataContent.isParityUpdate) {
+                                DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(metadata.sstableHash);
                                 if (dataForRewrite != null) {
                                     String fileNamePrefix = dataForRewrite.fileNamePrefix;
-                                    final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(new ArrayList<SSTableReader>(), OperationType.COMPACTION);
-                                    cfs.replaceSSTable(metadata.ecMetadata, cfs, fileNamePrefix, updateTxn);
-                                    StorageService.instance.globalSSTMap.remove(metadata.sstableHash);
+                                    transformECMetadataToECSSTableForErasureCode(metadata.ecMetadata,
+                                            new ArrayList<SSTableReader>(),
+                                            cfs,
+                                            fileNamePrefix,
+                                            metadata.sstableHash,
+                                            null, null, null);
                                     entry.getValue().remove(metadata);
                                 } else {
-                                    logger.warn("rymERROR: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
+                                    logger.warn("rymDebug: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
                                             metadata.sstableHash);
                                 }
+                            } else {
+                                // TODO: Wait until the target ecSSTable is released
+                                // transformECMetadataToECSSTableForParityUpdate(metadata.ecMetadata, cfs, metadata.sstableHash);
                             }
 
-                            // entry.getValue().remove(metadata);
                         }
 
+                        // entry.getValue().remove(metadata);
                     }
-                } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+
                 }
 
             }
@@ -193,7 +203,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
 
             if (dataForRewrite != null) {
-
+    
                 String fileNamePrefix = dataForRewrite.fileNamePrefix;
                 List<SSTableReader> sstables = new ArrayList<>(
                         cfs.getSSTableForLevel(DatabaseDescriptor.getCompactionThreshold()));
@@ -204,116 +214,113 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     DecoratedKey lastKeyForRewrite = dataForRewrite.lastKey;
                     // use binary search to find related sstables
                     rewriteSStables = getRewriteSSTables(sstables, firstKeyForRewrite, lastKeyForRewrite);
-                    // TODO: mark this sstable COMPACTION
-                    // logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}",
-                    // ecSSTable.getFilename());
-                    final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(rewriteSStables, OperationType.COMPACTION);
-
-                    // M is the sstable from primary node, M` is the corresponding sstable of
-                    // secondary node
-                    if (rewriteSStables.isEmpty()) {
-                        // logger.warn("rymERROR: rewriteSStables is empty!");
-                        // TODO: Save the ECMetadata
-                        // aveECMetadataToBlockQueue(cfName, ecMetadata);
-                        cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
-                        return false;
-                    }
-
-                    if (updateTxn != null) {
-                        if (rewriteSStables.size() == 1) {
-
-                            DecoratedKey fistKey = rewriteSStables.get(0).first;
-                            DecoratedKey lastKey = rewriteSStables.get(0).last;
-                            logger.debug("rymDebug: Anyway, we just replace the sstables");
-                            if (rewriteSStables.get(0).getSSTableHashID().equals(sstableHash)) {
-                                // delete sstable if sstable Hash can be found
-                                cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
-                                logger.debug(RED + "rymDebug: get the match sstbales, delete it!");
-                            } else if (firstKeyForRewrite.equals(fistKey) && lastKeyForRewrite.equals(lastKey)) {
-                                // Case1: M missed some keys in the middle, just delete M`
-                                // IMPORTANT NOTE: we set the latency is as long as possible, so we can assume
-                                // that the compaction speed of secondary node is slower than primary node
-                                // Case2: M` missed some keys in the middle, need to update the metadata
-                                cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
-                                logger.debug(RED + "rymDebug: M or M1 missed some keys in the middle, update sstable!");
-                            } else {
-                                cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
-                                logger.warn("rymWarning: get unexpected sstables num");
-                            }
-                        } else if (rewriteSStables.size() > 1) {
-                            // many sstables are involved
-                            // delete the sstables and update the metadata
-                            // rewrite the sstables, just delete the key ranges of M` which are matching
-                            // those of M
-
-                            logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!", rewriteSStables.size());
-                            // logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db",
-                            // ecSSTable.descriptor);
-                            try {
-
-                                AllSSTableOpStatus status = cfs.sstablesRewrite(firstKeyForRewrite,
-                                        lastKeyForRewrite,
-                                        rewriteSStables, ecMetadata, fileNamePrefix, updateTxn, false,
-                                        Long.MAX_VALUE, false, 1);
-                                if (status != AllSSTableOpStatus.SUCCESSFUL)
-                                    printStatusCode(status.statusCode, cfs.name);
-                            } catch (ExecutionException e) {
-                                e.printStackTrace();
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        StorageService.instance.globalSSTMap.remove(sstableHash);
-                    } else {
-                        // TODO: Save ECMetadata and redo ec transition later
-                        // logger.debug("rymERROR: failed to get transactions for the sstables, we will
-                        // try it later");
-                        BlockedECMetadata blockedECMetadata = new BlockedECMetadata(sstableHash, sourceIP, ecMetadata);
-                        saveECMetadataToBlockList(cfName, blockedECMetadata);
-                        return true;
-                    }
+                    // logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}", ecSSTable.getFilename());
+    
+                    return transformECMetadataToECSSTableForErasureCode(ecMetadata, rewriteSStables, cfs, fileNamePrefix,
+                                                                        sstableHash, sourceIP, firstKeyForRewrite, lastKeyForRewrite);
                 } else {
                     logger.info("rymDebug: cannot replace the existing sstables yet, as {} is lower than {}",
-                            cfName, DatabaseDescriptor.getCompactionThreshold());
+                                cfs.getColumnFamilyName(), DatabaseDescriptor.getCompactionThreshold());
                 }
             } else {
                 logger.warn("rymERROR: cannot get rewrite data of {} during erasure coding", sstableHash);
             }
+            return false;
+
+
+            
 
         } else {
-            // [In progress of parity update], update the related sstables, there are two
-            // cases:
-            // 1. For the parity update sstable, replace the ECMetadata
-            // 2. For the non-updated sstable, just replace the files
-            // String currentSSTHash = entry.getKey();
-            int sstIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstableHash);
-            SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(sstableHash);
-            if (sstIndex == ecMetadata.ecMetadataContent.targetIndex) {
-                // replace ec sstable
+            return transformECMetadataToECSSTableForParityUpdate(ecMetadata, cfs, sstableHash);
+        }
 
-                DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
-                if (dataForRewrite != null) {
+    }
 
-                    String fileNamePrefix = dataForRewrite.fileNamePrefix;
-                    final LifecycleTransaction updateTxn = cfs.getTracker()
-                            .tryModify(Collections.singletonList(oldECSSTable), OperationType.COMPACTION);
-                    if (updateTxn != null) {
-                        cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
-                    } else {
-                        logger.debug("rymERROR: failed to get transactions for the sstables, we will try it later");
-                    }
-                } else {
-                    logger.warn("rymERROR: cannot get rewrite data of {} during parity update", sstableHash);
+    private static boolean transformECMetadataToECSSTableForErasureCode(ECMetadata ecMetadata, List<SSTableReader> rewriteSStables,
+                                                                        ColumnFamilyStore cfs, String fileNamePrefix,
+                                                                        String sstableHash, InetAddressAndPort sourceIP,
+                                                                        DecoratedKey firstKeyForRewrite, DecoratedKey lastKeyForRewrite) {
+
+        final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(rewriteSStables, OperationType.COMPACTION);
+
+        // M is the sstable from primary node, M` is the corresponding sstable of
+        // secondary node
+        if (rewriteSStables.isEmpty()) {
+            // logger.warn("rymERROR: rewriteSStables is empty!");
+            cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
+            StorageService.instance.globalSSTMap.remove(sstableHash);
+            return false;
+        }
+
+        if (updateTxn != null) {
+
+            if (rewriteSStables.size() == 1) {
+                logger.debug("rymDebug: Anyway, we just replace the sstables");
+                cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
+            } else if (rewriteSStables.size() > 1) {
+                logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!", rewriteSStables.size());
+                // logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db",
+                // ecSSTable.descriptor);
+                try {
+                    AllSSTableOpStatus status = cfs.sstablesRewrite(firstKeyForRewrite,
+                            lastKeyForRewrite,
+                            rewriteSStables, ecMetadata, fileNamePrefix, updateTxn, false,
+                            Long.MAX_VALUE, false, 1);
+                    if (status != AllSSTableOpStatus.SUCCESSFUL)
+                        printStatusCode(status.statusCode, cfs.name);
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-
-            } else {
-                // Just replace the files
-                SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor);
             }
 
+            StorageService.instance.globalSSTMap.remove(sstableHash);
+        } else {
+            // Save ECMetadata and redo ec transition later
+            logger.debug("rymERROR: failed to get transactions for the sstables during erasure coding, we will try it later");
+            BlockedECMetadata blockedECMetadata = new BlockedECMetadata(sstableHash, sourceIP, ecMetadata);
+            saveECMetadataToBlockList(cfs.getColumnFamilyName(), blockedECMetadata);
+            return true;
         }
+
         return false;
 
+    }
+
+
+    private static boolean transformECMetadataToECSSTableForParityUpdate(ECMetadata ecMetadata, ColumnFamilyStore cfs, String sstableHash) {
+        // [In progress of parity update], update the related sstables, there are two
+        // cases:
+        // 1. For the parity update sstable, replace the ECMetadata
+        // 2. For the non-updated sstable, just replace the files
+        // String currentSSTHash = entry.getKey();
+        int sstIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstableHash);
+        SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(sstableHash);
+        if (sstIndex == ecMetadata.ecMetadataContent.targetIndex) {
+            // replace ec sstable
+
+            DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
+            if (dataForRewrite != null) {
+
+                String fileNamePrefix = dataForRewrite.fileNamePrefix;
+                final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(Collections.singletonList(oldECSSTable), OperationType.COMPACTION);
+                if (updateTxn != null) {
+                    cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
+                    return false;
+                } else {
+                    logger.debug("rymERROR: failed to get transactions for the sstables during parity update, we will try it later");
+                    return true;
+                }
+            } else {
+                logger.warn("rymERROR: cannot get rewrite data of {} during parity update", sstableHash);
+            }
+
+        } else {
+            // Just replace the files
+            SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor);
+        }
+        return false;
     }
 
     public static class BlockedECMetadata {
