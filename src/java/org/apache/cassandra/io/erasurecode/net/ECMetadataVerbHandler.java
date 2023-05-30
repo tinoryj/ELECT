@@ -315,7 +315,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         if(StorageService.instance.globalBlockedECMetadata.containsKey(cfName)) {
             StorageService.instance.globalBlockedECMetadata.get(cfName).add(metadata);
         } else {
-            List<BlockedECMetadata> blockList = new ArrayList<BlockedECMetadata>();
+            CopyOnWriteArrayList<BlockedECMetadata> blockList = new CopyOnWriteArrayList<BlockedECMetadata>();
             blockList.add(metadata);
             StorageService.instance.globalBlockedECMetadata.put(cfName, blockList);
         }
