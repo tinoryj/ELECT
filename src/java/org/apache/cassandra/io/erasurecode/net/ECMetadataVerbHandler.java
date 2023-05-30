@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 
@@ -126,23 +127,31 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             if (!exitThread) {
                 exitThread = true;
                 synchronized (lock) {
-                    for (Map.Entry<String, CopyOnWriteArrayList<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata
+                    for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata
                             .entrySet()) {
                         String ks = "ycsb";
                         String cfName = entry.getKey();
-                        List<BlockedECMetadata> metadatas = entry.getValue();
-                        Iterator<BlockedECMetadata> metadatasIterator = metadatas.iterator();
+                        // ConcurrentLinkedQueue<BlockedECMetadata> metadatas = entry.getValue();
+                        // Iterator<BlockedECMetadata> metadatasIterator = metadatas.iterator();
+                        // while (metadatasIterator.hasNext()) {
+                        //     BlockedECMetadata metadata = metadatasIterator.next();
+                        //     if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash,
+                        //             metadata.sourceIP)) {
+                        //         metadatasIterator.remove();
+                        //     } else {
+                        //         logger.debug("rymERROR: Still cannot create transactions, try it later.");
+                        //     }
+                        // }
+                        // entry.setValue(metadatas);
 
-                        while (metadatasIterator.hasNext()) {
-                            BlockedECMetadata metadata = metadatasIterator.next();
+                        for(BlockedECMetadata metadata : entry.getValue()) {
                             if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash,
                                     metadata.sourceIP)) {
-                                metadatasIterator.remove();
+                                entry.getValue().remove(metadata);
                             } else {
                                 logger.debug("rymERROR: Still cannot create transactions, try it later.");
                             }
                         }
-                        // entry.setValue(metadatas);
 
                     }
                 }
@@ -315,7 +324,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         if(StorageService.instance.globalBlockedECMetadata.containsKey(cfName)) {
             StorageService.instance.globalBlockedECMetadata.get(cfName).add(metadata);
         } else {
-            CopyOnWriteArrayList<BlockedECMetadata> blockList = new CopyOnWriteArrayList<BlockedECMetadata>();
+            ConcurrentLinkedQueue<BlockedECMetadata> blockList = new ConcurrentLinkedQueue<BlockedECMetadata>();
             blockList.add(metadata);
             StorageService.instance.globalBlockedECMetadata.put(cfName, blockList);
         }
