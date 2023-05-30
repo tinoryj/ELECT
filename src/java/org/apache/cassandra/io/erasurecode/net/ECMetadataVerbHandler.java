@@ -121,18 +121,18 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         logger.debug("rymDebug: This is getConsumeBlockedECMetadataRunnable, the globalBlockedECMetadata is {}, isConsumeBlockedECMetadataOccupied is ({})",
                      StorageService.instance.globalBlockedECMetadata.size(),
                      isConsumeBlockedECMetadataOccupied);
-        if (!StorageService.instance.globalBlockedECMetadata.isEmpty() && !isConsumeBlockedECMetadataOccupied) {
-            return new ConsumeBlockedECMetadataRunnable();
-        } else {
-            Runnable nullRunnable = () -> {};
-            return nullRunnable;
-        }
+        
+        return new ConsumeBlockedECMetadataRunnable();
     }
 
     private static class ConsumeBlockedECMetadataRunnable implements Runnable {
 
         @Override
         public void run() {
+            if(StorageService.instance.globalBlockedECMetadata.isEmpty() || isConsumeBlockedECMetadataOccupied){
+                return;
+            }
+
             isConsumeBlockedECMetadataOccupied = true;
             logger.debug("rymDebug: This is ConsumeBlockedECMetadataRunnable");
             for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata
@@ -170,6 +170,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             // TODO: Wait until the target ecSSTable is released
                             // transformECMetadataToECSSTableForParityUpdate(metadata.ecMetadata, cfs,
                             // metadata.sstableHash);
+                            logger.debug("rymDebug: wait until the target ecSSTable is released");
                         }
 
                     }

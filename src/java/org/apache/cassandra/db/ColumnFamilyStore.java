@@ -469,6 +469,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
      */
 
     public static Runnable getSendSSTRunnable(String keyspaceName, String cfName, int sendSSTLevel, int delay) {
+        logger.debug("rymDebug: This is getSendSSTRunnable");
         return new SendSSTRunnable(keyspaceName, cfName, sendSSTLevel, delay);
     }
 
