@@ -122,33 +122,46 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         // check whether we should update the parity code
 
 
-        // Once we have k different sstContent, do erasure coding locally
-        // TODO: need a while loop
-        if(StorageService.instance.globalRecvQueues.size() >= message.payload.ecMessageContent.ecDataNum) {
-            logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
-            ECMessage tmpArray[] = new ECMessage[message.payload.ecMessageContent.ecDataNum];
-            //traverse the recvQueues
-            int i = 0;
-            for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
-                tmpArray[i] = StorageService.instance.globalRecvQueues.get(addr).poll();
-                if(StorageService.instance.globalRecvQueues.get(addr).size() == 0) {
-                    StorageService.instance.globalRecvQueues.remove(addr);
-                }
-                if (i == message.payload.ecMessageContent.ecDataNum - 1) 
-                    break;
-                i++;
-            }
-            // compute erasure coding locally;
-            if(tmpArray.length == message.payload.ecMessageContent.ecDataNum){
-                Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeRunnable(tmpArray));
-            } else {
-                logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);
-            }
-                
-        }
-
         Tracing.trace("recieved sstContent is: {}, ec_data_num is: {}, sourceEdpoint is: {}, header is: {}",
                 sstContent, ec_data_num, message.from(), message.header);
+    }
+
+
+
+    public static Runnable getErasureCodingRunable() {
+        return new ErasureCodingRunable();
+    }
+
+
+    // Once we have k different sstContent, do erasure coding locally
+    private static class ErasureCodingRunable implements Runnable {
+
+        @Override
+        public void run() {
+            while (StorageService.instance.globalRecvQueues.size() >= DatabaseDescriptor.getEcDataNodes()) {
+                logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
+                ECMessage tmpArray[] = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
+                // traverse the recvQueues
+                int i = 0;
+                for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
+                    tmpArray[i] = StorageService.instance.globalRecvQueues.get(addr).poll();
+                    if (StorageService.instance.globalRecvQueues.get(addr).size() == 0) {
+                        StorageService.instance.globalRecvQueues.remove(addr);
+                    }
+                    if (i == DatabaseDescriptor.getEcDataNodes() - 1)
+                        break;
+                    i++;
+                }
+                // compute erasure coding locally;
+                if (tmpArray.length == DatabaseDescriptor.getEcDataNodes()) {
+                    Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray));
+                } else {
+                    logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);
+                }
+
+            }
+        }
+
     }
 
     private static void forwardToLocalNodes(Message<ECMessage> originalMessage, ForwardingInfo forwardTo) {
@@ -176,12 +189,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
      * @param ecParity the value of m
      * @param messages the input data to be processed, length equal to ecDataNum
      */
-    private static  class ErasureCodeRunnable implements Runnable {
+    private static  class PerformErasureCodeRunnable implements Runnable {
         private final int ecDataNum;
         private final int ecParityNum;
         private final ECMessage[] messages;
 
-        ErasureCodeRunnable(ECMessage[] message) {
+        PerformErasureCodeRunnable(ECMessage[] message) {
             this.ecDataNum = DatabaseDescriptor.getEcDataNodes();
             this.ecParityNum = DatabaseDescriptor.getParityNodes();
             this.messages = message;

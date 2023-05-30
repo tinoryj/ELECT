@@ -146,7 +146,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         logger.debug("rymDebug: Redo transformECMetadataToECSSTable successfully");
                         entry.getValue().remove(metadata);
                     } else {
-                        logger.debug("rymERROR: Still cannot create transactions, but we won't try it again, write the data down immediately.");
+                        logger.debug("rymDebug: Still cannot create transactions, but we won't try it again, write the data down immediately.");
                         ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
 
                         // If the ecMetadata is for erasure coding, just transform it
