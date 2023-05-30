@@ -443,7 +443,7 @@ public class CassandraDaemon {
                                                  TimeUnit.MINUTES);
 
         // schedule periodic tasks for consume blocked ecMetadata
-        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.instance.getConsumeBlockedECMetadataRunnable(),
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.getConsumeBlockedECMetadataRunnable(),
                                                                 (DatabaseDescriptor.getInitialDelay() + 1) * 60,
                                                                 DatabaseDescriptor.getTaskDelay() * 60 / 2,
                                                                 TimeUnit.SECONDS);
