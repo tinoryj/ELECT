@@ -54,7 +54,7 @@ public class ECRequestParity {
         public void serialize(ECRequestParity t, DataOutputPlus out, int version) throws IOException {
             out.writeUTF(t.parityHash);
             out.writeUTF(t.sstHash);
-            out.write(t.parityIndex);
+            out.writeInt(t.parityIndex);
         }
 
         @Override

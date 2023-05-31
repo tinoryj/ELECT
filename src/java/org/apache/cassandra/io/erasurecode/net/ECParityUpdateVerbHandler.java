@@ -164,11 +164,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 waitUntilParityCodesReader(oldSSTable.sstHash);
 
                 SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(msg.ecMessageContent.sstHashID, msg.sstContent);
+                String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
 
                 Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
                                                                                         newSSTable,
                                                                                         StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
-                                                                                        StorageService.instance.globalECMetadataMap.get(oldSSTable.sstHash).sstHashIdList.indexOf(oldSSTable.sstHash), 
+                                                                                        StorageService.instance.globalECMetadataMap.get(oldStripID).sstHashIdList.indexOf(oldSSTable.sstHash), 
                                                                                         codeLength,
                                                                                         parityNodes,
                                                                                         oldReplicaNodes,
