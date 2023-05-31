@@ -85,6 +85,7 @@ import org.apache.cassandra.db.partitions.PartitionIterators;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.rows.RowIterator;
+import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.db.view.ViewUtils;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.CasWriteTimeoutException;
@@ -2206,8 +2207,7 @@ public class StorageProxy implements StorageProxyMBean {
                     response = command.createResponse(iterator, controller.getRepairedDataInfo());
                     ByteBuffer newDigest = response.digest(command);
                     logger.debug(
-                            "[Tinoryj] get read response for read target token {}, via {} from table {} at node {}, resopnse  {}",
-                            iterator.next().partitionKey().getToken(),
+                            "[Tinoryj] get read response for read via {} from table {} at node {}, resopnse  {}",
                             command.isDigestQuery() ? "digest" : "data",
                             command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
                             "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
