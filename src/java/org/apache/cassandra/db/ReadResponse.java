@@ -128,7 +128,6 @@ public abstract class ReadResponse {
     protected static ByteBuffer makeDigest(UnfilteredPartitionIterator iterator, ReadCommand command) {
         Digest digest = Digest.forReadResponse(); // Create a digest object and set the digest method as MD5.
         UnfilteredPartitionIterators.digest(iterator, digest, command.digestVersion()); // Generate diegst based on
-        logger.debug("[Tinoryj] ReadResponse.makeDigest(), the digest = {}", digest.digest());
         return ByteBuffer.wrap(digest.digest());
     }
 
