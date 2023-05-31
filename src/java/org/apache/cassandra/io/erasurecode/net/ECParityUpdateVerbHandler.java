@@ -54,6 +54,7 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.ParamType;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.FBUtilities;
 
 public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
     public static final ECParityUpdateVerbHandler instance = new ECParityUpdateVerbHandler();
@@ -89,7 +90,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         for (SSTableContentWithHashID sstContentWithHash: parityUpdateData.oldSSTables) {
             String sstHash = sstContentWithHash.sstHash;
             String stripID = StorageService.instance.globalSSTHashToStripID.get(sstHash);
-
+            if(stripID == null) {
+                logger.debug("rymERROR: In node {}, we cannot get strip id for sstHash {}", FBUtilities.getBroadcastAddressAndPort(),
+                                                                                            sstHash);
+            }
             
             // read ec_metadata from memory, get the needed parity hash list
             List<String> parityHashList = null;

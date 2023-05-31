@@ -169,6 +169,9 @@ public class ECMetadata implements Serializable {
         
         for(String sstHash : this.ecMetadataContent.sstHashIdList) {
             StorageService.instance.globalSSTHashToStripID.put(sstHash, this.stripeId);
+            logger.debug("rymDebug:[ErasureCoding] In node {}, we map sstHash {} to stripID {}", FBUtilities.getBroadcastAddressAndPort(),
+                                                                                                 sstHash,
+                                                                                                 this.stripeId);
         }
         
 
@@ -240,7 +243,11 @@ public class ECMetadata implements Serializable {
         }
         
         for(String sstHash : this.ecMetadataContent.sstHashIdList) {
-            StorageService.instance.globalSSTHashToStripID.putIfAbsent(sstHash, this.stripeId);
+            StorageService.instance.globalSSTHashToStripID.put(sstHash, this.stripeId);
+            
+            logger.debug("rymDebug:[Parity Update] In node {}, we map sstHash {} to stripID {}", FBUtilities.getBroadcastAddressAndPort(),
+                                                                                                 sstHash,
+                                                                                                 this.stripeId);
         }
         // StorageService.instance.globalSSTHashToStripID.remove(oldSSTHash);
         
