@@ -262,7 +262,7 @@ public abstract class AbstractReadExecutor {
             } else {
                 logger.debug(
                         "[Tinoryj-ERROR] the primary node is not the first node in the natural storage node list ++ the replication plan for read is {}, natural storage node list = {}",
-                        replicaPlan,
+                        replicaPlan.contacts().endpointList(),
                         sendRequestAddresses);
             }
         }
