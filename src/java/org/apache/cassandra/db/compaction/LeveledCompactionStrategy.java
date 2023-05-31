@@ -175,7 +175,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
                 //for secondary node 
                 for (SSTableReader sstable : candidate.sstables) {
-                    if (sstable.isReplicationTransferredToErasureCoding()) {
+                    if (sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable")) {
                         isContainReplicationTransferredToErasureCoding = true;
                         TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                         transferredSSTableKeyRanges.add(range);
@@ -233,7 +233,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int size = 0;
 
         for (SSTableReader sstable : sstables) {
-            if (sstable.isReplicationTransferredToErasureCoding()) {
+            if (sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable")) {
                 isContainReplicationTransferredToErasureCoding = true;
                 TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                 TransferredSSTableKeyRanges.add(range);
@@ -271,7 +271,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int size = 0;
 
         for (SSTableReader sstable : sstables) {
-            if (sstable.isReplicationTransferredToErasureCoding()) {
+            if (sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable")) {
                 isContainReplicationTransferredToErasureCoding = true;
                 TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                 TransferredSSTableKeyRanges.add(range);
@@ -303,7 +303,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             if (level != sstable.getSSTableLevel())
                 level = 0;
 
-            if (sstable.isReplicationTransferredToErasureCoding()) {
+            if (sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable")) {
                 isContainReplicationTransferredToErasureCoding = true;
                 TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                 TransferredSSTableKeyRanges.add(range);
