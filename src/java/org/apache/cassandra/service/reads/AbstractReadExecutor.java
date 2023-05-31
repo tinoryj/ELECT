@@ -249,14 +249,16 @@ public abstract class AbstractReadExecutor {
         List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
                 .metadata().keyspace,
                 command.partitionKey().getKey());
-        if (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0))
-                && replicaPlan.contacts().endpointList().get(1).getAddress().equals(sendRequestAddresses.get(1))
-                && replicaPlan.contacts().endpointList().get(2).getAddress().equals(sendRequestAddresses.get(2))) {
-        } else {
-            logger.debug(
-                    "[Tinoryj-ERROR] the primary node is not the first node in the natural storage node list ++ the replication plan for read is {}, natural storage node list = {}",
-                    replicaPlan,
-                    sendRequestAddresses);
+        if (keyspace.getName().equals("ycsb")) {
+            if (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0))
+                    && replicaPlan.contacts().endpointList().get(1).getAddress().equals(sendRequestAddresses.get(1))
+                    && replicaPlan.contacts().endpointList().get(2).getAddress().equals(sendRequestAddresses.get(2))) {
+            } else {
+                logger.debug(
+                        "[Tinoryj-ERROR] the primary node is not the first node in the natural storage node list ++ the replication plan for read is {}, natural storage node list = {}",
+                        replicaPlan,
+                        sendRequestAddresses);
+            }
         }
 
         // Speculative retry is disabled *OR*
