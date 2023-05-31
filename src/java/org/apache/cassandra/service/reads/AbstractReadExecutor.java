@@ -168,7 +168,7 @@ public abstract class AbstractReadExecutor {
 
     private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
         boolean hasLocalEndpoint = false;
-        Message<ReadCommand> message = null;
+
         int replicationIDIndicatorForSendRequest = 0;
         for (Replica replica : replicas) {
             replicationIDIndicatorForSendRequest++;
@@ -181,36 +181,29 @@ public abstract class AbstractReadExecutor {
             switch (replicationIDIndicatorForSendRequest) {
                 case 1:
                     readCommand.metadata().name = primaryLSMTreeName;
-                    logger.debug(
-                            "[Tinoryj] Read make digest request replica: {}, is digest flag {}, target column name = {}",
-                            replica, readCommand.isDigestQuery(), readCommand.metadata().name);
                     break;
                 case 2:
                     readCommand.metadata().name = secondaryLSMTreeName1;
                     readCommand = readCommand.copyAsDigestQuery(replicas);
-                    logger.debug(
-                            "[Tinoryj] Read make digest request replica: {}, is digest flag {}, target column name = {}",
-                            replica, readCommand.isDigestQuery(), readCommand.metadata().name);
                     break;
                 case 3:
                     readCommand.metadata().name = secondaryLSMTreeName2;
                     readCommand = readCommand.copyAsDigestQuery(replicas);
-                    logger.debug(
-                            "[Tinoryj] Read make digest request replica: {}, is digest flag {}, target column name = {}",
-                            replica, readCommand.isDigestQuery(), readCommand.metadata().name);
                     break;
                 default:
                     logger.debug("[Tinoryj] Not support replication number more than 3!!!");
             }
+            logger.debug(
+                    "[Tinoryj] Read make {} request replica: {}, is digest flag {}, target column name = {}",
+                    readCommand.isDigestQuery() ? "digest" : "data",
+                    replica, readCommand.metadata().name);
 
             if (replica.isSelf()) {
                 logger.debug("[Tinoryj] reading {} locally", readCommand.isDigestQuery() ? "digest" : "data");
                 Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
                 continue;
             } else {
-                if (null == message)
-                    message = readCommand.createMessage(false);
-
+                Message<ReadCommand> message = readCommand.createMessage(false);
                 MessagingService.instance().sendWithCallback(message, endpoint, handler);
             }
         }
