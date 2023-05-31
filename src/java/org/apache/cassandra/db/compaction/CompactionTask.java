@@ -868,7 +868,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     if(oldSSTables.containsKey(target)){
                         oldSSTables.get(target).add(transferredSST);
                     } else {
-                        oldSSTables.put(target, Collections.singletonList(transferredSST));
+                        oldSSTables.put(target, new ArrayList<SSTableContentWithHashID>(Collections.singletonList(transferredSST)));
                     }
                 }
 

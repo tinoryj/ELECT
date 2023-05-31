@@ -43,6 +43,7 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.Pair;
 import org.gridkit.jvmtool.event.GenericEvent;
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 
 import static org.apache.cassandra.db.compaction.LeveledGenerations.MAX_LEVEL_COUNT;
 
@@ -728,6 +729,15 @@ public class LeveledManifest {
             SSTableReader sstable = levelIterator.next();
             // if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
             //     continue;
+            if(cfs.getColumnFamilyName().equals("usertable")) {
+                if(sstable.isParityUpdate()) {
+                    long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+                    long delayMilli = DatabaseDescriptor.getTaskDelay() * 60 * 1000;
+                    if(duration < delayMilli) {
+                        continue;
+                    }
+                }
+            }
             Token startInputToken = sstable.first.getToken();
             Token endInputToken = sstable.last.getToken();
             Set<SSTableReader> outputLevel = Sets.union(Collections.singleton(sstable),
