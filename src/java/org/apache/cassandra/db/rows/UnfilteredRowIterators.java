@@ -235,9 +235,12 @@ public abstract class UnfilteredRowIterators {
         // different), but removing them entirely is stricly speaking a breaking change
         // (it would create mismatches on
         // upgrade) so we can only do on the next protocol version bump.
-        if (iterator.staticRow() != Rows.EMPTY_STATIC_ROW)
-            iterator.columns().statics.digest(digest);
-        digest.updateWithBoolean(iterator.isReverseOrder());
+        // Tinoryj: remove static columns (Include column family name) from digest.
+        // if (iterator.staticRow() != Rows.EMPTY_STATIC_ROW) {
+        // iterator.columns().statics.digest(digest);
+        // }
+
+        // digest.updateWithBoolean(iterator.isReverseOrder());
         iterator.staticRow().digest(digest);
 
         while (iterator.hasNext()) {
