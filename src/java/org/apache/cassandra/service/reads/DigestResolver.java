@@ -117,7 +117,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
             } else {
                 logger.debug(
                         "[Tinoryj] Read get digest from {}, content = {}",
-                        message.from(), newDigest);
+                        message.from(), "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
                 if (digest == null) {
                     digest = newDigest;
                 }

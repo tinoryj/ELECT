@@ -264,6 +264,7 @@ public abstract class ReadResponse {
 
         public ByteBuffer digest(ReadCommand command) {
             try (UnfilteredPartitionIterator iterator = makeIterator(command)) {
+                logger.debug("[Tinoryj] DataResponse.makeDigest() called.");
                 return makeDigest(iterator, command);
             }
         }
