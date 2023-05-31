@@ -188,16 +188,20 @@ public class StorageService extends NotificationBroadcasterSupport
     // [CASSANDRAEC] The following properties belong to CassandraEC.
     // [In parity node] This queue is used to receive ECMessages for erasure coding.
     public ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
-    // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
+    // [In secondary node] This map is used to read EC SSTables generate after
+    // perform ECSyncSSTable, use During erasure coding.
     public Map<String, DataForRewrite> globalSSTMap = new HashMap<String, DataForRewrite>();
-    // [In parity node] This map is used to store <stripID, ECMetadataContent>, generate after erasure coding, use during parity update.
-    // TODO: could be optimize 
+    // [In parity node] This map is used to store <stripID, ECMetadataContent>,
+    // generate after erasure coding, use during parity update.
+    // TODO: could be optimize
     public Map<String, ECMetadataContent> globalECMetadataMap = new HashMap<String, ECMetadataContent>();
-    // [In parity node] Generate after ResponseParity, use during real parity update.
+    // [In parity node] Generate after ResponseParity, use during real parity
+    // update.
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToParityCodeMap = new ConcurrentHashMap<String, ByteBuffer[]>();
-    // [In primary node] Generate when sendSSTableToParity, use during send parity update signal.
+    // [In primary node] Generate when sendSSTableToParity, use during send parity
+    // update signal.
     public Map<String, List<InetAddressAndPort>> globalSSTHashToParityNodesMap = new HashMap<String, List<InetAddressAndPort>>();
-    // [In parity node] Generate after erasure coding, use during parity update. 
+    // [In parity node] Generate after erasure coding, use during parity update.
     public Map<String, String> globalSSTHashToStripID = new HashMap<String, String>();
     // [In every node] Record the sstHash to SSTableReader map
     public Map<String, SSTableReader> globalSSTHashToECSSTable = new HashMap<String, SSTableReader>();
@@ -797,7 +801,8 @@ public class StorageService extends NotificationBroadcasterSupport
             }
 
             @Override
-            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                    throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
@@ -808,7 +813,7 @@ public class StorageService extends NotificationBroadcasterSupport
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
-            
+
             @Override
             protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
                     String fileNamePrefix) throws Exception {
@@ -4043,9 +4048,7 @@ public class StorageService extends NotificationBroadcasterSupport
      * @return collection of ranges that match ring layout in TokenMetadata
      */
     @VisibleForTesting
-    public
-    Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken)
-    {
+    public Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken) {
         Token parsedBeginToken = getTokenFactory().fromString(beginToken);
         Token parsedEndToken = getTokenFactory().fromString(endToken);
 
@@ -4333,6 +4336,14 @@ public class StorageService extends NotificationBroadcasterSupport
         return inetList;
     }
 
+    // [CASSANDRAEC]
+    public List<InetAddressAndPort> getNaturalEndpointsForCassandraEC(String keyspaceName, ByteBuffer key) {
+        EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, key);
+        List<InetAddressAndPort> inetList = new ArrayList<>(replicas.size());
+        replicas.forEach(r -> inetList.add(r.endpoint()));
+        return inetList;
+    }
+
     public List<String> getNaturalEndpointsWithPort(String keyspaceName, ByteBuffer key) {
         EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, key);
         return Replicas.stringify(replicas, true);
@@ -4355,17 +4366,18 @@ public class StorageService extends NotificationBroadcasterSupport
     }
 
     // [CASSANDRAEC]
-    public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode, String keyspaceName) {
+    public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode,
+            String keyspaceName) {
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
         List<InetAddressAndPort> replicaNodes = new ArrayList<>();
         int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
 
         int startIndex = liveEndpoints.indexOf(primaryNode);
         int endIndex = startIndex + rf;
-        
-        if(endIndex > liveEndpoints.size()) {
+
+        if (endIndex > liveEndpoints.size()) {
             replicaNodes.addAll(liveEndpoints.subList(startIndex, liveEndpoints.size()));
-            replicaNodes.addAll(liveEndpoints.subList(0,endIndex % liveEndpoints.size()));
+            replicaNodes.addAll(liveEndpoints.subList(0, endIndex % liveEndpoints.size()));
         } else {
             replicaNodes.addAll(liveEndpoints.subList(startIndex, endIndex));
         }
@@ -4376,7 +4388,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public List<InetAddress> getNaturalEndpointsForToken(String keyspaceName, String tokenStr) {
         List<InetAddress> inetList = new ArrayList<>();
         Token token = getTokenFactory().fromString(tokenStr);
-        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy()
+                .getNaturalReplicasForToken(token);
         replicas.forEach(r -> inetList.add(r.endpoint().getAddress()));
         return inetList;
     }
@@ -4396,12 +4409,12 @@ public class StorageService extends NotificationBroadcasterSupport
 
     public ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key) {
         KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
-        
+
         if (ksMetaData == null)
             throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
 
         TableMetadata metadata = ksMetaData.getTableOrViewNullable(cf);
-        
+
         if (metadata == null)
             throw new IllegalArgumentException("Unknown table '" + cf + "' in keyspace '" + keyspaceName + "'");
 

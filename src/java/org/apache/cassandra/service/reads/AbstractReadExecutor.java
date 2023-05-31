@@ -78,6 +78,7 @@ public abstract class AbstractReadExecutor {
     protected final long queryStartNanoTime;
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
+    public static List<InetAddressAndPort> sendRequestAddressesAndPorts;
 
     public final String primaryLSMTreeName = "usertable";
     public final String secondaryLSMTreeName1 = "usertable1";
@@ -164,11 +165,8 @@ public abstract class AbstractReadExecutor {
 
     private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
 
-        int replicationIDIndicatorForSendRequest = 0;
-        for (Replica replica : replicas) {
-            replicationIDIndicatorForSendRequest++;
-            assert replica.isFull() || readCommand.acceptsTransient();
-            InetAddressAndPort endpoint = replica.endpoint();
+        for (int replicationIDIndicatorForSendRequest = 0; replicationIDIndicatorForSendRequest < 3; replicationIDIndicatorForSendRequest++) {
+            InetAddressAndPort endpoint = sendRequestAddressesAndPorts.get(replicationIDIndicatorForSendRequest);
 
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
@@ -193,7 +191,7 @@ public abstract class AbstractReadExecutor {
                     readCommand.isDigestQuery() ? "digest" : "data",
                     endpoint, readCommand.metadata().name);
 
-            if (replica.isSelf()) {
+            if (endpoint.equals(FBUtilities.getBroadcastAddressAndPort())) {
                 logger.debug("[Tinoryj] Read {} locally", readCommand.isDigestQuery() ? "digest" : "data");
                 Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
                 continue;
@@ -247,9 +245,15 @@ public abstract class AbstractReadExecutor {
                 consistencyLevel, retry);
 
         if (keyspace.getName().equals("ycsb")) {
+            sendRequestAddressesAndPorts = StorageService.instance.getNaturalEndpointsForCassandraEC(command
+                    .metadata().keyspace,
+                    command.partitionKey().getKey());
             List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
                     .metadata().keyspace,
                     command.partitionKey().getKey());
+            if (sendRequestAddressesAndPorts.size() != 3) {
+                logger.debug("[Tinoeyj] sendRequestAddressesAndPorts.size() != 3");
+            }
             if (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0))
                     && replicaPlan.contacts().endpointList().get(1).getAddress().equals(sendRequestAddresses.get(1))
                     && replicaPlan.contacts().endpointList().get(2).getAddress().equals(sendRequestAddresses.get(2))) {
