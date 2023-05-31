@@ -52,12 +52,16 @@ public final class ECParityUpdate implements Serializable {
 
     
     public final List<SSTableContentWithHashID> oldSSTables;
-    // public final List<OldSSTablesWithStripID> oldSSTablesWithStripIDs;
+    public byte[] oldSSTablesInBytes;
+    public int oldSSTablesInBytesSize;
+
     public final List<SSTableContentWithHashID> newSSTables;
+    public byte[] newSSTablesInBytes;
+    public int newSSTablesInBytesSize;
+
     public final List<InetAddressAndPort> parityNodes;
-    
-    public byte[] updateContentInBytes;
-    public int updateContentInBytesSize;
+    public byte[] parityNodesInBytes;
+    public int parityNodesInBytesSize;
 
 
     public ECParityUpdate(List<SSTableContentWithHashID> oldSSTables, List<SSTableContentWithHashID> newSSTables,
@@ -84,11 +88,16 @@ public final class ECParityUpdate implements Serializable {
     public void sendParityUpdateSignal() {
 
         try {
-            this.updateContentInBytes = ByteObjectConversion.objectToByteArray((Serializable) this);
-            this.updateContentInBytesSize = this.updateContentInBytes.length;
-            if(this.updateContentInBytesSize == 0) {
-                logger.error("rymERROR: no update content"); 
-            }
+
+            this.newSSTablesInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.newSSTables);
+            this.newSSTablesInBytesSize = this.newSSTablesInBytes.length;
+            
+            this.oldSSTablesInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.oldSSTables);
+            this.oldSSTablesInBytesSize = this.oldSSTablesInBytes.length;
+
+            this.parityNodesInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.parityNodes);
+            this.parityNodesInBytesSize = this.parityNodesInBytes.length;
+
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -105,20 +114,36 @@ public final class ECParityUpdate implements Serializable {
         @Override
         public void serialize(ECParityUpdate t, DataOutputPlus out, int version) throws IOException {
 
-            out.writeInt(t.updateContentInBytesSize);
-            out.write(t.updateContentInBytes);
+            out.writeInt(t.newSSTablesInBytesSize);
+            out.write(t.newSSTablesInBytes);
+            out.writeInt(t.oldSSTablesInBytesSize);
+            out.write(t.oldSSTablesInBytes);
+            out.writeInt(t.parityNodesInBytesSize);
+            out.write(t.parityNodesInBytes);
         }
 
         @Override
         public ECParityUpdate deserialize(DataInputPlus in, int version) throws IOException {
             
-            int updateContentInBytesSize = in.readInt();
-            byte[] updateContentInBytes = new byte[updateContentInBytesSize];
-            in.readFully(updateContentInBytes);
+            int newSSTablesInBytesSize = in.readInt();
+            byte[] newSSTablesInBytes = new byte[newSSTablesInBytesSize];
+            in.readFully(newSSTablesInBytes);
+
+            int oldSSTablesInBytesSize = in.readInt();
+            byte[] oldSSTablesInBytes = new byte[oldSSTablesInBytesSize];
+            in.readFully(oldSSTablesInBytes);
+
+            int parityNodesInBytesSize = in.readInt();
+            byte[] parityNodesInBytes = new byte[parityNodesInBytesSize];
+            in.readFully(parityNodesInBytes);
             
             try {
-                ECParityUpdate parityUpdate = (ECParityUpdate) ByteObjectConversion.byteArrayToObject(updateContentInBytes);
-                return parityUpdate;
+
+                List<SSTableContentWithHashID> newSSTables = (List<SSTableContentWithHashID>) ByteObjectConversion.byteArrayToObject(newSSTablesInBytes);
+                List<SSTableContentWithHashID> oldSSTables = (List<SSTableContentWithHashID>) ByteObjectConversion.byteArrayToObject(oldSSTablesInBytes);
+                List<InetAddressAndPort> parityNodes = (List<InetAddressAndPort>) ByteObjectConversion.byteArrayToObject(parityNodesInBytes);
+
+                return new ECParityUpdate(oldSSTables, newSSTables, parityNodes);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -130,8 +155,12 @@ public final class ECParityUpdate implements Serializable {
 
         @Override
         public long serializedSize(ECParityUpdate t, int version) {
-            long size = sizeof(t.updateContentInBytesSize) +
-                        t.updateContentInBytesSize;
+            long size = sizeof(t.newSSTablesInBytesSize) +
+                        t.newSSTablesInBytesSize  +
+                        sizeof(t.oldSSTablesInBytesSize) +
+                        t.oldSSTablesInBytesSize +
+                        sizeof(t.parityNodesInBytesSize) +
+                        t.parityNodesInBytesSize;
             return size;
         }
 
