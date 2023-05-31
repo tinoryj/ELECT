@@ -165,7 +165,7 @@ public abstract class AbstractReadExecutor {
 
     private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
 
-        for (int replicationIDIndicatorForSendRequest = 0; replicationIDIndicatorForSendRequest < 3; replicationIDIndicatorForSendRequest++) {
+        for (int replicationIDIndicatorForSendRequest = 1; replicationIDIndicatorForSendRequest < 4; replicationIDIndicatorForSendRequest++) {
             InetAddressAndPort endpoint = sendRequestAddressesAndPorts.get(replicationIDIndicatorForSendRequest);
 
             if (traceState != null)
