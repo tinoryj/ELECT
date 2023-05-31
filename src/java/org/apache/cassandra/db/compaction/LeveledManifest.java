@@ -730,10 +730,15 @@ public class LeveledManifest {
             // if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
             //     continue;
             if(cfs.getColumnFamilyName().equals("usertable")) {
+                long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+                long delayMilli = DatabaseDescriptor.getTaskDelay() * 60 * 1000;
+                long delayForFirstTimeParityUpdate = (DatabaseDescriptor.getTaskDelay()+1) * 60 * 1000;
                 if(sstable.isParityUpdate()) {
-                    long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
-                    long delayMilli = DatabaseDescriptor.getTaskDelay() * 60 * 1000;
                     if(duration < delayMilli) {
+                        continue;
+                    }
+                } else if (sstable.isReplicationTransferredToErasureCoding()) {
+                    if(duration < delayForFirstTimeParityUpdate) {
                         continue;
                     }
                 }
