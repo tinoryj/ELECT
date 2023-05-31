@@ -25,12 +25,16 @@ import java.nio.file.Paths;
 
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.utils.FBUtilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity> {
     public static final ECRequestParityVerbHandler instance = new ECRequestParityVerbHandler();
 
+    private static final Logger logger = LoggerFactory.getLogger(ECRequestParityVerbHandler.class);
     @Override
-    public void doVerb(Message<ECRequestParity> message) throws IOException {
+    public void doVerb(Message<ECRequestParity> message) {
         
         String parityHash = message.payload.parityHash;
         String sstHash = message.payload.sstHash;
@@ -38,18 +42,22 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         String receivedParityCodeDir = ECNetutils.getReceivedParityCodeDir();
         String filePath = receivedParityCodeDir + parityHash;
 
-        byte[] parityCode = ECNetutils.readBytesFromFile(filePath);
+        byte[] parityCode;
+        try {
+            parityCode = ECNetutils.readBytesFromFile(filePath);
+            // response this parityCode to to source node
+            ECResponseParity response = new ECResponseParity(parityHash, sstHash, parityCode, parityIndex);
+            response.responseParity(message.from());
+            
+            // delete parity code file locally
+            // ECNetutils.deleteFileByName(filePath);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            logger.debug("rymERROR: failed to find parity code file {} requested from {}", filePath, message.from());
+            e.printStackTrace();
+        }
         
         
-        // response this parityCode to to source node
-        ECResponseParity response = new ECResponseParity(parityHash, sstHash, parityCode, parityIndex);
-        response.responseParity(message.from());
-        
-        // delete parity code file locally
-        ECNetutils.deleteFileByName(filePath);
     }
-
-
-
 
 }

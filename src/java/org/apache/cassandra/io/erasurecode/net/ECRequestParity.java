@@ -21,6 +21,7 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessageFlag;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
+import org.apache.cassandra.service.StorageService;
 
 import java.io.IOException;
 
@@ -30,8 +31,11 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 public class ECRequestParity {
     
+    private static final Logger logger = LoggerFactory.getLogger(ECRequestParity.class);
     public static final Serializer serializer = new Serializer();
     public final String parityHash;
     public final String sstHash;
@@ -44,6 +48,8 @@ public class ECRequestParity {
     }
 
     public void requestParityCode(InetAddressAndPort target) {
+        logger.debug("rymDebug: send parity hash {} to {}",
+                        this.parityHash, target);
         Message<ECRequestParity> message = Message.outWithFlag(Verb.ECREQUESTPARITY_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, target);
     }

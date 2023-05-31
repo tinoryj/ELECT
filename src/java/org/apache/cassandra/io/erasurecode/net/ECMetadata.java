@@ -217,7 +217,7 @@ public class ECMetadata implements Serializable {
         }
 
         // remove the ECMetadata from memory
-        StorageService.instance.globalECMetadataMap.remove(this.stripeId);
+        // StorageService.instance.globalECMetadataMap.remove(this.stripeId);
 
         // update strip id
         String connectedSSTHash = "";

@@ -52,7 +52,7 @@ public class ECParityNode {
 
 
     public void distributeCodedDataToParityNodes(ByteBuffer[] parity, List<InetAddressAndPort> parityNodes, List<String> parityHashList) {
-        logger.debug("rymDebug: distribute coded data to parity nodes");
+        logger.debug("rymDebug: distribute parity codes ({}) to parity nodes ({})", parityHashList, parityNodes);
         Message<ECParityNode> message = null;
         for (int i = 1; i < parityNodes.size(); i++) {
             message = Message.outWithFlag(Verb.ECPARITYNODE_REQ, 

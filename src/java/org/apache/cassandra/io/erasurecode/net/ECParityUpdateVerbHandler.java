@@ -53,7 +53,7 @@ import org.apache.cassandra.tracing.Tracing;
 
 public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
     public static final ECParityUpdateVerbHandler instance = new ECParityUpdateVerbHandler();
-    private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
+    private static final Logger logger = LoggerFactory.getLogger(ECParityUpdateVerbHandler.class);
 
 
     /**
@@ -114,7 +114,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             for (int i = 1; i < parityHashList.size(); i++) {
                 ECRequestParity request = new ECRequestParity(parityHashList.get(i), sstHash, i);
                 request.requestParityCode(parityNodes.get(i));
-            }            
+            }
         }
 
         // get oldReplicaNodes
