@@ -120,12 +120,10 @@ public abstract class AbstractReadExecutor {
 
     protected void makeFullDataRequests(ReplicaCollection<?> replicas) {
         assert all(replicas, Replica::isFull);
-        // logger.debug("[Tinoryj] Read make full data request replicas: {}", replicas);
         makeRequests(command, replicas);
     }
 
     protected void makeTransientDataRequests(Iterable<Replica> replicas) {
-        // logger.debug("[Tinoryj] Read make transient request replicas: {}", replicas);
         makeRequests(command.copyAsTransientQuery(replicas), replicas);
     }
 
@@ -133,7 +131,6 @@ public abstract class AbstractReadExecutor {
         assert all(replicas, Replica::isFull);
         // only send digest requests to full replicas, send data requests instead to the
         // transient replicas
-        // logger.debug("[Tinoryj] Read make digest request replicas: {}", replicas);
         makeRequests(command.copyAsDigestQuery(replicas), replicas);
     }
 
@@ -161,13 +158,11 @@ public abstract class AbstractReadExecutor {
         // We delay the local (potentially blocking) read till the end to avoid stalling
         // remote requests.
         if (hasLocalEndpoint) {
-            logger.debug("[Tinoryj] reading {} locally", readCommand.isDigestQuery() ? "digest" : "data");
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
         }
     }
 
     private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
-        boolean hasLocalEndpoint = false;
 
         int replicationIDIndicatorForSendRequest = 0;
         for (Replica replica : replicas) {
@@ -254,19 +249,15 @@ public abstract class AbstractReadExecutor {
         List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
                 .metadata().keyspace,
                 command.partitionKey().getKey());
-        // if
-        // (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0)))
-        // {
-        // logger.debug("[Tinoryj] the primary node is the first node in the natural
-        // storage node list");
-        // } else {
-        // logger.debug(
-        // "[Tinoryj-ERROR] the primary node is not the first node in the natural
-        // storage node list ++ the replication plan for read is {}, natural storage
-        // node list = {}",
-        // replicaPlan,
-        // sendRequestAddresses);
-        // }
+        if (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0))
+                && replicaPlan.contacts().endpointList().get(1).getAddress().equals(sendRequestAddresses.get(1))
+                && replicaPlan.contacts().endpointList().get(2).getAddress().equals(sendRequestAddresses.get(2))) {
+        } else {
+            logger.debug(
+                    "[Tinoryj-ERROR] the primary node is not the first node in the natural storage node list ++ the replication plan for read is {}, natural storage node list = {}",
+                    replicaPlan,
+                    sendRequestAddresses);
+        }
 
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
