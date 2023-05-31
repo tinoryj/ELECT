@@ -2203,7 +2203,9 @@ public class StorageProxy implements StorageProxyMBean {
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                    logger.debug("[Tinoryj] get read response in storage proxy: {}", response);
+                    logger.debug("[Tinoryj] get read response for read at node {}, table {} in storage proxy: {}",
+                            FBUtilities.getBroadcastAddressAndPort(), command.metadata().name,
+                            response.digest(command));
                 } catch (RejectException e) {
                     if (!command.isTrackingWarnings())
                         throw e;

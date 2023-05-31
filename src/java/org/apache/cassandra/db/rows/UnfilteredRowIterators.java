@@ -212,8 +212,8 @@ public abstract class UnfilteredRowIterators {
      */
     public static void digest(UnfilteredRowIterator iterator, Digest digest, int version) {
 
-        logger.debug("[Tinoryj] cauclate digest for iterator key = {}, on node {}, local IP = {}",
-                iterator.partitionKey().getKey().toString(),
+        logger.debug("[Tinoryj] cauclate digest for iterator token = {}, on node {}, local IP = {}",
+                iterator.partitionKey().getToken(),
                 FBUtilities.getBroadcastAddressAndPort(), FBUtilities.getLocalAddressAndPort());
         digest.update(iterator.partitionKey().getKey());
         // iterator.partitionLevelDeletion().digest(digest); // Tinoryj: Remove
