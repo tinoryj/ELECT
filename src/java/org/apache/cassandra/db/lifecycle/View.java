@@ -256,14 +256,14 @@ public class View
             public View apply(View view)
             {
                 // [CASSANDRAEC]
-                Iterable<SSTableReader> markWithOutECSSTables = Iterables.filter(mark, new Predicate<SSTableReader>() {
-                    @Override
-                    public boolean apply(@Nullable SSTableReader input) {
-                        return !input.isReplicationTransferredToErasureCoding() || input.getColumnFamilyName().equals("usertable");
-                    }
-                });
+                // Iterable<SSTableReader> markWithOutECSSTables = Iterables.filter(mark, new Predicate<SSTableReader>() {
+                //     @Override
+                //     public boolean apply(@Nullable SSTableReader input) {
+                //         return !input.isReplicationTransferredToErasureCoding() || input.getColumnFamilyName().equals("usertable");
+                //     }
+                // });
 
-                assert all(markWithOutECSSTables, Helpers.idIn(view.sstablesMap));
+                assert all(mark, Helpers.idIn(view.sstablesMap));
                 return new View(view.liveMemtables, view.flushingMemtables, view.sstablesMap,
                                 replace(view.compactingMap, unmark, mark),
                                 view.intervalTree);
