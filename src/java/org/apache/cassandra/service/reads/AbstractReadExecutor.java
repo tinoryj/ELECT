@@ -186,17 +186,19 @@ public abstract class AbstractReadExecutor {
                 default:
                     logger.debug("[Tinoryj] Not support replication number more than 3!!!");
             }
-            logger.debug(
-                    "[Tinoryj] Make {} read request for replica address = {}, target column name = {}",
-                    readCommand.isDigestQuery() ? "digest" : "data",
-                    endpoint, readCommand.metadata().name);
 
             if (endpoint.equals(FBUtilities.getBroadcastAddressAndPort())) {
-                logger.debug("[Tinoryj] Read {} locally", readCommand.isDigestQuery() ? "digest" : "data");
+                logger.debug(
+                        "[Tinoryj] Make {} read [Locally] request for replica address = {}, target column name = {}",
+                        readCommand.isDigestQuery() ? "digest" : "data",
+                        endpoint, readCommand.metadata().name);
                 Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
                 continue;
             } else {
-                logger.debug("[Tinoryj] Read {} remote", readCommand.isDigestQuery() ? "digest" : "data");
+                logger.debug(
+                        "[Tinoryj] Make {} read [Remote] request for replica address = {}, target column name = {}",
+                        readCommand.isDigestQuery() ? "digest" : "data",
+                        endpoint, readCommand.metadata().name);
                 Message<ReadCommand> message = readCommand.createMessage(false);
                 MessagingService.instance().sendWithCallback(message, endpoint, handler);
             }
