@@ -114,12 +114,17 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                         "[Tinoryj] Read touch response empty digest from {}, should be read from metadata SSTables",
                         message.from());
                 return true;
-            }
-            if (digest == null) {
-                digest = newDigest;
-            } else if (!digest.equals(newDigest)) {
-                // rely on the fact that only single partition queries use digests
-                return true;
+            } else {
+                logger.debug(
+                        "[Tinoryj] Read get digest from {}, content = {}",
+                        message.from(), newDigest);
+                if (digest == null) {
+                    digest = newDigest;
+                }
+                if (!digest.equals(newDigest)) {
+                    // rely on the fact that only single partition queries use digests
+                    return false;
+                }
             }
         }
 
