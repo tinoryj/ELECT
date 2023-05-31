@@ -96,7 +96,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                  ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
             
             // delete local parity code file
-            ECNetutils.deleteFileByName(parityCodeFileName);
+            // ECNetutils.deleteFileByName(parityCodeFileName);
 
             if(codeLength == 0)
                 codeLength = localParityCode.capacity();

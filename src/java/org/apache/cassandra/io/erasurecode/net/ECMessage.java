@@ -171,19 +171,31 @@ public class ECMessage implements Serializable {
         int primaryNodeIndex = liveEndpoints.indexOf(primaryNode);
 
         int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER.getAndIncrement() % ecMessage.ecMessageContent.ecDataNum+1))%n);
-        for (int i = startIndex; i < ecMessage.ecMessageContent.ecParityNum+startIndex; i++) {
-            int index = i%n;
-            if(index==primaryNodeIndex) {
-                index = (index+1)%n;
-                i++;
+
+        int remaining = DatabaseDescriptor.getParityNodes();
+        int index = startIndex;
+        while(remaining > 0) {
+            if(index >= liveEndpoints.size()) {
+                index = 0;
             }
             ecMessage.ecMessageContent.parityNodes.add(liveEndpoints.get(index));
-            if(i == (ecMessage.ecMessageContent.ecParityNum + startIndex)
-                  && ecMessage.ecMessageContent.parityNodes.size() < ecMessage.ecMessageContent.ecParityNum) {
-
-                startIndex++;
-            }
+            index++;
+            remaining--;
         }
+
+        // for (int i = startIndex; i < ecMessage.ecMessageContent.ecParityNum+startIndex; i++) {
+        //     int index = i%n;
+        //     if(index==primaryNodeIndex) {
+        //         index = (index+1)%n;
+        //         i++;
+        //     }
+        //     ecMessage.ecMessageContent.parityNodes.add(liveEndpoints.get(index));
+        //     if(i == (ecMessage.ecMessageContent.ecParityNum + startIndex)
+        //           && ecMessage.ecMessageContent.parityNodes.size() < ecMessage.ecMessageContent.ecParityNum) {
+
+        //         startIndex++;
+        //     }
+        // }
         // logger.debug("rymDebug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
 
     }
