@@ -165,21 +165,21 @@ public abstract class AbstractReadExecutor {
 
     private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
 
-        for (int replicationIDIndicatorForSendRequest = 1; replicationIDIndicatorForSendRequest < 4; replicationIDIndicatorForSendRequest++) {
+        for (int replicationIDIndicatorForSendRequest = 0; replicationIDIndicatorForSendRequest < 3; replicationIDIndicatorForSendRequest++) {
             InetAddressAndPort endpoint = sendRequestAddressesAndPorts.get(replicationIDIndicatorForSendRequest);
 
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
 
             switch (replicationIDIndicatorForSendRequest) {
-                case 1:
+                case 0:
                     readCommand.metadata().name = primaryLSMTreeName;
                     break;
-                case 2:
+                case 1:
                     readCommand.metadata().name = secondaryLSMTreeName1;
                     readCommand = readCommand.copyAsDigestQuery(replicas);
                     break;
-                case 3:
+                case 2:
                     readCommand.metadata().name = secondaryLSMTreeName2;
                     readCommand = readCommand.copyAsDigestQuery(replicas);
                     break;
