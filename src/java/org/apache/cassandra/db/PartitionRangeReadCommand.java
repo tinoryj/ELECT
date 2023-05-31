@@ -333,8 +333,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     SSTableReadsListener readCountUpdater = newReadCountUpdater();
                     for (Memtable memtable : view.memtables) {
                         @SuppressWarnings("resource") // We close on exception and on closing the result returned by
-                                                      // this
-                                                      // method
+                                                      // this method
                         UnfilteredPartitionIterator iter = memtable.partitionIterator(columnFilter(), dataRange(),
                                 readCountUpdater);
                         controller.updateMinOldestUnrepairedTombstone(memtable.getMinLocalDeletionTime());
