@@ -246,10 +246,10 @@ public abstract class AbstractReadExecutor {
         ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, command.partitionKey().getToken(),
                 consistencyLevel, retry);
 
-        List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
-                .metadata().keyspace,
-                command.partitionKey().getKey());
         if (keyspace.getName().equals("ycsb")) {
+            List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
+                    .metadata().keyspace,
+                    command.partitionKey().getKey());
             if (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0))
                     && replicaPlan.contacts().endpointList().get(1).getAddress().equals(sendRequestAddresses.get(1))
                     && replicaPlan.contacts().endpointList().get(2).getAddress().equals(sendRequestAddresses.get(2))) {
