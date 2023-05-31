@@ -241,7 +241,7 @@ public abstract class UnfilteredRowIterators {
         // }
 
         // digest.updateWithBoolean(iterator.isReverseOrder());
-        iterator.staticRow().digest(digest);
+        // iterator.staticRow().digest(digest);
 
         while (iterator.hasNext()) {
             Unfiltered unfiltered = iterator.next();
