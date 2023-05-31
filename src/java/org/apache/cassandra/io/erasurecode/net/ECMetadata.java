@@ -242,7 +242,7 @@ public class ECMetadata implements Serializable {
         for(String sstHash : this.ecMetadataContent.sstHashIdList) {
             StorageService.instance.globalSSTHashToStripID.putIfAbsent(sstHash, this.stripeId);
         }
-        StorageService.instance.globalSSTHashToStripID.remove(oldSSTHash);
+        // StorageService.instance.globalSSTHashToStripID.remove(oldSSTHash);
         
 
         // dispatch to related nodes
