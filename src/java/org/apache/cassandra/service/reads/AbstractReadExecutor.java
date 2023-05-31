@@ -140,38 +140,12 @@ public abstract class AbstractReadExecutor {
     private void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> message = null;
-        int replicationIDIndicatorForSendRequest = 0;
         for (Replica replica : replicas) {
-            replicationIDIndicatorForSendRequest++;
             assert replica.isFull() || readCommand.acceptsTransient();
             InetAddressAndPort endpoint = replica.endpoint();
 
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
-
-            if (readCommand.isDigestQuery() == true) {
-                if (replicationIDIndicatorForSendRequest == 1) {
-                    readCommand.metadata().name = secondaryLSMTreeName1;
-                } else if (replicationIDIndicatorForSendRequest == 2) {
-                    readCommand.metadata().name = secondaryLSMTreeName2;
-                }
-                // logger.debug(
-                // "[Tinoryj] Send {} read request to replica ID: {}, reading from {}, the
-                // target key space is {}, column family is {}",
-                // readCommand.isDigestQuery() ? "digest" : "data",
-                // replicationIDIndicatorForSendRequest, endpoint,
-                // readCommand.metadata().keyspace,
-                // readCommand.metadata().name);
-            } else {
-                readCommand.metadata().name = primaryLSMTreeName;
-                // logger.debug(
-                // "[Tinoryj] Send {} read request to replica ID: {}, reading from {}, the
-                // target key space is {}, column family is {}",
-                // readCommand.isDigestQuery() ? "digest" : "data",
-                // replicationIDIndicatorForSendRequest, endpoint,
-                // readCommand.metadata().keyspace,
-                // readCommand.metadata().name);
-            }
 
             if (replica.isSelf()) {
                 hasLocalEndpoint = true;
@@ -192,6 +166,56 @@ public abstract class AbstractReadExecutor {
         }
     }
 
+    private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
+        boolean hasLocalEndpoint = false;
+        Message<ReadCommand> message = null;
+        int replicationIDIndicatorForSendRequest = 0;
+        for (Replica replica : replicas) {
+            replicationIDIndicatorForSendRequest++;
+            assert replica.isFull() || readCommand.acceptsTransient();
+            InetAddressAndPort endpoint = replica.endpoint();
+
+            if (traceState != null)
+                traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
+
+            switch (replicationIDIndicatorForSendRequest) {
+                case 1:
+                    readCommand.metadata().name = primaryLSMTreeName;
+                    logger.debug(
+                            "[Tinoryj] Read make digest request replica: {}, is digest flag {}, target column name = {}",
+                            replica, readCommand.isDigestQuery(), readCommand.metadata().name);
+                    break;
+                case 2:
+                    readCommand.metadata().name = secondaryLSMTreeName1;
+                    readCommand = readCommand.copyAsDigestQuery(replicas);
+                    logger.debug(
+                            "[Tinoryj] Read make digest request replica: {}, is digest flag {}, target column name = {}",
+                            replica, readCommand.isDigestQuery(), readCommand.metadata().name);
+                    break;
+                case 3:
+                    readCommand.metadata().name = secondaryLSMTreeName2;
+                    readCommand = readCommand.copyAsDigestQuery(replicas);
+                    logger.debug(
+                            "[Tinoryj] Read make digest request replica: {}, is digest flag {}, target column name = {}",
+                            replica, readCommand.isDigestQuery(), readCommand.metadata().name);
+                    break;
+                default:
+                    logger.debug("[Tinoryj] Not support replication number more than 3!!!");
+            }
+
+            if (replica.isSelf()) {
+                logger.debug("[Tinoryj] reading {} locally", readCommand.isDigestQuery() ? "digest" : "data");
+                Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
+                continue;
+            } else {
+                if (null == message)
+                    message = readCommand.createMessage(false);
+
+                MessagingService.instance().sendWithCallback(message, endpoint, handler);
+            }
+        }
+    }
+
     /**
      * Perform additional requests if it looks like the original will time out. May
      * block while it waits
@@ -208,11 +232,17 @@ public abstract class AbstractReadExecutor {
         // replicaPlan().contacts(),
         // initialDataRequestCount);
         EndpointsForToken selected = replicaPlan().contacts();
-        EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-        makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
-        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-        // Tinoryj-> to read the possible secondary replica.
-        makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+        if (command.metadata().name.equals(primaryLSMTreeName) && command.metadata().keyspace.equals("ycsb")) {
+            // Tinoryj-> the read path for CassandraEC test with "YCSB".
+            makeRequestsCassandraEC(command, selected);
+        } else {
+            // Normal read path for Cassandra system tables.
+            EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
+            makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+            makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+            // Tinoryj-> to read the possible secondary replica.
+            makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+        }
     }
 
     /**
