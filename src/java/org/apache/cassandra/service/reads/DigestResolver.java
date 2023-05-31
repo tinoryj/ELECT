@@ -109,22 +109,16 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                 continue;
 
             ByteBuffer newDigest = message.payload.digest(command);
-            if (newDigest == null) {
-                logger.debug(
-                        "[Tinoryj] Read touch response empty digest from {}, should be read from metadata SSTables",
-                        message.from());
-                return true;
-            } else {
-                logger.debug(
-                        "[Tinoryj] Read get digest from {}, content = {}",
-                        message.from(), "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
-                if (digest == null) {
-                    digest = newDigest;
-                }
-                if (!digest.equals(newDigest)) {
-                    // rely on the fact that only single partition queries use digests
-                    return false;
-                }
+
+            logger.debug(
+                    "[Tinoryj] Read get digest from {}, content = {}",
+                    message.from(), "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
+            if (digest == null) {
+                digest = newDigest;
+            }
+            if (!digest.equals(newDigest)) {
+                // rely on the fact that only single partition queries use digests
+                return false;
             }
         }
 

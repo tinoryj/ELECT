@@ -138,6 +138,7 @@ import org.apache.cassandra.service.reads.range.RangeCommands;
 import org.apache.cassandra.service.reads.repair.ReadRepair;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.triggers.TriggerExecutor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Clock;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MBeanWrapper;
@@ -2203,9 +2204,11 @@ public class StorageProxy implements StorageProxyMBean {
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                    logger.debug("[Tinoryj] get read response for read at node {}, table {} in storage proxy: {}",
+                    ByteBuffer newDigest = response.digest(command);
+                    logger.debug(
+                            "[Tinoryj] get read response for read at node {}, table {} in storage proxy, resopnse  {}",
                             FBUtilities.getBroadcastAddressAndPort(), command.metadata().name,
-                            response.digest(command));
+                            "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
                 } catch (RejectException e) {
                     if (!command.isTrackingWarnings())
                         throw e;
