@@ -209,8 +209,7 @@ public abstract class AbstractReadExecutor {
         EndpointsForToken selected = replicaPlan().contacts();
         EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
         makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
-        // TODO: temp disable transientDataRequests
-        // makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
         // Tinoryj-> to read the possible secondary replica.
         makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
     }
@@ -375,8 +374,9 @@ public abstract class AbstractReadExecutor {
                 // insufficient
                 super.replicaPlan.addToContacts(extraReplica);
 
-                if (traceState != null)
+                if (traceState != null) {
                     traceState.trace("speculating read retry on {}", extraReplica);
+                }
                 logger.trace("speculating read retry on {}", extraReplica);
                 MessagingService.instance().sendWithCallback(retryCommand.createMessage(false), extraReplica.endpoint(),
                         handler);
@@ -448,9 +448,8 @@ public abstract class AbstractReadExecutor {
         if (digestResolver.responsesMatch()) {
             setResult(digestResolver.getData());
         } else {
-            // logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch,
-            // starting read repair for key {}",
-            // getKey());
+            logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch, starting read repair for key {}",
+                    getKey());
             Tracing.trace("Digest mismatch: Mismatch for key {}", getKey());
             readRepair.startRepair(digestResolver, this::setResult);
             if (logBlockingReadRepairAttempt) {
