@@ -211,7 +211,10 @@ public abstract class UnfilteredRowIterators {
      * @param version  the messaging protocol to use when producing the digest.
      */
     public static void digest(UnfilteredRowIterator iterator, Digest digest, int version) {
-        logger.debug("[Tinoryj] cauclate digest for iterator key = {}", iterator.partitionKey().getKey());
+
+        logger.debug("[Tinoryj] cauclate digest for iterator key = {}, on node {}",
+                iterator.partitionKey().getKey().toString(),
+                FBUtilities.getBroadcastAddressAndPort());
         digest.update(iterator.partitionKey().getKey());
         // iterator.partitionLevelDeletion().digest(digest); // Tinoryj: Remove
         // DeletionTime from digest.
