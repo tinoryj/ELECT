@@ -32,6 +32,7 @@ import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
 import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.transform.DuplicateRowChecker;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ReadFailureException;
 import org.apache.cassandra.exceptions.ReadTimeoutException;
 import org.apache.cassandra.exceptions.UnavailableException;
@@ -79,6 +80,7 @@ public abstract class AbstractReadExecutor {
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
     public static List<InetAddressAndPort> sendRequestAddressesAndPorts;
+    public static Token targetReadToken;
 
     public final String primaryLSMTreeName = "usertable";
     public final String secondaryLSMTreeName1 = "usertable1";
@@ -189,15 +191,15 @@ public abstract class AbstractReadExecutor {
 
             if (endpoint.equals(FBUtilities.getBroadcastAddressAndPort())) {
                 logger.debug(
-                        "[Tinoryj] Make {} read [Locally] request for replica address = {}, target column name = {}",
-                        readCommand.isDigestQuery() ? "digest" : "data",
+                        "[Tinoryj] Make {} read [Locally] request for key token = {}, replica address = {}, target column name = {}",
+                        readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
                         endpoint, readCommand.metadata().name);
                 Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
                 continue;
             } else {
                 logger.debug(
-                        "[Tinoryj] Make {} read [Remote] request for replica address = {}, target column name = {}",
-                        readCommand.isDigestQuery() ? "digest" : "data",
+                        "[Tinoryj] Make {} read [Remote] request for key token = {}, replica address = {}, target column name = {}",
+                        readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
                         endpoint, readCommand.metadata().name);
                 Message<ReadCommand> message = readCommand.createMessage(false);
                 MessagingService.instance().sendWithCallback(message, endpoint, handler);
@@ -247,6 +249,7 @@ public abstract class AbstractReadExecutor {
                 consistencyLevel, retry);
 
         if (keyspace.getName().equals("ycsb")) {
+            targetReadToken = command.partitionKey().getToken();
             sendRequestAddressesAndPorts = StorageService.instance.getNaturalEndpointsForCassandraEC(command
                     .metadata().keyspace,
                     command.partitionKey().getKey());
@@ -261,7 +264,8 @@ public abstract class AbstractReadExecutor {
                     && replicaPlan.contacts().endpointList().get(2).getAddress().equals(sendRequestAddresses.get(2))) {
             } else {
                 logger.debug(
-                        "[Tinoryj-ERROR] the primary node is not the first node in the natural storage node list ++ the replication plan for read is {}, natural storage node list = {}",
+                        "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node in the natural storage node list ++ the replication plan for read is {}, natural storage node list = {}",
+                        command.partitionKey().getToken(),
                         replicaPlan.contacts().endpointList(),
                         sendRequestAddresses);
             }
