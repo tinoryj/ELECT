@@ -495,6 +495,10 @@ public class LeveledManifest {
                 //         logger.debug("rymDebug[transferred]: select a transferred sstable {}", pair.getKey().descriptor);
                 //     }
                 // }
+                if(pair.getKey().getColumnFamilyName().equals("usertable") && pair.getKey().isReplicationTransferredToErasureCoding()) {
+                    if(!isSelectIssuedSSTableAsCompactionCandidates(pair.getKey()))
+                        continue;
+                }
                 overlapped.add(pair.getKey());
             }
                 
@@ -729,19 +733,9 @@ public class LeveledManifest {
             SSTableReader sstable = levelIterator.next();
             // if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
             //     continue;
-            if(cfs.getColumnFamilyName().equals("usertable")) {
-                long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
-                long delayMilli = DatabaseDescriptor.getTaskDelay() * 60 * 1000;
-                long delayForFirstTimeParityUpdate = (DatabaseDescriptor.getTaskDelay()+1) * 60 * 1000;
-                if(sstable.isParityUpdate()) {
-                    if(duration < delayMilli) {
-                        continue;
-                    }
-                } else if (sstable.isReplicationTransferredToErasureCoding()) {
-                    if(duration < delayForFirstTimeParityUpdate) {
-                        continue;
-                    }
-                }
+            if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
+                if(!isSelectIssuedSSTableAsCompactionCandidates(sstable))
+                    continue;
             }
             Token startInputToken = sstable.first.getToken();
             Token endInputToken = sstable.last.getToken();
@@ -766,6 +760,23 @@ public class LeveledManifest {
 
         // all the sstables were suspect or overlapped with something suspect
         return Collections.emptyList();
+    }
+
+    // [CASSANDRAEC] Check whether select this sstable. 
+    private static boolean isSelectIssuedSSTableAsCompactionCandidates(SSTableReader sstable) {
+        long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+        long delayMilli = DatabaseDescriptor.getTaskDelay() * 60 * 1000;
+        long delayForFirstTimeParityUpdate = (DatabaseDescriptor.getTaskDelay() + 2) * 60 * 1000;
+        if (sstable.isParityUpdate()) {
+            if (duration < delayMilli) {
+                return false;
+            }
+        } else if (sstable.isReplicationTransferredToErasureCoding()) {
+            if (duration < delayForFirstTimeParityUpdate) {
+                return false;
+            }
+        }
+        return true;
     }
 
 

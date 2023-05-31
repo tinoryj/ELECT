@@ -884,6 +884,7 @@ public class CompactionTask extends AbstractCompactionTask {
                             newSSTables.add(new SSTableContentWithHashID(newSSTable.getSSTableHashID(), newSSTable.getSSTContent()));
                             // set this sstable as updated
                             newSSTable.setIsParityUpdate();
+                            newSSTable.SetIsReplicationTransferredToErasureCoding();
 
                             // Sync selected new sstables for parity update
                             List<InetAddressAndPort> replicaNodes = StorageService.instance
