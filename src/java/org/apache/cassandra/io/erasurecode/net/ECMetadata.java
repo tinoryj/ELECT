@@ -272,8 +272,9 @@ public class ECMetadata implements Serializable {
         //     }
         // }
 
-        // store parity nodes locally
+        // store ecMetadata locally
         StorageService.instance.globalECMetadataMap.put(ecMetadata.stripeId, ecMetadata.ecMetadataContent);
+        logger.debug("rymDebug: store stripID {} in node {}", ecMetadata.stripeId, FBUtilities.getBroadcastAddressAndPort());
     }
 
     public static final class Serializer implements IVersionedSerializer<ECMetadata>{
