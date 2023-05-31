@@ -74,12 +74,13 @@ public final class ECParityUpdate implements Serializable {
 
     public static class SSTableContentWithHashID implements Serializable {
         public final String sstHash;
-        public final ByteBuffer sstContent;
+        public final byte[] sstContent;
         public final int sstContentSize;
         public SSTableContentWithHashID(String sstHash, ByteBuffer sstContent) {
             this.sstHash = sstHash;
-            this.sstContent = sstContent;
             this.sstContentSize = sstContent.capacity();
+            this.sstContent = new byte[this.sstContentSize];
+            sstContent.get(this.sstContent);
         }
     }
 

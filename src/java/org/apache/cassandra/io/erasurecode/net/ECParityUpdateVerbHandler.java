@@ -188,7 +188,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         }
         logger.debug(logString);
 
-        
+
         // Case3: Old data still not completely consumed, we have to padding zero
         while (oldSSTablesIterator.hasNext()) {
 
