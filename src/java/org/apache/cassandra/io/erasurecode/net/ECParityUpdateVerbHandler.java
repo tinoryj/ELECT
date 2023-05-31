@@ -46,6 +46,9 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.datastax.shaded.netty.buffer.ByteBuf;
+
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.ParamType;
 import org.apache.cassandra.service.StorageService;
@@ -88,7 +91,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
             
             // read ec_metadata from memory, get the needed parity hash list
-            List<String> parityHashList = StorageService.instance.globalECMetadataMap.get(stripID).parityHashList;
+            List<String> parityHashList = null;
+            try {
+                parityHashList = StorageService.instance.globalECMetadataMap.get(stripID).parityHashList;
+            } catch (Exception e) {
+                logger.debug("rymERROR: failed to get ecMetadata for stripID {}", stripID);
+            }
             ByteBuffer[] parityCodes = new ByteBuffer[parityHashList.size()];
             // get the needed parity code locally
             String parityCodeFileName = localParityCodeDir + parityHashList.get(0);
@@ -332,10 +340,13 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             newData[0].rewind();
 
             ByteBuffer[] newParityCodes = new ByteBuffer[parityCodes.length];
+            for(int i = 0; i < newParityCodes.length; i++) {
+                newParityCodes[i] = ByteBuffer.allocateDirect(codeLength);
+            }
             // 0: old data, 1: new data, m is old parity codes
             ByteBuffer[] dataUpdate = new ByteBuffer[2 + parityCodes.length];
             for(int i=0;i < dataUpdate.length;i++) {
-                dataUpdate[i].allocate(codeLength);
+                dataUpdate[i] = ByteBuffer.allocateDirect(codeLength);
             }
             // fill this buffer
             dataUpdate[0] = oldData[0];
