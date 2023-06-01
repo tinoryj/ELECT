@@ -17,8 +17,6 @@
  */
 package org.apache.cassandra.db;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
