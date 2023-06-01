@@ -18,6 +18,7 @@
 package org.apache.cassandra.service.reads;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
@@ -105,14 +106,15 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         }
         // TODO: should also not calculate if only one full node
         Boolean isDigestMatchFlag = true;
+        ByteBuffer digestSet[] = new ByteBuffer[snapshot.size()];
+        ArrayList<InetAddressAndPort> endpoints = new ArrayList<>();
+        int digestIndex = 0;
         for (Message<ReadResponse> message : snapshot) {
             if (replicaPlan().lookup(message.from()).isTransient())
                 continue;
 
             ByteBuffer newDigest = message.payload.digest(command);
-            logger.debug(
-                    "[Tinoryj] Read operation get digest from {}, digest = {}, from column family = {}",
-                    message.from(), "0x" + ByteBufferUtil.bytesToHex(newDigest));
+            digestSet[digestIndex] = newDigest;
             if (digest == null) {
                 digest = newDigest;
             }
@@ -120,7 +122,17 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                 // rely on the fact that only single partition queries use digests
                 isDigestMatchFlag = false;
             }
+            endpoints.add(message.from());
+            digestIndex++;
+
         }
+
+        for (int i = 0; i < digestIndex; i++) {
+            logger.debug(
+                    "[Tinoryj] Read operation get digest from {}, digest = {}",
+                    endpoints.get(i), "0x" + ByteBufferUtil.bytesToHex(digestSet[i]));
+        }
+
         if (isDigestMatchFlag == false) {
             return false;
         }

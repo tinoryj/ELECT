@@ -2207,7 +2207,7 @@ public class StorageProxy implements StorageProxyMBean {
                     response = command.createResponse(iterator, controller.getRepairedDataInfo());
                     ByteBuffer newDigest = response.digest(command);
                     logger.debug(
-                            "[Tinoryj] Get read response for read via {} from table {} at node {}, resopnse  {}",
+                            "[Tinoryj] Get read response via {} from table {} at node {}, resopnse  {}",
                             command.isDigestQuery() ? "digest" : "data",
                             command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
                             "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
