@@ -118,7 +118,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
             
             for(int i = 0; i < parityHashList.size(); i++) {
-                parityCodes[i] = ByteBuffer.allocate(localParityCode.capacity());
+                parityCodes[i] = ByteBuffer.allocateDirect(localParityCode.capacity());
             }
             parityCodes[0].put(localParityCode);
             parityCodes[0].rewind();
@@ -213,7 +213,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             SSTableContentWithHashID oldSSTable = oldSSTablesIterator.next();
             waitUntilParityCodesReader(oldSSTable.sstHash);
             
-            ByteBuffer newSSTContent = ByteBuffer.allocate(codeLength);
+            ByteBuffer newSSTContent = ByteBuffer.allocateDirect(codeLength);
             SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())),
                                                                                newSSTContent);
             // codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
@@ -330,7 +330,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             ByteBuffer[] newData = new ByteBuffer[1];
 
             // prepare old data
-            oldData[0] = ByteBuffer.allocate(codeLength);
+            oldData[0] = ByteBuffer.allocateDirect(codeLength);
             oldData[0].put(oldSSTable.sstContent);
             int oldRemaining = oldData[0].remaining();
             if(oldRemaining>0) {
@@ -340,7 +340,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             oldData[0].rewind();
 
             // Prepare new data
-            newData[0] = ByteBuffer.allocate(codeLength);
+            newData[0] = ByteBuffer.allocateDirect(codeLength);
             newData[0].put(newSSTable.sstContent);
             int newRemaining = newData[0].remaining();
             if(newRemaining>0) {
@@ -351,14 +351,14 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
             ByteBuffer[] newParityCodes = new ByteBuffer[parityCodes.length];
             for(int i = 0; i < newParityCodes.length; i++) {
-                newParityCodes[i] = ByteBuffer.allocate(codeLength);
+                newParityCodes[i] = ByteBuffer.allocateDirect(codeLength);
             }
 
 
             // 0: old data, 1: new data, m is old parity codes
             ByteBuffer[] dataUpdate = new ByteBuffer[2 + parityCodes.length];
             for(int i=0;i < dataUpdate.length;i++) {
-                dataUpdate[i] = ByteBuffer.allocate(codeLength);
+                dataUpdate[i] = ByteBuffer.allocateDirect(codeLength);
             }
             // fill this buffer
             dataUpdate[0] = oldData[0];

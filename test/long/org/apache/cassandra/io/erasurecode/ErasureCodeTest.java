@@ -30,7 +30,7 @@ public class ErasureCodeTest {
 
     public static void erasureCodeTest() throws IOException {
         final int k = 4, m = 2;
-        int codeLength = 1024;
+        int codeLength = 419483300;
         Random random = new Random((long) 123);
 
         // Generate encoder and decoder
