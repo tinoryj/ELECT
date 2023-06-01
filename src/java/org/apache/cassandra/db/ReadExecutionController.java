@@ -100,8 +100,8 @@ public class ReadExecutionController implements AutoCloseable {
 
     boolean validForReadOn(ColumnFamilyStore cfs) {
         if (!cfs.metadata.id.equals(baseMetadata.id)) {
-            logger.debug("[Tinoryj] validForReadOn: false, cfs.metadata.id: {}, baseMetadata.id: {}", cfs.metadata.id,
-                    baseMetadata.id);
+            logger.debug("[Tinoryj] validForReadOn: false, cfs.metadata.id: {}, baseMetadata.id: {}", cfs.metadata.name,
+                    baseMetadata.name);
         }
         return baseOp != null && cfs.metadata.id.equals(baseMetadata.id);
     }
