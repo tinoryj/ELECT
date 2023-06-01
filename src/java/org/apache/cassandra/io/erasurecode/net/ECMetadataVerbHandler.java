@@ -301,7 +301,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         logger.debug("rymDebug: [Parity Update] get old sstHash ({})", ecMetadata.ecMetadataContent.oldSSTHash);
         SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(ecMetadata.ecMetadataContent.oldSSTHash);
         if(oldECSSTable == null) {
-            logger.error("rymERROR: [Parity Update] cannot get ecSSTable for sstHash({})", sstableHash);
+            logger.error("rymERROR: [Parity Update] cannot get ecSSTable for sstHash({})", ecMetadata.ecMetadataContent.oldSSTHash);
         }
         if (sstIndex == ecMetadata.ecMetadataContent.targetIndex) {
             // replace ec sstable
