@@ -415,7 +415,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRAEC]
-    public static SSTableReader openECSSTable(ECMetadata ecMetadata, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
+    public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
 
         logger.debug("rymDebug: this is invoke openECSSTable method");
         // Get a correct generation id
@@ -428,17 +428,17 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         String dataDir = directory.get().toString();
         // logger.debug("rymDebug: get data directory  {} (by prefix) for cf {}", dataDir, cfs.name);
       
-        List<String> sstables = List.of("Filter.db", "Index.db", "Statistics.db", "Summary.db");
+        List<String> sstableComponents = List.of("Filter.db", "Index.db", "Statistics.db", "Summary.db");
         // logger.debug("rymDebug: get sstable id {} for ecMetadata!", ecSSTableId);
-        for (String sst : sstables) {
-            String sourceFileName = dataForRewriteDir + fileNamePrefix + sst;
-            String destFileName = dataDir + "/nb-" + ecSSTableId + "-big-" + sst;
+        for (String component : sstableComponents) {
+            String sourceFileName = dataForRewriteDir + fileNamePrefix + component;
+            String destFileName = dataDir + "/nb-" + ecSSTableId + "-big-" + component;
             Path sourcePath = Paths.get(sourceFileName);
             Path destPath = Paths.get(destFileName);
             if(Files.exists(sourcePath)) {
                 Files.move(sourcePath, destPath);
             } else {
-                throw new IOException("No such a path for "+sourceFileName);
+                throw new IOException("No such a path for " + sourceFileName);
             }
             
         }
@@ -455,7 +455,13 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         loadECMetadata(ecMetadata, desc);
         
         SSTableReader ecSSTable = open(desc);
-        StorageService.instance.globalSSTHashToECSSTable.putIfAbsent(ecSSTable.getSSTableHashID(), ecSSTable);
+        if(ecSSTable.getSSTableHashID().equals(sstHash) || sstHash == null) {
+            StorageService.instance.globalSSTHashToECSSTable.put(ecSSTable.getSSTableHashID(), ecSSTable);
+            logger.debug("rymDebug: map sstHash ({}) to ecSSTable ({})", ecSSTable.getSSTableHashID(), ecSSTable.descriptor);
+        } else {
+            logger.warn("rymDebug: sstHash ({}) is not equal to ecSSTable ({})", sstHash, ecSSTable.getSSTableHashID());
+        }
+        
         return ecSSTable;
     }
 

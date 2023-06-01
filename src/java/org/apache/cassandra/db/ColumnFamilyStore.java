@@ -530,6 +530,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     ecMessage.sendSSTableToParity();
                                     StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.ecMessageContent.sstHashID,
                                                                                               ecMessage.ecMessageContent.parityNodes);
+                                    logger.debug("rymDebug: we map sstHash ({}) to parity Nodes ({})", ecMessage.ecMessageContent.sstHashID,
+                                                                                                              ecMessage.ecMessageContent.parityNodes);
 
                                     if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
                                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
@@ -1824,12 +1826,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     // [CASSANDRAEC]
-    public void replaceSSTable(ECMetadata metadata, ColumnFamilyStore cfs, String fileNamePrefix, final LifecycleTransaction txn) {
+    public void replaceSSTable(ECMetadata metadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix, final LifecycleTransaction txn) {
         // notify sstable changes to view and leveled generation
         // unmark sstable compacting status
         
         try {
-            SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, cfs, fileNamePrefix);
+            SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, sstHash, cfs, fileNamePrefix);
             if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
                 logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
             }

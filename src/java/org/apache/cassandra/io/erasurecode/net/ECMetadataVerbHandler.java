@@ -248,7 +248,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // secondary node
         if (rewriteSStables.isEmpty()) {
             // logger.warn("rymERROR: rewriteSStables is empty!");
-            cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
+            cfs.replaceSSTable(ecMetadata, sstableHash, cfs, fileNamePrefix, updateTxn);
             StorageService.instance.globalSSTMap.remove(sstableHash);
             return false;
         }
@@ -257,7 +257,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
             if (rewriteSStables.size() == 1) {
                 logger.debug("rymDebug: Anyway, we just replace the sstables");
-                cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
+                cfs.replaceSSTable(ecMetadata, sstableHash, cfs, fileNamePrefix, updateTxn);
             } else if (rewriteSStables.size() > 1) {
                 logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!", rewriteSStables.size());
                 // logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db",
@@ -298,6 +298,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // String currentSSTHash = entry.getKey();
         int sstIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstableHash);
         SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(sstableHash);
+        if(oldECSSTable == null) {
+            logger.error("rymERROR: cannot get ecSSTable for sstHash({})", sstableHash);
+        }
         if (sstIndex == ecMetadata.ecMetadataContent.targetIndex) {
             // replace ec sstable
 
@@ -307,7 +310,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 String fileNamePrefix = dataForRewrite.fileNamePrefix;
                 final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(Collections.singletonList(oldECSSTable), OperationType.COMPACTION);
                 if (updateTxn != null) {
-                    cfs.replaceSSTable(ecMetadata, cfs, fileNamePrefix, updateTxn);
+                    cfs.replaceSSTable(ecMetadata, sstableHash, cfs, fileNamePrefix, updateTxn);
                     return false;
                 } else {
                     logger.debug("rymERROR: failed to get transactions for the sstables during parity update, we will try it later");

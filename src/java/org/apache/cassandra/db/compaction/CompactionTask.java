@@ -355,7 +355,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     // logger.debug("rymDebug: about writer, capacity is ");
                     // headNewSStables = writer1.finishFirstPhase();
                     // tailNewSStables = writer2.finish();
-                    SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, cfs, fileNamePrefix);
+                    SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, null, cfs, fileNamePrefix);
                     if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
                     }
@@ -863,7 +863,12 @@ public class CompactionTask extends AbstractCompactionTask {
                 Map<InetAddressAndPort, List<SSTableContentWithHashID>> oldSSTables = new HashMap<InetAddressAndPort, List<SSTableContentWithHashID>>();
                 for (SSTableContentWithHashID transferredSST : transferredSSTables) {
                     String sstHash = transferredSST.sstHash;
-                    InetAddressAndPort target = StorageService.instance.globalSSTHashToParityNodesMap.get(sstHash).get(0);
+                    InetAddressAndPort target = null;
+                    try {
+                        target = StorageService.instance.globalSSTHashToParityNodesMap.get(sstHash).get(0);
+                    } catch (Exception e) {
+                        logger.error("rymERROR: cannot get parity nodes for sstHash ({})", sstHash);
+                    }
                     // targets.add(target);
                     if(oldSSTables.containsKey(target)){
                         oldSSTables.get(target).add(transferredSST);
