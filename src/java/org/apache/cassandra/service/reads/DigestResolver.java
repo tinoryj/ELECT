@@ -131,14 +131,14 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                     "[Tinoryj] Read operation get digest from {}, digest = {}",
                     endpoints.get(i), "0x" + ByteBufferUtil.bytesToHex(digestSet[i]));
         }
+
         if (digestSet[0].equals(digestSet[1]) && digestSet[0].equals(digestSet[2])) {
-            logger.debug("[Tinoryj] Read digest all mathch");
-        } else if ((digestSet[0].equals(digestSet[1]) && !digestSet[0].equals(digestSet[2]))
-                || (!digestSet[0].equals(digestSet[1]) &&
-                        digestSet[0].equals(digestSet[2]))) {
-            logger.debug("[Tinoryj] Read digest two mathch");
+            logger.debug("[Tinoryj] Read digest all match");
+        } else if (!digestSet[0].equals(digestSet[1]) && !digestSet[0].equals(digestSet[2])
+                && !digestSet[1].equals(digestSet[2])) {
+            logger.debug("[Tinoryj] Read digest no match");
         } else {
-            logger.debug("[Tinoryj] Read digest no mathch");
+            logger.debug("[Tinoryj] Read digest two match");
         }
 
         if (isDigestMatchFlag == false) {
