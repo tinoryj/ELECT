@@ -29,17 +29,16 @@ import org.apache.cassandra.schema.TableMetadata;
 /**
  * Base class for {@code ReadQuery} implementations.
  */
-abstract class AbstractReadQuery extends MonitorableImpl implements ReadQuery
-{
+abstract class AbstractReadQuery extends MonitorableImpl implements ReadQuery {
     private final TableMetadata metadata;
     private final int nowInSec;
 
-    private final ColumnFilter columnFilter;
-    private final RowFilter rowFilter;
+    private ColumnFilter columnFilter;
+    private RowFilter rowFilter;
     private final DataLimits limits;
 
-    protected AbstractReadQuery(TableMetadata metadata, int nowInSec, ColumnFilter columnFilter, RowFilter rowFilter, DataLimits limits)
-    {
+    protected AbstractReadQuery(TableMetadata metadata, int nowInSec, ColumnFilter columnFilter, RowFilter rowFilter,
+            DataLimits limits) {
         this.metadata = metadata;
         this.nowInSec = nowInSec;
         this.columnFilter = columnFilter;
@@ -48,64 +47,70 @@ abstract class AbstractReadQuery extends MonitorableImpl implements ReadQuery
     }
 
     @Override
-    public TableMetadata metadata()
-    {
+    public TableMetadata metadata() {
         return metadata;
     }
 
     // Monitorable interface
-    public String name()
-    {
+    public String name() {
         return toCQLString();
     }
 
     @Override
-    public PartitionIterator executeInternal(ReadExecutionController controller)
-    {
+    public PartitionIterator executeInternal(ReadExecutionController controller) {
         return UnfilteredPartitionIterators.filter(executeLocally(controller), nowInSec());
     }
 
     @Override
-    public DataLimits limits()
-    {
+    public DataLimits limits() {
         return limits;
     }
 
     @Override
-    public int nowInSec()
-    {
+    public int nowInSec() {
         return nowInSec;
     }
 
     @Override
-    public RowFilter rowFilter()
-    {
+    public RowFilter rowFilter() {
         return rowFilter;
     }
 
     @Override
-    public ColumnFilter columnFilter()
-    {
+    public ColumnFilter columnFilter() {
         return columnFilter;
+    }
+
+    public Boolean updateColumnFilter(ColumnFilter newFilter) {
+        this.columnFilter = newFilter;
+        return newFilter == columnFilter ? true : false;
+    }
+
+    public Boolean updateRowFilter(RowFilter newFilter) {
+        this.rowFilter = newFilter;
+        return newFilter == rowFilter ? true : false;
     }
 
     /**
      * Recreate the CQL string corresponding to this query.
      * <p>
-     * Note that in general the returned string will not be exactly the original user string, first
-     * because there isn't always a single syntax for a given query,  but also because we don't have
-     * all the information needed (we know the non-PK columns queried but not the PK ones as internally
-     * we query them all). So this shouldn't be relied too strongly, but this should be good enough for
+     * Note that in general the returned string will not be exactly the original
+     * user string, first
+     * because there isn't always a single syntax for a given query, but also
+     * because we don't have
+     * all the information needed (we know the non-PK columns queried but not the PK
+     * ones as internally
+     * we query them all). So this shouldn't be relied too strongly, but this should
+     * be good enough for
      * debugging purpose which is what this is for.
      */
-    public String toCQLString()
-    {
+    public String toCQLString() {
         StringBuilder sb = new StringBuilder().append("SELECT ")
-                                              .append(columnFilter().toCQLString())
-                                              .append(" FROM ")
-                                              .append(ColumnIdentifier.maybeQuote(metadata().keyspace))
-                                              .append('.')
-                                              .append(ColumnIdentifier.maybeQuote(metadata().name));
+                .append(columnFilter().toCQLString())
+                .append(" FROM ")
+                .append(ColumnIdentifier.maybeQuote(metadata().keyspace))
+                .append('.')
+                .append(ColumnIdentifier.maybeQuote(metadata().name));
         appendCQLWhereClause(sb);
 
         if (limits() != DataLimits.NONE)

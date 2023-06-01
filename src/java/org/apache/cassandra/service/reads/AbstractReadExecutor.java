@@ -29,7 +29,9 @@ import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.ReadCommand;
+import org.apache.cassandra.db.RegularAndStaticColumns;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
+import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.transform.DuplicateRowChecker;
 import org.apache.cassandra.dht.Token;
@@ -179,10 +181,16 @@ public abstract class AbstractReadExecutor {
                     break;
                 case 1:
                     readCommand.metadata().name = secondaryLSMTreeName1;
+                    ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter);
                     // readCommand = readCommand.copyAsDigestQuery(replicas);
                     break;
                 case 2:
                     readCommand.metadata().name = secondaryLSMTreeName2;
+                    ColumnFilter newColumnFilter2 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter2);
                     // readCommand = readCommand.copyAsDigestQuery(replicas);
                     break;
                 default:

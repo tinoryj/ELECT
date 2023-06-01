@@ -167,6 +167,11 @@ public abstract class ReadResponse {
             return digest;
         }
 
+        public ByteBuffer digest() {
+            // Tinoryj -> remove requirement of readcommand
+            return digest;
+        }
+
         public boolean isDigestResponse() {
             return true;
         }
