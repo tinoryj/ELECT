@@ -119,7 +119,6 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
             if (!digest.equals(newDigest)) {
                 // rely on the fact that only single partition queries use digests
                 isDigestMatchFlag = false;
-
             }
         }
         if (isDigestMatchFlag == false) {
