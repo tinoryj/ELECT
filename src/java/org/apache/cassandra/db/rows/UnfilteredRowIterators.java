@@ -243,10 +243,10 @@ public abstract class UnfilteredRowIterators {
         // digest.updateWithBoolean(iterator.isReverseOrder());
         // iterator.staticRow().digest(digest);
 
-        // while (iterator.hasNext()) {
-        // Unfiltered unfiltered = iterator.next();
-        // unfiltered.digest(digest);
-        // }
+        while (iterator.hasNext()) {
+            Unfiltered unfiltered = iterator.next();
+            unfiltered.digest(digest);
+        }
         logger.debug("[Tinoryj] cauclate digest for iterator token = {}, on node {}",
                 iterator.partitionKey().getToken(),
                 FBUtilities.getBroadcastAddressAndPort());
