@@ -96,7 +96,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
 
     private final Kind kind;
 
-    private final boolean isDigestQuery;
+    private boolean isDigestQuery;
     private final boolean acceptsTransient;
     // if a digest query, the version for which the digest is expected. Ignored if
     // not a digest.
@@ -188,6 +188,11 @@ public abstract class ReadCommand extends AbstractReadQuery {
      * @return Whether this query is a digest query.
      */
     public boolean isDigestQuery() {
+        return isDigestQuery;
+    }
+
+    public boolean setIsDigestQuery(boolean isDigestQueryFlag) {
+        isDigestQuery = isDigestQueryFlag;
         return isDigestQuery;
     }
 
