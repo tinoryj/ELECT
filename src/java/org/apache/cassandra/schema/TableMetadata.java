@@ -129,7 +129,7 @@ public class TableMetadata implements SchemaElement {
 
     public final String keyspace;
     public String name;
-    public final TableId id;
+    public TableId id;
 
     public final IPartitioner partitioner;
     public final Kind kind;

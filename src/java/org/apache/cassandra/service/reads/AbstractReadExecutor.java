@@ -177,11 +177,13 @@ public abstract class AbstractReadExecutor {
 
             switch (replicationIDIndicatorForSendRequest) {
                 case 0:
-                    readCommand.metadata().name = primaryLSMTreeName;
+                    readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
                     readCommand.setIsDigestQuery(false);
                     break;
                 case 1:
-                    readCommand.metadata().name = secondaryLSMTreeName1;
+                    readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
                     ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter);
@@ -189,7 +191,8 @@ public abstract class AbstractReadExecutor {
                     // readCommand = readCommand.copyAsDigestQuery(replicas);
                     break;
                 case 2:
-                    readCommand.metadata().name = secondaryLSMTreeName2;
+                    readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2).metadata());
                     ColumnFilter newColumnFilter2 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter2);

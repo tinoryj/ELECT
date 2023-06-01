@@ -30,7 +30,7 @@ import org.apache.cassandra.schema.TableMetadata;
  * Base class for {@code ReadQuery} implementations.
  */
 abstract class AbstractReadQuery extends MonitorableImpl implements ReadQuery {
-    private final TableMetadata metadata;
+    private TableMetadata metadata;
     private final int nowInSec;
 
     private ColumnFilter columnFilter;
@@ -49,6 +49,11 @@ abstract class AbstractReadQuery extends MonitorableImpl implements ReadQuery {
     @Override
     public TableMetadata metadata() {
         return metadata;
+    }
+
+    public Boolean updateTableMetadata(TableMetadata newTableMetadata) {
+        metadata = newTableMetadata;
+        return true;
     }
 
     // Monitorable interface
