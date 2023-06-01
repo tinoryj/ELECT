@@ -2210,14 +2210,15 @@ public class StorageProxy implements StorageProxyMBean {
                                 command.isDigestQuery() ? "digest" : "data",
                                 command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
                         response = command.createEmptyResponse();
+                    } else {
+                        response = command.createResponse(iterator, controller.getRepairedDataInfo());
+                        ByteBuffer newDigest = response.digest(command);
+                        logger.debug(
+                                "[Tinoryj] Get {} response from table {}, {}",
+                                command.isDigestQuery() ? "digest" : "data",
+                                command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
+                                "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
                     }
-                    response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                    ByteBuffer newDigest = response.digest(command);
-                    logger.debug(
-                            "[Tinoryj] Get {} response from table {}, {}",
-                            command.isDigestQuery() ? "digest" : "data",
-                            command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                            "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
                 } catch (RejectException e) {
                     if (!command.isTrackingWarnings())
                         throw e;
