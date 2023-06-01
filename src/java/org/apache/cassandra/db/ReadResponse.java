@@ -33,7 +33,7 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteBufferUtil;
-
+import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -264,7 +264,10 @@ public abstract class ReadResponse {
 
         public ByteBuffer digest(ReadCommand command) {
             try (UnfilteredPartitionIterator iterator = makeIterator(command)) {
-                return makeDigest(iterator, command);
+                ByteBuffer theDigest = makeDigest(iterator, command);
+                logger.debug("[Tinoryj] Compute the digest for command on node {}, target table = {}, the digest = {}",
+                        FBUtilities.getBroadcastAddressAndPort(), command.metadata().name, theDigest);
+                return theDigest;
             }
         }
 
