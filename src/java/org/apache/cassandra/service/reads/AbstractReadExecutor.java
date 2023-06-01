@@ -71,7 +71,7 @@ import java.lang.reflect.Field;
 public abstract class AbstractReadExecutor {
     private static final Logger logger = LoggerFactory.getLogger(AbstractReadExecutor.class);
 
-    protected final ReadCommand command;
+    protected ReadCommand command;
     private final ReplicaPlan.SharedForTokenRead replicaPlan;
     protected final ReadRepair<EndpointsForToken, ReplicaPlan.ForTokenRead> readRepair;
     protected final DigestResolver<EndpointsForToken, ReplicaPlan.ForTokenRead> digestResolver;
@@ -209,7 +209,7 @@ public abstract class AbstractReadExecutor {
                         readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
                         endpoint, readCommand.metadata().name);
                 Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
-                continue;
+                this.command = readCommand;
             } else {
                 logger.debug(
                         "[Tinoryj] Make {} read [Remote] request for key token = {}, replica address = {}, target column name = {}",

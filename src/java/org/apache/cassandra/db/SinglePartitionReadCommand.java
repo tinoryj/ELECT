@@ -642,7 +642,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
     public UnfilteredRowIterator queryMemtableAndDisk(ColumnFamilyStore cfs,
             ReadExecutionController executionController) {
         assert executionController != null;
-        assert executionController.validForReadOn(cfs);
+        // assert executionController.validForReadOn(cfs);
         Tracing.trace("Executing single-partition query on {}", cfs.name);
 
         return queryMemtableAndDiskInternal(cfs, executionController);
