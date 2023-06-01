@@ -39,12 +39,12 @@ public class ReadExecutionController implements AutoCloseable {
 
     // For every reads
     private final OpOrder.Group baseOp;
-    private final TableMetadata baseMetadata; // kept to sanity check that we have take the op order on the right table
+    private TableMetadata baseMetadata; // kept to sanity check that we have take the op order on the right table
 
     // For index reads
     private final ReadExecutionController indexController;
     private final WriteContext writeContext;
-    private final ReadCommand command;
+    private ReadCommand command;
     static MonotonicClock clock = preciseTime;
 
     private final long createdAtNanos; // Only used while sampling
@@ -103,7 +103,13 @@ public class ReadExecutionController implements AutoCloseable {
             logger.debug("[Tinoryj] validForReadOn: false, cfs.metadata.id: {}, baseMetadata.id: {}", cfs.metadata.name,
                     baseMetadata.name);
         }
-        return baseOp != null && cfs.metadata.id.equals(baseMetadata.id);
+        command.metadata().name = cfs.metadata.name;
+        baseMetadata = command.metadata();
+        boolean flag = (baseOp != null && cfs.metadata.id.equals(baseMetadata.id));
+        logger.debug("[Tinoryj] validForReadOn: update, the flag = {}, cfs.metadata.id: {}, baseMetadata.id: {}", flag,
+                cfs.metadata.name,
+                baseMetadata.name);
+        return flag;
     }
 
     public static ReadExecutionController empty() {
