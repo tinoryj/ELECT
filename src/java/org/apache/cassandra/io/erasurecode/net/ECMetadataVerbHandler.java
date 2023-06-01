@@ -297,7 +297,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // 2. For the non-updated sstable, just replace the files
         // String currentSSTHash = entry.getKey();
         int sstIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstableHash);
-        SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(sstableHash);
+        // need a old sstHash
+        logger.debug("rymDebug: [Parity Update] get old sstHash ({})", ecMetadata.ecMetadataContent.oldSSTHash);
+        SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(ecMetadata.ecMetadataContent.oldSSTHash);
         if(oldECSSTable == null) {
             logger.error("rymERROR: [Parity Update] cannot get ecSSTable for sstHash({})", sstableHash);
         }
