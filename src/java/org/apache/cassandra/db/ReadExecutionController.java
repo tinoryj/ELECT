@@ -24,7 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.filter.DataLimits;
 import org.apache.cassandra.index.Index;
 import org.apache.cassandra.schema.TableMetadata;
@@ -102,13 +102,20 @@ public class ReadExecutionController implements AutoCloseable {
         if (!cfs.metadata.id.equals(baseMetadata.id)) {
             logger.debug("[Tinoryj] validForReadOn: false, cfs.metadata.id: {}, baseMetadata.id: {}", cfs.metadata.name,
                     baseMetadata.name);
+
+            command.updateTableMetadata(
+                    Keyspace.open("ycsb").getColumnFamilyStore(baseMetadata.name).metadata());
+            ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(command.metadata(), false)
+                    .build();
+            command.updateColumnFilter(newColumnFilter);
+            cfs = Keyspace.openAndGetStore(command.metadata());
+            // baseMetadata = command.metadata();
+            logger.debug("[Tinoryj] validForReadOn: update, cfs.metadata.id: {}, baseMetadata.id: {}",
+                    cfs.metadata.name,
+                    baseMetadata.name);
         }
-        command.metadata().name = cfs.metadata.name;
-        baseMetadata = command.metadata();
+
         boolean flag = (baseOp != null && cfs.metadata.id.equals(baseMetadata.id));
-        logger.debug("[Tinoryj] validForReadOn: update, the flag = {}, cfs.metadata.id: {}, baseMetadata.id: {}", flag,
-                cfs.metadata.name,
-                baseMetadata.name);
         return flag;
     }
 
