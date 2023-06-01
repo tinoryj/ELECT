@@ -191,18 +191,18 @@ public class StorageService extends NotificationBroadcasterSupport
     // [In parity node] This queue is used to receive ECMessages for erasure coding.
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>>();
     // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
-    public Map<String, DataForRewrite> globalSSTMap = new HashMap<String, DataForRewrite>();
+    public ConcurrentHashMap<String, DataForRewrite> globalSSTMap = new ConcurrentHashMap<String, DataForRewrite>();
     // [In parity node] This map is used to store <stripID, ECMetadataContent>, generate after erasure coding, use during parity update.
     // TODO: could be optimize 
-    public Map<String, ECMetadataContent> globalECMetadataMap = new HashMap<String, ECMetadataContent>();
+    public ConcurrentHashMap<String, ECMetadataContent> globalECMetadataMap = new ConcurrentHashMap<String, ECMetadataContent>();
     // [In parity node] Generate after ResponseParity, use during real parity update.
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToParityCodeMap = new ConcurrentHashMap<String, ByteBuffer[]>();
     // [In primary node] Generate when sendSSTableToParity, use during send parity update signal.
-    public Map<String, List<InetAddressAndPort>> globalSSTHashToParityNodesMap = new HashMap<String, List<InetAddressAndPort>>();
+    public ConcurrentHashMap<String, List<InetAddressAndPort>> globalSSTHashToParityNodesMap = new ConcurrentHashMap<String, List<InetAddressAndPort>>();
     // [In parity node] Generate after erasure coding, use during parity update. 
-    public Map<String, String> globalSSTHashToStripID = new HashMap<String, String>();
+    public ConcurrentHashMap<String, String> globalSSTHashToStripID = new ConcurrentHashMap<String, String>();
     // [In every node] Record the sstHash to SSTableReader map
-    public Map<String, SSTableReader> globalSSTHashToECSSTable = new HashMap<String, SSTableReader>();
+    public ConcurrentHashMap<String, SSTableReader> globalSSTHashToECSSTable = new ConcurrentHashMap<String, SSTableReader>();
     // [In secondary node] Record the rewrite data
     public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalBlockedECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
     // 
