@@ -257,14 +257,14 @@ public abstract class AbstractReadExecutor {
                     .metadata().keyspace,
                     command.partitionKey().getKey());
             if (sendRequestAddressesAndPorts.size() != 3) {
-                logger.debug("[Tinoeyj] sendRequestAddressesAndPorts.size() != 3");
+                logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
             }
             if (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0))
                     && replicaPlan.contacts().endpointList().get(1).getAddress().equals(sendRequestAddresses.get(1))
                     && replicaPlan.contacts().endpointList().get(2).getAddress().equals(sendRequestAddresses.get(2))) {
             } else {
                 logger.debug(
-                        "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node in the natural storage node list ++ the replication plan for read is {}, natural storage node list = {}",
+                        "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
                         command.partitionKey().getToken(),
                         replicaPlan.contacts().endpointList(),
                         sendRequestAddresses);
