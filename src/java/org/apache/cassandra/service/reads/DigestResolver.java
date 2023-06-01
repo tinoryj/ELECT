@@ -124,13 +124,21 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
             }
             endpoints.add(message.from());
             digestIndex++;
-
         }
 
         for (int i = 0; i < digestIndex; i++) {
             logger.debug(
                     "[Tinoryj] Read operation get digest from {}, digest = {}",
                     endpoints.get(i), "0x" + ByteBufferUtil.bytesToHex(digestSet[i]));
+        }
+        if (digestSet[0].equals(digestSet[1]) && digestSet[0].equals(digestSet[2])) {
+            logger.debug("[Tinoryj] Read digest all mathch");
+        } else if ((digestSet[0].equals(digestSet[1]) && !digestSet[0].equals(digestSet[2]))
+                || (!digestSet[0].equals(digestSet[1]) &&
+                        digestSet[0].equals(digestSet[2]))) {
+            logger.debug("[Tinoryj] Read digest two mathch");
+        } else {
+            logger.debug("[Tinoryj] Read digest no mathch");
         }
 
         if (isDigestMatchFlag == false) {
