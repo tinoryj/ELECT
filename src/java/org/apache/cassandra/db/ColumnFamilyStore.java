@@ -461,10 +461,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     /**
      * Get scheduled tasks for sending SSTables to do erasure coding.
      * 
-     * @param keyspaceName 
+     * @param keyspaceName
      * @param cfName
-     * @param sendSSTLevel 
-     * @param delay the selected SSTable's age must >= this value
+     * @param sendSSTLevel
+     * @param delay        the selected SSTable's age must >= this value
      * 
      */
 
@@ -522,13 +522,15 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                                     // Sync sstable with secondary nodes for rewrite
                                     ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID);
-                                    
+
                                     // Send selected sstable for perform erasure coding.
-                                    ECMessage ecMessage = new ECMessage(sstContent, new ECMessageContent(sstHashID, keyspaceName, cfName,
-                                                                        replicaNodes));
+                                    ECMessage ecMessage = new ECMessage(sstContent,
+                                            new ECMessageContent(sstHashID, keyspaceName, cfName,
+                                                    replicaNodes));
                                     ecMessage.sendSSTableToParity();
-                                    StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.ecMessageContent.sstHashID,
-                                                                                              ecMessage.ecMessageContent.parityNodes);
+                                    StorageService.instance.globalSSTHashToParityNodesMap.put(
+                                            ecMessage.ecMessageContent.sstHashID,
+                                            ecMessage.ecMessageContent.parityNodes);
 
                                     if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
                                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
@@ -546,7 +548,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             continue;
                         }
                     } else {
-                        throw new IllegalStateException("The method of getting sstables from a certain level is error!");
+                        throw new IllegalStateException(
+                                "The method of getting sstables from a certain level is error!");
                     }
 
                 }
@@ -1427,7 +1430,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 }
 
                 @Override
-                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                        throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1509,7 +1513,17 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     {
         long start = nanoTime();
         try {
+            try {
+                FileWriter writer = new FileWriter("logs/" + metadata.name, true);
+                BufferedWriter buffer = new BufferedWriter(writer);
+                buffer.write(update.partitionKey().getToken() + "\n");
+                buffer.close();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
             Memtable mt = data.getMemtableFor(opGroup, commitLogPosition);
+
             long timeDelta = mt.put(update, indexer, opGroup);
             DecoratedKey key = update.partitionKey();
             invalidateCachedPartition(key);
@@ -1798,7 +1812,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
     // rewrite the sstables based on the source decorated keys
     public CompactionManager.AllSSTableOpStatus sstablesRewrite(final DecoratedKey first,
-            final DecoratedKey last, 
+            final DecoratedKey last,
             List<SSTableReader> sstables,
             ECMetadata metadata, String fileNamePrefix,
             final LifecycleTransaction txn,
@@ -1808,16 +1822,18 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite");
 
-        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, first, last, sstables, metadata, fileNamePrefix, txn,
+        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, first, last, sstables, metadata,
+                fileNamePrefix, txn,
                 skipIfCurrentVersion,
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 
     // [CASSANDRAEC]
-    public void replaceSSTable(ECMetadata metadata, ColumnFamilyStore cfs, String fileNamePrefix, final LifecycleTransaction txn) {
+    public void replaceSSTable(ECMetadata metadata, ColumnFamilyStore cfs, String fileNamePrefix,
+            final LifecycleTransaction txn) {
         // notify sstable changes to view and leveled generation
         // unmark sstable compacting status
-        
+
         try {
             SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, cfs, fileNamePrefix);
             if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
@@ -1835,8 +1851,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        
-        
+
     }
 
     public CompactionManager.AllSSTableOpStatus relocateSSTables(int jobs)

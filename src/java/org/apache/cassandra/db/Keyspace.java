@@ -732,16 +732,6 @@ public class Keyspace {
         // e.printStackTrace();
         // }
 
-        try {
-            FileWriter writer = new FileWriter("logs/" + fileName, true);
-            BufferedWriter buffer = new BufferedWriter(writer);
-            buffer.write(upd.partitionKey().getToken() + "\n");
-            buffer.close();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-
         return columnFamilyStores.get(replicaUUID);
     }
 
