@@ -145,13 +145,14 @@ public class BlockingPartitionRepair
 
     @VisibleForTesting
     protected void sendRR(Message<Mutation> message, InetAddressAndPort endpoint) {
-        logger.debug("[Tinoryj] Send read request by sendRR func, message payload is {}, endpoint: {}",
-                message.payload.getClass(), endpoint);
+        // logger.debug("[Tinoryj] Send read request by sendRR func, message payload is
+        // {}, endpoint: {}",
+        // message.payload.getClass(), endpoint);
         MessagingService.instance().sendWithCallback(message, endpoint, this);
     }
 
     public void sendInitialRepairs() {
-        logger.debug("[Tinoryj] Send initial repairs, pendingRepairs: {}", pendingRepairs);
+        // logger.debug("[Tinoryj] Send initial repairs, pendingRepairs: {}", pendingRepairs);
         mutationsSentTime = nanoTime();
         Replicas.assertFull(pendingRepairs.keySet());
 
