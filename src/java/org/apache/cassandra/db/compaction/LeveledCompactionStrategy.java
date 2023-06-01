@@ -48,6 +48,7 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 
@@ -69,7 +70,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
     public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options) {
         super(cfs, options);
-
+        ECNetutils.printStackTace("Debug LeveledCompactionStrategy");
         int configuredMaxSSTableSize = 4;
 
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;

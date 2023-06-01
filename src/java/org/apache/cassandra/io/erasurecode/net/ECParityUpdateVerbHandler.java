@@ -351,6 +351,9 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             for(int i = 0; i < newParityCodes.length; i++) {
                 newParityCodes[i] = ByteBuffer.allocate(codeLength);
             }
+
+           // prepare old parity codes 
+
             // 0: old data, 1: new data, m is old parity codes
             ByteBuffer[] dataUpdate = new ByteBuffer[2 + parityCodes.length];
             for(int i=0;i < dataUpdate.length;i++) {
