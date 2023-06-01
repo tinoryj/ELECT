@@ -35,6 +35,8 @@ import java.util.stream.Stream;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureEncoder;
 import org.apache.cassandra.io.erasurecode.NativeRSEncoder;
@@ -80,13 +82,13 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         InetAddressAndPort oldPrimaryNodes = message.from();
         InetAddressAndPort newPrimaryNodes = message.from();
         String keyspaceName = "ycsb";
+        int codeLength = StorageService.getErasureCodeLength();
         
         // Map<String, ByteBuffer[]> sstHashToParityCodeMap = new HashMap<String, ByteBuffer[]>();
         String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
 
         // read parity code locally and from peer parity nodes
         // TODO: check that parity code blocks are all ready
-        int codeLength = 0;
         for (SSTableContentWithHashID sstContentWithHash: parityUpdateData.oldSSTables) {
             String sstHash = sstContentWithHash.sstHash;
             String stripID = StorageService.instance.globalSSTHashToStripID.get(sstHash);
@@ -148,7 +150,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
             // ByteBuffer oldData = oldSSTable.sstContent;
             // ByteBuffer newData = newSSTable.sstContent;
-            codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
+            // codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
             String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
             Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
                                                                                     newSSTable,
@@ -179,7 +181,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                 SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(msg.ecMessageContent.sstHashID, msg.sstContent);
                 String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
-                codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
+                // codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
 
                 Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
                                                                                         newSSTable,
@@ -214,7 +216,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             ByteBuffer newSSTContent = ByteBuffer.allocate(codeLength);
             SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())),
                                                                                newSSTContent);
-            codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
+            // codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
 
 
             String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
@@ -352,7 +354,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 newParityCodes[i] = ByteBuffer.allocate(codeLength);
             }
 
-           // prepare old parity codes 
 
             // 0: old data, 1: new data, m is old parity codes
             ByteBuffer[] dataUpdate = new ByteBuffer[2 + parityCodes.length];

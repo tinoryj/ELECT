@@ -715,32 +715,33 @@ public class Keyspace {
         // make sure whether the mutation is for a primary or not.
         int  index = eps.indexOf(localAddress);
         replicaUUID = globalNodeIDtoCFIDMap.get(index);
-        String fileName = "usertable";
-        if(index!=0) {
-            fileName+=index;
-        }
+        
+        // String fileName = "usertable";
+        // if(index!=0) {
+        //     fileName+=index;
+        // }
 
-        try {
-            FileWriter writer = new FileWriter("logs/usertableAll", true);
-            BufferedWriter buffer = new BufferedWriter(writer);
-            buffer.write(upd.partitionKey().getRawKey(upd.metadata())+"\n");
-            buffer.close();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        // try {
+        //     FileWriter writer = new FileWriter("logs/usertableAll", true);
+        //     BufferedWriter buffer = new BufferedWriter(writer);
+        //     buffer.write(upd.partitionKey().getRawKey(upd.metadata())+"\n");
+        //     buffer.close();
+        // } catch (IOException e) {
+        //     // TODO Auto-generated catch block
+        //     e.printStackTrace();
+        // }
 
 
 
-        try {
-            FileWriter writer = new FileWriter("logs/"+fileName, true);
-            BufferedWriter buffer = new BufferedWriter(writer);
-            buffer.write(upd.partitionKey().getRawKey(upd.metadata())+"\n");
-            buffer.close();
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        // try {
+        //     FileWriter writer = new FileWriter("logs/"+fileName, true);
+        //     BufferedWriter buffer = new BufferedWriter(writer);
+        //     buffer.write(upd.partitionKey().getRawKey(upd.metadata())+"\n");
+        //     buffer.close();
+        // } catch (IOException e) {
+        //     // TODO Auto-generated catch block
+        //     e.printStackTrace();
+        // }
         
         return columnFamilyStores.get(replicaUUID);
     }

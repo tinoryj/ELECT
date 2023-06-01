@@ -154,7 +154,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 }
                 // compute erasure coding locally;
                 if (tmpArray.length == DatabaseDescriptor.getEcDataNodes()) {
-                    Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray));
+                    Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, StorageService.getErasureCodeLength()));
                 } else {
                     logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);
                 }
@@ -193,11 +193,13 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         private final int ecDataNum;
         private final int ecParityNum;
         private final ECMessage[] messages;
+        private final int codeLength;
 
-        PerformErasureCodeRunnable(ECMessage[] message) {
+        PerformErasureCodeRunnable(ECMessage[] message, int codeLength) {
             this.ecDataNum = DatabaseDescriptor.getEcDataNodes();
             this.ecParityNum = DatabaseDescriptor.getParityNodes();
             this.messages = message;
+            this.codeLength = codeLength;
         }
 
         @Override
@@ -205,10 +207,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             if(messages.length != ecDataNum) {
                 logger.error("rymERROR: message length is not equal to ecDataNum");
             }
-            int codeLength = messages[0].sstSize;
-            for (ECMessage msg : messages) {
-                codeLength = codeLength < msg.sstSize? msg.sstSize : codeLength;
-             }
+            // int codeLength = messages[0].sstSize;
+            // for (ECMessage msg : messages) {
+            //     codeLength = codeLength < msg.sstSize? msg.sstSize : codeLength;
+            //  }
             ErasureCoderOptions ecOptions = new ErasureCoderOptions(ecDataNum, ecParityNum);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 

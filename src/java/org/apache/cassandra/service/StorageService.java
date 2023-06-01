@@ -205,10 +205,22 @@ public class StorageService extends NotificationBroadcasterSupport
     public Map<String, SSTableReader> globalSSTHashToECSSTable = new HashMap<String, SSTableReader>();
     // [In secondary node] Record the rewrite data
     public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalBlockedECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
+    // 
+    private static int codeLength = 0;
 
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 
     private final JMXProgressSupport progressSupport = new JMXProgressSupport(this);
+
+    public static void setErasureCodeLength(int sstableSizeInMB) {
+        if(codeLength == 0) {
+            codeLength = (int) Math.ceil(sstableSizeInMB * 1024 * 1024 * 1.05);
+        }
+    }
+
+    public static int getErasureCodeLength() {
+        return codeLength;
+    }
 
     private static int getRingDelay() {
         String newdelay = CassandraRelevantProperties.RING_DELAY.getString();

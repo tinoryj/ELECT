@@ -35,6 +35,7 @@ import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.config.Config;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -70,7 +71,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
 
     public LeveledCompactionStrategy(ColumnFamilyStore cfs, Map<String, String> options) {
         super(cfs, options);
-        ECNetutils.printStackTace("Debug LeveledCompactionStrategy");
+        // ECNetutils.printStackTace("Debug LeveledCompactionStrategy");
         int configuredMaxSSTableSize = 4;
 
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;
@@ -80,6 +81,14 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         if (options != null) {
             if (options.containsKey(SSTABLE_SIZE_OPTION)) {
                 configuredMaxSSTableSize = Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));
+
+                // [CASSANDRAEC]
+                if(cfs.getColumnFamilyName().equals("usertable")) {
+                    StorageService.setErasureCodeLength(configuredMaxSSTableSize);
+                    logger.debug("rymDebug: set erasure code length based on sstable_size_in_mb ({}),", configuredMaxSSTableSize);
+                }
+
+
                 if (!tolerateSstableSize) {
                     if (configuredMaxSSTableSize >= 1000)
                         logger.warn(
