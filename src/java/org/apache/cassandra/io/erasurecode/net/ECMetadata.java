@@ -259,7 +259,7 @@ public class ECMetadata implements Serializable {
 
 
     /**
-     * Distribute ecMetadata to secondary nodes
+     * [In parity] Distribute ecMetadata to secondary nodes
      */
     public void distributeECMetadata(ECMetadata ecMetadata) {
         logger.debug("rymDebug: this distributeEcMetadata method");

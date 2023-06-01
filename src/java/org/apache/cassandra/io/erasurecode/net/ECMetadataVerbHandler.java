@@ -232,7 +232,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             
 
         } else {
-            return transformECMetadataToECSSTableForParityUpdate(ecMetadata, cfs, sstableHash);
+            if(ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstableHash) == ecMetadata.ecMetadataContent.targetIndex)
+                return transformECMetadataToECSSTableForParityUpdate(ecMetadata, cfs, sstableHash);
+            return false;
         }
 
     }
