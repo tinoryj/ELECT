@@ -104,21 +104,26 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
             return true;
         }
         // TODO: should also not calculate if only one full node
+        Boolean isDigestMatchFlag = true;
         for (Message<ReadResponse> message : snapshot) {
             if (replicaPlan().lookup(message.from()).isTransient())
                 continue;
 
             ByteBuffer newDigest = message.payload.digest(command);
             logger.debug(
-                    "[Tinoryj] Read get digest from {}, content = {}",
-                    message.from(), "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
+                    "[Tinoryj] Read operation get digest from {}, digest = {}, from column family = {}",
+                    message.from(), "0x" + ByteBufferUtil.bytesToHex(newDigest));
             if (digest == null) {
                 digest = newDigest;
             }
             if (!digest.equals(newDigest)) {
                 // rely on the fact that only single partition queries use digests
-                return false;
+                isDigestMatchFlag = false;
+
             }
+        }
+        if (isDigestMatchFlag == false) {
+            return false;
         }
 
         if (logger.isTraceEnabled())

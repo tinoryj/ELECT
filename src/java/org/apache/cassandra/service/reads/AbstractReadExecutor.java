@@ -471,9 +471,6 @@ public abstract class AbstractReadExecutor {
                 throw e;
             }
         }
-        logger.debug(
-                "[Tinoryj] ReadExecutor awaitResponses() responses for read command target table = {} is complete",
-                command.metadata().name);
         // return immediately, or begin a read repair
         if (digestResolver.responsesMatch()) {
             setResult(digestResolver.getData());

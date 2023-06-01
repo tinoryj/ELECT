@@ -266,7 +266,8 @@ public abstract class ReadResponse {
             try (UnfilteredPartitionIterator iterator = makeIterator(command)) {
                 ByteBuffer theDigest = makeDigest(iterator, command);
                 logger.debug("[Tinoryj] Compute the digest for command on node {}, target table = {}, the digest = {}",
-                        FBUtilities.getBroadcastAddressAndPort(), command.metadata().name, theDigest);
+                        FBUtilities.getBroadcastAddressAndPort(), command.metadata().name,
+                        "Digest:0x" + ByteBufferUtil.bytesToHex(theDigest));
                 return theDigest;
             }
         }
