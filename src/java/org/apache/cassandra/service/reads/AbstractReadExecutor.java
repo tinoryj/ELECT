@@ -179,11 +179,11 @@ public abstract class AbstractReadExecutor {
                     break;
                 case 1:
                     readCommand.metadata().name = secondaryLSMTreeName1;
-                    readCommand = readCommand.copyAsDigestQuery(replicas);
+                    // readCommand = readCommand.copyAsDigestQuery(replicas);
                     break;
                 case 2:
                     readCommand.metadata().name = secondaryLSMTreeName2;
-                    readCommand = readCommand.copyAsDigestQuery(replicas);
+                    // readCommand = readCommand.copyAsDigestQuery(replicas);
                     break;
                 default:
                     logger.debug("[Tinoryj] Not support replication number more than 3!!!");
