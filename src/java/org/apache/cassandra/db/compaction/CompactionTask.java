@@ -860,6 +860,7 @@ public class CompactionTask extends AbstractCompactionTask {
                 // send parity update signal
                 // send old data 
                 // List<InetAddressAndPort> targets = new ArrayList<>();
+                // paritNode -> oldSSTables 
                 Map<InetAddressAndPort, List<SSTableContentWithHashID>> oldSSTables = new HashMap<InetAddressAndPort, List<SSTableContentWithHashID>>();
                 for (SSTableContentWithHashID transferredSST : transferredSSTables) {
                     String sstHash = transferredSST.sstHash;
@@ -895,7 +896,12 @@ public class CompactionTask extends AbstractCompactionTask {
                             List<InetAddressAndPort> replicaNodes = StorageService.instance
                                                                                   .getReplicaNodesWithPortFromPrimaryNode(FBUtilities.getBroadcastAddressAndPort(), cfs.keyspace.getName());
                             ECNetutils.syncSSTableWithSecondaryNodes(newSSTable, replicaNodes, newSSTable.getSSTableHashID());
-
+                            StorageService.instance.globalSSTHashToParityNodesMap.put(
+                                    newSSTable.getSSTableHashID(),
+                                    StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
+                            logger.debug("rymDebug: [Parity Update] we map sstHash ({}) to parity Nodes ({})",
+                                    newSSTable.getSSTableHashID(),
+                                    StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
                             newSSTableIterator.remove();
                         } else {
                             break;

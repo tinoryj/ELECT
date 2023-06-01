@@ -279,7 +279,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             StorageService.instance.globalSSTMap.remove(sstableHash);
         } else {
             // Save ECMetadata and redo ec transition later
-            logger.debug("rymDebug: failed to get transactions for the sstables during erasure coding, we will try it later");
+            logger.debug("rymDebug: [ErasureCoding] failed to get transactions for the sstables ({}), we will try it later", sstableHash);
             BlockedECMetadata blockedECMetadata = new BlockedECMetadata(sstableHash, sourceIP, ecMetadata);
             saveECMetadataToBlockList(cfs.getColumnFamilyName(), blockedECMetadata);
             return true;
@@ -299,7 +299,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         int sstIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstableHash);
         SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(sstableHash);
         if(oldECSSTable == null) {
-            logger.error("rymERROR: cannot get ecSSTable for sstHash({})", sstableHash);
+            logger.error("rymERROR: [Parity Update] cannot get ecSSTable for sstHash({})", sstableHash);
         }
         if (sstIndex == ecMetadata.ecMetadataContent.targetIndex) {
             // replace ec sstable
@@ -313,11 +313,11 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     cfs.replaceSSTable(ecMetadata, sstableHash, cfs, fileNamePrefix, updateTxn);
                     return false;
                 } else {
-                    logger.debug("rymERROR: failed to get transactions for the sstables during parity update, we will try it later");
+                    logger.debug("rymERROR:[Parity Update] failed to get transactions for the sstables ({}), we will try it later", sstableHash);
                     return true;
                 }
             } else {
-                logger.warn("rymERROR: cannot get rewrite data of {} during parity update", sstableHash);
+                logger.warn("rymERROR:[Parity Update] cannot get rewrite data of {} during parity update", sstableHash);
             }
 
         } else {
