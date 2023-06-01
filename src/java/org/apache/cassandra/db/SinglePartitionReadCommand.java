@@ -644,8 +644,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         assert executionController != null;
         assert executionController.validForReadOn(cfs);
         Tracing.trace("Executing single-partition query on {}", cfs.name);
-        logger.debug("[Tinoryj] Exec query memtable and disk on {}, cfs in controller = {}", cfs.name);
-
+        cfs = Keyspace.openAndGetStore(executionController.metadata());
+        logger.debug("[Tinoryj] Exec query memtable and disk on {}, cfs in controller = {}", cfs.name,
+                executionController.metadata().name);
         return queryMemtableAndDiskInternal(cfs, executionController);
     }
 
