@@ -486,20 +486,21 @@ public class LeveledManifest {
             // this sstable is belong to primary LSM tree
             if (pair.getValue().intersects(promotedBounds)) {
 
-                // if((pair.getKey().isReplicationTransferredToErasureCoding() &&
-                //     pair.getKey().getColumnFamilyName().equals("usertable"))){
-                //     logger.debug("rymDebug: we cannot select sstable {}", pair.getKey().descriptor);
-                // } else {
-                //     overlapped.add(pair.getKey());
-                //     if(pair.getKey().isReplicationTransferredToErasureCoding()) {
-                //         logger.debug("rymDebug[transferred]: select a transferred sstable {}", pair.getKey().descriptor);
-                //     }
-                // }
-                if(pair.getKey().getColumnFamilyName().equals("usertable") && pair.getKey().isReplicationTransferredToErasureCoding()) {
-                    if(!isSelectIssuedSSTableAsCompactionCandidates(pair.getKey()))
-                        continue;
+                if((pair.getKey().isReplicationTransferredToErasureCoding() &&
+                    pair.getKey().getColumnFamilyName().equals("usertable"))){
+                    logger.debug("rymDebug: we cannot select sstable {}", pair.getKey().descriptor);
+                } else {
+                    overlapped.add(pair.getKey());
+                    if(pair.getKey().isReplicationTransferredToErasureCoding()) {
+                        logger.debug("rymDebug[transferred]: select a transferred sstable {}", pair.getKey().descriptor);
+                    }
                 }
-                overlapped.add(pair.getKey());
+
+                // if(pair.getKey().getColumnFamilyName().equals("usertable") && pair.getKey().isReplicationTransferredToErasureCoding()) {
+                //     if(!isSelectIssuedSSTableAsCompactionCandidates(pair.getKey()))
+                //         continue;
+                // }
+                // overlapped.add(pair.getKey());
             }
                 
         }
@@ -731,12 +732,12 @@ public class LeveledManifest {
         Iterator<SSTableReader> levelIterator = generations.wrappingIterator(level, lastCompactedSSTables[level]);
         while (levelIterator.hasNext()) {
             SSTableReader sstable = levelIterator.next();
-            // if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
-            //     continue;
-            if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
-                if(!isSelectIssuedSSTableAsCompactionCandidates(sstable))
-                    continue;
-            }
+            if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
+                continue;
+            // if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
+            //     if(!isSelectIssuedSSTableAsCompactionCandidates(sstable))
+            //         continue;
+            // }
             Token startInputToken = sstable.first.getToken();
             Token endInputToken = sstable.last.getToken();
             Set<SSTableReader> outputLevel = Sets.union(Collections.singleton(sstable),

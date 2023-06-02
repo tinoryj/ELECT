@@ -88,7 +88,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
 
         // read parity code locally and from peer parity nodes
-        // TODO: check that parity code blocks are all ready
+        // TODO: if we still didn't get old sstbale, we save the new sstable in the global recv queue, old sstable in the 
         for (SSTableContentWithHashID sstContentWithHash: parityUpdateData.oldSSTables) {
             String sstHash = sstContentWithHash.sstHash;
             String stripID = StorageService.instance.globalSSTHashToStripID.get(sstHash);
