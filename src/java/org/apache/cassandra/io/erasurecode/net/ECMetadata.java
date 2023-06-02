@@ -151,10 +151,14 @@ public class ECMetadata implements Serializable {
 
         // initialize the secondary nodes
         for(ECMessage msg : messages) {
-            for(InetAddressAndPort pns : msg.ecMessageContent.replicaNodes) {
-                if(!this.ecMetadataContent.primaryNodes.contains(pns))
-                    this.ecMetadataContent.secondaryNodes.add(pns);
+
+            for(int i = 1; i < msg.ecMessageContent.replicaNodes.size();i++) {
+                this.ecMetadataContent.secondaryNodes.add(msg.ecMessageContent.replicaNodes.get(i));
             }
+            // for(InetAddressAndPort pns : msg.ecMessageContent.replicaNodes) {
+            //     if(!this.ecMetadataContent.primaryNodes.contains(pns))
+            //         this.ecMetadataContent.secondaryNodes.add(pns);
+            // }
         }
 
         try {
