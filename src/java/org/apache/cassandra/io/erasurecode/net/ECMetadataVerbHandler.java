@@ -108,7 +108,10 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 String cfName = ecMetadata.ecMetadataContent.cfName + index;
                 // logger.debug("rymDebug: ECMetadataVerbHandler get sstHash {} from {}", sstableHash, sourceIP);
 
-                transformECMetadataToECSSTable(ecMetadata, ks, cfName, sstableHash, sourceIP);
+                // transformECMetadataToECSSTable(ecMetadata, ks, cfName, sstableHash, sourceIP);
+
+                BlockedECMetadata blockedECMetadata = new BlockedECMetadata(sstableHash, sourceIP, ecMetadata);
+                saveECMetadataToBlockList(cfName, blockedECMetadata);
             }
 
         }
@@ -127,9 +130,12 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
     private static class ConsumeBlockedECMetadataRunnable implements Runnable {
 
+        private final int MAX_RETRY_COUNT = 5;
+
         @Override
         public void run() {
             if(StorageService.instance.globalBlockedECMetadata.isEmpty() || isConsumeBlockedECMetadataOccupied){
+                logger.debug("rymDebug");
                 return;
             }
 
@@ -143,8 +149,11 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 for (BlockedECMetadata metadata : entry.getValue()) {
                     if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash,
                             metadata.sourceIP)) {
-                        logger.debug("rymDebug: Redo transformECMetadataToECSSTable successfully");
+                        logger.debug("rymDebug: Perform transformECMetadataToECSSTable successfully");
                         entry.getValue().remove(metadata);
+                    } else if (metadata.retryCount < MAX_RETRY_COUNT) {
+                        metadata.retryCount++;
+                        continue;
                     } else {
                         logger.debug("rymDebug: Still cannot create transactions, but we won't try it again, write the data down immediately.");
                         ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
@@ -193,6 +202,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
      * @param sstableHash
      * @param sourceIP
      * @return Is failed to create the transaction?
+     * Add a concurrent lock here
      */
     private static boolean transformECMetadataToECSSTable(ECMetadata ecMetadata, String ks, String cfName, String sstableHash, InetAddressAndPort sourceIP) {
 
@@ -334,6 +344,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         public final String sstableHash;
         public final InetAddressAndPort sourceIP;
         public final ECMetadata ecMetadata;
+        public int retryCount = 0;
         public BlockedECMetadata(String sstableHash, InetAddressAndPort sourceIP, ECMetadata ecMetadata) {
             this.sstableHash = sstableHash;
             this.sourceIP = sourceIP;
