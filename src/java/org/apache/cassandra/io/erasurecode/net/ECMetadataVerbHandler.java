@@ -343,7 +343,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
     private static void saveECMetadataToBlockList(String cfName, BlockedECMetadata metadata) {
         if(StorageService.instance.globalBlockedECMetadata.containsKey(cfName)) {
-            StorageService.instance.globalBlockedECMetadata.get(cfName).add(metadata);
+            if(!StorageService.instance.globalBlockedECMetadata.get(cfName).contains(metadata))
+                StorageService.instance.globalBlockedECMetadata.get(cfName).add(metadata);
         } else {
             ConcurrentLinkedQueue<BlockedECMetadata> blockList = new ConcurrentLinkedQueue<BlockedECMetadata>();
             blockList.add(metadata);
