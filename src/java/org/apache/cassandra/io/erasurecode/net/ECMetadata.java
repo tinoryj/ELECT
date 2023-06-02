@@ -187,7 +187,7 @@ public class ECMetadata implements Serializable {
     public void updateAndDistributeMetadata(List<String> newParityHashes, boolean isParityUpdate, 
                                             String oldSSTHash, String newSSTHash, int targetIndex,
                                             List<InetAddressAndPort> oldReplicaNodes, List<InetAddressAndPort> newReplicaNodes) {
-        logger.debug("rymDebug: this update ECMetadata method");
+        logger.debug("rymDebug: this update ECMetadata method, we update old sstable ({}) to new sstable ({})", oldSSTHash, newSSTHash);
         // update isParityUpdate
         this.ecMetadataContent.isParityUpdate = isParityUpdate;
         // update the old sstable hash

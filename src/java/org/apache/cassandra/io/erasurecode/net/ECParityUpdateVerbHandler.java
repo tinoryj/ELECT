@@ -147,7 +147,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             // For safety, we should make sure the parity code is ready
             waitUntilParityCodesReader(oldSSTable.sstHash);
 
-
+            logger.debug("rymDebug: [Parity update case 1] we update old sstable ({}) with new sstable ({})", oldSSTable.sstHash, newSSTable.sstHash);
             // ByteBuffer oldData = oldSSTable.sstContent;
             // ByteBuffer newData = newSSTable.sstContent;
             // codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
@@ -183,6 +183,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
                 // codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
 
+                logger.debug("rymDebug: [Parity update case 2] we update old sstable ({}) with new sstable ({})", oldSSTable.sstHash, newSSTable.sstHash);
                 Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
                                                                                         newSSTable,
                                                                                         StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
@@ -219,6 +220,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             // codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
 
 
+            logger.debug("rymDebug: [Parity update case 1] we update old sstable ({}) with new sstable ({})", oldSSTable.sstHash, newSSTable.sstHash);
             String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
             Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
                                                                                     newSSTable,

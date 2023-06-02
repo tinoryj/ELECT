@@ -899,7 +899,7 @@ public class CompactionTask extends AbstractCompactionTask {
                             StorageService.instance.globalSSTHashToParityNodesMap.put(
                                     newSSTable.getSSTableHashID(),
                                     StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
-                            logger.debug("rymDebug: [Parity Update] we map sstHash ({}) to parity Nodes ({})",
+                            logger.debug("rymDebug: [Parity Update] we map new sstHash ({}) to parity Nodes ({})",
                                     newSSTable.getSSTableHashID(),
                                     StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
                             newSSTableIterator.remove();
@@ -909,7 +909,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     }
 
                     // Debug: check if the sstables' parity nodes are the same
-                    String logString = "rymDebug: Check the parity nodes of the sstables, ";
+                    String logString = "rymDebug: Check the parity nodes of old sstables, ";
                     for(SSTableContentWithHashID sst : entry.getValue()) {
                         logString += "the parity nodes of sstable " + sst.sstHash + "is " + StorageService.instance.globalSSTHashToParityNodesMap.get(sst.sstHash) + ", ";
                     }
