@@ -436,24 +436,24 @@ public class CassandraDaemon {
                 ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(), 5, 1, TimeUnit.MINUTES);
 
         
-        // // schedule periodic send sstable content task submission
-        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
-        //     ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", DatabaseDescriptor.getCompactionThreshold(), DatabaseDescriptor.getTaskDelay()),
-        //                                          DatabaseDescriptor.getInitialDelay(),
-        //                                          DatabaseDescriptor.getTaskDelay(),
-        //                                          TimeUnit.MINUTES);
+        // schedule periodic send sstable content task submission
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
+            ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", DatabaseDescriptor.getCompactionThreshold(), DatabaseDescriptor.getTaskDelay()),
+                                                 DatabaseDescriptor.getInitialDelay(),
+                                                 DatabaseDescriptor.getTaskDelay(),
+                                                 TimeUnit.MINUTES);
 
-        // // schedule periodic tasks for erasure coding
-        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMessageVerbHandler.getErasureCodingRunable(),
-        //                                                         (DatabaseDescriptor.getInitialDelay() + 1) * 60,
-        //                                                         DatabaseDescriptor.getTaskDelay() * 60 / 2,
-        //                                                         TimeUnit.SECONDS);
+        // schedule periodic tasks for erasure coding
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMessageVerbHandler.getErasureCodingRunable(),
+                                                                (DatabaseDescriptor.getInitialDelay() + 1) * 60,
+                                                                DatabaseDescriptor.getTaskDelay() * 60 / 2,
+                                                                TimeUnit.SECONDS);
 
-        // // schedule periodic tasks for consume blocked ecMetadata
-        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.getConsumeBlockedECMetadataRunnable(),
-        //                                                         (DatabaseDescriptor.getInitialDelay() + 2) * 60,
-        //                                                         DatabaseDescriptor.getTaskDelay() * 60 / 2,
-        //                                                         TimeUnit.SECONDS);
+        // schedule periodic tasks for consume blocked ecMetadata
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.getConsumeBlockedECMetadataRunnable(),
+                                                                (DatabaseDescriptor.getInitialDelay() + 2) * 60,
+                                                                DatabaseDescriptor.getTaskDelay() * 60 / 2,
+                                                                TimeUnit.SECONDS);
 
         
 
