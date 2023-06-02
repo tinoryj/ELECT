@@ -249,7 +249,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // M is the sstable from primary node, M` is the corresponding sstable of
         // secondary node
         if (rewriteSStables.isEmpty()) {
-            // logger.warn("rymERROR: rewriteSStables is empty!");
+            logger.warn("rymWarn: rewriteSStables is empty, just record it!");
             cfs.replaceSSTable(ecMetadata, sstableHash, cfs, fileNamePrefix, updateTxn);
             StorageService.instance.globalSSTMap.remove(sstableHash);
             return false;

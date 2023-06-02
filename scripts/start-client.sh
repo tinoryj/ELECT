@@ -26,10 +26,12 @@ func() {
     ALTER TABLE usertable WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
     ALTER TABLE usertable1 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
     ALTER TABLE usertable2 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
-    ALTER TABLE ycsb.usertable WITH compression = {'enabled':'false'};
-    ALTER TABLE ycsb.usertable1 WITH compression = {'enabled':'false'};
-    ALTER TABLE ycsb.usertable2 WITH compression = {'enabled':'false'};
+
     consistency all;"
 }
 
 func "$1" "$2" "$3"
+
+    # ALTER TABLE ycsb.usertable WITH compression = {'enabled':'false'};
+    # ALTER TABLE ycsb.usertable1 WITH compression = {'enabled':'false'};
+    # ALTER TABLE ycsb.usertable2 WITH compression = {'enabled':'false'};
