@@ -200,7 +200,6 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // get the dedicated level of sstables
         if (!ecMetadata.ecMetadataContent.isParityUpdate) {
             // [In progress of erasure coding]
-
             DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
 
             if (dataForRewrite != null) {
@@ -224,7 +223,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                 cfs.getColumnFamilyName(), DatabaseDescriptor.getCompactionThreshold());
                 }
             } else {
-                logger.warn("rymERROR: cannot get rewrite data of {} during erasure coding", sstableHash);
+                logger.warn("rymERROR: cannot get rewrite data of {} during erasure coding, message is from {}, target cfs is {}", sstableHash, sourceIP, cfName);
             }
             return false;
 
