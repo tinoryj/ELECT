@@ -51,13 +51,21 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         command.setMonitoringTime(message.createdAtNanos(), message.isCrossNode(), timeout,
                 DatabaseDescriptor.getSlowQueryTimeout(NANOSECONDS));
 
-        if (message.trackWarnings())
+        if (message.trackWarnings()) {
             command.trackWarnings();
+        }
 
         ReadResponse response;
         try (ReadExecutionController controller = command.executionController(message.trackRepairedData());
                 UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
             response = command.createResponse(iterator, controller.getRepairedDataInfo());
+            logger.debug(
+                    "[Tinoryj] ReadCommandVerbHandler, Read Command target table is {}, target key token is {}, response is {}",
+                    command.metadata().name,
+                    command instanceof SinglePartitionReadCommand
+                            ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                            : ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken(),
+                    response.toString());
         } catch (RejectException e) {
             if (!command.isTrackingWarnings())
                 throw e;
