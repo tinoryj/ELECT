@@ -38,6 +38,7 @@ import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -187,7 +188,7 @@ public class ECMetadata implements Serializable {
     public void updateAndDistributeMetadata(List<String> newParityHashes, boolean isParityUpdate, 
                                             String oldSSTHash, String newSSTHash, int targetIndex,
                                             List<InetAddressAndPort> oldReplicaNodes, List<InetAddressAndPort> newReplicaNodes) {
-        logger.debug("rymDebug: this update ECMetadata method, we update old sstable ({}) to new sstable ({})", oldSSTHash, newSSTHash);
+        logger.debug("rymDebug: this update ECMetadata method, we update old sstable ({}) with new sstable ({})", oldSSTHash, newSSTHash);
         // update isParityUpdate
         this.ecMetadataContent.isParityUpdate = isParityUpdate;
         // update the old sstable hash
@@ -262,10 +263,13 @@ public class ECMetadata implements Serializable {
      * [In parity] Distribute ecMetadata to secondary nodes
      */
     public void distributeECMetadata(ECMetadata ecMetadata) {
-        logger.debug("rymDebug: this distributeEcMetadata method");
+        logger.debug("rymDebug: [In parity node ({})] This distributeEcMetadata method, we should send stripId ({}) with sstables list ({}) to node ({})",
+                    FBUtilities.getBroadcastAddressAndPort(), ecMetadata.stripeId, ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.ecMetadataContent.secondaryNodes);
         Message<ECMetadata> message = Message.outWithFlag(Verb.ECMETADATA_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
         
         // send to secondary nodes 
+        int rf = 3;
+        logger.debug("rymDebug: For strip id ({}), we should record to an ecSSTable ({}) times in total", ecMetadata.stripeId, DatabaseDescriptor.getEcDataNodes() * (rf-1));
         for (InetAddressAndPort node : ecMetadata.ecMetadataContent.secondaryNodes) {
             if(!node.equals(FBUtilities.getBroadcastAddressAndPort())) {
                 MessagingService.instance().send(message, node);

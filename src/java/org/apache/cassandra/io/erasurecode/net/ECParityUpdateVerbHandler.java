@@ -220,7 +220,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             // codeLength = Stream.of(codeLength, newSSTable.sstContentSize, oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
 
 
-            logger.debug("rymDebug: [Parity update case 1] we update old sstable ({}) with new sstable ({})", oldSSTable.sstHash, newSSTable.sstHash);
+            logger.debug("rymDebug: [Parity update case 3] we update old sstable ({}) with new sstable ({})", oldSSTable.sstHash, newSSTable.sstHash);
             String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
             Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
                                                                                     newSSTable,
