@@ -291,8 +291,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         } else {
             // Save ECMetadata and redo ec transition later
             logger.debug("rymDebug: [ErasureCoding] failed to get transactions for the sstables ({}), we will try it later", sstableHash);
-            BlockedECMetadata blockedECMetadata = new BlockedECMetadata(sstableHash, sourceIP, ecMetadata);
-            saveECMetadataToBlockList(cfs.getColumnFamilyName(), blockedECMetadata);
+            // BlockedECMetadata blockedECMetadata = new BlockedECMetadata(sstableHash, sourceIP, ecMetadata);
+            // saveECMetadataToBlockList(cfs.getColumnFamilyName(), blockedECMetadata);
             return true;
         }
 
