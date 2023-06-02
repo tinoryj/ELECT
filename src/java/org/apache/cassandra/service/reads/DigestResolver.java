@@ -139,7 +139,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         logger.debug("[Tinoryj] Read operation get {} success data response", snapshot.size() - noDataCount);
 
         if (isDigestMatchFlag == false) {
-            return false;
+            return true;
         }
 
         if (logger.isTraceEnabled())
