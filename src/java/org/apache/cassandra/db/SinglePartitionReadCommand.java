@@ -364,22 +364,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
     }
 
     @Override
-    protected SinglePartitionReadCommand copyAsDigestQuery(int replicationIDIndicator) {
-        return create(true,
-                digestVersion(),
-                acceptsTransient(),
-                metadata(),
-                nowInSec(),
-                columnFilter(),
-                rowFilter(),
-                limits(),
-                partitionKey(),
-                clusteringIndexFilter(),
-                indexMetadata(),
-                isTrackingWarnings());
-    }
-
-    @Override
     protected SinglePartitionReadCommand copyAsTransientQuery() {
         return create(false,
                 0,
@@ -641,12 +625,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
      */
     public UnfilteredRowIterator queryMemtableAndDisk(ColumnFamilyStore cfs,
             ReadExecutionController executionController) {
-        assert executionController != null;
-        assert executionController.validForReadOn(cfs);
+        assert executionController != null && executionController.validForReadOn(cfs);
         Tracing.trace("Executing single-partition query on {}", cfs.name);
-        cfs = Keyspace.openAndGetStore(executionController.metadata());
-        logger.debug("[Tinoryj] Exec query memtable and disk on {}, cfs in controller = {}", cfs.name,
-                executionController.metadata().name);
+
         return queryMemtableAndDiskInternal(cfs, executionController);
     }
 

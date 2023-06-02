@@ -663,9 +663,4 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
         }
     }
 
-    @Override
-    protected ReadCommand copyAsDigestQuery(int replicationIDIndicator) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'copyAsDigestQuery'");
-    }
 }

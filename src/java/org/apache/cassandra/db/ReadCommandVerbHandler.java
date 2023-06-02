@@ -63,8 +63,8 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     "[Tinoryj] ReadCommandVerbHandler, Read Command target table is {}, target key token is {}, response is {}",
                     command.metadata().name,
                     command instanceof SinglePartitionReadCommand
-                            ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
-                            : ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken(),
+                            ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata())
+                            : null,
                     response.toDebugString(command, command instanceof SinglePartitionReadCommand
                             ? ((SinglePartitionReadCommand) command).partitionKey()
                             : null));

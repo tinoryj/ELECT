@@ -188,7 +188,6 @@ public abstract class AbstractReadExecutor {
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter);
                     readCommand.setIsDigestQuery(false);
-                    // readCommand = readCommand.copyAsDigestQuery(replicas);
                     break;
                 case 2:
                     readCommand.updateTableMetadata(
@@ -197,7 +196,6 @@ public abstract class AbstractReadExecutor {
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter2);
                     readCommand.setIsDigestQuery(false);
-                    // readCommand = readCommand.copyAsDigestQuery(replicas);
                     break;
                 default:
                     logger.debug("[Tinoryj] Not support replication number more than 3!!!");

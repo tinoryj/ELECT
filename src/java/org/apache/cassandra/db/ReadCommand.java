@@ -317,18 +317,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
         return copyAsDigestQuery();
     }
 
-    /**
-     * Returns a copy of this command with isDigestQuery set to true.
-     */
-    public ReadCommand copyAsDigestQuery(Replica replica, int replicationIDIndicator) {
-        Preconditions.checkArgument(replica.isFull(),
-                "Can't make a digest request on a transient replica " + replica);
-        return copyAsDigestQuery(replicationIDIndicator);
-    }
-
     protected abstract ReadCommand copyAsDigestQuery();
-
-    protected abstract ReadCommand copyAsDigestQuery(int replicationIDIndicator);
 
     protected abstract UnfilteredPartitionIterator queryStorage(ColumnFamilyStore cfs,
             ReadExecutionController executionController);
