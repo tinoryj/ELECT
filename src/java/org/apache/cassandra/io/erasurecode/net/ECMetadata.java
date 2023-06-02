@@ -263,8 +263,9 @@ public class ECMetadata implements Serializable {
      * [In parity] Distribute ecMetadata to secondary nodes
      */
     public void distributeECMetadata(ECMetadata ecMetadata) {
-        logger.debug("rymDebug: [In parity node ({})] This distributeEcMetadata method, we should send stripId ({}) with sstables list ({}) to node ({})",
-                    FBUtilities.getBroadcastAddressAndPort(), ecMetadata.stripeId, ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.ecMetadataContent.secondaryNodes);
+        logger.debug("rymDebug: [In parity node ({})] This distributeEcMetadata method, we should send stripId ({}) with sstables list ({}) to node ({}), the sstHashToRelicaMap is ({})",
+                    FBUtilities.getBroadcastAddressAndPort(), ecMetadata.stripeId, ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.ecMetadataContent.secondaryNodes, 
+                    ecMetadata.ecMetadataContent.sstHashIdToReplicaMap);
         Message<ECMetadata> message = Message.outWithFlag(Verb.ECMETADATA_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
         
         // send to secondary nodes 
