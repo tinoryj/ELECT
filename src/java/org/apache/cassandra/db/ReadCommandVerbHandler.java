@@ -65,7 +65,9 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     command instanceof SinglePartitionReadCommand
                             ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
                             : ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken(),
-                    response.toString());
+                    response.toDebugString(command, command instanceof SinglePartitionReadCommand
+                            ? ((SinglePartitionReadCommand) command).partitionKey()
+                            : null));
         } catch (RejectException e) {
             if (!command.isTrackingWarnings())
                 throw e;
