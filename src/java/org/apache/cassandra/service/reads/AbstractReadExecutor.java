@@ -167,8 +167,12 @@ public abstract class AbstractReadExecutor {
         }
     }
 
-    private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
+    public static void printStackTace(String msg) {
+        logger.debug("stack trace {}", new Exception(msg));
+    }
 
+    private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
+        printStackTace("makeRequestsCassandraEC");
         for (int replicationIDIndicatorForSendRequest = 0; replicationIDIndicatorForSendRequest < 3; replicationIDIndicatorForSendRequest++) {
             InetAddressAndPort endpoint = sendRequestAddressesAndPorts.get(replicationIDIndicatorForSendRequest);
 
