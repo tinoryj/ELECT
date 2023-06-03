@@ -828,6 +828,7 @@ public class CompactionManager implements CompactionManagerMBean {
     // [CASSANDRAEC]
     private static AbstractCompactionTask getCompactionTaskForSecondaryLSMTree(ColumnFamilyStore cfs, LifecycleTransaction txn) {
         boolean isContainReplicationTransferredToErasureCoding = false;
+        boolean isContainUnTransferredSSTables = false;
         List<TransferredSSTableKeyRange> transferredSSTableKeyRanges = new ArrayList<>();
 
         AbstractCompactionTask newTask = null;
@@ -842,10 +843,13 @@ public class CompactionManager implements CompactionManagerMBean {
                     transferredSSTableKeyRanges.add(range);
                     logger.debug("rymDebug[transferred]: Selected transferred sstable {}, candidate count is {}",
                             sstable.descriptor, txn.originals().size());
+                } else if(!sstable.isReplicationTransferredToErasureCoding()) {
+                    isContainUnTransferredSSTables = true;
                 }
             }
 
-            if (txn.originals().size() == 1 && isContainReplicationTransferredToErasureCoding) {
+            if ((txn.originals().size() == 1 && isContainReplicationTransferredToErasureCoding) ||
+                !isContainUnTransferredSSTables) {
                 return newTask;
             }
         }
