@@ -98,6 +98,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.put(primaryNodes,
                         new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(parityUpdateData.sstable)));
             }
+            logger.debug("rymDebug: [Parity Update] Get a old sstable ({})", parityUpdateData.sstable.sstHash);
         } else {
             if (StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.contains(primaryNodes)) {
                 StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(primaryNodes)
@@ -106,6 +107,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.put(primaryNodes,
                         new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(parityUpdateData.sstable)));
             }
+            
+            logger.debug("rymDebug: [Parity Update] Get a new sstable ({})", parityUpdateData.sstable.sstHash);
         }
         
            
@@ -146,6 +149,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     if (!oldSSTContentWithHash.isRequestParityCode) {
 
                         String oldSSTHash = oldSSTContentWithHash.sstHash;
+                        logger.debug("rymDebug: we need get parity codes for sstable ({})", oldSSTHash);
                         String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTHash);
                         if (stripID == null) {
                             logger.debug("rymERROR: In node {}, we cannot get strip id for sstHash {}",
