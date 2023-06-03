@@ -87,14 +87,18 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         // Map<String, ByteBuffer[]> sstHashToParityCodeMap = new HashMap<String, ByteBuffer[]>();
         String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
 
+        if(parityUpdateData.oldSSTables.size() < parityUpdateData.newSSTables.size()) {
+            logger.debug("rymERROR: new sstable num should not more than old sstables.");
+        }
+
         // read parity code locally and from peer parity nodes
         // TODO: if we still didn't get old sstbale, we save the new sstable in the global recv queue, old sstable in the 
-        for (SSTableContentWithHashID sstContentWithHash: parityUpdateData.oldSSTables) {
-            String sstHash = sstContentWithHash.sstHash;
-            String stripID = StorageService.instance.globalSSTHashToStripID.get(sstHash);
+        for (SSTableContentWithHashID oldSSTContentWithHash: parityUpdateData.oldSSTables) {
+            String oldSSTHash = oldSSTContentWithHash.sstHash;
+            String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTHash);
             if(stripID == null) {
                 logger.debug("rymERROR: In node {}, we cannot get strip id for sstHash {}", FBUtilities.getBroadcastAddressAndPort(),
-                                                                                            sstHash);
+                                                                                                   oldSSTHash);
             }
             
             // read ec_metadata from memory, get the needed parity hash list
@@ -123,11 +127,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             parityCodes[0].put(localParityCode);
             parityCodes[0].rewind();
 
-            StorageService.instance.globalSSTHashToParityCodeMap.put(sstHash, parityCodes);
+            // get old parity codes from old sstable hash
+            StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
             
             // get the needed parity code remotely, send a parity code request
             for (int i = 1; i < parityHashList.size(); i++) {
-                ECRequestParity request = new ECRequestParity(parityHashList.get(i), sstHash, i);
+                ECRequestParity request = new ECRequestParity(parityHashList.get(i), oldSSTHash, i);
                 request.requestParityCode(parityNodes.get(i));
             }
         }
@@ -140,7 +145,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         // Case1: Consume old data with new data firstly.
         // In this case, old replica nodes are the same to new replica nodes
-        while (newSSTablesIterator.hasNext()) {
+        while (newSSTablesIterator.hasNext() && oldSSTablesIterator.hasNext()) {
             SSTableContentWithHashID newSSTable = newSSTablesIterator.next();
             SSTableContentWithHashID oldSSTable = oldSSTablesIterator.next();
 
@@ -164,7 +169,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             newSSTablesIterator.remove();
             oldSSTablesIterator.remove();
             
-            
+        }
+
+        if(!parityUpdateData.newSSTables.isEmpty()) {
+            logger.debug("rymERROR: The new sstables are not completely consumed!!!");
         }
 
         // Case2: If old data is not completely consumed, we select sstables from globalRecvQueues
