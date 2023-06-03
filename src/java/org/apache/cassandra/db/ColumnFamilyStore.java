@@ -1869,30 +1869,31 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
                     if(!cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable") && !cfs.isPerformForceCompactionLastLevel)
                         cfs.isPerformForceCompactionLastLevel = true;
-                        cfs.new ForceCompactionForTheLastLevelRunnable();
+                        new ForceCompactionForTheLastLevelRunnable(cfs);
                 }
 
         };
     }
 
-    private class ForceCompactionForTheLastLevelRunnable implements Runnable {
+    private static class ForceCompactionForTheLastLevelRunnable implements Runnable {
 
 
         // private final List<SSTableReader> candidates;
         // private final LifecycleTransaction txn;
-        
-        // public ForceCompactionForTheLastLevelRunnable(List<SSTableReader> candidates, LifecycleTransaction txn) {
-        //     this.candidates = candidates;
-        //     this.txn = txn;
-        // }
+        private final ColumnFamilyStore cfs;
+        public ForceCompactionForTheLastLevelRunnable(ColumnFamilyStore cfs) {
+            // this.candidates = candidates;
+            // this.txn = txn;
+            this.cfs = cfs;
+        }
 
         @Override
         public void run() {
-            logger.debug("rymDebug: perform force compaction in cfs ({})", name);
-            int maxCompactionThreshold = metadata().params.compaction.maxCompactionThreshold();
+            logger.debug("rymDebug: perform force compaction in cfs ({})", cfs.getColumnFamilyName());
+            int maxCompactionThreshold = cfs.metadata().params.compaction.maxCompactionThreshold();
             // ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
             int level = DatabaseDescriptor.getCompactionThreshold();
-            List<SSTableReader> sstables = new ArrayList<>(getSSTableForLevel(level));
+            List<SSTableReader> sstables = new ArrayList<>(cfs.getSSTableForLevel(level));
             if(sstables.isEmpty())
                 return;
             
@@ -1907,13 +1908,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 }
                 startIndex += maxCompactionThreshold;
     
-                final LifecycleTransaction txn = getTracker().tryModify(candidates, OperationType.COMPACTION);
+                final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates, OperationType.COMPACTION);
                 if(txn != null) {
                     try {
-                        AllSSTableOpStatus status = forceCompactionForTheLastLevel(candidates, txn, false,
+                        AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(candidates, txn, false,
                                         Long.MAX_VALUE, false, 1);
                         if (status != AllSSTableOpStatus.SUCCESSFUL)
-                            ECNetutils.printStatusCode(status.statusCode, name);
+                            ECNetutils.printStatusCode(status.statusCode, cfs.getColumnFamilyName());
                     } catch (ExecutionException | InterruptedException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
