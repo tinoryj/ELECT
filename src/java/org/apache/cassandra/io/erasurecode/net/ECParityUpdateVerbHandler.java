@@ -96,7 +96,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         .add(parityUpdateData.sstable);
             } else {
                 StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.put(primaryNodes,
-                        (ConcurrentLinkedQueue<SSTableContentWithHashID>) Collections.singleton(parityUpdateData.sstable));
+                        new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(parityUpdateData.sstable)));
             }
         } else {
             if (StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.contains(primaryNodes)) {
@@ -104,7 +104,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         .add(parityUpdateData.sstable);
             } else {
                 StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.put(primaryNodes,
-                        (ConcurrentLinkedQueue<SSTableContentWithHashID>) Collections.singleton(parityUpdateData.sstable));
+                        new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(parityUpdateData.sstable)));
             }
         }
         
