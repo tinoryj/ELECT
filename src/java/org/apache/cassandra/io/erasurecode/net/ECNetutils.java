@@ -240,6 +240,27 @@ public final class ECNetutils {
         }
     }
 
+    public static void printStatusCode(int statusCode, String cfName) {
+        switch (statusCode) {
+            case 1:
+                logger.debug("Aborted rewrite sstables for at least one table in cfs {}, check server logs for more information.",
+                        cfName);
+                break;
+            case 2:
+                logger.error("Failed marking some sstables compacting in cfs {}, check server logs for more information.",
+                        cfName);
+        }
+    }
+
+    public static class SSTableReaderComparator implements Comparator<SSTableReader> {
+
+        @Override
+        public int compare(SSTableReader o1, SSTableReader o2) {
+            return o1.first.getToken().compareTo(o2.first.getToken());
+        }
+
+    }
+
     public static void printStackTace(String msg) {
         // logger.debug(msg);
         // Throwable throwable =new Throwable();

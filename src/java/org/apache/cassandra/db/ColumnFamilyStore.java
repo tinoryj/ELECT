@@ -86,6 +86,7 @@ import org.apache.cassandra.cache.RowCacheKey;
 import org.apache.cassandra.cache.RowCacheSentinel;
 import org.apache.cassandra.concurrent.ExecutorPlus;
 import org.apache.cassandra.concurrent.FutureTask;
+import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.DurationSpec;
 import org.apache.cassandra.db.commitlog.CommitLog;
@@ -96,6 +97,7 @@ import org.apache.cassandra.db.compaction.CompactionStrategyManager;
 import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.Verifier;
+import org.apache.cassandra.db.compaction.CompactionManager.AllSSTableOpStatus;
 import org.apache.cassandra.db.filter.ClusteringIndexFilter;
 import org.apache.cassandra.db.filter.DataLimits;
 import org.apache.cassandra.db.memtable.Flushing;
@@ -130,6 +132,7 @@ import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
 import org.apache.cassandra.io.erasurecode.net.ECMessage.ECMessageContent;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.SSTableReaderComparator;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
@@ -295,6 +298,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     private final String oldMBeanName;
     private volatile boolean valid = true;
     public final boolean isPrimaryCFFlag;
+    public static volatile boolean isPerformForceCompactionLastLevel = false;
 
     private volatile Memtable.Factory memtableFactory;
 
@@ -406,8 +410,26 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     public static Runnable getBackgroundCompactionTaskSubmitter() {
         return () -> {
             for (Keyspace keyspace : Keyspace.all())
-                for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
-                    CompactionManager.instance.submitBackground(cfs);
+                for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
+                    if (!isPerformForceCompactionLastLevel &&
+                        !cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable") &&
+                        Stage.MUTATION.executor().getActiveTaskCount() == 0 && Stage.MUTATION.executor().getCompletedTaskCount() > 0 &&
+                        Stage.ERASURECODE.executor().getActiveTaskCount() == 0 && Stage.ERASURECODE.executor().getActiveTaskCount() > 0 &&
+                        postFlushExecutor.getActiveTaskCount() == 0 && postFlushExecutor.getCompletedTaskCount() > 0 &&
+                        flushExecutor.getActiveTaskCount() == 0 && flushExecutor.getCompletedTaskCount() > 0 &&
+                        CompactionManager.instance.getActiveTaskCount() == 0 && CompactionManager.instance.getActiveTaskCount() > 0) {
+                        
+                        logger.debug("rymDebug: time to perform force compaction in the last level");
+                        cfs.new ForceCompactionForTheLastLevelRunnable();
+                        isPerformForceCompactionLastLevel = true;
+
+                    }
+                    else {
+                        CompactionManager.instance.submitBackground(cfs);
+                    }
+                    
+                }
+
         };
     }
 
@@ -1808,7 +1830,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 
-    // rewrite the sstables based on the source decorated keys
+    //[CASSANDRAEC] rewrite the sstables based on the source decorated keys
     public CompactionManager.AllSSTableOpStatus sstablesRewrite(final DecoratedKey first,
             final DecoratedKey last, 
             List<SSTableReader> sstables,
@@ -1821,6 +1843,90 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         logger.debug("rymDebug: this is sstablesRewrite");
 
         return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, first, last, sstables, metadata, fileNamePrefix, txn,
+                skipIfCurrentVersion,
+                skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
+    }
+
+
+
+    // public void triggerForceCompactionForTheLastLevel() {
+    //     int maxCompactionThreshold = metadata().params.compaction.maxCompactionThreshold();
+    //     // ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
+    //     int level = DatabaseDescriptor.getCompactionThreshold();
+    //     List<SSTableReader> sstables = new ArrayList<>(getSSTableForLevel(level));
+    //     Collections.sort(sstables, new SSTableReaderComparator());
+    //     int startIndex = 0;
+    //     while(startIndex < sstables.size()) {
+    //         List<SSTableReader> candidates;
+    //         if(startIndex + maxCompactionThreshold <= sstables.size()) {
+    //             candidates = sstables.subList(startIndex, startIndex + maxCompactionThreshold);
+    //         } else {
+    //             candidates = sstables.subList(startIndex, sstables.size());
+    //         }
+    //         startIndex += maxCompactionThreshold;
+
+    //         final LifecycleTransaction txn = getTracker().tryModify(candidates, OperationType.COMPACTION);
+    //         if(txn != null) {
+    //             Stage.ERASURECODE.maybeExecuteImmediately(new ForceCompactionForTheLastLevelRunnable(candidates, txn));
+    //         } else {
+    //             logger.debug("rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
+    //         }
+    //     }
+
+    // }
+
+
+    private class ForceCompactionForTheLastLevelRunnable implements Runnable {
+
+        @Override
+        public void run() {
+
+            int maxCompactionThreshold = metadata().params.compaction.maxCompactionThreshold();
+            // ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
+            int level = DatabaseDescriptor.getCompactionThreshold();
+            List<SSTableReader> sstables = new ArrayList<>(getSSTableForLevel(level));
+            Collections.sort(sstables, new SSTableReaderComparator());
+            int startIndex = 0;
+            while(startIndex < sstables.size()) {
+                List<SSTableReader> candidates;
+                if(startIndex + maxCompactionThreshold <= sstables.size()) {
+                    candidates = sstables.subList(startIndex, startIndex + maxCompactionThreshold);
+                } else {
+                    candidates = sstables.subList(startIndex, sstables.size());
+                }
+                startIndex += maxCompactionThreshold;
+    
+                final LifecycleTransaction txn = getTracker().tryModify(candidates, OperationType.COMPACTION);
+                if(txn != null) {
+                    try {
+                        AllSSTableOpStatus status = forceCompactionForTheLastLevel(candidates, txn, false,
+                                        Long.MAX_VALUE, false, 1);
+                        if (status != AllSSTableOpStatus.SUCCESSFUL)
+                            ECNetutils.printStatusCode(status.statusCode, name);
+                    } catch (ExecutionException | InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }    
+                } else {
+                    logger.debug("rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
+                }
+            }
+
+        }
+    }
+    
+
+    // [CASSANDRAEC] rewrite the sstables based on the source decorated keys
+    public CompactionManager.AllSSTableOpStatus forceCompactionForTheLastLevel(
+            List<SSTableReader> candidates,
+            final LifecycleTransaction txn,
+            final boolean skipIfCurrentVersion,
+            final long skipIfNewerThanTimestamp,
+            final boolean skipIfCompressionMatches,
+            final int jobs) throws ExecutionException, InterruptedException {
+        logger.debug("rymDebug: this is sstablesRewrite");
+
+        return CompactionManager.instance.performForceCompactionForTheLastLevel(ColumnFamilyStore.this, candidates, txn,
                 skipIfCurrentVersion,
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }

@@ -45,6 +45,7 @@ import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.CompactionManager.AllSSTableOpStatus;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.Tracker;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.SSTableReaderComparator;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -279,7 +280,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             rewriteSStables, ecMetadata, fileNamePrefix, updateTxn, false,
                             Long.MAX_VALUE, false, 1);
                     if (status != AllSSTableOpStatus.SUCCESSFUL)
-                        printStatusCode(status.statusCode, cfs.name);
+                        ECNetutils.printStatusCode(status.statusCode, cfs.name);
                 } catch (ExecutionException e) {
                     e.printStackTrace();
                 } catch (InterruptedException e) {
@@ -379,18 +380,6 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         });
     }
 
-    private static void printStatusCode(int statusCode, String cfName) {
-        switch (statusCode) {
-            case 1:
-                logger.debug("Aborted rewrite sstables for at least one table in cfs {}, check server logs for more information.",
-                        cfName);
-                break;
-            case 2:
-                logger.error("Failed marking some sstables compacting in cfs {}, check server logs for more information.",
-                        cfName);
-        }
-    }
-
     private static List<SSTableReader> getRewriteSSTables(List<SSTableReader> sstables, DecoratedKey first,
             DecoratedKey last) {
         List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
@@ -442,13 +431,5 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         return rewriteSStables;
     }
 
-    private static class SSTableReaderComparator implements Comparator<SSTableReader> {
-
-        @Override
-        public int compare(SSTableReader o1, SSTableReader o2) {
-            return o1.first.getToken().compareTo(o2.first.getToken());
-        }
-
-    }
 
 }
