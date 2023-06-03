@@ -298,7 +298,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     private final String oldMBeanName;
     private volatile boolean valid = true;
     public final boolean isPrimaryCFFlag;
-    public static volatile boolean isPerformForceCompactionLastLevel = false;
+    public volatile boolean isPerformForceCompactionLastLevel = false;
 
     private volatile Memtable.Factory memtableFactory;
 
@@ -411,23 +411,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         return () -> {
             for (Keyspace keyspace : Keyspace.all())
                 for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
-                    if (!isPerformForceCompactionLastLevel &&
-                        !cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable") &&
-                        Stage.MUTATION.executor().getActiveTaskCount() == 0 && Stage.MUTATION.executor().getCompletedTaskCount() > 0 &&
-                        Stage.ERASURECODE.executor().getActiveTaskCount() == 0 && Stage.ERASURECODE.executor().getActiveTaskCount() > 0 &&
-                        postFlushExecutor.getActiveTaskCount() == 0 && postFlushExecutor.getCompletedTaskCount() > 0 &&
-                        flushExecutor.getActiveTaskCount() == 0 && flushExecutor.getCompletedTaskCount() > 0 &&
-                        CompactionManager.instance.getActiveTaskCount() == 0 && CompactionManager.instance.getActiveTaskCount() > 0) {
-                        
-                        logger.debug("rymDebug: time to perform force compaction in the last level");
-                        cfs.new ForceCompactionForTheLastLevelRunnable();
-                        isPerformForceCompactionLastLevel = true;
-
-                    }
-                    else {
-                        CompactionManager.instance.submitBackground(cfs);
-                    }
-                    
+                    CompactionManager.instance.submitBackground(cfs);
                 }
 
         };
@@ -1854,6 +1838,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     //     // ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
     //     int level = DatabaseDescriptor.getCompactionThreshold();
     //     List<SSTableReader> sstables = new ArrayList<>(getSSTableForLevel(level));
+    //     if(sstables.isEmpty())
+    //         return;
+        
     //     Collections.sort(sstables, new SSTableReaderComparator());
     //     int startIndex = 0;
     //     while(startIndex < sstables.size()) {
@@ -1876,15 +1863,39 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     // }
 
 
+    public static Runnable getForceCompactionForTheLastLevelRunnable() {
+        return () -> {
+            for (Keyspace keyspace : Keyspace.all())
+                for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
+                    if(!cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable") && !cfs.isPerformForceCompactionLastLevel)
+                        cfs.isPerformForceCompactionLastLevel = true;
+                        cfs.new ForceCompactionForTheLastLevelRunnable();
+                }
+
+        };
+    }
+
     private class ForceCompactionForTheLastLevelRunnable implements Runnable {
+
+
+        // private final List<SSTableReader> candidates;
+        // private final LifecycleTransaction txn;
+        
+        // public ForceCompactionForTheLastLevelRunnable(List<SSTableReader> candidates, LifecycleTransaction txn) {
+        //     this.candidates = candidates;
+        //     this.txn = txn;
+        // }
 
         @Override
         public void run() {
-
+            logger.debug("rymDebug: perform force compaction in cfs ({})", name);
             int maxCompactionThreshold = metadata().params.compaction.maxCompactionThreshold();
             // ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
             int level = DatabaseDescriptor.getCompactionThreshold();
             List<SSTableReader> sstables = new ArrayList<>(getSSTableForLevel(level));
+            if(sstables.isEmpty())
+                return;
+            
             Collections.sort(sstables, new SSTableReaderComparator());
             int startIndex = 0;
             while(startIndex < sstables.size()) {
@@ -1911,6 +1922,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     logger.debug("rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
                 }
             }
+
+
+
 
         }
     }

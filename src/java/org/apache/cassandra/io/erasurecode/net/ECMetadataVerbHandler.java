@@ -136,7 +136,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         @Override
         public void run() {
             if(StorageService.instance.globalBlockedECMetadata.isEmpty() || isConsumeBlockedECMetadataOccupied){
-                logger.debug("rymDebug");
+                
                 return;
             }
 

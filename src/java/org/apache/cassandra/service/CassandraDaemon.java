@@ -455,7 +455,11 @@ public class CassandraDaemon {
                                                                 DatabaseDescriptor.getTaskDelay() * 60 / 2,
                                                                 TimeUnit.SECONDS);
 
-        
+        // schedule periodic tasks for consume blocked ecMetadata
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ColumnFamilyStore.getForceCompactionForTheLastLevelRunnable(),
+                                                                30,
+                                                                Long.MAX_VALUE,
+                                                                TimeUnit.MINUTES);
 
         // schedule periodic recomputation of speculative retry thresholds
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(SPECULATION_THRESHOLD_UPDATER,
