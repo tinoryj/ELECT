@@ -751,18 +751,18 @@ public class CompactionTask extends AbstractCompactionTask {
             };
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
             
-            // // [CASSANDRAEC]
-            // // store old data before compaction
-            // int transferredSSTablesNum = 0;
-            // List<SSTableContentWithHashID> transferredSSTables = new ArrayList<>();
-            // if(cfs.getColumnFamilyName().equals("usertable")) {
-            //     for(SSTableReader sstable : actuallyCompact) {
-            //         if(sstable.isReplicationTransferredToErasureCoding()) {
-            //             transferredSSTables.add(new SSTableContentWithHashID(sstable.getSSTableHashID(), sstable.getSSTContent()));
-            //             transferredSSTablesNum++;
-            //         }
-            //     }
-            // }
+            // [CASSANDRAEC]
+            // store old data before compaction
+            int transferredSSTablesNum = 0;
+            List<SSTableContentWithHashID> oldTransferredSSTables = new ArrayList<>();
+            if(cfs.getColumnFamilyName().equals("usertable")) {
+                for(SSTableReader sstable : actuallyCompact) {
+                    if(sstable.isReplicationTransferredToErasureCoding()) {
+                        oldTransferredSSTables.add(new SSTableContentWithHashID(sstable.getSSTableHashID(), sstable.getSSTContent()));
+                        transferredSSTablesNum++;
+                    }
+                }
+            }
 
 
             Collection<SSTableReader> newSStables;
@@ -854,73 +854,74 @@ public class CompactionTask extends AbstractCompactionTask {
             if (transaction.isOffline())
                 return;
             
-            // // [CASSADNRAEC]
-            // // Compaction is done: match the old/new data, and send them to parity node
-            // if(cfs.getColumnFamilyName().equals("usertable") && transferredSSTablesNum > 0) {
-            //     // send parity update signal
-            //     // send old data 
-            //     // List<InetAddressAndPort> targets = new ArrayList<>();
-            //     // paritNode -> oldSSTables 
-            //     Map<InetAddressAndPort, List<SSTableContentWithHashID>> oldSSTables = new HashMap<InetAddressAndPort, List<SSTableContentWithHashID>>();
-            //     for (SSTableContentWithHashID transferredSST : transferredSSTables) {
-            //         String sstHash = transferredSST.sstHash;
-            //         InetAddressAndPort target = null;
-            //         try {
-            //             target = StorageService.instance.globalSSTHashToParityNodesMap.get(sstHash).get(0);
-            //         } catch (Exception e) {
-            //             logger.error("rymERROR: cannot get parity nodes for sstHash ({})", sstHash);
-            //         }
-            //         // targets.add(target);
-            //         if(oldSSTables.containsKey(target)){
-            //             oldSSTables.get(target).add(transferredSST);
-            //         } else {
-            //             oldSSTables.put(target, new ArrayList<SSTableContentWithHashID>(Collections.singletonList(transferredSST)));
-            //         }
-            //     }
+            // [CASSADNRAEC]
+            // Compaction is done: match the old/new data, and send them to parity node
+            if(cfs.getColumnFamilyName().equals("usertable") && transferredSSTablesNum > 0) {
+                // send parity update signal
+                // send old data 
+                // List<InetAddressAndPort> targets = new ArrayList<>();
+                // paritNode -> oldSSTables 
+                Map<InetAddressAndPort, List<SSTableContentWithHashID>> oldSSTables = new HashMap<InetAddressAndPort, List<SSTableContentWithHashID>>();
+                for (SSTableContentWithHashID oldTransferredSST : oldTransferredSSTables) {
+                    String oldSSTHash = oldTransferredSST.sstHash;
+                    InetAddressAndPort target = null;
+                    try {
+                        // target is the first parity nodes
+                        target = StorageService.instance.globalSSTHashToParityNodesMap.get(oldSSTHash).get(0);
+                    } catch (Exception e) {
+                        logger.error("rymERROR: cannot get parity nodes for sstHash ({})", oldSSTHash);
+                    }
+                    // targets.add(target);
+                    if(oldSSTables.containsKey(target)){
+                        oldSSTables.get(target).add(oldTransferredSST);
+                    } else {
+                        oldSSTables.put(target, new ArrayList<SSTableContentWithHashID>(Collections.singletonList(oldTransferredSST)));
+                    }
+                }
 
-            //     // handle the new data 
-            //     Iterator<SSTableReader> newSSTableIterator = newSStables.iterator();
-            //     for(Map.Entry<InetAddressAndPort, List<SSTableContentWithHashID>> entry : oldSSTables.entrySet()) {
-            //         // InetAddressAndPort target = entry.getKey();
-            //         int requireSize = entry.getValue().size();
-            //         List<SSTableContentWithHashID> newSSTables = new ArrayList<>();
-            //         while(requireSize-- > 0) {
-            //             if(newSSTableIterator.hasNext()) {
-            //                 SSTableReader newSSTable = newSSTableIterator.next();
-            //                 newSSTables.add(new SSTableContentWithHashID(newSSTable.getSSTableHashID(), newSSTable.getSSTContent()));
-            //                 // set this sstable as updated
-            //                 newSSTable.setIsParityUpdate();
-            //                 newSSTable.SetIsReplicationTransferredToErasureCoding();
+                // handle the new data 
+                Iterator<SSTableReader> newSSTableIterator = newSStables.iterator();
+                for(Map.Entry<InetAddressAndPort, List<SSTableContentWithHashID>> entry : oldSSTables.entrySet()) {
+                    // InetAddressAndPort target = entry.getKey();
+                    int requireNewSSTableNum = entry.getValue().size();
+                    List<SSTableContentWithHashID> newSSTables = new ArrayList<>();
+                    while(requireNewSSTableNum-- > 0) {
+                        if(newSSTableIterator.hasNext()) {
+                            SSTableReader newSSTable = newSSTableIterator.next();
+                            newSSTables.add(new SSTableContentWithHashID(newSSTable.getSSTableHashID(), newSSTable.getSSTContent()));
+                            // set this sstable as updated
+                            newSSTable.setIsParityUpdate();
+                            newSSTable.SetIsReplicationTransferredToErasureCoding();
 
-            //                 // Sync selected new sstables for parity update
-            //                 List<InetAddressAndPort> replicaNodes = StorageService.instance
-            //                                                                       .getReplicaNodesWithPortFromPrimaryNode(FBUtilities.getBroadcastAddressAndPort(), cfs.keyspace.getName());
-            //                 ECNetutils.syncSSTableWithSecondaryNodes(newSSTable, replicaNodes, newSSTable.getSSTableHashID());
-            //                 StorageService.instance.globalSSTHashToParityNodesMap.put(
-            //                         newSSTable.getSSTableHashID(),
-            //                         StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
-            //                 logger.debug("rymDebug: [Parity Update] we map new sstHash ({}) to parity Nodes ({})",
-            //                         newSSTable.getSSTableHashID(),
-            //                         StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
-            //                 newSSTableIterator.remove();
-            //             } else {
-            //                 break;
-            //             }
-            //         }
+                            // Sync selected new sstables to secondary nodes for parity update
+                            List<InetAddressAndPort> replicaNodes = StorageService.instance
+                                                                                  .getReplicaNodesWithPortFromPrimaryNode(FBUtilities.getBroadcastAddressAndPort(), cfs.keyspace.getName());
+                            ECNetutils.syncSSTableWithSecondaryNodes(newSSTable, replicaNodes, newSSTable.getSSTableHashID());
+                            StorageService.instance.globalSSTHashToParityNodesMap.put(
+                                    newSSTable.getSSTableHashID(),
+                                    StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
+                            logger.debug("rymDebug: [Parity Update] we map new sstHash ({}) to parity Nodes ({})",
+                                    newSSTable.getSSTableHashID(),
+                                    StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
+                            newSSTableIterator.remove();
+                        } else {
+                            break;
+                        }
+                    }
 
-            //         // Debug: check if the sstables' parity nodes are the same
-            //         String logString = "rymDebug: Check the parity nodes of old sstables, ";
-            //         for(SSTableContentWithHashID sst : entry.getValue()) {
-            //             logString += "the parity nodes of sstable " + sst.sstHash + "is " + StorageService.instance.globalSSTHashToParityNodesMap.get(sst.sstHash) + ", ";
-            //         }
-            //         logger.debug(logString);
+                    // Debug: check if the sstables' parity nodes are the same
+                    // String logString = "rymDebug: Check the parity nodes of old sstables, ";
+                    // for(SSTableContentWithHashID sst : entry.getValue()) {
+                    //     logString += "the parity nodes of sstable " + sst.sstHash + "is " + StorageService.instance.globalSSTHashToParityNodesMap.get(sst.sstHash) + ", ";
+                    // }
+                    // logger.debug(logString);
 
-            //         // send the old sstable and new sstable to target parity node
-            //         ECParityUpdate parityUpdate = new ECParityUpdate(entry.getValue(), newSSTables,
-            //                         StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
-            //         parityUpdate.sendParityUpdateSignal();
-            //     }
-            // }
+                    // send the old sstable and new sstable to target parity node
+                    ECParityUpdate parityUpdate = new ECParityUpdate(entry.getValue(), newSSTables,
+                                    StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
+                    parityUpdate.sendParityUpdateSignal();
+                }
+            }
 
             // log a bunch of statistics about the result and save to system table
             // compaction_history

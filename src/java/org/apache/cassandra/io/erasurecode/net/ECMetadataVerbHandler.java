@@ -129,6 +129,14 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         return new ConsumeBlockedECMetadataRunnable();
     }
 
+
+    /**
+     * To avoid concurrency conflicts, we store all received ECMetadata in Map <globalBlockedECMetadata>.
+     * And we set up a periodically task to consume ECMetadata, that is transforming the ECMetadata into a ecSSTable.
+     * Note that the ECMetadata could be generated in two cases:
+     *  1. During the first time generating erasure coding;
+     *  2. Parity update.
+     */
     private static class ConsumeBlockedECMetadataRunnable implements Runnable {
 
         private final int MAX_RETRY_COUNT = 5;
@@ -136,7 +144,6 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         @Override
         public void run() {
             if(StorageService.instance.globalBlockedECMetadata.isEmpty() || isConsumeBlockedECMetadataOccupied){
-                
                 return;
             }
 
@@ -178,9 +185,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             }
                         } else {
                             // TODO: Wait until the target ecSSTable is released
-                            // transformECMetadataToECSSTableForParityUpdate(metadata.ecMetadata, cfs,
-                            // metadata.sstableHash);
-                            logger.debug("rymDebug: wait until the target ecSSTable is released");
+                            // transformECMetadataToECSSTableForParityUpdate(metadata.ecMetadata, cfs, metadata.sstableHash);
+                            logger.debug("rymERROR: wait until the target ecSSTable is released");
                         }
 
                     }
