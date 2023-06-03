@@ -1920,6 +1920,17 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             }
                             startIndex += maxCompactionThreshold;
 
+                            boolean isContainUnTransferredSSTables = false;
+                            for (SSTableReader sstable : candidates) {
+                                if(!sstable.isReplicationTransferredToErasureCoding()) {
+                                    isContainUnTransferredSSTables = true;
+                                    break;
+                                }
+                            }
+
+                            if(!isContainUnTransferredSSTables)
+                                continue;
+
                             final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates,
                                     OperationType.COMPACTION);
                             if (txn != null) {
