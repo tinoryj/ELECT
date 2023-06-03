@@ -528,7 +528,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                             .getReplicaNodesWithPort(keyspaceName, cfName, key);
 
                                     // Sync sstable with secondary nodes for rewrite
-                                    ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID);
+                                    ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID, "Erasure Coding");
                                     
                                     // Send selected sstable for perform erasure coding.
                                     ECMessage ecMessage = new ECMessage(sstContent, new ECMessageContent(sstHashID, keyspaceName, cfName,

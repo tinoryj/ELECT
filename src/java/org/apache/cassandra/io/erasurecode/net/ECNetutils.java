@@ -153,7 +153,7 @@ public final class ECNetutils {
      */
     public static void syncSSTableWithSecondaryNodes(SSTableReader sstable,
                                                      List<InetAddressAndPort> replicaNodes,
-                                                     String sstHashID) throws Exception {
+                                                     String sstHashID, String operationType) throws Exception {
 
         // Read a given sstable's Filter.db, Index.db, Statistics.db and Summary.db
         byte[] filterFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
@@ -174,7 +174,7 @@ public final class ECNetutils {
         }
 
         logger.debug(
-            "rymDebug: send sstables ({}), replicaNodes are {}, row num is {}, allKeys num is {}",
+            "rymDebug: [{}] send sstables ({}), replicaNodes are {}, row num is {}, allKeys num is {}", operationType,
             sstHashID,
             replicaNodes, sstable.getTotalRows(),
             allKeys.size());

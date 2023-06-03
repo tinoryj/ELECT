@@ -900,7 +900,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                         .getReplicaNodesWithPortFromPrimaryNode(
                                                 FBUtilities.getBroadcastAddressAndPort(), cfs.keyspace.getName());
                                 ECNetutils.syncSSTableWithSecondaryNodes(newSSTable, replicaNodes,
-                                        newSSTable.getSSTableHashID());
+                                        newSSTable.getSSTableHashID(), "Parity Update");
                                 StorageService.instance.globalSSTHashToParityNodesMap.put(
                                         newSSTable.getSSTableHashID(),
                                         StorageService.instance.globalSSTHashToParityNodesMap
