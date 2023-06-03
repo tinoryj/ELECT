@@ -917,9 +917,22 @@ public class CompactionTask extends AbstractCompactionTask {
                     // logger.debug(logString);
 
                     // send the old sstable and new sstable to target parity node
-                    ECParityUpdate parityUpdate = new ECParityUpdate(entry.getValue(), newSSTables,
-                                    StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
-                    parityUpdate.sendParityUpdateSignal();
+                    // ECParityUpdate parityUpdate = new ECParityUpdate(entry.getValue(), newSSTables,
+                    //                 StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
+                    for (SSTableContentWithHashID oldSSTable : entry.getValue()) {
+                        ECParityUpdate parityUpdate = new ECParityUpdate(oldSSTable, true,
+                                    StorageService.instance.globalSSTHashToParityNodesMap.get(oldSSTable.sstHash));
+
+                        parityUpdate.sendParityUpdateSignal();
+                    }
+
+                    for (SSTableContentWithHashID newSSTable : newSSTables) {
+                        ECParityUpdate parityUpdate = new ECParityUpdate(newSSTable, false,
+                                    StorageService.instance.globalSSTHashToParityNodesMap.get(newSSTable.sstHash));
+                                    
+                        parityUpdate.sendParityUpdateSignal();
+                    }
+                    
                 }
             }
 

@@ -112,6 +112,7 @@ import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler.BlockedECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
 import org.apache.cassandra.io.sstable.SSTableLoader;
 import org.apache.cassandra.io.sstable.format.SSTableFormat;
@@ -205,7 +206,12 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, SSTableReader> globalSSTHashToECSSTable = new ConcurrentHashMap<String, SSTableReader>();
     // [In secondary node] Record the rewrite data
     public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalBlockedECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
-    // 
+    // [In parity node], this is the global map <primary node> -> <old sstables for parity update>
+    public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalOldSSTablesQueueForParityUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
+    // [In parity node], this is the global map <primary node> -> <new sstables for parity update>
+    public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalNewSSTablesQueueForParityUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
+    
+    // [In parity node]
     private static int codeLength = 0;
 
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();

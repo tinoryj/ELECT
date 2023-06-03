@@ -70,6 +70,7 @@ import org.apache.cassandra.exceptions.StartupException;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.io.erasurecode.net.ECMessageVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdateVerbHandler;
 import org.apache.cassandra.io.sstable.SSTableHeaderFix;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
@@ -443,19 +444,25 @@ public class CassandraDaemon {
                                                  DatabaseDescriptor.getTaskDelay(),
                                                  TimeUnit.MINUTES);
 
-        // schedule periodic tasks for erasure coding
+        // schedule periodical tasks of erasure coding
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMessageVerbHandler.getErasureCodingRunable(),
                                                                 (DatabaseDescriptor.getInitialDelay() + 1) * 60,
                                                                 DatabaseDescriptor.getTaskDelay() * 60 / 2,
                                                                 TimeUnit.SECONDS);
 
-        // schedule periodic tasks for consume blocked ecMetadata
+        // schedule periodical tasks of consume blocked ecMetadata
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.getConsumeBlockedECMetadataRunnable(),
                                                                 (DatabaseDescriptor.getInitialDelay() + 2) * 60,
                                                                 DatabaseDescriptor.getTaskDelay() * 60 / 2,
                                                                 TimeUnit.SECONDS);
 
-        // schedule periodic tasks for consume blocked ecMetadata
+        // schedule periodical tasks of parity update
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECParityUpdateVerbHandler.getParityUpdateRunnable(),
+                                                                (DatabaseDescriptor.getInitialDelay() + 4) * 60,
+                                                                DatabaseDescriptor.getTaskDelay() * 60 / 2,
+                                                                TimeUnit.SECONDS);
+
+        // schedule periodical tasks of force compaction the last level
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ColumnFamilyStore.getForceCompactionForTheLastLevelRunnable(),
                                                                 30,
                                                                 Long.MAX_VALUE,

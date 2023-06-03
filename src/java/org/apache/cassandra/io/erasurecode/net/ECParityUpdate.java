@@ -51,24 +51,33 @@ public final class ECParityUpdate implements Serializable {
     public static final Logger logger = LoggerFactory.getLogger(ECParityUpdate.class);
 
     
-    public final List<SSTableContentWithHashID> oldSSTables;
-    public byte[] oldSSTablesInBytes;
-    public int oldSSTablesInBytesSize;
+    // public final SSTableContentWithHashID oldSSTables;
+    // public byte[] oldSSTablesInBytes;
+    // public int oldSSTablesInBytesSize;
 
-    public final List<SSTableContentWithHashID> newSSTables;
-    public byte[] newSSTablesInBytes;
-    public int newSSTablesInBytesSize;
+    // public final SSTableContentWithHashID newSSTables;
+    // public byte[] newSSTablesInBytes;
+    // public int newSSTablesInBytesSize;
 
+    public final SSTableContentWithHashID sstable;
+    public byte[] sstableInBytes;
+    public int sstableInBytesSize;
+
+    
     public final List<InetAddressAndPort> parityNodes;
     public byte[] parityNodesInBytes;
     public int parityNodesInBytesSize;
 
+    public boolean isOldSSTable;
 
-    public ECParityUpdate(List<SSTableContentWithHashID> oldSSTables, List<SSTableContentWithHashID> newSSTables,
+
+    public ECParityUpdate(SSTableContentWithHashID sstable, boolean isOldSSTable,
                             List<InetAddressAndPort> parityNodes) {
-        this.oldSSTables = oldSSTables;
-        this.newSSTables = newSSTables;
+        // this.oldSSTables = oldSSTables;
+        // this.newSSTables = newSSTables;
+        this.sstable = sstable;
         this.parityNodes = parityNodes;
+        this.isOldSSTable = isOldSSTable;
     }
 
 
@@ -76,6 +85,7 @@ public final class ECParityUpdate implements Serializable {
         public final String sstHash;
         public final byte[] sstContent;
         public final int sstContentSize;
+        public boolean isRequestParityCode;
         public SSTableContentWithHashID(String sstHash, ByteBuffer sstContent) {
             this.sstHash = sstHash;
             this.sstContentSize = sstContent.capacity();
@@ -90,11 +100,11 @@ public final class ECParityUpdate implements Serializable {
 
         try {
 
-            this.newSSTablesInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.newSSTables);
-            this.newSSTablesInBytesSize = this.newSSTablesInBytes.length;
+            this.sstableInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.sstable);
+            this.sstableInBytesSize = this.sstableInBytes.length;
             
-            this.oldSSTablesInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.oldSSTables);
-            this.oldSSTablesInBytesSize = this.oldSSTablesInBytes.length;
+            // this.oldSSTablesInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.oldSSTables);
+            // this.oldSSTablesInBytesSize = this.oldSSTablesInBytes.length;
 
             this.parityNodesInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.parityNodes);
             this.parityNodesInBytesSize = this.parityNodesInBytes.length;
@@ -115,36 +125,40 @@ public final class ECParityUpdate implements Serializable {
         @Override
         public void serialize(ECParityUpdate t, DataOutputPlus out, int version) throws IOException {
 
-            out.writeInt(t.newSSTablesInBytesSize);
-            out.write(t.newSSTablesInBytes);
-            out.writeInt(t.oldSSTablesInBytesSize);
-            out.write(t.oldSSTablesInBytes);
+            // out.writeInt(t.newSSTablesInBytesSize);
+            // out.write(t.newSSTablesInBytes);
+            out.writeInt(t.sstableInBytesSize);
+            out.write(t.sstableInBytes);
             out.writeInt(t.parityNodesInBytesSize);
             out.write(t.parityNodesInBytes);
+            
+            out.writeBoolean(t.isOldSSTable);
         }
 
         @Override
         public ECParityUpdate deserialize(DataInputPlus in, int version) throws IOException {
             
-            int newSSTablesInBytesSize = in.readInt();
-            byte[] newSSTablesInBytes = new byte[newSSTablesInBytesSize];
-            in.readFully(newSSTablesInBytes);
+            // int newSSTablesInBytesSize = in.readInt();
+            // byte[] newSSTablesInBytes = new byte[newSSTablesInBytesSize];
+            // in.readFully(newSSTablesInBytes);
 
-            int oldSSTablesInBytesSize = in.readInt();
-            byte[] oldSSTablesInBytes = new byte[oldSSTablesInBytesSize];
-            in.readFully(oldSSTablesInBytes);
+            int sstableInBytesSize = in.readInt();
+            byte[] sstableInBytes = new byte[sstableInBytesSize];
+            in.readFully(sstableInBytes);
 
             int parityNodesInBytesSize = in.readInt();
             byte[] parityNodesInBytes = new byte[parityNodesInBytesSize];
             in.readFully(parityNodesInBytes);
+
+            boolean isOldSSTable = in.readBoolean();
             
             try {
 
-                List<SSTableContentWithHashID> newSSTables = (List<SSTableContentWithHashID>) ByteObjectConversion.byteArrayToObject(newSSTablesInBytes);
-                List<SSTableContentWithHashID> oldSSTables = (List<SSTableContentWithHashID>) ByteObjectConversion.byteArrayToObject(oldSSTablesInBytes);
+                SSTableContentWithHashID sstable = (SSTableContentWithHashID) ByteObjectConversion.byteArrayToObject(sstableInBytes);
+                // SSTableContentWithHashID oldSSTables = (SSTableContentWithHashID) ByteObjectConversion.byteArrayToObject(oldSSTablesInBytes);
                 List<InetAddressAndPort> parityNodes = (List<InetAddressAndPort>) ByteObjectConversion.byteArrayToObject(parityNodesInBytes);
 
-                return new ECParityUpdate(oldSSTables, newSSTables, parityNodes);
+                return new ECParityUpdate(sstable, isOldSSTable, parityNodes);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -156,12 +170,13 @@ public final class ECParityUpdate implements Serializable {
 
         @Override
         public long serializedSize(ECParityUpdate t, int version) {
-            long size = sizeof(t.newSSTablesInBytesSize) +
-                        t.newSSTablesInBytesSize  +
-                        sizeof(t.oldSSTablesInBytesSize) +
-                        t.oldSSTablesInBytesSize +
+            long size = sizeof(t.sstableInBytesSize) +
+                        t.sstableInBytesSize +
+                        // sizeof(t.oldSSTablesInBytesSize) +
+                        // t.oldSSTablesInBytesSize +
                         sizeof(t.parityNodesInBytesSize) +
-                        t.parityNodesInBytesSize;
+                        t.parityNodesInBytesSize + 
+                        sizeof(t.isOldSSTable);
             return size;
         }
 
