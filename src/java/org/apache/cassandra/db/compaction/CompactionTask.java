@@ -928,7 +928,13 @@ public class CompactionTask extends AbstractCompactionTask {
                         
                         List<InetAddressAndPort> parityNodes = new ArrayList<>();
                         for (SSTableContentWithHashID oldSSTable : entry.getValue()) {
-                            parityNodes = StorageService.instance.globalSSTHashToParityNodesMap.get(oldSSTable.sstHash);
+                            if(!parityNodes.isEmpty())
+                                parityNodes = StorageService.instance.globalSSTHashToParityNodesMap.get(oldSSTable.sstHash);
+                            else {
+                                if(!parityNodes.equals(StorageService.instance.globalSSTHashToParityNodesMap.get(oldSSTable.sstHash))) {
+                                    logger.debug("rymERROR: Fuck!!! The parity nodes are different!!!");
+                                }
+                            }
                             ECParityUpdate parityUpdate = new ECParityUpdate(oldSSTable, true, parityNodes);
 
                             logger.debug("rymDebug: send old sstable ({}) to parity node ({})", oldSSTable.sstHash, parityNodes.get(0));

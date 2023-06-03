@@ -152,9 +152,11 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         logger.debug("rymDebug: we need get parity codes for sstable ({})", oldSSTHash);
                         String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTHash);
                         if (stripID == null) {
-                            logger.debug("rymERROR: In node {}, we cannot get strip id for sstHash {}",
+                            logger.debug("rymERROR: In node {}, we cannot get strip id for sstHash {}, the old sstable map is {}, new sstable map is {}",
                                     FBUtilities.getBroadcastAddressAndPort(),
-                                    oldSSTHash);
+                                    oldSSTHash,
+                                    StorageService.instance.globalOldSSTablesQueueForParityUpdateMap,
+                                    StorageService.instance.globalNewSSTablesQueueForParityUpdateMap);
                         }
 
                         // read ec_metadata from memory, get the needed parity hash list
