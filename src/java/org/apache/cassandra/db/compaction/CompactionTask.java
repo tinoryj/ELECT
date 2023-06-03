@@ -953,6 +953,10 @@ public class CompactionTask extends AbstractCompactionTask {
                             parityUpdate.sendParityUpdateSignal();
                         }
 
+                        if(newSSTableContentWithHashID.size() > entry.getValue().size()) {
+                            logger.debug("rymERROR: New sstables count ({}) is more than old sstables count ({}), check the code.", newSSTableContentWithHashID.size(), entry.getValue().size());
+                        }
+
                     }
                 }
             }
