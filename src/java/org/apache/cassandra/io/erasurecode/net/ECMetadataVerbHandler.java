@@ -316,7 +316,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // String currentSSTHash = entry.getKey();
         int sstIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstableHash);
         // need a old sstHash
-        logger.debug("rymDebug: [Parity Update] get old sstHash ({})", ecMetadata.ecMetadataContent.oldSSTHash);
+        logger.debug("rymDebug: [Parity Update] we are going to update the old sstable ({}) with a new one ({})", ecMetadata.ecMetadataContent.oldSSTHash, sstableHash);
         SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(ecMetadata.ecMetadataContent.oldSSTHash);
 
         if(oldECSSTable != null) {

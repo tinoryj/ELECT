@@ -90,7 +90,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         // Add recieved data to the global map
         if (parityUpdateData.isOldSSTable) {
-            
+
+            logger.debug("rymDebug: [Parity Update] Get a old sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
             if (StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.contains(primaryNode)) {
                 StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.get(primaryNode)
                         .add(parityUpdateData.sstable);
@@ -123,8 +124,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             }
 
 
-            logger.debug("rymDebug: [Parity Update] Get a old sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
         } else {
+            logger.debug("rymDebug: [Parity Update] Get a new sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
             if (StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.contains(primaryNode)) {
                 StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(primaryNode)
                         .add(parityUpdateData.sstable);
@@ -133,7 +134,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(parityUpdateData.sstable)));
             }
             
-            logger.debug("rymDebug: [Parity Update] Get a new sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
         }
         
            
@@ -391,7 +391,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         int retryCount = 0;
 
         ByteBuffer[] parityCodes = StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTHash);
-        if(parityCodes == null) {
+        if(parityCodes != null) {
             while (!checkParityCodesAreReady(parityCodes)) {
                 try {
                     if(retryCount < 10) {
