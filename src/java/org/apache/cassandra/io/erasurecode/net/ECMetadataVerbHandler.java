@@ -108,8 +108,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 String ks = ecMetadata.ecMetadataContent.keyspace;
                 int index = entry.getValue().indexOf(localIP);
                 String cfName = ecMetadata.ecMetadataContent.cfName + index;
-                logger.debug("rymDebug: [Save it] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}, strip id is {}",
-                             newSSTableHash, sourceIP, entry.getValue(), ecMetadata.stripeId);
+                logger.debug("rymDebug: [Save it for {}] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}, strip id is {}",
+                             cfName, newSSTableHash, sourceIP, entry.getValue(), ecMetadata.stripeId);
 
                 // transformECMetadataToECSSTable(ecMetadata, ks, cfName, sstableHash, sourceIP);
 
@@ -323,7 +323,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // String currentSSTHash = entry.getKey();
         int sstIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstableHash);
         // need a old sstHash
-        logger.debug("rymDebug: [Parity Update] we are going to update the old sstable ({}) with a new one ({})", ecMetadata.ecMetadataContent.oldSSTHash, sstableHash);
+        logger.debug("rymDebug: [Parity Update] we are going to update the old sstable ({}) with a new one ({}) in ({})",
+                     ecMetadata.ecMetadataContent.oldSSTHash, sstableHash, cfs.getColumnFamilyName());
         SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(ecMetadata.ecMetadataContent.oldSSTHash);
 
         if(oldECSSTable != null) {
