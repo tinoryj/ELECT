@@ -92,8 +92,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         //     message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
         // }
 
-        logger.debug("rymDebug: get new message!!! message is from: {}, primaryNode is {}, parityNodes is {}",
-         message.from(), message.payload.ecMessageContent.replicaNodes.get(0), message.payload.ecMessageContent.parityNodes);
+        logger.debug("rymDebug: get a new sstable ({}) for erasure coding!!! message is from: {}, primaryNode is {}, parityNodes is {}",
+                     message.payload.ecMessageContent.sstHashID,
+                     message.from(), message.payload.ecMessageContent.replicaNodes.get(0), message.payload.ecMessageContent.parityNodes);
 
 
         InetAddressAndPort primaryNode = message.payload.ecMessageContent.replicaNodes.get(0);

@@ -134,7 +134,7 @@ public class ECMetadata implements Serializable {
         for(ECMessage msg : messages) {
             String sstContentHash = msg.ecMessageContent.sstHashID;
             this.ecMetadataContent.sstHashIdList.add(sstContentHash);
-            this.ecMetadataContent.sstHashIdToReplicaMap.putIfAbsent(sstContentHash, msg.ecMessageContent.replicaNodes);
+            this.ecMetadataContent.sstHashIdToReplicaMap.put(sstContentHash, msg.ecMessageContent.replicaNodes);
             connectedSSTHash += sstContentHash;
             this.ecMetadataContent.primaryNodes.add(msg.ecMessageContent.replicaNodes.get(0));
         }
@@ -208,11 +208,10 @@ public class ECMetadata implements Serializable {
     public void updateAndDistributeMetadata(List<String> newParityHashes, boolean isParityUpdate, 
                                             String oldSSTHash, String newSSTHash, int targetIndex,
                                             List<InetAddressAndPort> oldReplicaNodes, List<InetAddressAndPort> newReplicaNodes) {
-        logger.debug("rymDebug: this update ECMetadata method, we update old sstable ({}) with new sstable ({})", oldSSTHash, newSSTHash);
         // update isParityUpdate
         this.ecMetadataContent.isParityUpdate = isParityUpdate;
-        // update the old sstable hash
-        this.ecMetadataContent.oldSSTHash = oldSSTHash;
+        // // update the old sstable hash
+        // this.ecMetadataContent.oldSSTHash = oldSSTHash;
         // update sstable hash list
         this.ecMetadataContent.sstHashIdList.set(targetIndex, newSSTHash);
         // update parity code hash
@@ -253,6 +252,7 @@ public class ECMetadata implements Serializable {
         logger.debug("rymDebug: Update old strip id ({}) with a new one ({})", oldStripId, this.stripeId);
 
 
+        logger.debug("rymDebug: this update ECMetadata method, we update old sstable ({}) with new sstable ({}) for strip id ({})", oldSSTHash, newSSTHash, this.stripeId);
 
         try {
             this.ecMetadataContentBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMetadataContent);
@@ -288,9 +288,9 @@ public class ECMetadata implements Serializable {
      * [In parity] Distribute ecMetadata to secondary nodes
      */
     public void distributeECMetadata(ECMetadata ecMetadata) {
-        logger.debug("rymDebug: [In parity node ({})] This distributeEcMetadata method, we should send stripId ({}) with sstables list ({}) to node ({}), the sstHashToRelicaMap is ({})",
+        logger.debug("rymDebug: [In parity node ({})] This distributeEcMetadata method, we should send stripId ({}) with sstables list ({}) to node ({}), the sstHashToRelicaMap is ({}), old sstable hash is ({})",
                     FBUtilities.getBroadcastAddressAndPort(), ecMetadata.stripeId, ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.ecMetadataContent.secondaryNodes, 
-                    ecMetadata.ecMetadataContent.sstHashIdToReplicaMap);
+                    ecMetadata.ecMetadataContent.sstHashIdToReplicaMap, ecMetadata.ecMetadataContent.oldSSTHash);
         Message<ECMetadata> message = Message.outWithFlag(Verb.ECMETADATA_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
         
         // send to secondary nodes 

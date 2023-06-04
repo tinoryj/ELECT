@@ -98,23 +98,29 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         ECMetadata ecMetadata = message.payload;
 
         Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap = ecMetadata.ecMetadataContent.sstHashIdToReplicaMap;
+        String updateNewSSTHash = ecMetadata.ecMetadataContent.sstHashIdList.get(ecMetadata.ecMetadataContent.targetIndex);
 
         // logger.debug("rymDebug: got sstHashIdToReplicaMap: {} ",
         // sstHashIdToReplicaMap);
         for (Map.Entry<String, List<InetAddressAndPort>> entry : sstHashIdToReplicaMap.entrySet()) {
-            String sstableHash = entry.getKey();
+            String newSSTableHash = entry.getKey();
             if (!localIP.equals(entry.getValue().get(0)) && entry.getValue().contains(localIP)) {
                 String ks = ecMetadata.ecMetadataContent.keyspace;
                 int index = entry.getValue().indexOf(localIP);
                 String cfName = ecMetadata.ecMetadataContent.cfName + index;
-                logger.debug("rymDebug: [Save it] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}", sstableHash, sourceIP, entry.getValue());
+                logger.debug("rymDebug: [Save it] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}, strip id is {}",
+                             newSSTableHash, sourceIP, entry.getValue(), ecMetadata.stripeId);
 
                 // transformECMetadataToECSSTable(ecMetadata, ks, cfName, sstableHash, sourceIP);
 
-                BlockedECMetadata blockedECMetadata = new BlockedECMetadata(sstableHash, sourceIP, ecMetadata);
+                BlockedECMetadata blockedECMetadata = new BlockedECMetadata(newSSTableHash, sourceIP, ecMetadata);
+                if(!entry.getKey().equals(updateNewSSTHash)) {
+                    blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash = entry.getKey();
+                }
                 saveECMetadataToBlockList(cfName, blockedECMetadata);
             } else {
-                logger.debug("rymDebug: [Drop it] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}", sstableHash, sourceIP, entry.getValue());
+                logger.debug("rymDebug: [Drop it] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}, strip id is {}",
+                             newSSTableHash, sourceIP, entry.getValue(), ecMetadata.stripeId);
             }
 
         }
@@ -156,7 +162,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 String cfName = entry.getKey();
 
                 for (BlockedECMetadata metadata : entry.getValue()) {
-                    if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.sstableHash,
+                    if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.newSSTableHash,
                             metadata.sourceIP)) {
                         logger.debug("rymDebug: Perform transformECMetadataToECSSTable successfully");
                         entry.getValue().remove(metadata);
@@ -170,19 +176,19 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         // If the ecMetadata is for erasure coding, just transform it
                         if (!metadata.ecMetadata.ecMetadataContent.isParityUpdate) {
                             DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap
-                                    .get(metadata.sstableHash);
+                                    .get(metadata.newSSTableHash);
                             if (dataForRewrite != null) {
                                 String fileNamePrefix = dataForRewrite.fileNamePrefix;
                                 transformECMetadataToECSSTableForErasureCode(metadata.ecMetadata,
                                         new ArrayList<SSTableReader>(),
                                         cfs,
                                         fileNamePrefix,
-                                        metadata.sstableHash,
+                                        metadata.newSSTableHash,
                                         null, null, null);
                                 entry.getValue().remove(metadata);
                             } else {
                                 logger.warn("rymDebug: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
-                                            metadata.sstableHash);
+                                            metadata.newSSTableHash);
                             }
                         } else {
                             // TODO: Wait until the target ecSSTable is released
@@ -354,12 +360,12 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     }
 
     public static class BlockedECMetadata {
-        public final String sstableHash;
+        public final String newSSTableHash;
         public final InetAddressAndPort sourceIP;
-        public final ECMetadata ecMetadata;
+        public ECMetadata ecMetadata;
         public int retryCount = 0;
-        public BlockedECMetadata(String sstableHash, InetAddressAndPort sourceIP, ECMetadata ecMetadata) {
-            this.sstableHash = sstableHash;
+        public BlockedECMetadata(String newSSTableHash, InetAddressAndPort sourceIP, ECMetadata ecMetadata) {
+            this.newSSTableHash = newSSTableHash;
             this.sourceIP = sourceIP;
             this.ecMetadata = ecMetadata;
         }
