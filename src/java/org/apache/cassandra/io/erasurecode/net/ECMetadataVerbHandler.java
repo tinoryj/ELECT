@@ -305,6 +305,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 }
             }
 
+
             StorageService.instance.globalSSTMap.remove(newSSTHash);
         } else {
             // Save ECMetadata and redo ec transition later
@@ -344,18 +345,6 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     if (updateTxn != null) {
                         cfs.replaceSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
 
-                        if(StorageService.instance.globalBlockedUpdatedECMetadata.containsKey(oldECSSTable.getSSTableHashID()) && 
-                           !StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty() ) {
-                            if(StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).size()>1) {
-                                logger.debug("rymDebug: the size of globalBlockedUpdatedECMetadata for sstHash ({}) is ({})",
-                                              oldECSSTable.getSSTableHashID(),
-                                              StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).size());
-                            }
-                            while(!StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty()) {
-                                BlockedECMetadata blockedECMetadata = StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).poll();
-                                saveECMetadataToBlockList(blockedECMetadata, null, true);
-                            }
-                        }
                         return false;
                     } else {
                         logger.debug("rymDebug:[Parity Update] failed to get transactions for the sstables ({}), we will try it later",
@@ -376,6 +365,24 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         }
         return false;
     }
+
+
+    public static void checkTheBlockedUpdateECMetadata(SSTableReader oldECSSTable) {
+        if(StorageService.instance.globalBlockedUpdatedECMetadata.containsKey(oldECSSTable.getSSTableHashID()) && 
+        !StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty() ) {
+         if(StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).size()>1) {
+             logger.debug("rymDebug: the size of globalBlockedUpdatedECMetadata for sstHash ({}) is ({})",
+                           oldECSSTable.getSSTableHashID(),
+                           StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).size());
+         }
+         while(!StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty()) {
+             BlockedECMetadata blockedECMetadata = StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).poll();
+             saveECMetadataToBlockList(blockedECMetadata, null, true);
+         }
+     }
+    }
+
+
 
     public static class BlockedECMetadata {
         public final String newSSTableHash;

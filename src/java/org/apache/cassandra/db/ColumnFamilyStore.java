@@ -129,6 +129,7 @@ import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
 import org.apache.cassandra.io.erasurecode.net.ECMessage.ECMessageContent;
@@ -1998,6 +1999,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             // txn.prepareToCommit(ecSSTable);
             maybeFail(txn.commitEC(null, ecSSTable, false));
             logger.debug("rymDebug: replaced SSTable {} successfully", ecSSTable.descriptor);
+            // move BlockedUpdateECMetadata if necessary
+            ECMetadataVerbHandler.checkTheBlockedUpdateECMetadata(ecSSTable);
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
