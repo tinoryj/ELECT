@@ -103,18 +103,25 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             logger.debug("rymDebug: we need get parity codes for sstable ({})", oldSSTHash);
             String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTHash);
             if (stripID == null) {
-                logger.debug("rymERROR: In node {}, we cannot get strip id for sstHash {}, this hash is from primary node {}, the old sstable map is {}, new sstable map is {}",
+                
+                // just add this old sstable to the cache map
+                StorageService.instance.globalPairtyUpdateSSTableWaitForErasureCodingReadyMap.put(parityUpdateData.sstable.sstHash, parityUpdateData.sstable);
+
+                logger.debug("rymDebug: In node {}, we cannot get strip id for sstHash {}, this hash is from primary node {}, the old sstable map is {}, new sstable map is {}",
                         FBUtilities.getBroadcastAddressAndPort(),
                         oldSSTHash,
                         primaryNode,
                         StorageService.instance.globalOldSSTablesQueueForParityUpdateMap,
                         StorageService.instance.globalNewSSTablesQueueForParityUpdateMap);
+            } else {
+
+                retrieveParityCodeForOldSSTable(oldSSTHash, stripID, codeLength);
+
+                // Check if the there is a new sstable that has the same sstHash with this old one
+                isNewSSTableQueueContainThisOldSSTable(StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(primaryNode), parityUpdateData.sstable);
+
             }
 
-            retrieveParityCodeForOldSSTable(oldSSTHash, stripID, codeLength);
-
-            // Check if the there is a new sstable that has the same sstHash with this old one
-            isNewSSTableQueueContainThisOldSSTable(StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(primaryNode), parityUpdateData.sstable);
 
             logger.debug("rymDebug: [Parity Update] Get a old sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
         } else {
@@ -333,7 +340,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
     
-    private static void retrieveParityCodeForOldSSTable(String oldSSTHash, String stripID, int codeLength) {
+    public static void retrieveParityCodeForOldSSTable(String oldSSTHash, String stripID, int codeLength) {
 
         String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
 

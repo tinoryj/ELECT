@@ -210,9 +210,10 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalOldSSTablesQueueForParityUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
     // [In parity node], this is the global map <primary node> -> <new sstables for parity update>
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalNewSSTablesQueueForParityUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
-    // [In parity node], thisis the global map <sstHash> -> <old sstable>
+    // [In parity node], this is the global map <sstHash> -> <old sstable>
     public ConcurrentHashMap<String, SSTableContentWithHashID> globalSSTableHashToContent = new ConcurrentHashMap<String, SSTableContentWithHashID>();
-    
+    // [In parity node], <old sstable hash> -> <parity update sstable>
+    public ConcurrentHashMap<String, SSTableContentWithHashID> globalPairtyUpdateSSTableWaitForErasureCodingReadyMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
     // [In parity node]
     private static int codeLength = 0;
 

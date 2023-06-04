@@ -41,6 +41,7 @@ import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -174,6 +175,16 @@ public class ECMetadata implements Serializable {
         
         for(String sstHash : this.ecMetadataContent.sstHashIdList) {
             StorageService.instance.globalSSTHashToStripID.put(sstHash, this.stripeId);
+            if(StorageService.instance.globalPairtyUpdateSSTableWaitForErasureCodingReadyMap.containsKey(sstHash)) {
+                // we move this sstable to the globalOldSSTablesQueueForParityUpdateMap
+                InetAddressAndPort primaryNode = this.ecMetadataContent.sstHashIdToReplicaMap.get(sstHash).get(0);
+                SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalPairtyUpdateSSTableWaitForErasureCodingReadyMap.get(sstHash);
+                StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
+
+                int codeLength = StorageService.getErasureCodeLength();
+                ECParityUpdateVerbHandler.retrieveParityCodeForOldSSTable(sstHash, this.stripeId, codeLength);
+
+            }
             logger.debug("rymDebug:[ErasureCoding] In node {}, we map sstHash {} to stripID {}", FBUtilities.getBroadcastAddressAndPort(),
                                                                                                  sstHash,
                                                                                                  this.stripeId);
@@ -251,6 +262,7 @@ public class ECMetadata implements Serializable {
         
         for(String sstHash : this.ecMetadataContent.sstHashIdList) {
             StorageService.instance.globalSSTHashToStripID.put(sstHash, this.stripeId);
+
             
             logger.debug("rymDebug:[Parity Update] In node {}, we map sstHash {} to stripID {}", FBUtilities.getBroadcastAddressAndPort(),
                                                                                                  sstHash,

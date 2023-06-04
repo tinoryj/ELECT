@@ -318,31 +318,36 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // need a old sstHash
         logger.debug("rymDebug: [Parity Update] get old sstHash ({})", ecMetadata.ecMetadataContent.oldSSTHash);
         SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(ecMetadata.ecMetadataContent.oldSSTHash);
-        if(oldECSSTable == null) {
-            logger.error("rymERROR: [Parity Update] cannot get ecSSTable for sstHash({})", ecMetadata.ecMetadataContent.oldSSTHash);
-        }
-        if (sstIndex == ecMetadata.ecMetadataContent.targetIndex) {
-            // replace ec sstable
 
-            DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
-            if (dataForRewrite != null) {
+        if(oldECSSTable != null) {
+            if (sstIndex == ecMetadata.ecMetadataContent.targetIndex) {
+                // replace ec sstable
 
-                String fileNamePrefix = dataForRewrite.fileNamePrefix;
-                final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(Collections.singletonList(oldECSSTable), OperationType.COMPACTION);
-                if (updateTxn != null) {
-                    cfs.replaceSSTable(ecMetadata, sstableHash, cfs, fileNamePrefix, updateTxn);
-                    return false;
+                DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(sstableHash);
+                if (dataForRewrite != null) {
+
+                    String fileNamePrefix = dataForRewrite.fileNamePrefix;
+                    final LifecycleTransaction updateTxn = cfs.getTracker()
+                            .tryModify(Collections.singletonList(oldECSSTable), OperationType.COMPACTION);
+                    if (updateTxn != null) {
+                        cfs.replaceSSTable(ecMetadata, sstableHash, cfs, fileNamePrefix, updateTxn);
+                        return false;
+                    } else {
+                        logger.debug("rymDebug:[Parity Update] failed to get transactions for the sstables ({}), we will try it later",
+                                     sstableHash);
+                        return true;
+                    }
                 } else {
-                    logger.debug("rymDebug:[Parity Update] failed to get transactions for the sstables ({}), we will try it later", sstableHash);
-                    return true;
+                    logger.warn("rymERROR:[Parity Update] cannot get rewrite data of {} during parity update",
+                            sstableHash);
                 }
-            } else {
-                logger.warn("rymERROR:[Parity Update] cannot get rewrite data of {} during parity update", sstableHash);
-            }
 
+            } else {
+                // Just replace the files
+                SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor);
+            }
         } else {
-            // Just replace the files
-            SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor);
+            ECNetutils.printStackTace(String.format("rymERROR: [Parity Update] cannot get ecSSTable for sstHash(%s)", ecMetadata.ecMetadataContent.oldSSTHash));
         }
         return false;
     }
