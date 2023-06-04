@@ -278,9 +278,10 @@ public class ECMetadata implements Serializable {
         int rf = 3;
         logger.debug("rymDebug: For strip id ({}), we should record ecSSTable ({}) times in total", ecMetadata.stripeId, DatabaseDescriptor.getEcDataNodes() * (rf-1));
         for (InetAddressAndPort node : ecMetadata.ecMetadataContent.secondaryNodes) {
-            if(!node.equals(FBUtilities.getBroadcastAddressAndPort())) {
-                MessagingService.instance().send(message, node);
-            }
+            MessagingService.instance().send(message, node);
+            // if(node.equals(FBUtilities.getBroadcastAddressAndPort())) {
+            //     MessagingService.instance().send(message, node);
+            // }
         }
 
         // send to remote parity nodes
