@@ -63,6 +63,7 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
                                                              StandardOpenOption.CREATE);
                 fileChannel.write(message.payload.parityCode);
                 fileChannel.close();
+                logger.debug("rymDebug: write the parity code {} successfully!", message.payload.parityHash);
             } 
         catch (IOException e) {
                 logger.error("rymERROR: Perform erasure code error", e);

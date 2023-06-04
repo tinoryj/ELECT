@@ -92,13 +92,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         if (parityUpdateData.isOldSSTable) {
 
             logger.debug("rymDebug: [Parity Update] Get a old sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
-            if (StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.contains(primaryNode)) {
-                StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.get(primaryNode)
-                        .add(parityUpdateData.sstable);
-            } else {
-                StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.put(primaryNode,
-                        new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(parityUpdateData.sstable)));
-            }
 
             String oldSSTHash = parityUpdateData.sstable.sstHash;
             String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTHash);
@@ -114,6 +107,14 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.keySet(),
                         StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.keySet());
             } else {
+                
+                if (StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.contains(primaryNode)) {
+                    StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.get(primaryNode)
+                            .add(parityUpdateData.sstable);
+                } else {
+                    StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.put(primaryNode,
+                            new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(parityUpdateData.sstable)));
+                }
 
                 logger.debug("rymDebug: we need get parity codes for sstable ({})", oldSSTHash);
                 retrieveParityCodeForOldSSTable(oldSSTHash, stripID, codeLength);
