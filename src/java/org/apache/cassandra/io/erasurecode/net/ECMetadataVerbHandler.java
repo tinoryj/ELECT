@@ -333,7 +333,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     cfs.replaceSSTable(ecMetadata, sstableHash, cfs, fileNamePrefix, updateTxn);
                     return false;
                 } else {
-                    logger.debug("rymERROR:[Parity Update] failed to get transactions for the sstables ({}), we will try it later", sstableHash);
+                    logger.debug("rymDebug:[Parity Update] failed to get transactions for the sstables ({}), we will try it later", sstableHash);
                     return true;
                 }
             } else {
