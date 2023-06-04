@@ -318,14 +318,16 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
     
     private static void isNewSSTableQueueContainThisOldSSTable(ConcurrentLinkedQueue<SSTableContentWithHashID> newQueue, SSTableContentWithHashID oldSSTable) {
-
-        for(SSTableContentWithHashID newSSTable : newQueue) {
-            if(newSSTable.sstHash.equals(oldSSTable.sstHash)) {
-                StorageService.instance.globalSSTableHashToContent.put(oldSSTable.sstHash, oldSSTable);
-                logger.debug("rymDebug: For sstable ({}), the new obj is still not consumed, we add the old obj to cache map", oldSSTable.sstHash);
-                return;
+        if(newQueue != null){
+            for (SSTableContentWithHashID newSSTable : newQueue) {
+                if (newSSTable.sstHash.equals(oldSSTable.sstHash)) {
+                    StorageService.instance.globalSSTableHashToContent.put(oldSSTable.sstHash, oldSSTable);
+                    logger.debug("rymDebug: For sstable ({}), the new obj is still not consumed, we add the old obj to cache map",
+                                 oldSSTable.sstHash);
+                    return;
+                }
             }
-        }
+        } 
 
     }
 
