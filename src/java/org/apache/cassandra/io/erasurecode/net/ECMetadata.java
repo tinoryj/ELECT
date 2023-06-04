@@ -210,8 +210,8 @@ public class ECMetadata implements Serializable {
                                             List<InetAddressAndPort> oldReplicaNodes, List<InetAddressAndPort> newReplicaNodes) {
         // update isParityUpdate
         this.ecMetadataContent.isParityUpdate = isParityUpdate;
-        // // update the old sstable hash
-        // this.ecMetadataContent.oldSSTHash = oldSSTHash;
+        // update the old sstable hash
+        this.ecMetadataContent.oldSSTHash = oldSSTHash;
         // update sstable hash list
         this.ecMetadataContent.sstHashIdList.set(targetIndex, newSSTHash);
         // update parity code hash
