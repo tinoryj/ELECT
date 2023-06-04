@@ -405,7 +405,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         ByteBuffer[] parityCodes = StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash);
         if(parityCodes == null) {
-            ECNetutils.printStackTace(String.format("rymERROR: We cannot get parity codes for sstable {}", sstHash));
+            ECNetutils.printStackTace(String.format("rymERROR: We cannot get parity codes for sstable %s", sstHash));
         }
  
         while (!checkParityCodesAreReady(parityCodes)) {
