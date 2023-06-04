@@ -101,7 +101,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             }
 
             String oldSSTHash = parityUpdateData.sstable.sstHash;
-            logger.debug("rymDebug: we need get parity codes for sstable ({})", oldSSTHash);
             String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTHash);
             if (stripID == null) {
                 
@@ -116,6 +115,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.keySet());
             } else {
 
+                logger.debug("rymDebug: we need get parity codes for sstable ({})", oldSSTHash);
                 retrieveParityCodeForOldSSTable(oldSSTHash, stripID, codeLength);
 
                 // Check if the there is a new sstable that has the same sstHash with this old one

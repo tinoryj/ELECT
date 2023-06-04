@@ -172,6 +172,10 @@ public class ECMetadata implements Serializable {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+
+        
+        // store ecMetadata locally
+        StorageService.instance.globalECMetadataMap.put(this.stripeId, this.ecMetadataContent);
         
         for(String sstHash : this.ecMetadataContent.sstHashIdList) {
             StorageService.instance.globalSSTHashToStripID.put(sstHash, this.stripeId);
@@ -271,6 +275,8 @@ public class ECMetadata implements Serializable {
         }
         // StorageService.instance.globalSSTHashToStripID.remove(oldSSTHash);
         
+        // store ecMetadata locally
+        StorageService.instance.globalECMetadataMap.put(this.stripeId, this.ecMetadataContent);
 
         // dispatch to related nodes
         distributeECMetadata(this);
@@ -292,9 +298,6 @@ public class ECMetadata implements Serializable {
         logger.debug("rymDebug: For strip id ({}), we should record ecSSTable ({}) times in total", ecMetadata.stripeId, DatabaseDescriptor.getEcDataNodes() * (rf-1));
         for (InetAddressAndPort node : ecMetadata.ecMetadataContent.secondaryNodes) {
             MessagingService.instance().send(message, node);
-            // if(node.equals(FBUtilities.getBroadcastAddressAndPort())) {
-            //     MessagingService.instance().send(message, node);
-            // }
         }
 
         // send to remote parity nodes
@@ -304,8 +307,6 @@ public class ECMetadata implements Serializable {
         //     }
         // }
 
-        // store ecMetadata locally
-        StorageService.instance.globalECMetadataMap.put(ecMetadata.stripeId, ecMetadata.ecMetadataContent);
         logger.debug("rymDebug: store stripID {} in node {}", ecMetadata.stripeId, FBUtilities.getBroadcastAddressAndPort());
     }
 
