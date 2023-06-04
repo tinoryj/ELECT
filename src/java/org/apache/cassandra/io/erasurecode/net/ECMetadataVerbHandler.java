@@ -107,12 +107,14 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 String ks = ecMetadata.ecMetadataContent.keyspace;
                 int index = entry.getValue().indexOf(localIP);
                 String cfName = ecMetadata.ecMetadataContent.cfName + index;
-                // logger.debug("rymDebug: ECMetadataVerbHandler get sstHash {} from {}", sstableHash, sourceIP);
+                logger.debug("rymDebug: [Save it] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}", sstableHash, sourceIP, entry.getValue());
 
                 // transformECMetadataToECSSTable(ecMetadata, ks, cfName, sstableHash, sourceIP);
 
                 BlockedECMetadata blockedECMetadata = new BlockedECMetadata(sstableHash, sourceIP, ecMetadata);
                 saveECMetadataToBlockList(cfName, blockedECMetadata);
+            } else {
+                logger.debug("rymDebug: [Drop it] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}", sstableHash, sourceIP, entry.getValue());
             }
 
         }
@@ -149,8 +151,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
             isConsumeBlockedECMetadataOccupied = true;
             logger.debug("rymDebug: This is ConsumeBlockedECMetadataRunnable");
-            for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata
-                    .entrySet()) {
+            for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata.entrySet()) {
                 String ks = "ycsb";
                 String cfName = entry.getKey();
 
@@ -248,9 +249,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             
 
         } else {
-            if(ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstableHash) == ecMetadata.ecMetadataContent.targetIndex)
-                return transformECMetadataToECSSTableForParityUpdate(ecMetadata, cfs, sstableHash);
-            return false;
+            // if(ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstableHash) == ecMetadata.ecMetadataContent.targetIndex)
+            return transformECMetadataToECSSTableForParityUpdate(ecMetadata, cfs, sstableHash);
+            // return false;
         }
 
     }

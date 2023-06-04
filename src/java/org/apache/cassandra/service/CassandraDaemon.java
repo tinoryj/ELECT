@@ -463,10 +463,10 @@ public class CassandraDaemon {
                                                                 TimeUnit.SECONDS);
 
         // schedule periodical tasks of force compaction the last level
-        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ColumnFamilyStore.getForceCompactionForTheLastLevelRunnable(),
-                                                                30,
-                                                                Long.MAX_VALUE,
-                                                                TimeUnit.MINUTES);
+        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ColumnFamilyStore.getForceCompactionForTheLastLevelRunnable(),
+        //                                                         30,
+        //                                                         Long.MAX_VALUE,
+        //                                                         TimeUnit.MINUTES);
 
         // schedule periodic recomputation of speculative retry thresholds
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(SPECULATION_THRESHOLD_UPDATER,
