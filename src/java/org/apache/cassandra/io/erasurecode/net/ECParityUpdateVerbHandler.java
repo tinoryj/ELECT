@@ -34,6 +34,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Stream;
 
+import org.antlr.runtime.tree.Tree;
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.CQL3Type.Collection;
@@ -144,7 +145,18 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             // Step 1: [For old sstable] First we need read parity code locally and from peer parity nodes
             for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.entrySet()) {
 
-                for (SSTableContentWithHashID oldSSTContentWithHash : entry.getValue()) {
+
+                Iterator<SSTableContentWithHashID> oldSSTablesQueueIterator = entry.getValue().iterator();
+
+                while (oldSSTablesQueueIterator.hasNext()) {
+
+                    SSTableContentWithHashID oldSSTContentWithHash = oldSSTablesQueueIterator.next();
+                    // if the new sstable queue contain this old sstable, we add it to the cache queue
+                    if(isNewSSTableQueueContainThisOldSSTable(StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(entry.getKey()), oldSSTContentWithHash)) {
+                       oldSSTablesQueueIterator.remove();
+                       continue; 
+                    }
+
                     if (!oldSSTContentWithHash.isRequestParityCode) {
 
                         String oldSSTHash = oldSSTContentWithHash.sstHash;
@@ -163,9 +175,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         oldSSTContentWithHash.isRequestParityCode = true;
 
                     }
-
                 }
-
             }
 
             if( StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.size() < StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.size()) {
@@ -195,6 +205,15 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                     SSTableContentWithHashID newSSTable = newSSTableQueue.poll();
                     SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
+
+
+                    // if the new obj is consumed, 
+                    if(StorageService.instance.globalSSTableHashToContent.contains(newSSTable.sstHash)) {
+                        oldSSTableQueue.add(StorageService.instance.globalSSTableHashToContent.get(newSSTable.sstHash));
+                        StorageService.instance.globalSSTableHashToContent.remove(newSSTable.sstHash);
+                    }
+
+
                     if(!oldSSTable.isRequestParityCode) {
                         logger.debug("rymDebug: we need get parity codes for sstable ({})", oldSSTable.sstHash);
                         String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
@@ -207,6 +226,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                                     StorageService.instance.globalNewSSTablesQueueForParityUpdateMap);
                         }
                         retrieveParityCodeForOldSSTable(oldSSTable.sstHash, stripID, codeLength);
+                        oldSSTable.isRequestParityCode = true;
                     }
 
                     // For safety, we should make sure the parity code is ready
@@ -316,6 +336,20 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         }
 
+    }
+
+    
+    private static boolean isNewSSTableQueueContainThisOldSSTable(ConcurrentLinkedQueue<SSTableContentWithHashID> newQueue, SSTableContentWithHashID oldSSTable) {
+
+        for(SSTableContentWithHashID newSSTable : newQueue) {
+            if(newSSTable.sstHash.equals(oldSSTable.sstHash)) {
+                StorageService.instance.globalSSTableHashToContent.put(oldSSTable.sstHash, oldSSTable);
+                logger.debug("rymDebug: For sstable ({}), the new obj is still not consumed, we add the old obj to cache map", oldSSTable.sstHash);
+                return true;
+            }
+        }
+
+        return false;
     }
 
 
