@@ -175,8 +175,9 @@ public class ECMetadata implements Serializable {
         
         for(String sstHash : this.ecMetadataContent.sstHashIdList) {
             StorageService.instance.globalSSTHashToStripID.put(sstHash, this.stripeId);
+
+            // we move this sstable to the globalOldSSTablesQueueForParityUpdateMap
             if(StorageService.instance.globalPairtyUpdateSSTableWaitForErasureCodingReadyMap.containsKey(sstHash)) {
-                // we move this sstable to the globalOldSSTablesQueueForParityUpdateMap
                 InetAddressAndPort primaryNode = this.ecMetadataContent.sstHashIdToReplicaMap.get(sstHash).get(0);
                 SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalPairtyUpdateSSTableWaitForErasureCodingReadyMap.get(sstHash);
                 StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);

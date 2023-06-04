@@ -111,8 +111,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         FBUtilities.getBroadcastAddressAndPort(),
                         oldSSTHash,
                         primaryNode,
-                        StorageService.instance.globalOldSSTablesQueueForParityUpdateMap,
-                        StorageService.instance.globalNewSSTablesQueueForParityUpdateMap);
+                        StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.keySet(),
+                        StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.keySet());
             } else {
 
                 retrieveParityCodeForOldSSTable(oldSSTHash, stripID, codeLength);
@@ -285,13 +285,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     }
                 }
 
-                // String logString = "rymDebug: Insight the globalRecvQueues";
-                // for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> entry : StorageService.instance.globalRecvQueues.entrySet()) {
-                //     String str = entry.getKey().toString() + " has " + entry.getValue().size() + "elements";
-                //     logString += str;
-                // }
-                // logger.debug(logString);
-
                 // Case3: Old data still not completely consumed, we have to padding zero
                 while (!oldSSTableQueue.isEmpty()) {
 
@@ -351,37 +344,44 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         } catch (Exception e) {
             logger.debug("rymERROR: When we are update old sstable ({}), we cannot to get ecMetadata for stripID {}", oldSSTHash, stripID);
         }
-        ByteBuffer[] parityCodes = new ByteBuffer[parityHashList.size()];
-        // get the needed parity code locally
-        String parityCodeFileName = localParityCodeDir + parityHashList.get(0);
-        ByteBuffer localParityCode;
-        try {
-            localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
-            // delete local parity code file
-            // ECNetutils.deleteFileByName(parityCodeFileName);
 
-            if (codeLength == 0)
-                codeLength = localParityCode.capacity();
+        if(parityHashList == null) {
+            ECNetutils.printStackTace(String.format("rymERROR: When we are update old sstable (%s), we cannot to get ecMetadata for stripID (%s)", oldSSTHash, stripID));
+        } else {
+            ByteBuffer[] parityCodes = new ByteBuffer[parityHashList.size()];
+            // get the needed parity code locally
+            String parityCodeFileName = localParityCodeDir + parityHashList.get(0);
+            ByteBuffer localParityCode;
+            try {
+                localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
+                // delete local parity code file
+                // ECNetutils.deleteFileByName(parityCodeFileName);
 
-            for (int i = 0; i < parityHashList.size(); i++) {
-                parityCodes[i] = ByteBuffer.allocateDirect(localParityCode.capacity());
+                if (codeLength == 0)
+                    codeLength = localParityCode.capacity();
+
+                for (int i = 0; i < parityHashList.size(); i++) {
+                    parityCodes[i] = ByteBuffer.allocateDirect(localParityCode.capacity());
+                }
+                parityCodes[0].put(localParityCode);
+                parityCodes[0].rewind();
+
+                // get old parity codes from old sstable hash
+                StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
+                logger.debug("rymDebug: Perform parity update for old sstable ({}), we are retrieving parity codes for strip id {}", oldSSTHash, stripID);
+
+                // get the needed parity code remotely, send a parity code request
+                for (int i = 1; i < parityHashList.size(); i++) {
+                    ECRequestParity request = new ECRequestParity(parityHashList.get(i), oldSSTHash, i);
+                    request.requestParityCode(parityNodes.get(i));
+                }
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                ECNetutils.printStackTace(String.format("rymERROR: When we are retrieving parity codes for strip id %s to perform parity update old sstable (%s), cannot read parity code from %s",stripID, oldSSTHash, parityCodeFileName));
             }
-            parityCodes[0].put(localParityCode);
-            parityCodes[0].rewind();
 
-            // get old parity codes from old sstable hash
-            StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
-            logger.debug("rymDebug: Perform parity update for old sstable ({}), we are retrieving parity codes for strip id {}", oldSSTHash, stripID);
-
-            // get the needed parity code remotely, send a parity code request
-            for (int i = 1; i < parityHashList.size(); i++) {
-                ECRequestParity request = new ECRequestParity(parityHashList.get(i), oldSSTHash, i);
-                request.requestParityCode(parityNodes.get(i));
-            }
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            ECNetutils.printStackTace(String.format("rymERROR: When we are retrieving parity codes for strip id %s to perform parity update old sstable (%s), cannot read parity code from %s",stripID, oldSSTHash, parityCodeFileName));
         }
+
     }
 
 
@@ -392,23 +392,24 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         ByteBuffer[] parityCodes = StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTHash);
         if(parityCodes == null) {
+            while (!checkParityCodesAreReady(parityCodes)) {
+                try {
+                    if(retryCount < 10) {
+                        Thread.sleep(2);
+                        retryCount++;
+                    } else {
+                        throw new IllegalStateException(String.format("ERROR: cannot retrieve the remote parity codes for sstHash (%s)", oldSSTHash));
+                    }
+                    
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+        } else {
             ECNetutils.printStackTace(String.format("rymERROR: We cannot get parity codes for sstable %s", oldSSTHash));
         }
  
-        while (!checkParityCodesAreReady(parityCodes)) {
-            try {
-                if(retryCount < 10) {
-                    Thread.sleep(2);
-                    retryCount++;
-                } else {
-                    throw new IllegalStateException(String.format("ERROR: cannot retrieve the remote parity codes for sstHash (%s)", oldSSTHash));
-                }
-                
-            } catch (InterruptedException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
     }
 
     private static boolean checkParityCodesAreReady(ByteBuffer[] parityCodes) {
