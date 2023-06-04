@@ -120,7 +120,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 // Check if the old sstable is available, if not, add it to the queue
                 
                 saveECMetadataToBlockList(blockedECMetadata, blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash,
-                                          (StorageService.instance.globalSSTHashToECSSTable.get(blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash) == null));
+                                          (StorageService.instance.globalSSTHashToECSSTable.get(blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash) != null));
 
             } else {
                 logger.debug("rymDebug: [Drop it] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}, strip id is {}",
