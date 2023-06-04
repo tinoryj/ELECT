@@ -146,11 +146,11 @@ public class ECMessage implements Serializable {
         }
 
         if (this.ecMessageContent.parityNodes != null) {
-            // logger.debug("target endpoints are : {}", this.parityNodes);
+            logger.debug("rymDebug: send sstable ({}) to parity node ({})", this.ecMessageContent.sstHashID, this.ecMessageContent.parityNodes.get(0));
             message = Message.outWithFlag(Verb.ERASURECODE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().sendSSTContentWithoutCallback(message, this.ecMessageContent.parityNodes.get(0));
         } else {
-            logger.debug("targetEndpoints is null");
+            logger.debug("rymERROR: targetEndpoints is null!");
         }
     }
 
