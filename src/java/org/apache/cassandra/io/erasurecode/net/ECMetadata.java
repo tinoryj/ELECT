@@ -232,7 +232,9 @@ public class ECMetadata implements Serializable {
         for(String sstHash : this.ecMetadataContent.sstHashIdList) {
             connectedSSTHash += sstHash;
         }
+        String oldStripId = this.stripeId;
         this.stripeId = ECNetutils.stringToHex(String.valueOf(connectedSSTHash.hashCode()));
+        logger.debug("rymDebug: Update old strip id ({}) with a new one ({})", oldStripId, this.stripeId);
 
 
 
@@ -274,7 +276,7 @@ public class ECMetadata implements Serializable {
         
         // send to secondary nodes 
         int rf = 3;
-        logger.debug("rymDebug: For strip id ({}), we should record to an ecSSTable ({}) times in total", ecMetadata.stripeId, DatabaseDescriptor.getEcDataNodes() * (rf-1));
+        logger.debug("rymDebug: For strip id ({}), we should record ecSSTable ({}) times in total", ecMetadata.stripeId, DatabaseDescriptor.getEcDataNodes() * (rf-1));
         for (InetAddressAndPort node : ecMetadata.ecMetadataContent.secondaryNodes) {
             if(!node.equals(FBUtilities.getBroadcastAddressAndPort())) {
                 MessagingService.instance().send(message, node);

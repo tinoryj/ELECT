@@ -32,6 +32,7 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.Verb;
+import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,6 +115,9 @@ public final class ECParityUpdate implements Serializable {
             e.printStackTrace();
         }
 
+        if(this.parityNodes.get(0).equals(FBUtilities.getBroadcastAddressAndPort())) {
+            logger.debug("rymERROR: parity node is equal to primary node, that's illegal!");
+        }
 
         Message<ECParityUpdate> message = Message.outWithFlag(Verb.ECPARITYUPDATE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, this.parityNodes.get(0));
