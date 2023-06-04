@@ -204,15 +204,17 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, String> globalSSTHashToStripID = new ConcurrentHashMap<String, String>();
     // [In every node] Record the sstHash to SSTableReader map
     public ConcurrentHashMap<String, SSTableReader> globalSSTHashToECSSTable = new ConcurrentHashMap<String, SSTableReader>();
-    // [In secondary node] Record the rewrite data
+    // [In secondary node] Record the ECMetadata data, <cfName, BlockedECMetadata>
     public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalBlockedECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
-    // [In parity node], this is the global map <primary node> -> <old sstables for parity update>
+    // [In secondary node] Record the updated ECMetadata to avoid concurrent conflict <sstHash, BlockedECMetadata> 
+    public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalBlockedUpdatedECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
+    // [In parity node], this is the global map <primary node, old sstables for parity update>
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalOldSSTablesQueueForParityUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
-    // [In parity node], this is the global map <primary node> -> <new sstables for parity update>
+    // [In parity node], this is the global map <primary node, new sstables for parity update>
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalNewSSTablesQueueForParityUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
-    // [In parity node], this is the global map <sstHash> -> <old sstable>
+    // [In parity node], this is the global map <sstHash, old sstable>
     public ConcurrentHashMap<String, SSTableContentWithHashID> globalSSTableHashToContent = new ConcurrentHashMap<String, SSTableContentWithHashID>();
-    // [In parity node], <old sstable hash> -> <parity update sstable>
+    // [In parity node], <old sstable hash, parity update sstable>
     public ConcurrentHashMap<String, SSTableContentWithHashID> globalPairtyUpdateSSTableWaitForErasureCodingReadyMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
     // [In parity node]
     private static int codeLength = 0;
