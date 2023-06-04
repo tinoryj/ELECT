@@ -458,7 +458,7 @@ public class CassandraDaemon {
 
         // schedule periodical tasks of parity update
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECParityUpdateVerbHandler.getParityUpdateRunnable(),
-                                                                (DatabaseDescriptor.getInitialDelay() + 3) * 60,
+                                                                (DatabaseDescriptor.getInitialDelay() + 2) * 60,
                                                                 DatabaseDescriptor.getTaskDelay() * 60 / 2,
                                                                 TimeUnit.SECONDS);
 
