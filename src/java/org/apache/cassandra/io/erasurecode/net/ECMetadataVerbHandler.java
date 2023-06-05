@@ -107,8 +107,6 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             if (!localIP.equals(entry.getValue().get(0)) && entry.getValue().contains(localIP)) {
                 int index = entry.getValue().indexOf(localIP);
                 String cfName = ecMetadata.ecMetadataContent.cfName + index;
-                logger.debug("rymDebug: [Parity Update: {}, Save it for {}] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}, strip id is {}",
-                             ecMetadata.ecMetadataContent.isParityUpdate, cfName, newSSTableHash, sourceIP, entry.getValue(), ecMetadata.stripeId);
 
                 // transformECMetadataToECSSTable(ecMetadata, ks, cfName, sstableHash, sourceIP);
 
@@ -116,6 +114,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 if(!entry.getKey().equals(updateNewSSTHash)) {
                     blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash = entry.getKey();
                 }
+                logger.debug("rymDebug: [Parity Update: {}, Save it for {}] ECMetadataVerbHandler get new sstHash {} from {}, we are going a old one {} with this, the replica nodes are {}, strip id is {}",
+                             ecMetadata.ecMetadataContent.isParityUpdate, cfName, newSSTableHash, sourceIP, ecMetadata.ecMetadataContent.oldSSTHash,entry.getValue(), ecMetadata.stripeId);
 
                 // Check if the old sstable is available, if not, add it to the queue
                 if(ecMetadata.ecMetadataContent.isParityUpdate){
@@ -352,6 +352,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     final LifecycleTransaction updateTxn = cfs.getTracker()
                             .tryModify(Collections.singletonList(oldECSSTable), OperationType.COMPACTION);
                     if (updateTxn != null) {
+                        logger.debug("rymDebug: We get a transaction for old sstable ({}), and new sstable ({}) successfully.", oldECSSTable.getSSTableHashID(), newSSTHash);
                         cfs.replaceSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
 
                         return false;
@@ -410,6 +411,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     private static void saveECMetadataToBlockList(BlockedECMetadata metadata, String oldSSTHash, boolean isECSSTableAvailable) {
 
         if(isECSSTableAvailable) {
+            logger.debug("rymDebug: Save the ECMetadata to global Blocked ECMetadata for oldSSTHash ({})", oldSSTHash);
             if(StorageService.instance.globalBlockedECMetadata.containsKey(metadata.cfName)) {
                 if(!StorageService.instance.globalBlockedECMetadata.get(metadata.cfName).contains(metadata))
                     StorageService.instance.globalBlockedECMetadata.get(metadata.cfName).add(metadata);
@@ -419,6 +421,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 StorageService.instance.globalBlockedECMetadata.put(metadata.cfName, blockList);
             }
         } else {
+            logger.debug("rymDebug: Save the ECMetadata to global Blocked [Updated] ECMetadata for oldSSTHash ({})", oldSSTHash);
             if(StorageService.instance.globalBlockedUpdatedECMetadata.containsKey(oldSSTHash)) {
                 if(!StorageService.instance.globalBlockedUpdatedECMetadata.get(oldSSTHash).contains(metadata))
                     StorageService.instance.globalBlockedUpdatedECMetadata.get(oldSSTHash).add(metadata);
