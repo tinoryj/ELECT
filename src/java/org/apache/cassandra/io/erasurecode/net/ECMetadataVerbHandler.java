@@ -118,9 +118,12 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 }
 
                 // Check if the old sstable is available, if not, add it to the queue
-                
-                saveECMetadataToBlockList(blockedECMetadata, blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash,
-                                          (StorageService.instance.globalSSTHashToECSSTable.get(blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash) != null));
+                if(ecMetadata.ecMetadataContent.isParityUpdate){
+                    saveECMetadataToBlockList(blockedECMetadata, blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash,
+                                            (StorageService.instance.globalSSTHashToECSSTable.get(blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash) != null));
+                } else {
+                    saveECMetadataToBlockList(blockedECMetadata, blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash,true);
+                }
 
             } else {
                 logger.debug("rymDebug: [Drop it] ECMetadataVerbHandler get sstHash {} from {}, the replica nodes are {}, strip id is {}",
@@ -155,7 +158,13 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         @Override
         public void run() {
-            if(StorageService.instance.globalBlockedECMetadata.isEmpty() || isConsumeBlockedECMetadataOccupied){
+            if(StorageService.instance.globalBlockedECMetadata.isEmpty()){
+                logger.debug("rymDebug: globalBlockedECMetadata is empty.");
+                return;
+            }
+
+            if(isConsumeBlockedECMetadataOccupied) {
+                logger.debug("rymDebug: ConsumeBlockedECMetadataOccupied is true");
                 return;
             }
 
