@@ -204,15 +204,17 @@ public abstract class AbstractReadExecutor {
                 case 0:
                     readCommand.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
+                    ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
                     readCommand.setIsDigestQuery(false);
                     readCommandCopy = readCommand.copy();
                     break;
                 case 1:
                     readCommand.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
-                    ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                    ColumnFilter newColumnFilter1 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
-                    readCommand.updateColumnFilter(newColumnFilter);
+                    readCommand.updateColumnFilter(newColumnFilter1);
                     readCommand.setIsDigestQuery(false);
                     readCommandCopy = readCommand.copy();
                     break;
@@ -236,7 +238,7 @@ public abstract class AbstractReadExecutor {
                         readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
                         endpoint, readCommand.metadata().name);
                 Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommandCopy, handler));
-                // this.command = readCommandCopy;
+                this.command = readCommandCopy;
             } else {
                 logger.debug(
                         "[Tinoryj] Make {} read [Remote] request for key token = {}, replica address = {}, target column name = {}",

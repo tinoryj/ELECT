@@ -60,8 +60,11 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                 UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
             response = command.createResponse(iterator, controller.getRepairedDataInfo());
             logger.debug(
-                    "[Tinoryj] ReadCommandVerbHandler, Read Command target table is {}, target key token is {}, response is {}",
+                    "[Tinoryj] ReadCommandVerbHandler, Read Command target table is {}, target key is {}, key token is {}, response is {}",
                     command.metadata().name,
+                    command instanceof SinglePartitionReadCommand
+                            ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                            : null,
                     command instanceof SinglePartitionReadCommand
                             ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata())
                             : null,
@@ -69,6 +72,15 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             ? ((SinglePartitionReadCommand) command).partitionKey()
                             : null));
         } catch (RejectException e) {
+            logger.debug(
+                    "[Tinoryj] ReadCommandVerbHandler, Read Command target table is {}, target key is {}, key token is {}, meet errors",
+                    command.metadata().name,
+                    command instanceof SinglePartitionReadCommand
+                            ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                            : null,
+                    command instanceof SinglePartitionReadCommand
+                            ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata())
+                            : null);
             if (!command.isTrackingWarnings())
                 throw e;
 
