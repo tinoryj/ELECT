@@ -2105,10 +2105,15 @@ public class StorageProxy implements StorageProxyMBean {
      * 4. If the digests (if any) match the data return the data
      * 5. else carry out read repair by getting data from all the nodes.
      */
+    public static void printStackTace(String msg) {
+        logger.debug("stack trace {}", new Exception(msg));
+    }
+
     private static PartitionIterator fetchRows(List<SinglePartitionReadCommand> commands,
             ConsistencyLevel consistencyLevel, long queryStartNanoTime)
             throws UnavailableException, ReadFailureException, ReadTimeoutException {
         int cmdCount = commands.size();
+        printStackTace("fetchRows");
         // logger.debug("[Tinoryj] total read command count: {}", cmdCount);
         AbstractReadExecutor[] reads = new AbstractReadExecutor[cmdCount];
 

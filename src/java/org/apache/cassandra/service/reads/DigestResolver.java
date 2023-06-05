@@ -135,11 +135,12 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                 noDataCount++;
             }
         }
-
-        logger.debug("[Tinoryj] Read operation get {} success data response", snapshot.size() - noDataCount);
+        if (noDataCount != 0) {
+            logger.debug("[Tinoryj] Read operation get only {} success data response", snapshot.size() - noDataCount);
+        }
 
         if (isDigestMatchFlag == false) {
-            return true;
+            return false;
         }
 
         if (logger.isTraceEnabled())
