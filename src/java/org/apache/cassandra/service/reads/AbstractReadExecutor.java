@@ -199,11 +199,13 @@ public abstract class AbstractReadExecutor {
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
 
+            ReadCommand readCommandCopy;
             switch (replicationIDIndicatorForSendRequest) {
                 case 0:
-                    // readCommand.updateTableMetadata(
-                    // Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
+                    readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
                     readCommand.setIsDigestQuery(false);
+                    readCommandCopy = readCommand.copy();
                     break;
                 case 1:
                     readCommand.updateTableMetadata(
@@ -212,6 +214,7 @@ public abstract class AbstractReadExecutor {
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter);
                     readCommand.setIsDigestQuery(false);
+                    readCommandCopy = readCommand.copy();
                     break;
                 case 2:
                     readCommand.updateTableMetadata(
@@ -220,9 +223,11 @@ public abstract class AbstractReadExecutor {
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter2);
                     readCommand.setIsDigestQuery(false);
+                    readCommandCopy = readCommand.copy();
                     break;
                 default:
                     logger.debug("[Tinoryj] Not support replication number more than 3!!!");
+                    readCommandCopy = readCommand.copy();
             }
 
             if (endpoint.equals(FBUtilities.getBroadcastAddressAndPort())) {
@@ -230,14 +235,14 @@ public abstract class AbstractReadExecutor {
                         "[Tinoryj] Make {} read [Locally] request for key token = {}, replica address = {}, target column name = {}",
                         readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
                         endpoint, readCommand.metadata().name);
-                Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
-                this.command = readCommand;
+                Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommandCopy, handler));
+                // this.command = readCommandCopy;
             } else {
                 logger.debug(
                         "[Tinoryj] Make {} read [Remote] request for key token = {}, replica address = {}, target column name = {}",
                         readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
                         endpoint, readCommand.metadata().name);
-                Message<ReadCommand> message = readCommand.createMessage(false);
+                Message<ReadCommand> message = readCommandCopy.createMessage(false);
                 MessagingService.instance().sendWithCallback(message, endpoint, handler);
             }
         }
