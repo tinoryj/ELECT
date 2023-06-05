@@ -288,6 +288,10 @@ public class View
                         //             reader.isMarkedCompacted());
                         //     continue;
                         // }
+                        logger.debug("rymDebug: the transferred sstable {} is already marked as compaction! The reason is view.compacting.contains? ({}), view.sstablesMap.get(reader) != reader? ({}), view.sstablesMap.get(reader) ({}) reader.isMarkedCompacted? ({})",
+                                    reader.getSSTableHashID(), view.compacting.contains(reader),
+                                    view.sstablesMap.get(reader) != reader, view.sstablesMap.get(reader),
+                                    reader.isMarkedCompacted());
                         return false;
                     }
                 } 

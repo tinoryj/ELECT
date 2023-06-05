@@ -357,8 +357,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                         return false;
                     } else {
-                        logger.debug("rymDebug:[Parity Update] failed to get transactions for the sstables ({}), we will try it later",
-                                     newSSTHash);
+                        logger.debug("rymDebug:[Parity Update] failed to get transactions for the old sstables ({}), and new sstable ({}) we will try it later",
+                                        oldECSSTable.getSSTableHashID(), newSSTHash);
                         return true;
                     }
                 } else {
@@ -411,7 +411,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     private static void saveECMetadataToBlockList(BlockedECMetadata metadata, String oldSSTHash, boolean isECSSTableAvailable) {
 
         if(isECSSTableAvailable) {
-            logger.debug("rymDebug: Save the ECMetadata to global Blocked ECMetadata for oldSSTHash ({})", oldSSTHash);
+            logger.debug("rymDebug: Save the ECMetadata to global Blocked ECMetadata for oldSSTHash ({}), newSSTHash ({})", oldSSTHash, metadata.newSSTableHash);
             if(StorageService.instance.globalBlockedECMetadata.containsKey(metadata.cfName)) {
                 if(!StorageService.instance.globalBlockedECMetadata.get(metadata.cfName).contains(metadata))
                     StorageService.instance.globalBlockedECMetadata.get(metadata.cfName).add(metadata);
@@ -421,7 +421,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 StorageService.instance.globalBlockedECMetadata.put(metadata.cfName, blockList);
             }
         } else {
-            logger.debug("rymDebug: Save the ECMetadata to global Blocked [Updated] ECMetadata for oldSSTHash ({})", oldSSTHash);
+            logger.debug("rymDebug: Save the ECMetadata to global Blocked [Updated] ECMetadata for oldSSTHash ({}), newSSTHash ({})", oldSSTHash, metadata.newSSTableHash);
             if(StorageService.instance.globalBlockedUpdatedECMetadata.containsKey(oldSSTHash)) {
                 if(!StorageService.instance.globalBlockedUpdatedECMetadata.get(oldSSTHash).contains(metadata))
                     StorageService.instance.globalBlockedUpdatedECMetadata.get(oldSSTHash).add(metadata);
