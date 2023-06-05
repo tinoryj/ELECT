@@ -185,10 +185,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             //     }
             // }
 
-            if( StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.size() < StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.size()) {
-                logger.debug("rymERROR: new sstable count ({}) is more than the old count ({})!", StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.size(),
-                                                                                                  StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.size());
-            }
+            // if( StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.size() < StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.size()) {
+            //     logger.debug("rymERROR: new sstable count ({}) is more than the old count ({})!", StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.size(),
+            //                                                                                       StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.size());
+            // }
 
  
             // Step 2: Perform parity update
@@ -201,10 +201,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 ConcurrentLinkedQueue<SSTableContentWithHashID> newSSTableQueue = StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(primaryNode);
                 ConcurrentLinkedQueue<SSTableContentWithHashID> oldSSTableQueue = entry.getValue();
 
-                if( oldSSTableQueue.size() < newSSTableQueue.size()) {
-                    logger.debug("rymERROR: new sstable count ({}) is more than the old count ({})!", newSSTableQueue.size(),
-                                                                                                      oldSSTableQueue.size());
-                }
+                // if( oldSSTableQueue.size() < newSSTableQueue.size()) {
+                //     logger.debug("rymERROR: new sstable count ({}) is more than the old count ({})!", newSSTableQueue.size(),
+                //                                                                                       oldSSTableQueue.size());
+                // }
                 
                 // Case1: Consume old data with new data firstly.
                 // In this case, old replica nodes are the same to new replica nodes
