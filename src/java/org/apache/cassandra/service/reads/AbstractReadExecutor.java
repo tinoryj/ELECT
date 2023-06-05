@@ -172,7 +172,7 @@ public abstract class AbstractReadExecutor {
     }
 
     private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
-        printStackTace("makeRequestsCassandraEC");
+        // printStackTace("makeRequestsCassandraEC");
         int sendRequestNumberAccordingToConsistencyLevel = 3;
         switch (replicaPlan().consistencyLevel()) {
             case ONE:
