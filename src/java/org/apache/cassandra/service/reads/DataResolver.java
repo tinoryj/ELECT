@@ -302,7 +302,7 @@ public class DataResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRead<
          * See CASSANDRA-13747 for more details.
          */
 
-        UnfilteredPartitionIterator merged = UnfilteredPartitionIterators.merge(results, mergeListener);
+        UnfilteredPartitionIterator merged = UnfilteredPartitionIterators.merge(results, mergeListener, false, null);
         Filter filter = new Filter(command.nowInSec(), command.metadata().enforceStrictLiveness());
         FilteredPartitions filtered = FilteredPartitions.filter(merged, filter);
         PartitionIterator counted = Transformation.apply(preCountFilter.apply(filtered), context.mergedResultCounter);
