@@ -516,12 +516,10 @@ public abstract class AbstractReadExecutor {
         }
         // return immediately, or begin a read repair
         setResult(digestResolver.getData());
-        // if (digestResolver.responsesMatch()) {
-        // setResult(digestResolver.getData());
-        // } else {
-        // logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch,
-        // starting read repair for key {}",
-        // getKey());
+        if (digestResolver.responsesMatch()) {
+            logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch, starting read repair for key {}",
+                    getKey());
+        }
         // readRepair.startRepair(digestResolver, this::setResult);
         // if (logBlockingReadRepairAttempt) {
         // logger.info("Blocking Read Repair triggered for query [{}] at CL.{} with
