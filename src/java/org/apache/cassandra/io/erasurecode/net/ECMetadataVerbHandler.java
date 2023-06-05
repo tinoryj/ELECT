@@ -411,7 +411,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     private static void saveECMetadataToBlockList(BlockedECMetadata metadata, String oldSSTHash, boolean isECSSTableAvailable) {
 
         if(isECSSTableAvailable) {
-            logger.debug("rymDebug: Save the ECMetadata to global Blocked ECMetadata for oldSSTHash ({}), newSSTHash ({})", oldSSTHash, metadata.newSSTableHash);
+            logger.debug("rymDebug: Save the ECMetadata to global Blocked ECMetadata for oldSSTHash ({}), newSSTHash ({}), metadata.oldHash is ({})", oldSSTHash, metadata.newSSTableHash, metadata.ecMetadata.ecMetadataContent.oldSSTHash);
             if(StorageService.instance.globalBlockedECMetadata.containsKey(metadata.cfName)) {
                 if(!StorageService.instance.globalBlockedECMetadata.get(metadata.cfName).contains(metadata))
                     StorageService.instance.globalBlockedECMetadata.get(metadata.cfName).add(metadata);
@@ -421,7 +421,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 StorageService.instance.globalBlockedECMetadata.put(metadata.cfName, blockList);
             }
         } else {
-            logger.debug("rymDebug: Save the ECMetadata to global Blocked [Updated] ECMetadata for oldSSTHash ({}), newSSTHash ({})", oldSSTHash, metadata.newSSTableHash);
+            logger.debug("rymDebug: Save the ECMetadata to global Blocked [Updated] ECMetadata for oldSSTHash ({}), newSSTHash ({}), metadata.oldHash is ({})", oldSSTHash, metadata.newSSTableHash, metadata.ecMetadata.ecMetadataContent.oldSSTHash);
             if(StorageService.instance.globalBlockedUpdatedECMetadata.containsKey(oldSSTHash)) {
                 if(!StorageService.instance.globalBlockedUpdatedECMetadata.get(oldSSTHash).contains(metadata))
                     StorageService.instance.globalBlockedUpdatedECMetadata.get(oldSSTHash).add(metadata);
