@@ -500,6 +500,10 @@ public class LeveledManifest {
                     if(!isSelectIssuedSSTableAsCompactionCandidates(pair.getKey()))
                         continue;
                 }
+
+                if(!pair.getKey().isReplicationTransferredToErasureCoding() && pair.getKey().isSelectedByCompactionOrErasureCoding())
+                    continue;
+                
                 overlapped.add(pair.getKey());
             }
                 
@@ -738,6 +742,11 @@ public class LeveledManifest {
                 if(!isSelectIssuedSSTableAsCompactionCandidates(sstable))
                     continue;
             }
+            if(!sstable.isReplicationTransferredToErasureCoding() && sstable.isSelectedByCompactionOrErasureCoding()) {
+                continue;
+            }
+
+
             Token startInputToken = sstable.first.getToken();
             Token endInputToken = sstable.last.getToken();
             Set<SSTableReader> outputLevel = Sets.union(Collections.singleton(sstable),

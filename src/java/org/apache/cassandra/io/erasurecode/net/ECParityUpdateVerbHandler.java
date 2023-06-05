@@ -232,28 +232,35 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     logger.debug("rymDebug: [Parity update] We check the parity codes for replacing a new sstable ({}) with an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
 
                     String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
-                    // For safety, we should make sure the parity code is ready
-                    if(!oldSSTable.isRequestParityCode) {
-                        retrieveParityCodeForOldSSTable(oldSSTable.sstHash, oldStripID, codeLength);
-                        oldSSTable.isRequestParityCode = true;
-                    }
-                    waitUntilParityCodesReader(oldSSTable.sstHash);
+                    
 
-                    logger.debug("rymDebug: [Parity update case 1] we update old sstable ({}) with new sstable ({})",
-                            oldSSTable.sstHash, newSSTable.sstHash);
-                    // ByteBuffer oldData = oldSSTable.sstContent;
-                    // ByteBuffer newData = newSSTable.sstContent;
-                    // codeLength = Stream.of(codeLength, newSSTable.sstContentSize,
-                    // oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
-                    Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
-                            newSSTable,
-                            StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
-                            StorageService.instance.globalECMetadataMap.get(oldStripID).sstHashIdList
-                                    .indexOf(oldSSTable.sstHash),
-                            codeLength,
-                            parityNodes,
-                            oldReplicaNodes,
-                            oldReplicaNodes));
+                    if(oldStripID != null) {
+                        // For safety, we should make sure the parity code is ready
+                        if(!oldSSTable.isRequestParityCode) {
+                            retrieveParityCodeForOldSSTable(oldSSTable.sstHash, oldStripID, codeLength);
+                            oldSSTable.isRequestParityCode = true;
+                        }
+                        waitUntilParityCodesReady(oldSSTable.sstHash);
+
+                        logger.debug("rymDebug: [Parity update case 1] we update old sstable ({}) with new sstable ({})",
+                                oldSSTable.sstHash, newSSTable.sstHash);
+                        // ByteBuffer oldData = oldSSTable.sstContent;
+                        // ByteBuffer newData = newSSTable.sstContent;
+                        // codeLength = Stream.of(codeLength, newSSTable.sstContentSize,
+                        // oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
+                        Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
+                                newSSTable,
+                                StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
+                                StorageService.instance.globalECMetadataMap.get(oldStripID).sstHashIdList
+                                        .indexOf(oldSSTable.sstHash),
+                                codeLength,
+                                parityNodes,
+                                oldReplicaNodes,
+                                oldReplicaNodes));
+
+                    } else {
+                        ECNetutils.printStackTace(String.format("rymERROR: we cannot get strip id (%s) for sstable (%s)", oldStripID, oldSSTable.sstHash));
+                    }
                 }
 
                 // if (!newSSTableQueue.isEmpty()) {
@@ -273,28 +280,35 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                         SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
                         String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
-                        if(!oldSSTable.isRequestParityCode) {
-                            retrieveParityCodeForOldSSTable(oldSSTable.sstHash, oldStripID, codeLength);
-                            oldSSTable.isRequestParityCode = true;
+
+                        if(oldStripID != null) {
+
+                            if(!oldSSTable.isRequestParityCode) {
+                                retrieveParityCodeForOldSSTable(oldSSTable.sstHash, oldStripID, codeLength);
+                                oldSSTable.isRequestParityCode = true;
+                            }
+                            waitUntilParityCodesReady(oldSSTable.sstHash);
+
+                            SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(
+                                    msg.ecMessageContent.sstHashID, msg.sstContent);
+                            // codeLength = Stream.of(codeLength, newSSTable.sstContentSize,
+                            // oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
+
+                            logger.debug("rymDebug: [Parity update case 2] we update old sstable ({}) with new sstable ({})",
+                                    oldSSTable.sstHash, newSSTable.sstHash);
+                            Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
+                                    newSSTable,
+                                    StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
+                                    StorageService.instance.globalECMetadataMap.get(oldStripID).sstHashIdList.indexOf(oldSSTable.sstHash),
+                                    codeLength,
+                                    parityNodes,
+                                    oldReplicaNodes,
+                                    oldReplicaNodes));
+
+                        } else {
+                            ECNetutils.printStackTace(String.format("rymERROR: we cannot get strip id (%s) for sstable (%s)", oldStripID, oldSSTable.sstHash));
                         }
-                        waitUntilParityCodesReader(oldSSTable.sstHash);
 
-                        SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(
-                                msg.ecMessageContent.sstHashID, msg.sstContent);
-                        // codeLength = Stream.of(codeLength, newSSTable.sstContentSize,
-                        // oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
-
-                        logger.debug("rymDebug: [Parity update case 2] we update old sstable ({}) with new sstable ({})",
-                                oldSSTable.sstHash, newSSTable.sstHash);
-                        Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
-                                newSSTable,
-                                StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
-                                StorageService.instance.globalECMetadataMap.get(oldStripID).sstHashIdList.indexOf(oldSSTable.sstHash),
-                                codeLength,
-                                parityNodes,
-                                oldReplicaNodes,
-                                oldReplicaNodes));
-                        // oldSSTablesIterator.remove();
                     } else {
                         break;
                     }
@@ -305,29 +319,35 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                     SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
                     String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
-                    if(!oldSSTable.isRequestParityCode) {
-                        retrieveParityCodeForOldSSTable(oldSSTable.sstHash, oldStripID, codeLength);
-                        oldSSTable.isRequestParityCode = true;
+
+                    if(oldStripID != null) {
+                        if(!oldSSTable.isRequestParityCode) {
+                            retrieveParityCodeForOldSSTable(oldSSTable.sstHash, oldStripID, codeLength);
+                            oldSSTable.isRequestParityCode = true;
+                        }
+                        waitUntilParityCodesReady(oldSSTable.sstHash);
+
+                        ByteBuffer newSSTContent = ByteBuffer.allocateDirect(codeLength);
+                        SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())),
+                                newSSTContent);
+                        // codeLength = Stream.of(codeLength, newSSTable.sstContentSize,
+                        // oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
+
+                        logger.debug("rymDebug: [Parity update case 3] we update old sstable ({}) with new sstable ({})",
+                                oldSSTable.sstHash, newSSTable.sstHash);
+                        Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
+                                newSSTable,
+                                StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
+                                StorageService.instance.globalECMetadataMap.get(oldStripID).sstHashIdList
+                                        .indexOf(oldSSTable.sstHash),
+                                codeLength,
+                                parityNodes,
+                                oldReplicaNodes,
+                                oldReplicaNodes));
+
+                    } else {
+                        ECNetutils.printStackTace(String.format("rymERROR: we cannot get strip id (%s) for sstable (%s)", oldStripID, oldSSTable.sstHash));
                     }
-                    waitUntilParityCodesReader(oldSSTable.sstHash);
-
-                    ByteBuffer newSSTContent = ByteBuffer.allocateDirect(codeLength);
-                    SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())),
-                            newSSTContent);
-                    // codeLength = Stream.of(codeLength, newSSTable.sstContentSize,
-                    // oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
-
-                    logger.debug("rymDebug: [Parity update case 3] we update old sstable ({}) with new sstable ({})",
-                            oldSSTable.sstHash, newSSTable.sstHash);
-                    Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
-                            newSSTable,
-                            StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
-                            StorageService.instance.globalECMetadataMap.get(oldStripID).sstHashIdList
-                                    .indexOf(oldSSTable.sstHash),
-                            codeLength,
-                            parityNodes,
-                            oldReplicaNodes,
-                            oldReplicaNodes));
                 }
             }
 
@@ -376,7 +396,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             try {
                 localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
                 // delete local parity code file
-                // ECNetutils.deleteFileByName(parityCodeFileName);
+                ECNetutils.deleteFileByName(parityCodeFileName);
 
                 if (codeLength == 0)
                     codeLength = localParityCode.capacity();
@@ -408,7 +428,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
     // [WARNING!] Make sure to avoid dead loops
-    private static void waitUntilParityCodesReader(String oldSSTHash) {
+    private static void waitUntilParityCodesReady(String oldSSTHash) {
         int retryCount = 0;
 
         ByteBuffer[] parityCodes = StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTHash);

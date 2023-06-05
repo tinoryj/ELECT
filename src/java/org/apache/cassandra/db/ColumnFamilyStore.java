@@ -497,12 +497,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         public void run() {
 
             ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
-            Set<SSTableReader> sstatbles = cfs.getSSTableForLevel(level);
-            if (!sstatbles.isEmpty()) {
-                logger.debug("rymDebug: get {} sstables from level {}", sstatbles.size(), level);
-                for (SSTableReader sstable : sstatbles) {
+            Set<SSTableReader> sstables = cfs.getSSTableForLevel(level);
+            if (!sstables.isEmpty()) {
+                logger.debug("rymDebug: get {} sstables from level {}", sstables.size(), level);
+                for (SSTableReader sstable : sstables) {
                     if (sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                        if (!sstable.isReplicationTransferredToErasureCoding()) {
+                        if (!sstable.isReplicationTransferredToErasureCoding() && !sstable.isSelectedByCompactionOrErasureCoding()) {
 
                             logger.debug(
                                     "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
@@ -551,6 +551,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     e.printStackTrace();
                                 }
                             }
+
+                            sstable.unsetIsSelectedByCompactionOrErasureCoding();
                         } else {
                             // logger.info("SSTable is transferred");
                             continue;

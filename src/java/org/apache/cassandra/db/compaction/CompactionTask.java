@@ -937,7 +937,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                                 + ",";
                                     }
 
-                                    logger.debug("rymERROR: Fuck!!! The parity nodes are different!!! {}", logString);
+                                    logger.debug("rymERROR: The parity nodes are different!!! {}", logString);
                                 }
                             }
                             ECParityUpdate parityUpdate = new ECParityUpdate(oldSSTable, true, parityNodes);
