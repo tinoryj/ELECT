@@ -82,11 +82,18 @@ public final class ECParityUpdate implements Serializable {
     }
 
 
+    /**
+     * This is the class that describes a parity update sstable.
+     * @param sstHash String
+     * @param sstContent byte[]
+     * @param sstContentSize int
+     * @param isRequestParityCode boolean
+     */
     public static class SSTableContentWithHashID implements Serializable {
         public final String sstHash;
         public final byte[] sstContent;
         public final int sstContentSize;
-        public boolean isRequestParityCode;
+        public boolean isRequestParityCode = false;
         public SSTableContentWithHashID(String sstHash, ByteBuffer sstContent) {
             this.sstHash = sstHash;
             this.sstContentSize = sstContent.capacity();

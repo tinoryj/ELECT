@@ -186,8 +186,9 @@ public class ECMetadata implements Serializable {
                 SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalPairtyUpdateSSTableWaitForErasureCodingReadyMap.get(sstHash);
                 StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
 
-                int codeLength = StorageService.getErasureCodeLength();
-                ECParityUpdateVerbHandler.retrieveParityCodeForOldSSTable(sstHash, this.stripeId, codeLength);
+                // int codeLength = StorageService.getErasureCodeLength();
+
+                // ECParityUpdateVerbHandler.retrieveParityCodeForOldSSTable(sstHash, this.stripeId, codeLength);
 
             }
             logger.debug("rymDebug:[ErasureCoding] In node {}, we map sstHash {} to stripID {}", FBUtilities.getBroadcastAddressAndPort(),
