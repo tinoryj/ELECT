@@ -22,9 +22,6 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.filter.DataLimits;
 import org.apache.cassandra.index.Index;
 import org.apache.cassandra.schema.TableMetadata;
@@ -34,17 +31,16 @@ import org.apache.cassandra.utils.concurrent.OpOrder;
 import static org.apache.cassandra.utils.MonotonicClock.Global.preciseTime;
 
 public class ReadExecutionController implements AutoCloseable {
-    private static final Logger logger = LoggerFactory.getLogger(ReadExecutionController.class);
     private static final long NO_SAMPLING = Long.MIN_VALUE;
 
     // For every reads
     private final OpOrder.Group baseOp;
-    private TableMetadata baseMetadata; // kept to sanity check that we have take the op order on the right table
+    private final TableMetadata baseMetadata; // kept to sanity check that we have take the op order on the right table
 
     // For index reads
     private final ReadExecutionController indexController;
     private final WriteContext writeContext;
-    private ReadCommand command;
+    private final ReadCommand command;
     static MonotonicClock clock = preciseTime;
 
     private final long createdAtNanos; // Only used while sampling
@@ -99,24 +95,7 @@ public class ReadExecutionController implements AutoCloseable {
     }
 
     boolean validForReadOn(ColumnFamilyStore cfs) {
-        if (!cfs.metadata.id.equals(baseMetadata.id)) {
-            logger.debug("[Tinoryj] validForReadOn: false, cfs.metadata.id: {}, baseMetadata.id: {}", cfs.metadata.name,
-                    baseMetadata.name);
-
-            command.updateTableMetadata(
-                    Keyspace.open("ycsb").getColumnFamilyStore(baseMetadata.name).metadata());
-            ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(command.metadata(), false)
-                    .build();
-            command.updateColumnFilter(newColumnFilter);
-            cfs = Keyspace.openAndGetStore(command.metadata());
-            // baseMetadata = command.metadata();
-            logger.debug("[Tinoryj] validForReadOn: update, cfs.metadata.id: {}, baseMetadata.id: {}",
-                    cfs.metadata.name,
-                    baseMetadata.name);
-        }
-
-        boolean flag = (baseOp != null && cfs.metadata.id.equals(baseMetadata.id));
-        return flag;
+        return baseOp != null && cfs.metadata.id.equals(baseMetadata.id);
     }
 
     public static ReadExecutionController empty() {
