@@ -206,6 +206,7 @@ public abstract class AbstractReadExecutor {
                             Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
                     ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
+                    readCommand.updateColumnFilter(newColumnFilter);
                     readCommand.setIsDigestQuery(false);
                     readCommandCopy = readCommand.copy();
                     break;
