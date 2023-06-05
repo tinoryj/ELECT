@@ -201,8 +201,8 @@ public abstract class AbstractReadExecutor {
 
             switch (replicationIDIndicatorForSendRequest) {
                 case 0:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
+                    // readCommand.updateTableMetadata(
+                    // Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
                     readCommand.setIsDigestQuery(false);
                     break;
                 case 1:
