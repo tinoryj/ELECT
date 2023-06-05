@@ -97,7 +97,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTHash);
 
             // Strip ID is null means that the previous erasure coding task has not completed, so we need to add this sstable to a cache map.
-            if (stripID == null) {
+            if (stripID == null || StorageService.instance.globalUpdatingStripList.contains(stripID)) {
                 
                 // just add this old sstable to the cache map
                 StorageService.instance.globalPairtyUpdateSSTableWaitForErasureCodingReadyMap.put(parityUpdateData.sstable.sstHash, parityUpdateData.sstable);
@@ -114,6 +114,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 if(!isNewSSTableQueueContainThisOldSSTable(StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(primaryNode), parityUpdateData.sstable)) {
 
                     logger.debug("rymDebug: we need get parity codes for sstable ({}), and add it to the globalOldSSTablesQueueForParityUpdateMap", oldSSTHash);
+                    StorageService.instance.globalUpdatingStripList.add(stripID);
                     retrieveParityCodeForOldSSTable(oldSSTHash, stripID, codeLength);
                     parityUpdateData.sstable.isRequestParityCode = true;
 

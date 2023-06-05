@@ -31,6 +31,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
@@ -216,6 +217,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, SSTableContentWithHashID> globalSSTableHashToContent = new ConcurrentHashMap<String, SSTableContentWithHashID>();
     // [In parity node], <old sstable hash, parity update sstable>
     public ConcurrentHashMap<String, SSTableContentWithHashID> globalPairtyUpdateSSTableWaitForErasureCodingReadyMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
+    // [In parity node] save the global update strip list
+    public ConcurrentSkipListSet<String> globalUpdatingStripList = new ConcurrentSkipListSet<>();
     // [In parity node]
     private static int codeLength = 0;
 
