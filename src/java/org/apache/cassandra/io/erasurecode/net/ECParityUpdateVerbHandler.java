@@ -246,9 +246,9 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                             oldReplicaNodes));
                 }
 
-                if (!newSSTableQueue.isEmpty()) {
-                    logger.debug("rymERROR: The new sstables are not completely consumed!!!");
-                }
+                // if (!newSSTableQueue.isEmpty()) {
+                //     logger.debug("rymERROR: The new sstables are not completely consumed!!!");
+                // }
 
                 // Case2: If old data is not completely consumed, we select sstables from
                 // globalRecvQueues
