@@ -173,7 +173,27 @@ public abstract class AbstractReadExecutor {
 
     private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
         printStackTace("makeRequestsCassandraEC");
+        int sendRequestNumberAccordingToConsistencyLevel = 3;
+        switch (replicaPlan().consistencyLevel()) {
+            case ONE:
+                sendRequestNumberAccordingToConsistencyLevel = 1;
+                break;
+            case TWO:
+                sendRequestNumberAccordingToConsistencyLevel = 2;
+                break;
+            case ALL:
+                sendRequestNumberAccordingToConsistencyLevel = sendRequestAddressesAndPorts.size();
+                break;
+            default:
+                logger.error(
+                        "[Tinoryj] Not support such consistency in CassandraEC, using default consistency read number = {}",
+                        replicaPlan().consistencyLevel(), sendRequestNumberAccordingToConsistencyLevel);
+        }
+
         for (int replicationIDIndicatorForSendRequest = 0; replicationIDIndicatorForSendRequest < 3; replicationIDIndicatorForSendRequest++) {
+            if (replicationIDIndicatorForSendRequest == sendRequestNumberAccordingToConsistencyLevel) {
+                break;
+            }
             InetAddressAndPort endpoint = sendRequestAddressesAndPorts.get(replicationIDIndicatorForSendRequest);
 
             if (traceState != null)
@@ -239,18 +259,17 @@ public abstract class AbstractReadExecutor {
         // replicaPlan().contacts(),
         // initialDataRequestCount);
         EndpointsForToken selected = replicaPlan().contacts();
-        // if (command.metadata().name.equals(primaryLSMTreeName) &&
-        // command.metadata().keyspace.equals("ycsb")) {
-        // // Tinoryj-> the read path for CassandraEC test with "YCSB".
-        // makeRequestsCassandraEC(command, selected);
-        // } else {
-        // Normal read path for Cassandra system tables.
-        EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-        makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
-        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-        // Tinoryj-> to read the possible secondary replica.
-        makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
-        // }
+        if (command.metadata().keyspace.equals("ycsb")) {
+            // Tinoryj-> the read path for CassandraEC test with "YCSB".
+            makeRequestsCassandraEC(command, selected);
+        } else {
+            // Normal read path for Cassandra system tables.
+            EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
+            makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+            makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+            // Tinoryj-> to read the possible secondary replica.
+            makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+        }
     }
 
     /**
@@ -496,23 +515,21 @@ public abstract class AbstractReadExecutor {
             }
         }
         // return immediately, or begin a read repair
-        setResult(digestResolver.getData());
-        // if (digestResolver.responsesMatch()) {
         // setResult(digestResolver.getData());
-        // } else {
-        // logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch,
-        // starting read repair for key {}",
-        // getKey());
-        // Tracing.trace("Digest mismatch: Mismatch for key {}", getKey());
-        // readRepair.startRepair(digestResolver, this::setResult);
-        // if (logBlockingReadRepairAttempt) {
-        // logger.info("Blocking Read Repair triggered for query [{}] at CL.{} with
-        // endpoints {}",
-        // command.toCQLString(),
-        // replicaPlan().consistencyLevel(),
-        // replicaPlan().contacts());
-        // }
-        // }
+        if (digestResolver.responsesMatch()) {
+            setResult(digestResolver.getData());
+        } else {
+            logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch, starting read repair for key {}",
+                    getKey());
+            // readRepair.startRepair(digestResolver, this::setResult);
+            // if (logBlockingReadRepairAttempt) {
+            // logger.info("Blocking Read Repair triggered for query [{}] at CL.{} with
+            // endpoints {}",
+            // command.toCQLString(),
+            // replicaPlan().consistencyLevel(),
+            // replicaPlan().contacts());
+            // }
+        }
 
     }
 
