@@ -1519,7 +1519,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             try {
                 FileWriter writer = new FileWriter("logs/" + metadata.name, true);
                 BufferedWriter buffer = new BufferedWriter(writer);
-                buffer.write(update.partitionKey().getToken() + "\n");
+                buffer.write(
+                        update.partitionKey().getToken() + "\t" + update.partitionKey().getRawKey(metadata.get())
+                                + "\n");
                 buffer.close();
             } catch (IOException e) {
                 // TODO Auto-generated catch block
