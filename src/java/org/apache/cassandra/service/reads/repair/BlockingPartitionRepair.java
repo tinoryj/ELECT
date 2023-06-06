@@ -53,15 +53,16 @@ import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import static org.apache.cassandra.net.Verb.*;
 import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.apache.cassandra.utils.concurrent.CountDownLatch.newCountDownLatch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class BlockingPartitionRepair
         extends AsyncFuture<Object> implements RequestCallback<Object> {
+
     private static final Logger logger = LoggerFactory.getLogger(BlockingPartitionRepair.class);
 
     private final DecoratedKey key;
@@ -145,15 +146,11 @@ public class BlockingPartitionRepair
 
     @VisibleForTesting
     protected void sendRR(Message<Mutation> message, InetAddressAndPort endpoint) {
-        // logger.debug("[Tinoryj] Send read request by sendRR func, message payload is
-        // {}, endpoint: {}",
-        // message.payload.getClass(), endpoint);
+        logger.debug("Sending read-repair-mutation to {}, message {}", endpoint, message);
         MessagingService.instance().sendWithCallback(message, endpoint, this);
     }
 
     public void sendInitialRepairs() {
-        // logger.debug("[Tinoryj] Send initial repairs, pendingRepairs: {}",
-        // pendingRepairs);
         mutationsSentTime = nanoTime();
         Replicas.assertFull(pendingRepairs.keySet());
 

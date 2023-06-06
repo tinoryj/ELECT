@@ -345,6 +345,7 @@ public abstract class ReplicaLayout<E extends Endpoints<E>> {
     public static ReplicaLayout.ForTokenRead forTokenReadLiveSorted(AbstractReplicationStrategy replicationStrategy,
             Token token) {
         EndpointsForToken replicas = replicationStrategy.getNaturalReplicasForToken(token);
+        // CassandraEC: stop sorting by proximity
         // replicas =
         // DatabaseDescriptor.getEndpointSnitch().sortedByProximity(FBUtilities.getBroadcastAddressAndPort(),
         // replicas);
