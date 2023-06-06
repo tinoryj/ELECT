@@ -173,33 +173,27 @@ public abstract class AbstractReadExecutor {
 
     private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
         // printStackTace("makeRequestsCassandraEC");
-        int sendRequestNumberAccordingToConsistencyLevel = 3;
-        switch (replicaPlan().consistencyLevel()) {
-            case ONE:
-                sendRequestNumberAccordingToConsistencyLevel = 1;
-                break;
-            case TWO:
-                sendRequestNumberAccordingToConsistencyLevel = 2;
-                break;
-            case ALL:
-                sendRequestNumberAccordingToConsistencyLevel = sendRequestAddressesAndPorts.size();
-                break;
-            default:
-                logger.error(
-                        "[Tinoryj] Not support such consistency in CassandraEC, using default consistency read number = {}",
-                        replicaPlan().consistencyLevel(), sendRequestNumberAccordingToConsistencyLevel);
-        }
+        boolean hasLocalEndpoint = false;
 
-        for (int replicationIDIndicatorForSendRequest = 0; replicationIDIndicatorForSendRequest < 3; replicationIDIndicatorForSendRequest++) {
-            if (replicationIDIndicatorForSendRequest == sendRequestNumberAccordingToConsistencyLevel) {
-                break;
-            }
-            InetAddressAndPort endpoint = sendRequestAddressesAndPorts.get(replicationIDIndicatorForSendRequest);
+        int replicationIDIndicatorForSendRequest = 0;
+        int localReplicaID = 0;
+        for (Replica replica : replicas) {
+            assert replica.isFull() || readCommand.acceptsTransient();
+            InetAddressAndPort endpoint = replica.endpoint();
+
+            logger.debug(
+                    "[Tinoryj] Make {} read request for key token = {}, replica address = {}, target column name = {}",
+                    readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
+                    endpoint, readCommand.metadata().name);
 
             if (traceState != null)
                 traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
 
-            ReadCommand readCommandCopy;
+            if (replica.isSelf()) {
+                hasLocalEndpoint = true;
+                localReplicaID = replicationIDIndicatorForSendRequest;
+                continue;
+            }
             switch (replicationIDIndicatorForSendRequest) {
                 case 0:
                     readCommand.updateTableMetadata(
@@ -208,7 +202,6 @@ public abstract class AbstractReadExecutor {
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter);
                     readCommand.setIsDigestQuery(false);
-                    readCommandCopy = readCommand.copy();
                     break;
                 case 1:
                     readCommand.updateTableMetadata(
@@ -216,8 +209,7 @@ public abstract class AbstractReadExecutor {
                     ColumnFilter newColumnFilter1 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter1);
-                    readCommand.setIsDigestQuery(true);
-                    readCommandCopy = readCommand.copy();
+                    readCommand.setIsDigestQuery(false);
                     break;
                 case 2:
                     readCommand.updateTableMetadata(
@@ -225,31 +217,49 @@ public abstract class AbstractReadExecutor {
                     ColumnFilter newColumnFilter2 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter2);
-                    readCommand.setIsDigestQuery(true);
-                    readCommandCopy = readCommand.copy();
+                    readCommand.setIsDigestQuery(false);
                     break;
                 default:
                     logger.debug("[Tinoryj] Not support replication number more than 3!!!");
-                    readCommandCopy = readCommand.copy();
             }
+            Message<ReadCommand> message = readCommand.createMessage(false);
 
-            if (endpoint.equals(FBUtilities.getBroadcastAddressAndPort())) {
-                logger.debug(
-                        "[Tinoryj] Make {} read [Locally] request for key token = {}, replica address = {}, target column name = {}",
-                        readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
-                        endpoint, readCommand.metadata().name);
-                Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommandCopy, handler));
-                this.command = readCommandCopy;
-                this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(readCommandCopy.metadata().name);
-                ;
-            } else {
-                logger.debug(
-                        "[Tinoryj] Make {} read [Remote] request for key token = {}, replica address = {}, target column name = {}",
-                        readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
-                        endpoint, readCommand.metadata().name);
-                Message<ReadCommand> message = readCommandCopy.createMessage(false);
-                MessagingService.instance().sendWithCallback(message, endpoint, handler);
+            MessagingService.instance().sendWithCallback(message, endpoint, handler);
+            replicationIDIndicatorForSendRequest++;
+        }
+
+        // We delay the local (potentially blocking) read till the end to avoid stalling
+        // remote requests.
+        if (hasLocalEndpoint) {
+            switch (localReplicaID) {
+                case 0:
+                    readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
+                    ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter);
+                    readCommand.setIsDigestQuery(false);
+                    break;
+                case 1:
+                    readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
+                    ColumnFilter newColumnFilter1 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter1);
+                    readCommand.setIsDigestQuery(false);
+                    break;
+                case 2:
+                    readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2).metadata());
+                    ColumnFilter newColumnFilter2 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter2);
+                    readCommand.setIsDigestQuery(false);
+                    break;
+                default:
+                    logger.debug("[Tinoryj] Not support replication number more than 3!!!");
             }
+            Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
         }
     }
 
@@ -269,17 +279,17 @@ public abstract class AbstractReadExecutor {
         // replicaPlan().contacts(),
         // initialDataRequestCount);
         EndpointsForToken selected = replicaPlan().contacts();
-        // if (command.metadata().keyspace.equals("ycsb")) {
-        // // Tinoryj-> the read path for CassandraEC test with "YCSB".
-        // makeRequestsCassandraEC(command, selected);
-        // } else {
-        // Normal read path for Cassandra system tables.
-        EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-        makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
-        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-        // Tinoryj-> to read the possible secondary replica.
-        makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
-        // }
+        if (command.metadata().keyspace.equals("ycsb")) {
+            // Tinoryj-> the read path for CassandraEC test with "YCSB".
+            makeRequestsCassandraEC(command, selected);
+        } else {
+            // Normal read path for Cassandra system tables.
+            EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
+            makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+            makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+            // Tinoryj-> to read the possible secondary replica.
+            makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+        }
     }
 
     /**
