@@ -289,17 +289,17 @@ public abstract class AbstractReadExecutor {
         // replicaPlan().contacts(),
         // initialDataRequestCount);
         EndpointsForToken selected = replicaPlan().contacts();
-        if (command.metadata().keyspace.equals("ycsb")) {
-            // Tinoryj-> the read path for CassandraEC test with "YCSB".
-            makeRequestsCassandraEC(command, selected);
-        } else {
-            // Normal read path for Cassandra system tables.
-            EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-            makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
-            makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-            // Tinoryj-> to read the possible secondary replica.
-            makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
-        }
+        // if (command.metadata().keyspace.equals("ycsb")) {
+        // // Tinoryj-> the read path for CassandraEC test with "YCSB".
+        // makeRequestsCassandraEC(command, selected);
+        // } else {
+        // Normal read path for Cassandra system tables.
+        EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
+        makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+        // Tinoryj-> to read the possible secondary replica.
+        makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+        // }
     }
 
     /**
