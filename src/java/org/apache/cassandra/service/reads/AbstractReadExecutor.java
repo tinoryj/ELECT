@@ -324,6 +324,11 @@ public abstract class AbstractReadExecutor {
             // }
         }
 
+        if (command.metadata().keyspace.equals("ycsb")) {
+            logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
+            return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime, false);
+        }
+
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
         // miscounting DC responses
