@@ -142,15 +142,15 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     }
                     boolean isECSSTableAvailable = (StorageService.instance.globalSSTHashToECSSTable.get(blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate) != null);
                     boolean isPreviousUpdateDone = !StorageService.instance.globalUpdatingSSTHashList.contains(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
-                    logger.debug("rymDebug: [ECMetadata for Strip Update, Save it for {}] ECMetadataVerbHandler get new sstHash {} from {}, we are going to replace a old one {} with this, the replica nodes are {}, strip id is {}, isECSSTableAvailable? {}, isPreviousUpdateDone? {}",
-                                secondaryCfName, newSSTableHash, sourceIP, ecMetadata.ecMetadataContent.oldSSTHashForUpdate, entry.getValue(), ecMetadata.stripeId, 
+                    logger.debug("rymDebug: [ECMetadata for Strip Update, Save it for {}] ECMetadataVerbHandler get new sstHash {} from {}, we are going to replace a old one {} with this, the replica nodes are {}, sstHashList is {}, strip id is {}, isECSSTableAvailable? {}, isPreviousUpdateDone? {}",
+                                secondaryCfName, newSSTableHash, sourceIP, ecMetadata.ecMetadataContent.oldSSTHashForUpdate, entry.getValue(), ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.stripeId, 
                                 isECSSTableAvailable, isPreviousUpdateDone);
                     saveECMetadataToBlockList(blockedECMetadata, blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate, isECSSTableAvailable && isPreviousUpdateDone);
 
                 } else {
                     blockedECMetadata = new BlockedECMetadata(newSSTableHash, sourceIP, ecMetadata, secondaryCfName);
-                    logger.debug("rymDebug: [ECMetadata for Erasure Coding, Save it for {}] ECMetadataVerbHandler get new sstHash {} from {}, we are going to record it directly, the replica nodes are {}, strip id is {}",
-                                 secondaryCfName, newSSTableHash, sourceIP, entry.getValue(), ecMetadata.stripeId);
+                    logger.debug("rymDebug: [ECMetadata for Erasure Coding, Save it for {}] ECMetadataVerbHandler get new sstHash {} from {}, we are going to record it directly, the replica nodes are {}, sstHashList is {}, strip id is {}",
+                                 secondaryCfName, newSSTableHash, sourceIP, entry.getValue(), ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.stripeId);
                     saveECMetadataToBlockList(blockedECMetadata, blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate,true);
                 }
 
