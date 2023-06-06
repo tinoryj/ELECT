@@ -219,6 +219,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, SSTableContentWithHashID> globalPairtyUpdateSSTableWaitForErasureCodingReadyMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
     // [In parity node] save the global update strip list
     public ConcurrentSkipListSet<String> globalUpdatingStripList = new ConcurrentSkipListSet<>();
+    // [In secondary node] maintain a global view for the updating sstHash.
+    public ConcurrentSkipListSet<String> globalUpdatingSSTHashList = new ConcurrentSkipListSet<>();
     // [In parity node]
     private static int codeLength = 0;
 
