@@ -178,6 +178,7 @@ public abstract class AbstractReadExecutor {
         int replicationIDIndicatorForSendRequest = 0;
         int localReplicaID = 0;
         for (Replica replica : replicas) {
+            replicationIDIndicatorForSendRequest++;
             assert replica.isFull() || readCommand.acceptsTransient();
             InetAddressAndPort endpoint = replica.endpoint();
 
@@ -195,28 +196,31 @@ public abstract class AbstractReadExecutor {
                 continue;
             }
             switch (replicationIDIndicatorForSendRequest) {
-                case 0:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
-                    ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter);
-                    readCommand.setIsDigestQuery(false);
-                    break;
                 case 1:
                     readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
-                    ColumnFilter newColumnFilter1 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter1);
+                            Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
+                    // ColumnFilter newColumnFilter =
+                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                    // .build();
+                    // readCommand.updateColumnFilter(newColumnFilter);
                     readCommand.setIsDigestQuery(false);
                     break;
                 case 2:
                     readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
+                    // ColumnFilter newColumnFilter1 =
+                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                    // .build();
+                    // readCommand.updateColumnFilter(newColumnFilter1);
+                    readCommand.setIsDigestQuery(false);
+                    break;
+                case 3:
+                    readCommand.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2).metadata());
-                    ColumnFilter newColumnFilter2 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter2);
+                    // ColumnFilter newColumnFilter2 =
+                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                    // .build();
+                    // readCommand.updateColumnFilter(newColumnFilter2);
                     readCommand.setIsDigestQuery(false);
                     break;
                 default:
@@ -225,40 +229,46 @@ public abstract class AbstractReadExecutor {
             Message<ReadCommand> message = readCommand.createMessage(false);
 
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
-            replicationIDIndicatorForSendRequest++;
         }
 
         // We delay the local (potentially blocking) read till the end to avoid stalling
         // remote requests.
         if (hasLocalEndpoint) {
             switch (localReplicaID) {
-                case 0:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
-                    ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter);
-                    readCommand.setIsDigestQuery(false);
-                    break;
                 case 1:
                     readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
-                    ColumnFilter newColumnFilter1 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter1);
+                            Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
+                    // ColumnFilter newColumnFilter =
+                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                    // .build();
+                    // readCommand.updateColumnFilter(newColumnFilter);
                     readCommand.setIsDigestQuery(false);
                     break;
                 case 2:
                     readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
+                    // ColumnFilter newColumnFilter1 =
+                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                    // .build();
+                    // readCommand.updateColumnFilter(newColumnFilter1);
+                    readCommand.setIsDigestQuery(false);
+                    break;
+                case 3:
+                    readCommand.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2).metadata());
-                    ColumnFilter newColumnFilter2 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter2);
+                    // ColumnFilter newColumnFilter2 =
+                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                    // .build();
+                    // readCommand.updateColumnFilter(newColumnFilter2);
                     readCommand.setIsDigestQuery(false);
                     break;
                 default:
                     logger.debug("[Tinoryj] Not support replication number more than 3!!!");
             }
+            logger.debug(
+                    "[Tinoryj] Local read request for key token = {}, replica address = {}, target column name = {}",
+                    readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
+                    FBUtilities.getJustBroadcastAddress(), readCommand.metadata().name);
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
         }
     }
