@@ -542,13 +542,14 @@ public abstract class AbstractReadExecutor {
         } else {
             if (digestResolver.responsesMatch()) {
                 setResult(digestResolver.getData());
-            }
-            readRepair.startRepair(digestResolver, this::setResult);
-            if (logBlockingReadRepairAttempt) {
-                logger.info("Blocking Read Repair triggered for query [{}] at CL.{} with endpoints {}",
-                        command.toCQLString(),
-                        replicaPlan().consistencyLevel(),
-                        replicaPlan().contacts());
+            } else {
+                readRepair.startRepair(digestResolver, this::setResult);
+                if (logBlockingReadRepairAttempt) {
+                    logger.info("Blocking Read Repair triggered for query [{}] at CL.{} with endpoints {}",
+                            command.toCQLString(),
+                            replicaPlan().consistencyLevel(),
+                            replicaPlan().contacts());
+                }
             }
         }
     }
