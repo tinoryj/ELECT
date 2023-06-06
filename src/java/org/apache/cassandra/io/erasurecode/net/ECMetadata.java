@@ -100,11 +100,11 @@ public class ECMetadata implements Serializable {
         // The following properties is only for parity update
         public boolean isParityUpdate = false;
         public int targetIndex = 0;
-        public String oldSSTHash = "";
+        public String oldSSTHashForUpdate;
 
         public ECMetadataContent(String ks, String cf, List<String> sstHashIdList, List<String> parityHashList,
         List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> secondaryNodes, List<InetAddressAndPort> parityNodes,
-        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap) {
+        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap, String oldSSTHashForUpdate) {
             this.keyspace = ks;
             this.cfName = cf;
             this.sstHashIdList = sstHashIdList;
@@ -113,6 +113,7 @@ public class ECMetadata implements Serializable {
             this.secondaryNodes = secondaryNodes;
             this.parityNodes = parityNodes;
             this.sstHashIdToReplicaMap = sstHashIdToReplicaMap;
+            this.oldSSTHashForUpdate = oldSSTHashForUpdate;
         }
     }
 
@@ -212,7 +213,7 @@ public class ECMetadata implements Serializable {
         // update isParityUpdate
         this.ecMetadataContent.isParityUpdate = isParityUpdate;
         // update the old sstable hash
-        this.ecMetadataContent.oldSSTHash = oldSSTHash;
+        this.ecMetadataContent.oldSSTHashForUpdate = oldSSTHash;
         // update sstable hash list
         this.ecMetadataContent.sstHashIdList.set(targetIndex, newSSTHash);
         // update parity code hash
@@ -294,7 +295,7 @@ public class ECMetadata implements Serializable {
     public void distributeECMetadata(ECMetadata ecMetadata) {
         logger.debug("rymDebug: [In parity node ({})] This distributeEcMetadata method, we should send stripId ({}) with sstables list ({}) to node ({}), the sstHashToRelicaMap is ({}), old sstable hash is ({})",
                     FBUtilities.getBroadcastAddressAndPort(), ecMetadata.stripeId, ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.ecMetadataContent.secondaryNodes, 
-                    ecMetadata.ecMetadataContent.sstHashIdToReplicaMap, ecMetadata.ecMetadataContent.oldSSTHash);
+                    ecMetadata.ecMetadataContent.sstHashIdToReplicaMap, ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
         Message<ECMetadata> message = Message.outWithFlag(Verb.ECMETADATA_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
         
         // send to secondary nodes 

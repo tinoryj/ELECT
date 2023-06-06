@@ -279,7 +279,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             //             new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
             ECMetadata ecMetadata = new ECMetadata("", new ECMetadataContent("", "", new ArrayList<String>(),new ArrayList<String>(),
                                                    new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new ArrayList<InetAddressAndPort>(),
-                                                new HashMap<String, List<InetAddressAndPort>>()));
+                                                new HashMap<String, List<InetAddressAndPort>>(), ""));
             ecMetadata.generateAndDistributeMetadata(messages, parityHashList);
         }
 
