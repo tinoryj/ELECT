@@ -122,13 +122,13 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     boolean isECSSTableAvailable = (StorageService.instance.globalSSTHashToECSSTable.get(blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash) != null);
                     boolean isPreviousUpdateDone = !StorageService.instance.globalUpdatingSSTHashList.contains(ecMetadata.ecMetadataContent.oldSSTHash);
                     logger.debug("rymDebug: [ECMetadata for Strip Update, Save it for {}] ECMetadataVerbHandler get new sstHash {} from {}, we are going to replace a old one {} with this, the replica nodes are {}, strip id is {}, isECSSTableAvailable? {}, isPreviousUpdateDone? {}",
-                                ecMetadata.ecMetadataContent.isParityUpdate, cfName, newSSTableHash, sourceIP, ecMetadata.ecMetadataContent.oldSSTHash, entry.getValue(), ecMetadata.stripeId, 
+                                cfName, newSSTableHash, sourceIP, ecMetadata.ecMetadataContent.oldSSTHash, entry.getValue(), ecMetadata.stripeId, 
                                 isECSSTableAvailable, isPreviousUpdateDone);
                     saveECMetadataToBlockList(blockedECMetadata, blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash, isECSSTableAvailable && isPreviousUpdateDone);
 
                 } else {
                     logger.debug("rymDebug: [ECMetadata for Erasure Coding, Save it for {}] ECMetadataVerbHandler get new sstHash {} from {}, we are going to record it directly, the replica nodes are {}, strip id is {}",
-                                ecMetadata.ecMetadataContent.isParityUpdate, cfName, newSSTableHash, sourceIP, ecMetadata.ecMetadataContent.oldSSTHash, entry.getValue(), ecMetadata.stripeId);
+                                cfName, newSSTableHash, sourceIP, ecMetadata.ecMetadataContent.oldSSTHash, entry.getValue(), ecMetadata.stripeId);
                     saveECMetadataToBlockList(blockedECMetadata, blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHash,true);
                 }
 
