@@ -77,7 +77,7 @@ public abstract class AbstractReadExecutor {
     protected final DigestResolver<EndpointsForToken, ReplicaPlan.ForTokenRead> digestResolver;
     protected final ReadCallback<EndpointsForToken, ReplicaPlan.ForTokenRead> handler;
     protected final TraceState traceState;
-    protected final ColumnFamilyStore cfs;
+    protected ColumnFamilyStore cfs;
     protected final long queryStartNanoTime;
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
@@ -216,7 +216,7 @@ public abstract class AbstractReadExecutor {
                     ColumnFilter newColumnFilter1 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter1);
-                    readCommand.setIsDigestQuery(false);
+                    readCommand.setIsDigestQuery(true);
                     readCommandCopy = readCommand.copy();
                     break;
                 case 2:
@@ -225,7 +225,7 @@ public abstract class AbstractReadExecutor {
                     ColumnFilter newColumnFilter2 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter2);
-                    readCommand.setIsDigestQuery(false);
+                    readCommand.setIsDigestQuery(true);
                     readCommandCopy = readCommand.copy();
                     break;
                 default:
@@ -240,6 +240,8 @@ public abstract class AbstractReadExecutor {
                         endpoint, readCommand.metadata().name);
                 Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommandCopy, handler));
                 this.command = readCommandCopy;
+                this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(readCommandCopy.metadata().name);
+                ;
             } else {
                 logger.debug(
                         "[Tinoryj] Make {} read [Remote] request for key token = {}, replica address = {}, target column name = {}",
@@ -325,8 +327,10 @@ public abstract class AbstractReadExecutor {
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
         // miscounting DC responses
-        if (retry.equals(NeverSpeculativeRetryPolicy.INSTANCE) || consistencyLevel == ConsistencyLevel.EACH_QUORUM)
+        if (retry.equals(NeverSpeculativeRetryPolicy.INSTANCE) || consistencyLevel == ConsistencyLevel.EACH_QUORUM) {
+            logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
             return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime, false);
+        }
 
         // There are simply no extra replicas to speculate.
         // Handle this separately so it can record failed attempts to speculate due to
@@ -335,16 +339,22 @@ public abstract class AbstractReadExecutor {
 
         {
             boolean recordFailedSpeculation = consistencyLevel != ConsistencyLevel.ALL;
+            logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
             return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime,
                     recordFailedSpeculation);
         }
 
-        if (retry.equals(AlwaysSpeculativeRetryPolicy.INSTANCE))
+        if (retry.equals(AlwaysSpeculativeRetryPolicy.INSTANCE)) {
+            logger.debug("[Tinoryj] AlwaysSpeculatingReadExecutor is in use");
             return new AlwaysSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime);
-        else // PERCENTILE
-             // or
-             // CUSTOM.
+        } else {
+            // PERCENTILE
+            // or
+            logger.debug("[Tinoryj] SpeculatingReadExecutor is in use");
+            // CUSTOM.
             return new SpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime);
+        }
+
     }
 
     public boolean hasLocalRead() {
