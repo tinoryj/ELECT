@@ -44,6 +44,18 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         }
 
         ReadCommand command = message.payload;
+
+        logger.debug(
+                "[Tinoryj] Received read command from {}, target table is {}, target key is {}, key token is {}",
+                message.from(),
+                command.metadata().name,
+                command instanceof SinglePartitionReadCommand
+                        ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                        : null,
+                command instanceof SinglePartitionReadCommand
+                        ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata())
+                        : null);
+
         validateTransientStatus(message);
         MessageParams.reset();
 

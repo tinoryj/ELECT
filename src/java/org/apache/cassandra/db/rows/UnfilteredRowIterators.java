@@ -247,9 +247,9 @@ public abstract class UnfilteredRowIterators {
             Unfiltered unfiltered = iterator.next();
             unfiltered.digest(digest);
         }
-        logger.debug("[Tinoryj] cauclate digest for iterator token = {}, on node {}",
-                iterator.partitionKey().getToken(),
-                FBUtilities.getBroadcastAddressAndPort());
+        // logger.debug("[Tinoryj] cauclate digest for iterator token = {}, on node {}",
+        // iterator.partitionKey().getToken(),
+        // FBUtilities.getBroadcastAddressAndPort());
     }
 
     /**
