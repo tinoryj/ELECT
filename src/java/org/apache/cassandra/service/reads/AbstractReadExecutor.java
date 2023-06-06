@@ -269,17 +269,17 @@ public abstract class AbstractReadExecutor {
         // replicaPlan().contacts(),
         // initialDataRequestCount);
         EndpointsForToken selected = replicaPlan().contacts();
-        if (command.metadata().keyspace.equals("ycsb")) {
-            // Tinoryj-> the read path for CassandraEC test with "YCSB".
-            makeRequestsCassandraEC(command, selected);
-        } else {
-            // Normal read path for Cassandra system tables.
-            EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-            makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
-            makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-            // Tinoryj-> to read the possible secondary replica.
-            makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
-        }
+        // if (command.metadata().keyspace.equals("ycsb")) {
+        // // Tinoryj-> the read path for CassandraEC test with "YCSB".
+        // makeRequestsCassandraEC(command, selected);
+        // } else {
+        // Normal read path for Cassandra system tables.
+        EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
+        makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+        // Tinoryj-> to read the possible secondary replica.
+        makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+        // }
     }
 
     /**
@@ -324,10 +324,11 @@ public abstract class AbstractReadExecutor {
             // }
         }
 
-        if (command.metadata().keyspace.equals("ycsb")) {
-            logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
-            return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime, false);
-        }
+        // if (command.metadata().keyspace.equals("ycsb")) {
+        // logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
+        // return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan,
+        // queryStartNanoTime, false);
+        // }
 
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
@@ -538,25 +539,26 @@ public abstract class AbstractReadExecutor {
             }
         }
         // return immediately, or begin a read repair
-        if (command.metadata().keyspace.equals("ycsb")) {
+        // if (command.metadata().keyspace.equals("ycsb")) {
+        // setResult(digestResolver.getData());
+        // if (!digestResolver.responsesMatch()) {
+        // logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch,
+        // starting read repair for key {}",
+        // getKey());
+        // }
+        // } else {
+        if (digestResolver.responsesMatch()) {
             setResult(digestResolver.getData());
-            if (!digestResolver.responsesMatch()) {
-                logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch, starting read repair for key {}",
-                        getKey());
-            }
         } else {
-            if (digestResolver.responsesMatch()) {
-                setResult(digestResolver.getData());
-            } else {
-                readRepair.startRepair(digestResolver, this::setResult);
-                if (logBlockingReadRepairAttempt) {
-                    logger.info("Blocking Read Repair triggered for query [{}] at CL.{} with endpoints {}",
-                            command.toCQLString(),
-                            replicaPlan().consistencyLevel(),
-                            replicaPlan().contacts());
-                }
+            readRepair.startRepair(digestResolver, this::setResult);
+            if (logBlockingReadRepairAttempt) {
+                logger.info("Blocking Read Repair triggered for query [{}] at CL.{} with endpoints {}",
+                        command.toCQLString(),
+                        replicaPlan().consistencyLevel(),
+                        replicaPlan().contacts());
             }
         }
+        // }
     }
 
     public void awaitReadRepair() throws ReadTimeoutException {
