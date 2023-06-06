@@ -98,13 +98,13 @@ public class ECMetadata implements Serializable {
         public List<InetAddressAndPort> parityNodes;
         
         // The following properties is only for parity update
-        public boolean isParityUpdate = false;
-        public int targetIndex = 0;
+        public boolean isParityUpdate;
+        public int targetIndex;
         public String oldSSTHashForUpdate;
 
         public ECMetadataContent(String ks, String cf, List<String> sstHashIdList, List<String> parityHashList,
         List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> secondaryNodes, List<InetAddressAndPort> parityNodes,
-        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap, String oldSSTHashForUpdate) {
+        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap, String oldSSTHashForUpdate, boolean isParityUpdate, int targetIndex) {
             this.keyspace = ks;
             this.cfName = cf;
             this.sstHashIdList = sstHashIdList;
@@ -114,6 +114,8 @@ public class ECMetadata implements Serializable {
             this.parityNodes = parityNodes;
             this.sstHashIdToReplicaMap = sstHashIdToReplicaMap;
             this.oldSSTHashForUpdate = oldSSTHashForUpdate;
+            this.isParityUpdate = isParityUpdate;
+            this.targetIndex = targetIndex;
         }
     }
 
