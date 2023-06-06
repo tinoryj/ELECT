@@ -243,6 +243,8 @@ public abstract class AbstractReadExecutor {
                     // .build();
                     // readCommand.updateColumnFilter(newColumnFilter);
                     readCommand.setIsDigestQuery(false);
+                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName);
+                    this.command = readCommand;
                     break;
                 case 2:
                     readCommand.updateTableMetadata(
@@ -252,6 +254,8 @@ public abstract class AbstractReadExecutor {
                     // .build();
                     // readCommand.updateColumnFilter(newColumnFilter1);
                     readCommand.setIsDigestQuery(false);
+                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1);
+                    this.command = readCommand;
                     break;
                 case 3:
                     readCommand.updateTableMetadata(
@@ -261,6 +265,8 @@ public abstract class AbstractReadExecutor {
                     // .build();
                     // readCommand.updateColumnFilter(newColumnFilter2);
                     readCommand.setIsDigestQuery(false);
+                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2);
+                    this.command = readCommand;
                     break;
                 default:
                     logger.debug("[Tinoryj] Not support replication number more than 3!!!");

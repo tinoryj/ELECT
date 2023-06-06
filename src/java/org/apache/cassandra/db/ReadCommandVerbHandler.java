@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.InvalidRequestException;
@@ -30,8 +31,13 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.FBUtilities;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
     public static final ReadCommandVerbHandler instance = new ReadCommandVerbHandler();
@@ -56,7 +62,26 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     command instanceof SinglePartitionReadCommand
                             ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
                             : null);
-
+            // Update read command to the correct table
+            ByteBuffer targetReadKey = (command instanceof SinglePartitionReadCommand
+                    ? ((SinglePartitionReadCommand) command).partitionKey().getKey()
+                    : null);
+            List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
+                    .metadata().keyspace,
+                    targetReadKey);
+            if (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress()) == 1) {
+                command.updateTableMetadata(
+                        Keyspace.open("ycsb").getColumnFamilyStore("usertable1").metadata());
+                ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(command.metadata(), false)
+                        .build();
+                command.updateColumnFilter(newColumnFilter);
+            } else if (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress()) == 2) {
+                command.updateTableMetadata(
+                        Keyspace.open("ycsb").getColumnFamilyStore("usertable2").metadata());
+                ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(command.metadata(), false)
+                        .build();
+                command.updateColumnFilter(newColumnFilter);
+            }
         }
 
         validateTransientStatus(message);
