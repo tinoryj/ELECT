@@ -76,7 +76,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
                         message.payload.sstHashID, message.from());
 
         // collect sstcontent
-        List<String> allKey = message.payload.allKey;
+        // List<String> allKey = message.payload.allKey;
         SSTablesInBytes sstInBytes = message.payload.sstInBytes;
         String cfName = message.payload.targetCfName;
 
@@ -86,8 +86,8 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         //     sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
         // }
         // Collections.sort(sourceKeys, new DecoratedKeyComparator());
-        DecoratedKey firstKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, allKey.get(0));
-        DecoratedKey lastKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, allKey.get(allKey.size() - 1));
+        DecoratedKey firstKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, message.payload.firstKey);
+        DecoratedKey lastKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, message.payload.lastKey);
 
         // Get sstales in byte.
         // TODO: save the recieved data to a certain location based on the keyspace name and cf name
@@ -112,10 +112,10 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     
 
 
-        logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, received key num is {}, targetCfName is {}, sstHash is {}", 
+        logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, targetCfName is {}, sstHash is {}", 
                      message.from(),
                      StorageService.instance.globalSSTMap.size(), 
-                     message.payload.allKey.size(),
+                    //  message.payload.allKey.size(),
                      message.payload.targetCfName,
                      message.payload.sstHashID);
     }

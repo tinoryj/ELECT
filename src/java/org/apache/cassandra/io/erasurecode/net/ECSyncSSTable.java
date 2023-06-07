@@ -48,7 +48,9 @@ import static org.apache.cassandra.db.TypeSizes.sizeof;
 
 public class ECSyncSSTable {
     public static final Serializer serializer = new Serializer();
-    public final List<String> allKey;
+    // public final List<String> allKey;
+    public final String firstKey;
+    public final String lastKey;
     public final String sstHashID;
     public final String targetCfName;
     
@@ -56,8 +58,8 @@ public class ECSyncSSTable {
 
     public byte[] sstContent;
     public int sstSize;
-    public byte[] allKeysInBytes;
-    public int allKeysInBytesSize;
+    // public byte[] allKeysInBytes;
+    // public int allKeysInBytesSize;
 
     //private static SSTablesInBytesConverter converter = new SSTablesInBytesConverter();
 
@@ -90,10 +92,12 @@ public class ECSyncSSTable {
         }
     };
 
-    public ECSyncSSTable(String sstHashID, String targetCfName, List<String> allKey, SSTablesInBytes sstInBytes) {
+    public ECSyncSSTable(String sstHashID, String targetCfName, String firstKey, String lastKey, SSTablesInBytes sstInBytes) {
         this.sstHashID = sstHashID;
         this.targetCfName = targetCfName;
-        this.allKey = new ArrayList<>(allKey);
+        // this.allKey = new ArrayList<>(allKey);
+        this.firstKey = firstKey;
+        this.lastKey = lastKey;
         this.sstInBytes = sstInBytes;
     }
 
@@ -101,8 +105,8 @@ public class ECSyncSSTable {
         try {
             this.sstContent = ByteObjectConversion.objectToByteArray((Serializable) this.sstInBytes);
             this.sstSize = this.sstContent.length;
-            this.allKeysInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
-            this.allKeysInBytesSize = this.allKeysInBytes.length;
+            // this.allKeysInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
+            // this.allKeysInBytesSize = this.allKeysInBytes.length;
             // logger.debug("rymDebug: try to serialize allKey, allKey num is {}", this.allKey.size());
             // logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
             //logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstContent.length);
@@ -127,8 +131,10 @@ public class ECSyncSSTable {
             out.writeUTF(t.targetCfName);
             out.writeInt(t.sstSize);
             out.write(t.sstContent);
-            out.writeInt(t.allKeysInBytesSize);
-            out.write(t.allKeysInBytes);
+            // out.writeInt(t.allKeysInBytesSize);
+            // out.write(t.allKeysInBytes);
+            out.writeUTF(t.firstKey);
+            out.writeUTF(t.lastKey);
         }
     
         @Override
@@ -138,31 +144,40 @@ public class ECSyncSSTable {
             int sstSize = in.readInt();
             byte[] sstContent = new byte[sstSize];
             in.readFully(sstContent);
-            int allKeysInBytesSize = in.readInt();
-            byte[] allKeysInBytes = new byte[allKeysInBytesSize];
-            in.readFully(allKeysInBytes);
+            // int allKeysInBytesSize = in.readInt();
+            // byte[] allKeysInBytes = new byte[allKeysInBytesSize];
+            // in.readFully(allKeysInBytes);
 
-            List<String> allKey = new ArrayList<String>();
+            // List<String> allKey = new ArrayList<String>();
+            String firstKey = in.readUTF();
+            String lastKey = in.readUTF();
            
             try {
                 // allKey = keyConverter.fromByteArray(sstContent);
-                allKey = (List<String>) ByteObjectConversion.byteArrayToObject(allKeysInBytes);
+                // allKey = (List<String>) ByteObjectConversion.byteArrayToObject(allKeysInBytes);
                 SSTablesInBytes sstInBytes = (SSTablesInBytes) ByteObjectConversion.byteArrayToObject(sstContent);
                 
-                return new ECSyncSSTable(sstHashID, targetCfName, allKey, sstInBytes);
+                return new ECSyncSSTable(sstHashID, targetCfName, firstKey, lastKey, sstInBytes);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 logger.error("ERROR: get sstables in bytes error!");
             }
             // ByteBuffer sstContent = ByteBuffer.wrap(buf);
+
+
+
             return null;
             
         }
     
         @Override
         public long serializedSize(ECSyncSSTable t, int version) {
-            long size = t.sstSize + sizeof(t.sstSize) +
-                        t.allKeysInBytesSize + sizeof(t.allKeysInBytesSize) +
+            long size = t.sstSize +
+                        sizeof(t.sstSize) +
+                        // t.allKeysInBytesSize +
+                        // sizeof(t.allKeysInBytesSize) +
+                        sizeof(t.firstKey) +
+                        sizeof(t.lastKey) +
                         sizeof(t.sstHashID) + sizeof(t.targetCfName);
             return size;
     

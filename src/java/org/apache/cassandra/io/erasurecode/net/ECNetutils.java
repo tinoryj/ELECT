@@ -43,6 +43,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.StorageHook;
 import org.apache.cassandra.index.Index.Indexer;
@@ -153,7 +154,8 @@ public final class ECNetutils {
      */
     public static void syncSSTableWithSecondaryNodes(SSTableReader sstable,
                                                      List<InetAddressAndPort> replicaNodes,
-                                                     String sstHashID, String operationType) throws Exception {
+                                                     String sstHashID, String operationType, 
+                                                     ColumnFamilyStore cfs) throws Exception {
 
         // Read a given sstable's Filter.db, Index.db, Statistics.db and Summary.db
         byte[] filterFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
@@ -162,22 +164,24 @@ public final class ECNetutils {
         byte[] summaryFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.SUMMARY));
 
         SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile, summaryFile);
-        List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
+        // List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
+        String firstKey = sstable.first.getRawKey(cfs.metadata());
+        String lastKey = sstable.last.getRawKey(cfs.metadata());
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
 
         for (InetAddressAndPort rpn : replicaNodes) {
             if (!rpn.equals(locaIP)) {
                 String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, allKeys, sstInBytes);
+                ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, firstKey, lastKey, sstInBytes);
                 ecSync.sendSSTableToSecondary(rpn);
             }
         }
 
         logger.debug(
-            "rymDebug: [{}] send sstables ({}), replicaNodes are {}, row num is {}, allKeys num is {}", operationType,
+            "rymDebug: [{}] send sstables ({}), replicaNodes are {}, row num is {}, first key is {}, last key is {}", operationType,
             sstHashID,
             replicaNodes, sstable.getTotalRows(),
-            allKeys.size());
+            firstKey, lastKey);
 
     }
 
