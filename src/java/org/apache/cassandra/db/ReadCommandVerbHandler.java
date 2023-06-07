@@ -73,22 +73,31 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     targetReadKey);
             switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
                 case 0:
+                    command.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+                                    .metadata());
+                    ColumnFilter newColumnFilter = ColumnFilter
+                            .allRegularColumnsBuilder(command.metadata(), false)
+                            .build();
+                    command.updateColumnFilter(newColumnFilter);
                     break;
                 case 1:
                     command.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable1").metadata());
-                    ColumnFilter newColumnFilter = ColumnFilter
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+                                    .metadata());
+                    ColumnFilter newColumnFilter1 = ColumnFilter
                             .allRegularColumnsBuilder(command.metadata(), false)
                             .build();
-                    command.updateColumnFilter(newColumnFilter);
+                    command.updateColumnFilter(newColumnFilter1);
                     break;
                 case 2:
                     command.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable2").metadata());
-                    ColumnFilter newColumnFilter = ColumnFilter
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+                                    .metadata());
+                    ColumnFilter newColumnFilter2 = ColumnFilter
                             .allRegularColumnsBuilder(command.metadata(), false)
                             .build();
-                    command.updateColumnFilter(newColumnFilter);
+                    command.updateColumnFilter(newColumnFilter2);
                     break;
                 default:
                     logger.debug("[Tinoryj] Not support replication factor larger than 3");
