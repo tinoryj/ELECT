@@ -63,6 +63,23 @@ import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.commons.math3.exception.NullArgumentException;
 
+
+
+
+/**
+ * Support parity update operations.
+ * 1. For an old sstable, there has some cases needed to be considered, if any of them are not true we will add the old sstable to the waiting list.
+ * Otherwise we will retrieve the parity code of the corresponding EC strip, and add the to the ready list.
+ *  1.1 We should check if the old sstable is available;
+ *  1.2 Check if the old sstable corresponded ec strip is not updating;
+ * 
+ * 2. For a new sstable, we save it to globalReadyNewSSTableForECStripUpdateMap directly.
+ */
+
+
+
+
+
 public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
     public static final ECParityUpdateVerbHandler instance = new ECParityUpdateVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECParityUpdateVerbHandler.class);
@@ -90,9 +107,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         InetAddressAndPort primaryNode = message.from();
         int codeLength = StorageService.getErasureCodeLength();
 
-        /**
-         * Add recieved data to the global map.
-         */
+
         if (parityUpdateData.isOldSSTable) {
 
             logger.debug("rymDebug: [Parity Update] Get a old sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
@@ -104,20 +119,20 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             if (stripID == null || StorageService.instance.globalUpdatingStripList.contains(stripID)) {
                 
                 // just add this old sstable to the cache map
-                StorageService.instance.globalUpdateSignalWaitForPreviousStripOpsDoneMap.put(parityUpdateData.sstable.sstHash, parityUpdateData.sstable);
+                StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.put(parityUpdateData.sstable.sstHash, parityUpdateData.sstable);
 
                 logger.debug("rymDebug: In node {}, we cannot get strip id for sstHash {}, this hash is from primary node {}, the old sstable map is {}, new sstable map is {}",
                         FBUtilities.getBroadcastAddressAndPort(),
                         oldSSTHash,
                         primaryNode,
-                        StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.keySet(),
-                        StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.keySet());
+                        StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.keySet(),
+                        StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.keySet());
             } else {
 
                 // Check if the there is a new sstable that has the same sstHash with this old one
-                if(!isNewSSTableQueueContainThisOldSSTable(StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(primaryNode), parityUpdateData.sstable)) {
+                if(!isNewSSTableQueueContainThisOldSSTable(StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.get(primaryNode), parityUpdateData.sstable)) {
 
-                    logger.debug("rymDebug: we need get parity codes for sstable ({}), and add it to the globalOldSSTablesQueueForParityUpdateMap", oldSSTHash);
+                    logger.debug("rymDebug: we need get parity codes for sstable ({}), and add it to the globalReadyOldSSTableForECStripUpdateMap", oldSSTHash);
                     StorageService.instance.globalUpdatingStripList.add(stripID);
                     // if(StorageService.instance.globalUpdatingStripList.containsKey(stripID)) {
                     //     StorageService.instance.globalUpdatingStripList.compute(stripID, (key, oldValue) -> oldValue + 1);
@@ -128,27 +143,27 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     retrieveParityCodeForOldSSTable(oldSSTHash, stripID, codeLength);
                     parityUpdateData.sstable.isRequestParityCode = true;
 
-                    if (StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.contains(primaryNode)) {
-                        StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.get(primaryNode)
+                    if (StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.contains(primaryNode)) {
+                        StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode)
                                 .add(parityUpdateData.sstable);
                     } else {
-                        StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.put(primaryNode,
+                        StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.put(primaryNode,
                                 new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(parityUpdateData.sstable)));
                     }
                 }
                 
-                // isNewSSTableQueueContainThisOldSSTable(StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(primaryNode), parityUpdateData.sstable);
+                // isNewSSTableQueueContainThisOldSSTable(StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.get(primaryNode), parityUpdateData.sstable);
 
             }
 
 
         } else {
             logger.debug("rymDebug: [Parity Update] Get a new sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
-            if (StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.contains(primaryNode)) {
-                StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(primaryNode)
+            if (StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.contains(primaryNode)) {
+                StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.get(primaryNode)
                         .add(parityUpdateData.sstable);
             } else {
-                StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.put(primaryNode,
+                StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.put(primaryNode,
                         new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(parityUpdateData.sstable)));
             }
             
@@ -178,13 +193,13 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             int codeLength = StorageService.getErasureCodeLength();
  
             // Perform parity update
-            for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.entrySet()) {
+            for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.entrySet()) {
                 
                 // get oldReplicaNodes
                 InetAddressAndPort primaryNode = entry.getKey();
                 List<InetAddressAndPort> oldReplicaNodes = StorageService.instance.getReplicaNodesWithPortFromPrimaryNode(primaryNode, keyspaceName);
 
-                ConcurrentLinkedQueue<SSTableContentWithHashID> newSSTableQueue = StorageService.instance.globalNewSSTablesQueueForParityUpdateMap.get(primaryNode);
+                ConcurrentLinkedQueue<SSTableContentWithHashID> newSSTableQueue = StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.get(primaryNode);
                 ConcurrentLinkedQueue<SSTableContentWithHashID> oldSSTableQueue = entry.getValue();
 
                 // if( oldSSTableQueue.size() < newSSTableQueue.size()) {
@@ -204,9 +219,9 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
                     // if the new obj is consumed, move the same name sstable from cache queue to old queue
-                    if(StorageService.instance.globalSSTableHashToContent.contains(newSSTable.sstHash)) {
-                        oldSSTableQueue.add(StorageService.instance.globalSSTableHashToContent.get(newSSTable.sstHash));
-                        StorageService.instance.globalSSTableHashToContent.remove(newSSTable.sstHash);
+                    if(StorageService.instance.globalPendingNewOldSSTableForECStripUpdateMap.contains(newSSTable.sstHash)) {
+                        oldSSTableQueue.add(StorageService.instance.globalPendingNewOldSSTableForECStripUpdateMap.get(newSSTable.sstHash));
+                        StorageService.instance.globalPendingNewOldSSTableForECStripUpdateMap.remove(newSSTable.sstHash);
                     }
 
                     // logger.debug("rymDebug: [Parity update] We check the parity codes for replacing a new sstable ({}) with an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
@@ -310,7 +325,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         if(newQueue != null){
             for (SSTableContentWithHashID newSSTable : newQueue) {
                 if (newSSTable.sstHash.equals(oldSSTable.sstHash)) {
-                    StorageService.instance.globalSSTableHashToContent.put(oldSSTable.sstHash, oldSSTable);
+                    StorageService.instance.globalPendingNewOldSSTableForECStripUpdateMap.put(oldSSTable.sstHash, oldSSTable);
                     logger.debug("rymDebug: For sstable ({}), the new obj is still not consumed, we add the old obj to cache map",
                                  oldSSTable.sstHash);
                     return true;

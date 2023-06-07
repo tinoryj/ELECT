@@ -194,8 +194,9 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>>();
     // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
     public ConcurrentHashMap<String, DataForRewrite> globalSSTHashToSyncedFileMap = new ConcurrentHashMap<String, DataForRewrite>();
+
+    // The following concurrency parameters are used to support EC strip update operations
     // [In parity node] This map is used to store <stripID, ECMetadataContent>, generate after erasure coding, use during parity update.
-    // TODO: could be optimize 
     public ConcurrentHashMap<String, ECMetadataContent> globalStripIdToECMetadataMap = new ConcurrentHashMap<String, ECMetadataContent>();
     // [In parity node] Generate after ResponseParity, use during real parity update.
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToParityCodeMap = new ConcurrentHashMap<String, ByteBuffer[]>();
@@ -206,17 +207,17 @@ public class StorageService extends NotificationBroadcasterSupport
     // [In every node] Record the sstHash to SSTableReader map
     public ConcurrentHashMap<String, SSTableReader> globalSSTHashToECSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
     // [In secondary node] Record the ECMetadata data, <cfName, BlockedECMetadata>
-    public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalReadyToProcessECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
+    public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalReadyECMetadatas = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
     // [In secondary node] Record the updated ECMetadata to avoid concurrent conflict <sstHash, BlockedECMetadata> 
-    public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalWaitForUpdateECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
-    // [In parity node], this is the global map <primary node, old sstables for parity update>
-    public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalOldSSTablesQueueForParityUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
-    // [In parity node], this is the global map <primary node, new sstables for parity update>
-    public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalNewSSTablesQueueForParityUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
-    // [In parity node], this is the global map <sstHash, old sstable>
-    public ConcurrentHashMap<String, SSTableContentWithHashID> globalSSTableHashToContent = new ConcurrentHashMap<String, SSTableContentWithHashID>();
+    public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalPendingECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
     // [In parity node], <old sstable hash, parity update sstable>
-    public ConcurrentHashMap<String, SSTableContentWithHashID> globalUpdateSignalWaitForPreviousStripOpsDoneMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
+    public ConcurrentHashMap<String, SSTableContentWithHashID> globalPendingOldSSTableForECStripUpdateMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
+    // [In parity node], this is the global map <primary node, old sstables for parity update>
+    public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalReadyOldSSTableForECStripUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
+    // [In parity node], this is the global map <sstHash, old sstable>
+    public ConcurrentHashMap<String, SSTableContentWithHashID> globalPendingNewOldSSTableForECStripUpdateMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
+    // [In parity node], this is the global map <primary node, new sstables for parity update>
+    public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalReadyNewSSTableForECStripUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
     // [In parity node] save the global update strip list
     public ConcurrentSkipListSet<String> globalUpdatingStripList = new ConcurrentSkipListSet<>();
     // [In secondary node] maintain a global view for the updating sstHash.

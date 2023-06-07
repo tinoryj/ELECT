@@ -272,7 +272,7 @@ public class ECMetadata implements Serializable {
     /**
      * This method is called when a new EC Strip generated, we will do the following operations:
      * 1. Traverse the sstHashList of the given EC Strip, and map each of them to strip id.
-     * 2. Check if there is any sstHash in the waiting list: globalUpdateSignalWaitForPreviousStripOpsDoneMap, 
+     * 2. Check if there is any sstHash in the waiting list: globalPendingOldSSTableForECStripUpdateMap, 
      * if yes, we can only select one pending update signal and mark current strip id in the updating list.
      */
     private void mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded() {
@@ -288,16 +288,18 @@ public class ECMetadata implements Serializable {
                 continue;
             }
 
-            // we move this sstable to the globalOldSSTablesQueueForParityUpdateMap
-            if(StorageService.instance.globalUpdateSignalWaitForPreviousStripOpsDoneMap.containsKey(sstHash)) {
+            // we move this sstable to the globalReadyOldSSTableForECStripUpdateMap
+            if(StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.containsKey(sstHash)) {
                 isSelectedOneOldSSTable = true;
-
+            } else {
+                continue;
             }
+            
             InetAddressAndPort primaryNode = this.ecMetadataContent.sstHashIdToReplicaMap.get(sstHash).get(0);
-            SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalUpdateSignalWaitForPreviousStripOpsDoneMap.get(sstHash);
+            SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.get(sstHash);
             StorageService.instance.globalUpdatingStripList.add(this.stripeId);
-            StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
-            StorageService.instance.globalUpdateSignalWaitForPreviousStripOpsDoneMap.remove(sstHash);
+            StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
+            StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.remove(sstHash);
         }
 
 

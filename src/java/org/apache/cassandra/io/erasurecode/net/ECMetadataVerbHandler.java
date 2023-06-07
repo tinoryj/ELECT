@@ -170,8 +170,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
     public static Runnable getConsumeBlockedECMetadataRunnable() {
         // Consume the blocked ecMetadata if needed
-        logger.debug("rymDebug: This is getConsumeBlockedECMetadataRunnable, the globalReadyToProcessECMetadata is {}, isConsumeBlockedECMetadataOccupied is ({})",
-                     StorageService.instance.globalReadyToProcessECMetadata.size(),
+        logger.debug("rymDebug: This is getConsumeBlockedECMetadataRunnable, the globalReadyECMetadatas is {}, isConsumeBlockedECMetadataOccupied is ({})",
+                     StorageService.instance.globalReadyECMetadatas.size(),
                      isConsumeBlockedECMetadataOccupied);
         
         return new ConsumeBlockedECMetadataRunnable();
@@ -179,7 +179,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
 
     /**
-     * To avoid concurrency conflicts, we store all received ECMetadata in Map <globalReadyToProcessECMetadata>.
+     * To avoid concurrency conflicts, we store all received ECMetadata in Map <globalReadyECMetadatas>.
      * And we set up a periodically task to consume ECMetadata, that is transforming the ECMetadata into a ecSSTable.
      * Note that the ECMetadata could be generated in two cases:
      *  1. During the first time generating erasure coding;
@@ -191,8 +191,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         @Override
         public void run() {
-            if(StorageService.instance.globalReadyToProcessECMetadata.isEmpty()){
-                logger.debug("rymDebug: globalReadyToProcessECMetadata is empty.");
+            if(StorageService.instance.globalReadyECMetadatas.isEmpty()){
+                logger.debug("rymDebug: globalReadyECMetadatas is empty.");
                 return;
             }
 
@@ -203,7 +203,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
             isConsumeBlockedECMetadataOccupied = true;
             logger.debug("rymDebug: This is ConsumeBlockedECMetadataRunnable");
-            for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalReadyToProcessECMetadata.entrySet()) {
+            for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalReadyECMetadatas.entrySet()) {
                 String ks = "ycsb";
                 String cfName = entry.getKey();
 
@@ -412,15 +412,15 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
 
     public static void checkTheBlockedUpdateECMetadata(SSTableReader oldECSSTable) {
-        if(StorageService.instance.globalWaitForUpdateECMetadata.containsKey(oldECSSTable.getSSTableHashID()) && 
-        !StorageService.instance.globalWaitForUpdateECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty() ) {
-         if(StorageService.instance.globalWaitForUpdateECMetadata.get(oldECSSTable.getSSTableHashID()).size()>1) {
-             logger.debug("rymDebug: the size of globalWaitForUpdateECMetadata for sstHash ({}) is ({})",
+        if(StorageService.instance.globalPendingECMetadata.containsKey(oldECSSTable.getSSTableHashID()) && 
+        !StorageService.instance.globalPendingECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty() ) {
+         if(StorageService.instance.globalPendingECMetadata.get(oldECSSTable.getSSTableHashID()).size()>1) {
+             logger.debug("rymDebug: the size of globalPendingECMetadata for sstHash ({}) is ({})",
                            oldECSSTable.getSSTableHashID(),
-                           StorageService.instance.globalWaitForUpdateECMetadata.get(oldECSSTable.getSSTableHashID()).size());
+                           StorageService.instance.globalPendingECMetadata.get(oldECSSTable.getSSTableHashID()).size());
          }
-         while(!StorageService.instance.globalWaitForUpdateECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty()) {
-             BlockedECMetadata blockedECMetadata = StorageService.instance.globalWaitForUpdateECMetadata.get(oldECSSTable.getSSTableHashID()).poll();
+         while(!StorageService.instance.globalPendingECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty()) {
+             BlockedECMetadata blockedECMetadata = StorageService.instance.globalPendingECMetadata.get(oldECSSTable.getSSTableHashID()).poll();
              saveECMetadataToBlockList(blockedECMetadata, null, true);
          }
      }
@@ -446,23 +446,23 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         if(isAddToTheProcessQueueDirectly) {
             logger.debug("rymDebug: Save the ECMetadata to global Blocked ECMetadata for oldSSTHash ({}), newSSTHash ({}), metadata.oldHash is ({})", oldSSTHash, metadata.newSSTableHash, metadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
-            if(StorageService.instance.globalReadyToProcessECMetadata.containsKey(metadata.cfName)) {
-                if(!StorageService.instance.globalReadyToProcessECMetadata.get(metadata.cfName).contains(metadata))
-                    StorageService.instance.globalReadyToProcessECMetadata.get(metadata.cfName).add(metadata);
+            if(StorageService.instance.globalReadyECMetadatas.containsKey(metadata.cfName)) {
+                if(!StorageService.instance.globalReadyECMetadatas.get(metadata.cfName).contains(metadata))
+                    StorageService.instance.globalReadyECMetadatas.get(metadata.cfName).add(metadata);
             } else {
                 ConcurrentLinkedQueue<BlockedECMetadata> blockList = new ConcurrentLinkedQueue<BlockedECMetadata>();
                 blockList.add(metadata);
-                StorageService.instance.globalReadyToProcessECMetadata.put(metadata.cfName, blockList);
+                StorageService.instance.globalReadyECMetadatas.put(metadata.cfName, blockList);
             }
         } else {
             logger.debug("rymDebug: Save the ECMetadata to global Blocked [Updated] ECMetadata for oldSSTHash ({}), newSSTHash ({}), metadata.oldHash is ({})", oldSSTHash, metadata.newSSTableHash, metadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
-            if(StorageService.instance.globalWaitForUpdateECMetadata.containsKey(oldSSTHash)) {
-                if(!StorageService.instance.globalWaitForUpdateECMetadata.get(oldSSTHash).contains(metadata))
-                    StorageService.instance.globalWaitForUpdateECMetadata.get(oldSSTHash).add(metadata);
+            if(StorageService.instance.globalPendingECMetadata.containsKey(oldSSTHash)) {
+                if(!StorageService.instance.globalPendingECMetadata.get(oldSSTHash).contains(metadata))
+                    StorageService.instance.globalPendingECMetadata.get(oldSSTHash).add(metadata);
             } else {
                 ConcurrentLinkedQueue<BlockedECMetadata> blockList = new ConcurrentLinkedQueue<BlockedECMetadata>();
                 blockList.add(metadata);
-                StorageService.instance.globalWaitForUpdateECMetadata.put(oldSSTHash, blockList);
+                StorageService.instance.globalPendingECMetadata.put(oldSSTHash, blockList);
             }
         }
     }
