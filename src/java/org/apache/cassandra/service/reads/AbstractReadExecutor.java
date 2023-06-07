@@ -163,47 +163,41 @@ public abstract class AbstractReadExecutor {
         // We delay the local (potentially blocking) read till the end to avoid stalling
         // remote requests.
         if (hasLocalEndpoint) {
-
-            switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
-                case 0:
-                    command.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable")
-                                    .metadata());
-                    ColumnFilter newColumnFilter = ColumnFilter
-                            .allRegularColumnsBuilder(command.metadata(), false)
-                            .build();
-                    command.updateColumnFilter(newColumnFilter);
-                    break;
-                case 1:
-                    command.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
-                                    .metadata());
-                    ColumnFilter newColumnFilter1 = ColumnFilter
-                            .allRegularColumnsBuilder(command.metadata(), false)
-                            .build();
-                    command.updateColumnFilter(newColumnFilter1);
-                    break;
-                case 2:
-                    command.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
-                                    .metadata());
-                    ColumnFilter newColumnFilter2 = ColumnFilter
-                            .allRegularColumnsBuilder(command.metadata(), false)
-                            .build();
-                    command.updateColumnFilter(newColumnFilter2);
-                    break;
-                default:
-                    logger.debug("[Tinoryj] Not support replication factor larger than 3");
-                    break;
+            if (readCommand.metadata().keyspace.equals("ycsb")) {
+                switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
+                    case 0:
+                        readCommand.updateTableMetadata(
+                                Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+                                        .metadata());
+                        ColumnFilter newColumnFilter = ColumnFilter
+                                .allRegularColumnsBuilder(readCommand.metadata(), false)
+                                .build();
+                        readCommand.updateColumnFilter(newColumnFilter);
+                        break;
+                    case 1:
+                        readCommand.updateTableMetadata(
+                                Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+                                        .metadata());
+                        ColumnFilter newColumnFilter1 = ColumnFilter
+                                .allRegularColumnsBuilder(readCommand.metadata(), false)
+                                .build();
+                        readCommand.updateColumnFilter(newColumnFilter1);
+                        break;
+                    case 2:
+                        readCommand.updateTableMetadata(
+                                Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+                                        .metadata());
+                        ColumnFilter newColumnFilter2 = ColumnFilter
+                                .allRegularColumnsBuilder(readCommand.metadata(), false)
+                                .build();
+                        readCommand.updateColumnFilter(newColumnFilter2);
+                        break;
+                    default:
+                        logger.debug("[Tinoryj] Not support replication factor larger than 3");
+                        break;
+                }
             }
-            readCommand.updateTableMetadata(
-                    Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
-            ColumnFilter newColumnFilter1 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                    .build();
-            readCommand.updateColumnFilter(newColumnFilter1);
-            readCommand.setIsDigestQuery(false);
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
-
         }
 
     }
