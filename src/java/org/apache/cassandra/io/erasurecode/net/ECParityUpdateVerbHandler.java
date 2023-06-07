@@ -353,7 +353,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                 // get old parity codes from old sstable hash
                 StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
-                logger.debug("rymDebug: Perform parity update for old sstable ({}), we are retrieving parity codes for strip id {}", oldSSTHash, stripID);
+                logger.debug("rymDebug: Perform parity update for old sstable ({}), we are retrieving parity codes for strip id {}, we had read local parity code {}",
+                                 oldSSTHash, stripID, parityCodeFileName);
 
                 // get the needed parity code remotely, send a parity code request
                 for (int i = 1; i < parityHashList.size(); i++) {
@@ -394,7 +395,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 }
             }
         } else {
-            ECNetutils.printStackTace(String.format("rymERROR: We cannot get parity codes for sstable %s", oldSSTHash));
+            throw new NullPointerException(String.format("rymERROR: We cannot get parity codes for sstable %s", oldSSTHash));
         }
  
     }

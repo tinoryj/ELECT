@@ -201,6 +201,7 @@ public final class ECNetutils {
             throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
         }
         fileStream.close();
+        logger.debug("rymDebug: read file {} successfully!", fileName);
         return buffer;
         // return ByteBuffer.wrap(buffer);
     }
