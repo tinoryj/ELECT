@@ -178,26 +178,9 @@ public class ECMetadata implements Serializable {
 
         
         // store ecMetadata locally
-        StorageService.instance.globalECMetadataMap.put(this.stripeId, this.ecMetadataContent);
+        StorageService.instance.globalStripIdToECMetadataMap.put(this.stripeId, this.ecMetadataContent);
         
-        for(String sstHash : this.ecMetadataContent.sstHashIdList) {
-            StorageService.instance.globalSSTHashToStripID.put(sstHash, this.stripeId);
-
-            // we move this sstable to the globalOldSSTablesQueueForParityUpdateMap
-            if(StorageService.instance.globalPairtyUpdateSSTableWaitForErasureCodingReadyMap.containsKey(sstHash)) {
-                InetAddressAndPort primaryNode = this.ecMetadataContent.sstHashIdToReplicaMap.get(sstHash).get(0);
-                SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalPairtyUpdateSSTableWaitForErasureCodingReadyMap.get(sstHash);
-                StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
-
-                // int codeLength = StorageService.getErasureCodeLength();
-
-                // ECParityUpdateVerbHandler.retrieveParityCodeForOldSSTable(sstHash, this.stripeId, codeLength);
-
-            }
-            logger.debug("rymDebug:[ErasureCoding] In node {}, we map sstHash {} to stripID {}", FBUtilities.getBroadcastAddressAndPort(),
-                                                                                                 sstHash,
-                                                                                                 this.stripeId);
-        }
+        mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded();
         
 
         // dispatch to related nodes
@@ -244,7 +227,7 @@ public class ECMetadata implements Serializable {
         }
 
         // remove the ECMetadata from memory
-        // StorageService.instance.globalECMetadataMap.remove(this.stripeId);
+        // StorageService.instance.globalStripIdToECMetadataMap.remove(this.stripeId);
 
         // update strip id
         String connectedSSTHash = "";
@@ -269,24 +252,54 @@ public class ECMetadata implements Serializable {
             e.printStackTrace();
         }
         
-        for(String sstHash : this.ecMetadataContent.sstHashIdList) {
-            StorageService.instance.globalSSTHashToStripID.put(sstHash, this.stripeId);
-
-            
-            logger.debug("rymDebug:[Parity Update] In node {}, we map sstHash {} to stripID {}", FBUtilities.getBroadcastAddressAndPort(),
-                                                                                                 sstHash,
-                                                                                                 this.stripeId);
-        }
-        // StorageService.instance.globalSSTHashToStripID.remove(oldSSTHash);
+        mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded();
+        // StorageService.instance.globalSSTHashToStripIDMap.remove(oldSSTHash);
         
         // store ecMetadata locally
-        StorageService.instance.globalECMetadataMap.put(this.stripeId, this.ecMetadataContent);
+        StorageService.instance.globalStripIdToECMetadataMap.put(this.stripeId, this.ecMetadataContent);
 
         // parity update is finished, we update the globalUpdatingStripList
         StorageService.instance.globalUpdatingStripList.remove(this.stripeId);
+        // StorageService.instance.globalUpdatingStripList.compute(this.stripeId, (key, oldValue) -> oldValue - 1);
 
         // dispatch to related nodes
         distributeECMetadata(this);
+
+    }
+
+
+
+    /**
+     * This method is called when a new EC Strip generated, we will do the following operations:
+     * 1. Traverse the sstHashList of the given EC Strip, and map each of them to strip id.
+     * 2. Check if there is any sstHash in the waiting list: globalUpdateSignalWaitForPreviousStripOpsDoneMap, 
+     * if yes, we can only select one pending update signal and mark current strip id in the updating list.
+     */
+    private void mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded() {
+
+        boolean isSelectedOneOldSSTable = false;
+        for(String sstHash : this.ecMetadataContent.sstHashIdList) {
+            StorageService.instance.globalSSTHashToStripIDMap.put(sstHash, this.stripeId);
+            logger.debug("rymDebug:[ErasureCoding] In node {}, we map sstHash {} to stripID {}", FBUtilities.getBroadcastAddressAndPort(),
+                                                                                                 sstHash,
+                                                                                                 this.stripeId);
+
+            if(isSelectedOneOldSSTable) {
+                continue;
+            }
+
+            // we move this sstable to the globalOldSSTablesQueueForParityUpdateMap
+            if(StorageService.instance.globalUpdateSignalWaitForPreviousStripOpsDoneMap.containsKey(sstHash)) {
+                isSelectedOneOldSSTable = true;
+
+            }
+            InetAddressAndPort primaryNode = this.ecMetadataContent.sstHashIdToReplicaMap.get(sstHash).get(0);
+            SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalUpdateSignalWaitForPreviousStripOpsDoneMap.get(sstHash);
+            StorageService.instance.globalUpdatingStripList.add(this.stripeId);
+            StorageService.instance.globalOldSSTablesQueueForParityUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
+            StorageService.instance.globalUpdateSignalWaitForPreviousStripOpsDoneMap.remove(sstHash);
+        }
+
 
     }
 

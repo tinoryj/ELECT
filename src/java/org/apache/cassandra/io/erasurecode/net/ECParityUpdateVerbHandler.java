@@ -90,19 +90,21 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         InetAddressAndPort primaryNode = message.from();
         int codeLength = StorageService.getErasureCodeLength();
 
-        // Add recieved data to the global map
+        /**
+         * Add recieved data to the global map.
+         */
         if (parityUpdateData.isOldSSTable) {
 
             logger.debug("rymDebug: [Parity Update] Get a old sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
 
             String oldSSTHash = parityUpdateData.sstable.sstHash;
-            String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTHash);
+            String stripID = StorageService.instance.globalSSTHashToStripIDMap.get(oldSSTHash);
 
             // Strip ID is null means that the previous erasure coding task has not completed, so we need to add this sstable to a cache map.
             if (stripID == null || StorageService.instance.globalUpdatingStripList.contains(stripID)) {
                 
                 // just add this old sstable to the cache map
-                StorageService.instance.globalPairtyUpdateSSTableWaitForErasureCodingReadyMap.put(parityUpdateData.sstable.sstHash, parityUpdateData.sstable);
+                StorageService.instance.globalUpdateSignalWaitForPreviousStripOpsDoneMap.put(parityUpdateData.sstable.sstHash, parityUpdateData.sstable);
 
                 logger.debug("rymDebug: In node {}, we cannot get strip id for sstHash {}, this hash is from primary node {}, the old sstable map is {}, new sstable map is {}",
                         FBUtilities.getBroadcastAddressAndPort(),
@@ -117,6 +119,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                     logger.debug("rymDebug: we need get parity codes for sstable ({}), and add it to the globalOldSSTablesQueueForParityUpdateMap", oldSSTHash);
                     StorageService.instance.globalUpdatingStripList.add(stripID);
+                    // if(StorageService.instance.globalUpdatingStripList.containsKey(stripID)) {
+                    //     StorageService.instance.globalUpdatingStripList.compute(stripID, (key, oldValue) -> oldValue + 1);
+                    // } else {
+                    //     StorageService.instance.globalUpdatingStripList.put(stripID, 1);
+                    // }
+
                     retrieveParityCodeForOldSSTable(oldSSTHash, stripID, codeLength);
                     parityUpdateData.sstable.isRequestParityCode = true;
 
@@ -257,7 +265,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
     private static void performECStripUpdate(String updateCase, SSTableContentWithHashID oldSSTable, SSTableContentWithHashID newSSTable, int codeLength, List<InetAddressAndPort> oldReplicaNodes) {
 
         List<InetAddressAndPort> parityNodes = getParityNodes();
-        String oldStripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
+        String oldStripID = StorageService.instance.globalSSTHashToStripIDMap.get(oldSSTable.sstHash);
         if(oldStripID == null) {
             throw new NullPointerException(String.format("rymERROR: we cannot get strip id (%s) for sstable (%s)", oldStripID, oldSSTable.sstHash));
         }                    
@@ -270,7 +278,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         waitUntilParityCodesReady(oldSSTable.sstHash);
 
         ByteBuffer[] parityCodes = StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash);
-        List<String> sstHashList = StorageService.instance.globalECMetadataMap.get(oldStripID).sstHashIdList;
+        List<String> sstHashList = StorageService.instance.globalStripIdToECMetadataMap.get(oldStripID).sstHashIdList;
 
         if(parityCodes == null) {
             throw new NullPointerException(String.format("rymERROR: we cannot get parity codes for sstable (%s)", oldSSTable.sstHash));
@@ -328,7 +336,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         // read ec_metadata from memory, get the needed parity hash list
         List<String> parityHashList = null;
         try {
-            parityHashList = StorageService.instance.globalECMetadataMap.get(stripID).parityHashList;
+            parityHashList = StorageService.instance.globalStripIdToECMetadataMap.get(stripID).parityHashList;
         } catch (Exception e) {
             logger.debug("rymERROR: When we are update old sstable ({}), we cannot to get ecMetadata for stripID {}", oldSSTHash, stripID);
         }
@@ -551,8 +559,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
             // update ECMetadata and distribute it
             // get old ECMetadata content 
-            String stripID = StorageService.instance.globalSSTHashToStripID.get(oldSSTable.sstHash);
-            ECMetadataContent oldMetadata = StorageService.instance.globalECMetadataMap.get(stripID);
+            String stripID = StorageService.instance.globalSSTHashToStripIDMap.get(oldSSTable.sstHash);
+            ECMetadataContent oldMetadata = StorageService.instance.globalStripIdToECMetadataMap.get(stripID);
             // update the isParityUpdate, sstHashIdList, parityHashList, replication nodes, stripID
             ECMetadata ecMetadata = new ECMetadata(stripID, oldMetadata);
             ecMetadata.updateAndDistributeMetadata(parityHashList, true,

@@ -143,7 +143,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         blockedECMetadata = new BlockedECMetadata(newSSTableHash, sourceIP,  ecMetadata, secondaryCfName);
                     }
                     
-                    boolean isECSSTableAvailable = (StorageService.instance.globalSSTHashToECSSTable.get(blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate) != null);
+                    boolean isECSSTableAvailable = (StorageService.instance.globalSSTHashToECSSTableMap.get(blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate) != null);
                     boolean isPreviousUpdateDone = !StorageService.instance.globalUpdatingSSTHashList.contains(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
                     logger.debug("rymDebug: [ECMetadata for Strip Update, Save it for {}] ECMetadataVerbHandler get a needed update sstHash {} from parity node {}, we update it because oldSSTHash {} changed to newSSTHash {}, the replica nodes are {}, sstHashList is {}, strip id is {}, isECSSTableAvailable? {}, isPreviousUpdateDone? {}",
                                 secondaryCfName, newSSTableHash, sourceIP, oldSSTHashForUpdate, newSSTHashForUpdate, entry.getValue(), ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.stripeId, 
@@ -170,8 +170,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
     public static Runnable getConsumeBlockedECMetadataRunnable() {
         // Consume the blocked ecMetadata if needed
-        logger.debug("rymDebug: This is getConsumeBlockedECMetadataRunnable, the globalBlockedECMetadata is {}, isConsumeBlockedECMetadataOccupied is ({})",
-                     StorageService.instance.globalBlockedECMetadata.size(),
+        logger.debug("rymDebug: This is getConsumeBlockedECMetadataRunnable, the globalReadyToProcessECMetadata is {}, isConsumeBlockedECMetadataOccupied is ({})",
+                     StorageService.instance.globalReadyToProcessECMetadata.size(),
                      isConsumeBlockedECMetadataOccupied);
         
         return new ConsumeBlockedECMetadataRunnable();
@@ -179,7 +179,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
 
     /**
-     * To avoid concurrency conflicts, we store all received ECMetadata in Map <globalBlockedECMetadata>.
+     * To avoid concurrency conflicts, we store all received ECMetadata in Map <globalReadyToProcessECMetadata>.
      * And we set up a periodically task to consume ECMetadata, that is transforming the ECMetadata into a ecSSTable.
      * Note that the ECMetadata could be generated in two cases:
      *  1. During the first time generating erasure coding;
@@ -191,8 +191,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         @Override
         public void run() {
-            if(StorageService.instance.globalBlockedECMetadata.isEmpty()){
-                logger.debug("rymDebug: globalBlockedECMetadata is empty.");
+            if(StorageService.instance.globalReadyToProcessECMetadata.isEmpty()){
+                logger.debug("rymDebug: globalReadyToProcessECMetadata is empty.");
                 return;
             }
 
@@ -203,7 +203,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
             isConsumeBlockedECMetadataOccupied = true;
             logger.debug("rymDebug: This is ConsumeBlockedECMetadataRunnable");
-            for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalBlockedECMetadata.entrySet()) {
+            for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalReadyToProcessECMetadata.entrySet()) {
                 String ks = "ycsb";
                 String cfName = entry.getKey();
 
@@ -221,7 +221,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                         // If the ecMetadata is for erasure coding, just transform it
                         if (!metadata.ecMetadata.ecMetadataContent.isParityUpdate) {
-                            DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap
+                            DataForRewrite dataForRewrite = StorageService.instance.globalSSTHashToSyncedFileMap
                                     .get(metadata.newSSTableHash);
                             if (dataForRewrite != null) {
                                 String fileNamePrefix = dataForRewrite.fileNamePrefix;
@@ -270,7 +270,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // get the dedicated level of sstables
         if (!ecMetadata.ecMetadataContent.isParityUpdate) {
             // [In progress of erasure coding]
-            DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(newSSTHash);
+            DataForRewrite dataForRewrite = StorageService.instance.globalSSTHashToSyncedFileMap.get(newSSTHash);
 
             if (dataForRewrite != null) {
     
@@ -321,7 +321,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         if (rewriteSStables.isEmpty()) {
             logger.warn("rymWarn: rewriteSStables is empty, just record it!");
             cfs.replaceSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
-            StorageService.instance.globalSSTMap.remove(newSSTHash);
+            StorageService.instance.globalSSTHashToSyncedFileMap.remove(newSSTHash);
             return false;
         }
 
@@ -349,7 +349,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             }
 
 
-            StorageService.instance.globalSSTMap.remove(newSSTHash);
+            StorageService.instance.globalSSTHashToSyncedFileMap.remove(newSSTHash);
         } else {
             // Save ECMetadata and redo ec transition later
             logger.debug("rymDebug: [ErasureCoding] failed to get transactions for the sstables ({}), we will try it later", newSSTHash);
@@ -373,13 +373,13 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // need a old sstHash
         logger.debug("rymDebug: [Parity Update] we are going to update the old sstable ({}) with a new one ({}) for strip id ({}) in ({})",
                      ecMetadata.ecMetadataContent.oldSSTHashForUpdate, newSSTHash, ecMetadata.stripeId, cfs.getColumnFamilyName());
-        SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTable.get(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
+        SSTableReader oldECSSTable = StorageService.instance.globalSSTHashToECSSTableMap.get(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
 
         if(oldECSSTable != null) {
             if (sstIndex == ecMetadata.ecMetadataContent.targetIndex) {
                 // replace ec sstable
 
-                DataForRewrite dataForRewrite = StorageService.instance.globalSSTMap.get(newSSTHash);
+                DataForRewrite dataForRewrite = StorageService.instance.globalSSTHashToSyncedFileMap.get(newSSTHash);
                 if (dataForRewrite != null) {
 
                     String fileNamePrefix = dataForRewrite.fileNamePrefix;
@@ -412,15 +412,15 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
 
     public static void checkTheBlockedUpdateECMetadata(SSTableReader oldECSSTable) {
-        if(StorageService.instance.globalBlockedUpdatedECMetadata.containsKey(oldECSSTable.getSSTableHashID()) && 
-        !StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty() ) {
-         if(StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).size()>1) {
-             logger.debug("rymDebug: the size of globalBlockedUpdatedECMetadata for sstHash ({}) is ({})",
+        if(StorageService.instance.globalWaitForUpdateECMetadata.containsKey(oldECSSTable.getSSTableHashID()) && 
+        !StorageService.instance.globalWaitForUpdateECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty() ) {
+         if(StorageService.instance.globalWaitForUpdateECMetadata.get(oldECSSTable.getSSTableHashID()).size()>1) {
+             logger.debug("rymDebug: the size of globalWaitForUpdateECMetadata for sstHash ({}) is ({})",
                            oldECSSTable.getSSTableHashID(),
-                           StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).size());
+                           StorageService.instance.globalWaitForUpdateECMetadata.get(oldECSSTable.getSSTableHashID()).size());
          }
-         while(!StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty()) {
-             BlockedECMetadata blockedECMetadata = StorageService.instance.globalBlockedUpdatedECMetadata.get(oldECSSTable.getSSTableHashID()).poll();
+         while(!StorageService.instance.globalWaitForUpdateECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty()) {
+             BlockedECMetadata blockedECMetadata = StorageService.instance.globalWaitForUpdateECMetadata.get(oldECSSTable.getSSTableHashID()).poll();
              saveECMetadataToBlockList(blockedECMetadata, null, true);
          }
      }
@@ -446,23 +446,23 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         if(isAddToTheProcessQueueDirectly) {
             logger.debug("rymDebug: Save the ECMetadata to global Blocked ECMetadata for oldSSTHash ({}), newSSTHash ({}), metadata.oldHash is ({})", oldSSTHash, metadata.newSSTableHash, metadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
-            if(StorageService.instance.globalBlockedECMetadata.containsKey(metadata.cfName)) {
-                if(!StorageService.instance.globalBlockedECMetadata.get(metadata.cfName).contains(metadata))
-                    StorageService.instance.globalBlockedECMetadata.get(metadata.cfName).add(metadata);
+            if(StorageService.instance.globalReadyToProcessECMetadata.containsKey(metadata.cfName)) {
+                if(!StorageService.instance.globalReadyToProcessECMetadata.get(metadata.cfName).contains(metadata))
+                    StorageService.instance.globalReadyToProcessECMetadata.get(metadata.cfName).add(metadata);
             } else {
                 ConcurrentLinkedQueue<BlockedECMetadata> blockList = new ConcurrentLinkedQueue<BlockedECMetadata>();
                 blockList.add(metadata);
-                StorageService.instance.globalBlockedECMetadata.put(metadata.cfName, blockList);
+                StorageService.instance.globalReadyToProcessECMetadata.put(metadata.cfName, blockList);
             }
         } else {
             logger.debug("rymDebug: Save the ECMetadata to global Blocked [Updated] ECMetadata for oldSSTHash ({}), newSSTHash ({}), metadata.oldHash is ({})", oldSSTHash, metadata.newSSTableHash, metadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
-            if(StorageService.instance.globalBlockedUpdatedECMetadata.containsKey(oldSSTHash)) {
-                if(!StorageService.instance.globalBlockedUpdatedECMetadata.get(oldSSTHash).contains(metadata))
-                    StorageService.instance.globalBlockedUpdatedECMetadata.get(oldSSTHash).add(metadata);
+            if(StorageService.instance.globalWaitForUpdateECMetadata.containsKey(oldSSTHash)) {
+                if(!StorageService.instance.globalWaitForUpdateECMetadata.get(oldSSTHash).contains(metadata))
+                    StorageService.instance.globalWaitForUpdateECMetadata.get(oldSSTHash).add(metadata);
             } else {
                 ConcurrentLinkedQueue<BlockedECMetadata> blockList = new ConcurrentLinkedQueue<BlockedECMetadata>();
                 blockList.add(metadata);
-                StorageService.instance.globalBlockedUpdatedECMetadata.put(oldSSTHash, blockList);
+                StorageService.instance.globalWaitForUpdateECMetadata.put(oldSSTHash, blockList);
             }
         }
     }

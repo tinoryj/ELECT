@@ -96,7 +96,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
         // the full name is user.dir/data/tmp/${HostName}-${COUNTER}-XXX.db
         String fileNamePrefix = hostName + "-" + String.valueOf(fileCount) + "-";
-        StorageService.instance.globalSSTMap.put(message.payload.sstHashID, 
+        StorageService.instance.globalSSTHashToSyncedFileMap.put(message.payload.sstHashID, 
                                                          new DataForRewrite(firstKey, lastKey, fileNamePrefix));
         
         String tmpFileName = dataForRewriteDir + fileNamePrefix;
@@ -112,9 +112,9 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     
 
 
-        logger.debug("rymDebug: message is from {}, globalSSTMap size is {}, targetCfName is {}, sstHash is {}", 
+        logger.debug("rymDebug: message is from {}, globalSSTHashToSyncedFileMap size is {}, targetCfName is {}, sstHash is {}", 
                      message.from(),
-                     StorageService.instance.globalSSTMap.size(), 
+                     StorageService.instance.globalSSTHashToSyncedFileMap.size(), 
                     //  message.payload.allKey.size(),
                      message.payload.targetCfName,
                      message.payload.sstHashID);
