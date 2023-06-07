@@ -81,7 +81,7 @@ public abstract class AbstractReadExecutor {
     protected final long queryStartNanoTime;
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
-    public static List<InetAddressAndPort> sendRequestAddressesAndPorts;
+    public static List<InetAddress> sendRequestAddresses;
     public static Token targetReadToken;
 
     public final String primaryLSMTreeName = "usertable";
@@ -163,8 +163,49 @@ public abstract class AbstractReadExecutor {
         // We delay the local (potentially blocking) read till the end to avoid stalling
         // remote requests.
         if (hasLocalEndpoint) {
+
+            switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
+                case 0:
+                    command.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+                                    .metadata());
+                    ColumnFilter newColumnFilter = ColumnFilter
+                            .allRegularColumnsBuilder(command.metadata(), false)
+                            .build();
+                    command.updateColumnFilter(newColumnFilter);
+                    break;
+                case 1:
+                    command.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+                                    .metadata());
+                    ColumnFilter newColumnFilter1 = ColumnFilter
+                            .allRegularColumnsBuilder(command.metadata(), false)
+                            .build();
+                    command.updateColumnFilter(newColumnFilter1);
+                    break;
+                case 2:
+                    command.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+                                    .metadata());
+                    ColumnFilter newColumnFilter2 = ColumnFilter
+                            .allRegularColumnsBuilder(command.metadata(), false)
+                            .build();
+                    command.updateColumnFilter(newColumnFilter2);
+                    break;
+                default:
+                    logger.debug("[Tinoryj] Not support replication factor larger than 3");
+                    break;
+            }
+            readCommand.updateTableMetadata(
+                    Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
+            ColumnFilter newColumnFilter1 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                    .build();
+            readCommand.updateColumnFilter(newColumnFilter1);
+            readCommand.setIsDigestQuery(false);
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
+
         }
+
     }
 
     public static void printStackTace(String msg) {
@@ -197,8 +238,8 @@ public abstract class AbstractReadExecutor {
             }
             switch (replicationIDIndicatorForSendRequest) {
                 case 1:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
+                    // readCommand.updateTableMetadata(
+                    // Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
                     // ColumnFilter newColumnFilter =
                     // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                     // .build();
@@ -206,8 +247,8 @@ public abstract class AbstractReadExecutor {
                     readCommand.setIsDigestQuery(false);
                     break;
                 case 2:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
+                    // readCommand.updateTableMetadata(
+                    // Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
                     // ColumnFilter newColumnFilter1 =
                     // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                     // .build();
@@ -215,8 +256,8 @@ public abstract class AbstractReadExecutor {
                     readCommand.setIsDigestQuery(false);
                     break;
                 case 3:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2).metadata());
+                    // readCommand.updateTableMetadata(
+                    // Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2).metadata());
                     // ColumnFilter newColumnFilter2 =
                     // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
                     // .build();
@@ -319,21 +360,19 @@ public abstract class AbstractReadExecutor {
 
         if (keyspace.getName().equals("ycsb")) {
             targetReadToken = command.partitionKey().getToken();
-            sendRequestAddressesAndPorts = StorageService.instance.getNaturalEndpointsForCassandraEC(command
-                    .metadata().keyspace,
-                    command.partitionKey().getKey());
             List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
                     .metadata().keyspace,
                     command.partitionKey().getKey());
-            if (sendRequestAddressesAndPorts.size() != 3) {
+            if (sendRequestAddresses.size() != 3) {
                 logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
             }
-            if (replicaPlan.contacts().endpointList().get(0).getAddress().equals(sendRequestAddresses.get(0))
-                    &&
-                    replicaPlan.contacts().endpointList().get(1).getAddress().equals(sendRequestAddresses.get(1))
-                    &&
-                    replicaPlan.contacts().endpointList().get(2).getAddress().equals(sendRequestAddresses.get(2))) {
-            } else {
+            boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
+            for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
+                if (replicaPlan.contacts().endpointList().get(i).getAddress().equals(sendRequestAddresses.get(i))) {
+                    isReplicaPlanMatchToNaturalEndpointFlag = false;
+                }
+            }
+            if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
                 logger.debug(
                         "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
                         command.partitionKey().getToken(),
@@ -568,6 +607,8 @@ public abstract class AbstractReadExecutor {
         if (digestResolver.responsesMatch()) {
             setResult(digestResolver.getData());
         } else {
+            logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch, starting read repair for key {}",
+                    getKey());
             readRepair.startRepair(digestResolver, this::setResult);
             if (logBlockingReadRepairAttempt) {
                 logger.info("Blocking Read Repair triggered for query [{}] at CL.{} with endpoints {}",

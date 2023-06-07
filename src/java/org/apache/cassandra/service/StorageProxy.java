@@ -2227,7 +2227,7 @@ public class StorageProxy implements StorageProxyMBean {
                     if (!command.isTrackingWarnings())
                         throw e;
                     logger.debug(
-                            "[Tinoryj] In read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}, could not get key, created empty response",
+                            "[Tinoryj] In read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}, key not found, created empty response",
                             command.metadata().name, command.metadata().keyspace);
                     response = command.createEmptyResponse();
                     readRejected = true;
