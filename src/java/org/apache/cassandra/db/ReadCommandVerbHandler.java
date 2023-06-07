@@ -52,18 +52,19 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         ReadCommand command = message.payload;
 
         if (command.metadata().keyspace.equals("ycsb")) {
-            logger.debug(
-                    "[Tinoryj] Received read command from {}, target table is {}, target key is {}, key token is {}",
-                    message.from(),
-                    command.metadata().name,
-                    command instanceof SinglePartitionReadCommand
-                            ? ((SinglePartitionReadCommand) command).partitionKey()
-                                    .getRawKey(command.metadata())
-                            : null,
-                    command instanceof SinglePartitionReadCommand
-                            ? ((SinglePartitionReadCommand) command).partitionKey()
-                                    .getToken()
-                            : null);
+            // logger.debug(
+            // "[Tinoryj] Received read command from {}, target table is {}, target key is
+            // {}, key token is {}",
+            // message.from(),
+            // command.metadata().name,
+            // command instanceof SinglePartitionReadCommand
+            // ? ((SinglePartitionReadCommand) command).partitionKey()
+            // .getRawKey(command.metadata())
+            // : null,
+            // command instanceof SinglePartitionReadCommand
+            // ? ((SinglePartitionReadCommand) command).partitionKey()
+            // .getToken()
+            // : null);
             // Update read command to the correct table
             ByteBuffer targetReadKey = (command instanceof SinglePartitionReadCommand
                     ? ((SinglePartitionReadCommand) command).partitionKey().getKey()
@@ -120,29 +121,30 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         try (ReadExecutionController controller = command.executionController(message.trackRepairedData());
                 UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
             response = command.createResponse(iterator, controller.getRepairedDataInfo());
-            if (command.metadata().keyspace.equals("ycsb")) {
-                logger.debug(
-                        "[Tinoryj] ReadCommandVerbHandler from {}, Read Command target table is {}, target key is {}, key token is {}, response is {}",
-                        message.from(),
-                        command.metadata().name,
-                        command instanceof SinglePartitionReadCommand
-                                ? ((SinglePartitionReadCommand) command).partitionKey()
-                                        .getRawKey(command.metadata())
-                                : null,
-                        command instanceof SinglePartitionReadCommand
-                                ? ((SinglePartitionReadCommand) command).partitionKey()
-                                        .getToken()
-                                : null,
-                        response.toDebugString(command,
-                                command instanceof SinglePartitionReadCommand
-                                        ? ((SinglePartitionReadCommand) command)
-                                                .partitionKey()
-                                        : null));
-            }
+            // if (command.metadata().keyspace.equals("ycsb")) {
+            // logger.debug(
+            // "[Tinoryj] ReadCommandVerbHandler from {}, Read Command target table is {},
+            // target key is {}, key token is {}, response is {}",
+            // message.from(),
+            // command.metadata().name,
+            // command instanceof SinglePartitionReadCommand
+            // ? ((SinglePartitionReadCommand) command).partitionKey()
+            // .getRawKey(command.metadata())
+            // : null,
+            // command instanceof SinglePartitionReadCommand
+            // ? ((SinglePartitionReadCommand) command).partitionKey()
+            // .getToken()
+            // : null,
+            // response.toDebugString(command,
+            // command instanceof SinglePartitionReadCommand
+            // ? ((SinglePartitionReadCommand) command)
+            // .partitionKey()
+            // : null));
+            // }
         } catch (RejectException e) {
             if (command.metadata().keyspace.equals("ycsb")) {
-                logger.debug(
-                        "[Tinoryj] ReadCommandVerbHandler from {}, Read Command target table is {}, target key is {}, key token is {}, meet errors",
+                logger.error(
+                        "[Tinoryj-ERROR] ReadCommandVerbHandler from {}, Read Command target table is {}, target key is {}, key token is {}, meet errors",
                         message.from(),
                         command.metadata().name,
                         command instanceof SinglePartitionReadCommand

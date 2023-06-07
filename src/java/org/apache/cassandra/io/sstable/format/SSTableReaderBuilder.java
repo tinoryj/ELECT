@@ -272,10 +272,12 @@ public abstract class SSTableReaderBuilder {
             String dataFilePath;
             boolean useECMetadataReplacedDataFlag = false;
             if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
-                logger.debug("[Tinoryj] Find data path = {}", descriptor.filenameFor(Component.DATA));
+                // logger.debug("[Tinoryj] Find data path = {}",
+                // descriptor.filenameFor(Component.DATA));
                 dataFilePath = descriptor.filenameFor(Component.DATA);
             } else {
-                logger.debug("[Tinoryj] Find EC metadata path = {}", descriptor.filenameFor(Component.EC_METADATA));
+                // logger.debug("[Tinoryj] Find EC metadata path = {}",
+                // descriptor.filenameFor(Component.EC_METADATA));
                 dataFilePath = descriptor.filenameFor(Component.EC_METADATA);
                 useECMetadataReplacedDataFlag = true;
             }
@@ -314,7 +316,8 @@ public abstract class SSTableReaderBuilder {
                 }
             } else {
                 // only EC_metadata file
-                logger.debug("[Tinoryj] Only find ec metadata path = {}", descriptor.filenameFor(Component.DATA));
+                // logger.debug("[Tinoryj] Only find ec metadata path = {}",
+                // descriptor.filenameFor(Component.DATA));
                 try (FileHandle.Builder ibuilder = new FileHandle.Builder(
                         descriptor.filenameFor(Component.PRIMARY_INDEX))
                         .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
@@ -377,10 +380,12 @@ public abstract class SSTableReaderBuilder {
         public SSTableReader build() {
             String dataFilePath;
             if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
-                logger.debug("[Tinoryj] Find data path = {}", descriptor.filenameFor(Component.DATA));
+                // logger.debug("[Tinoryj] Find data path = {}",
+                // descriptor.filenameFor(Component.DATA));
                 dataFilePath = descriptor.filenameFor(Component.DATA);
             } else {
-                logger.debug("[Tinoryj] Find ec metadata path = {}", descriptor.filenameFor(Component.EC_METADATA));
+                // logger.debug("[Tinoryj] Find ec metadata path = {}",
+                // descriptor.filenameFor(Component.EC_METADATA));
                 dataFilePath = descriptor.filenameFor(Component.EC_METADATA);
             }
             long fileLength = new File(dataFilePath).length();
@@ -502,7 +507,8 @@ public abstract class SSTableReaderBuilder {
                 }
             } else if (Files.exists(Paths.get(descriptor.filenameFor(Component.EC_METADATA)))) {
                 // No data file, this sst may be changed to ec metadata
-                logger.debug("[Tinoryj] Find only ec metadata path = {}", descriptor.filenameFor(Component.EC_METADATA));
+                // logger.debug("[Tinoryj] Find only ec metadata path = {}",
+                // descriptor.filenameFor(Component.EC_METADATA));
                 try (FileHandle.Builder ibuilder = new FileHandle.Builder(
                         descriptor.filenameFor(Component.PRIMARY_INDEX))
                         .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
