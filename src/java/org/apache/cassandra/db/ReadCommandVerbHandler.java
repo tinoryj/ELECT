@@ -57,10 +57,12 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     message.from(),
                     command.metadata().name,
                     command instanceof SinglePartitionReadCommand
-                            ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata())
+                            ? ((SinglePartitionReadCommand) command).partitionKey()
+                                    .getRawKey(command.metadata())
                             : null,
                     command instanceof SinglePartitionReadCommand
-                            ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                            ? ((SinglePartitionReadCommand) command).partitionKey()
+                                    .getToken()
                             : null);
             // Update read command to the correct table
             ByteBuffer targetReadKey = (command instanceof SinglePartitionReadCommand
@@ -69,18 +71,28 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
                     .metadata().keyspace,
                     targetReadKey);
-            if (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress()) == 1) {
-                command.updateTableMetadata(
-                        Keyspace.open("ycsb").getColumnFamilyStore("usertable1").metadata());
-                ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(command.metadata(), false)
-                        .build();
-                command.updateColumnFilter(newColumnFilter);
-            } else if (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress()) == 2) {
-                command.updateTableMetadata(
-                        Keyspace.open("ycsb").getColumnFamilyStore("usertable2").metadata());
-                ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(command.metadata(), false)
-                        .build();
-                command.updateColumnFilter(newColumnFilter);
+            switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
+                case 0:
+                    break;
+                case 1:
+                    command.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable1").metadata());
+                    ColumnFilter newColumnFilter = ColumnFilter
+                            .allRegularColumnsBuilder(command.metadata(), false)
+                            .build();
+                    command.updateColumnFilter(newColumnFilter);
+                    break;
+                case 2:
+                    command.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable2").metadata());
+                    ColumnFilter newColumnFilter = ColumnFilter
+                            .allRegularColumnsBuilder(command.metadata(), false)
+                            .build();
+                    command.updateColumnFilter(newColumnFilter);
+                    break;
+                default:
+                    logger.debug("[Tinoryj] Not support replication factor larger than 3");
+                    break;
             }
         }
 
@@ -105,14 +117,18 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                         message.from(),
                         command.metadata().name,
                         command instanceof SinglePartitionReadCommand
-                                ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata())
+                                ? ((SinglePartitionReadCommand) command).partitionKey()
+                                        .getRawKey(command.metadata())
                                 : null,
                         command instanceof SinglePartitionReadCommand
-                                ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
-                                : null,
-                        response.toDebugString(command, command instanceof SinglePartitionReadCommand
                                 ? ((SinglePartitionReadCommand) command).partitionKey()
-                                : null));
+                                        .getToken()
+                                : null,
+                        response.toDebugString(command,
+                                command instanceof SinglePartitionReadCommand
+                                        ? ((SinglePartitionReadCommand) command)
+                                                .partitionKey()
+                                        : null));
             }
         } catch (RejectException e) {
             if (command.metadata().keyspace.equals("ycsb")) {
@@ -121,10 +137,12 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                         message.from(),
                         command.metadata().name,
                         command instanceof SinglePartitionReadCommand
-                                ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata())
+                                ? ((SinglePartitionReadCommand) command).partitionKey()
+                                        .getRawKey(command.metadata())
                                 : null,
                         command instanceof SinglePartitionReadCommand
-                                ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                                ? ((SinglePartitionReadCommand) command).partitionKey()
+                                        .getToken()
                                 : null);
             }
             if (!command.isTrackingWarnings())
@@ -143,7 +161,8 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
 
         if (!command.complete()) {
             Tracing.trace("Discarding partial response to {} (timed out)", message.from());
-            MessagingService.instance().metrics.recordDroppedMessage(message, message.elapsedSinceCreated(NANOSECONDS),
+            MessagingService.instance().metrics.recordDroppedMessage(message,
+                    message.elapsedSinceCreated(NANOSECONDS),
                     NANOSECONDS);
             return;
         }
@@ -184,12 +203,14 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         }
 
         if (!command.acceptsTransient() && replica.isTransient()) {
-            MessagingService.instance().metrics.recordDroppedMessage(message, message.elapsedSinceCreated(NANOSECONDS),
+            MessagingService.instance().metrics.recordDroppedMessage(message,
+                    message.elapsedSinceCreated(NANOSECONDS),
                     NANOSECONDS);
-            throw new InvalidRequestException(String.format("Attempted to serve %s data request from %s node in %s",
-                    command.acceptsTransient() ? "transient" : "full",
-                    replica.isTransient() ? "transient" : "full",
-                    this));
+            throw new InvalidRequestException(
+                    String.format("Attempted to serve %s data request from %s node in %s",
+                            command.acceptsTransient() ? "transient" : "full",
+                            replica.isTransient() ? "transient" : "full",
+                            this));
         }
     }
 }
