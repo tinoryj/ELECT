@@ -121,8 +121,9 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 // just add this old sstable to the cache map
                 StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.put(parityUpdateData.sstable.sstHash, parityUpdateData.sstable);
 
-                logger.debug("rymDebug: In node {}, we cannot get strip id for sstHash {}, this hash is from primary node {}, the old sstable map is {}, new sstable map is {}",
+                logger.debug("rymDebug: In node {}, strip id {} for sstHash {} is not ready, so we save it to [pending list],this hash is from primary node {}, the old sstable map is {}, new sstable map is {}",
                         FBUtilities.getBroadcastAddressAndPort(),
+                        stripID,
                         oldSSTHash,
                         primaryNode,
                         StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.keySet(),
@@ -132,7 +133,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 // Check if the there is a new sstable that has the same sstHash with this old one
                 if(!isNewSSTableQueueContainThisOldSSTable(StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.get(primaryNode), parityUpdateData.sstable)) {
 
-                    logger.debug("rymDebug: we need get parity codes for sstable ({}), and add it to the globalReadyOldSSTableForECStripUpdateMap", oldSSTHash);
+                    logger.debug("rymDebug: we need get parity codes for sstable ({}), add it to the ready list, mark strip id {} as updating", oldSSTHash, stripID);
                     StorageService.instance.globalUpdatingStripList.add(stripID);
                     // if(StorageService.instance.globalUpdatingStripList.containsKey(stripID)) {
                     //     StorageService.instance.globalUpdatingStripList.compute(stripID, (key, oldValue) -> oldValue + 1);
@@ -158,7 +159,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
         } else {
-            logger.debug("rymDebug: [Parity Update] Get a new sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
+            logger.debug("rymDebug: [Parity Update] Get a new sstable ({}) from primary node {}, add it to ready list", parityUpdateData.sstable.sstHash, primaryNode);
             if (StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.contains(primaryNode)) {
                 StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.get(primaryNode)
                         .add(parityUpdateData.sstable);

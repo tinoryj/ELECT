@@ -262,7 +262,8 @@ public class ECMetadata implements Serializable {
         StorageService.instance.globalStripIdToECMetadataMap.put(this.stripeId, this.ecMetadataContent);
 
         // parity update is finished, we update the globalUpdatingStripList
-        StorageService.instance.globalUpdatingStripList.remove(this.stripeId);
+        StorageService.instance.globalUpdatingStripList.remove(oldStripId);
+        logger.debug("rymDebug: We replaced the oldStrip {} with the newStrip {} successfully.", oldStripId, this.stripeId);
         // StorageService.instance.globalUpdatingStripList.compute(this.stripeId, (key, oldValue) -> oldValue - 1);
 
         // dispatch to related nodes
@@ -301,10 +302,10 @@ public class ECMetadata implements Serializable {
             InetAddressAndPort primaryNode = sstHashIdToReplicaMap.get(sstHash).get(0);
             SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.get(sstHash);
             StorageService.instance.globalUpdatingStripList.add(stripId);
+            logger.debug("rymDebug: We move the old sstable {} from pending list to ready list to update strip {}", sstHash, stripId);
 
             if (StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.contains(primaryNode)) {
-                StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode)
-                        .add(oldSSTableForParityUpdate);
+                StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
             } else {
                 StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.put(primaryNode,
                         new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(oldSSTableForParityUpdate)));
