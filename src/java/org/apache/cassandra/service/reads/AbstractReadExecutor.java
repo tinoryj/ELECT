@@ -354,7 +354,7 @@ public abstract class AbstractReadExecutor {
 
         if (keyspace.getName().equals("ycsb")) {
             targetReadToken = command.partitionKey().getToken();
-            List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
+            sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
                     .metadata().keyspace,
                     command.partitionKey().getKey());
             if (sendRequestAddresses.size() != 3) {
