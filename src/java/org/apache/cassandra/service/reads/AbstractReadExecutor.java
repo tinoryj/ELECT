@@ -238,35 +238,32 @@ public abstract class AbstractReadExecutor {
                 case 1:
                     readCommand.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
-                    // ColumnFilter newColumnFilter =
-                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                    // .build();
-                    // readCommand.updateColumnFilter(newColumnFilter);
+                    ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter);
                     readCommand.setIsDigestQuery(false);
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName);
-                    this.command = readCommand;
+                    // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName);
+                    // this.command = readCommand;
                     break;
                 case 2:
                     readCommand.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
-                    // ColumnFilter newColumnFilter1 =
-                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                    // .build();
-                    // readCommand.updateColumnFilter(newColumnFilter1);
+                    ColumnFilter newColumnFilter1 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter1);
                     readCommand.setIsDigestQuery(false);
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1);
-                    this.command = readCommand;
+                    // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1);
+                    // this.command = readCommand;
                     break;
                 case 3:
                     readCommand.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2).metadata());
-                    // ColumnFilter newColumnFilter2 =
-                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                    // .build();
-                    // readCommand.updateColumnFilter(newColumnFilter2);
+                    ColumnFilter newColumnFilter2 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter2);
                     readCommand.setIsDigestQuery(false);
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2);
-                    this.command = readCommand;
+                    // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2);
+                    // this.command = readCommand;
                     break;
                 default:
                     logger.debug("[Tinoryj] Not support replication number more than 3!!!");
