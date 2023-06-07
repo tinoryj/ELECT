@@ -20,6 +20,7 @@ package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -365,7 +366,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 ECNetutils.deleteFileByName(parityCodeFileName);
             } catch (IOException e) {
                 // TODO Auto-generated catch block
-                ECNetutils.printStackTace(String.format("rymERROR: When we are retrieving parity codes for strip id %s to perform parity update old sstable (%s), cannot read parity code from %s",stripID, oldSSTHash, parityCodeFileName));
+                throw new IllegalAccessError(String.format("rymERROR: When we are retrieving parity codes for strip id %s to perform parity update old sstable (%s), cannot read parity code from %s", stripID, oldSSTHash, parityCodeFileName));
             }
 
         }
