@@ -318,172 +318,57 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
     @VisibleForTesting
     public UnfilteredPartitionIterator queryStorage(final ColumnFamilyStore cfs, ReadExecutionController controller) {
 
-        if (cfs.keyspace.getName().equals("ycsb")) {
-            if (cfs.name.equals("usertable")) {
-                // TODO[Tinoryj]: Read data from the primary replica;
+        ColumnFamilyStore.ViewFragment view = cfs.select(View.selectLive(dataRange().keyRange()));
+        Tracing.trace("Executing seq scan across {} sstables for {}", view.sstables.size(),
+                dataRange().keyRange().getString(metadata().partitionKeyType));
 
-                ColumnFamilyStore.ViewFragment view = cfs.select(View.selectLive(dataRange().keyRange()));
-                Tracing.trace("Executing seq scan across {} sstables for {}", view.sstables.size(),
-                        dataRange().keyRange().getString(metadata().partitionKeyType));
-
-                // fetch data from current memtable, historical memtables, and SSTables in the
-                // correct order.
-                InputCollector<UnfilteredPartitionIterator> inputCollector = iteratorsForRange(view, controller);
-                try {
-                    SSTableReadsListener readCountUpdater = newReadCountUpdater();
-                    for (Memtable memtable : view.memtables) {
-                        @SuppressWarnings("resource") // We close on exception and on closing the result returned by
-                                                      // this method
-                        UnfilteredPartitionIterator iter = memtable.partitionIterator(columnFilter(), dataRange(),
-                                readCountUpdater);
-                        controller.updateMinOldestUnrepairedTombstone(memtable.getMinLocalDeletionTime());
-                        inputCollector
-                                .addMemtableIterator(
-                                        RTBoundValidator.validate(iter, RTBoundValidator.Stage.MEMTABLE, false));
-                    }
-
-                    for (SSTableReader sstable : view.sstables) {
-                        @SuppressWarnings("resource") // We close on exception and on closing the result returned by
-                                                      // this
-                                                      // method
-                        UnfilteredPartitionIterator iter = sstable.partitionIterator(columnFilter(), dataRange(),
-                                readCountUpdater);
-                        inputCollector.addSSTableIterator(sstable,
-                                RTBoundValidator.validate(iter, RTBoundValidator.Stage.SSTABLE, false));
-
-                        if (!sstable.isRepaired())
-                            controller.updateMinOldestUnrepairedTombstone(sstable.getMinLocalDeletionTime());
-                    }
-                    // iterators can be empty for offline tools
-                    if (inputCollector.isEmpty())
-                        return EmptyIterators.unfilteredPartition(metadata());
-
-                    return checkCacheFilter(
-                            UnfilteredPartitionIterators.mergeLazily(
-                                    inputCollector.finalizeIterators(cfs, nowInSec(),
-                                            controller.oldestUnrepairedTombstone())),
-                            cfs);
-                } catch (RuntimeException | Error e) {
-                    try {
-                        inputCollector.close();
-                    } catch (Exception e1) {
-                        e.addSuppressed(e1);
-                    }
-                    throw e;
-                }
-
-            } else {
-                // TODO[Tinoryj]: Read data from the secondary replicas;
-
-                ColumnFamilyStore.ViewFragment view = cfs.select(View.selectLive(dataRange().keyRange()));
-                Tracing.trace("Executing seq scan across {} sstables for {}", view.sstables.size(),
-                        dataRange().keyRange().getString(metadata().partitionKeyType));
-
-                // fetch data from current memtable, historical memtables, and SSTables in the
-                // correct order.
-                InputCollector<UnfilteredPartitionIterator> inputCollector = iteratorsForRange(view, controller);
-                try {
-                    SSTableReadsListener readCountUpdater = newReadCountUpdater();
-                    for (Memtable memtable : view.memtables) {
-                        @SuppressWarnings("resource") // We close on exception and on closing the result returned by
-                                                      // this
-                                                      // method
-                        UnfilteredPartitionIterator iter = memtable.partitionIterator(columnFilter(), dataRange(),
-                                readCountUpdater);
-                        controller.updateMinOldestUnrepairedTombstone(memtable.getMinLocalDeletionTime());
-                        inputCollector
-                                .addMemtableIterator(
-                                        RTBoundValidator.validate(iter, RTBoundValidator.Stage.MEMTABLE, false));
-                    }
-
-                    for (SSTableReader sstable : view.sstables) {
-                        if (sstable.isReplicationTransferredToErasureCoding()) {
-                            logger.debug(
-                                    "Skip the metadata sstable {} during search because it is transferred to erasure coding",
-                                    sstable.getFilename());
-                            continue;
-                        }
-
-                        @SuppressWarnings("resource") // We close on exception and on closing the result returned by
-                                                      // this
-                                                      // method
-
-                        UnfilteredPartitionIterator iter = sstable.partitionIterator(columnFilter(), dataRange(),
-                                readCountUpdater);
-                        inputCollector.addSSTableIterator(sstable,
-                                RTBoundValidator.validate(iter, RTBoundValidator.Stage.SSTABLE, false));
-                        // [Tinoryj] Check the isReplicationTransferredToErasureCoding
-                        if (!sstable.isRepaired() && !sstable.isReplicationTransferredToErasureCoding())
-                            controller.updateMinOldestUnrepairedTombstone(sstable.getMinLocalDeletionTime());
-                    }
-                    // iterators can be empty for offline tools
-                    if (inputCollector.isEmpty())
-                        return EmptyIterators.unfilteredPartition(metadata());
-                    // [Tinoryj] Read to collect all possible kv pairs done
-                    return checkCacheFilter(
-                            UnfilteredPartitionIterators.mergeLazily(
-                                    inputCollector.finalizeIterators(cfs, nowInSec(),
-                                            controller.oldestUnrepairedTombstone())),
-                            cfs);
-                } catch (RuntimeException | Error e) {
-                    try {
-                        inputCollector.close();
-                    } catch (Exception e1) {
-                        e.addSuppressed(e1);
-                    }
-                    throw e;
-                }
+        // fetch data from current memtable, historical memtables, and SSTables in the
+        // correct order.
+        InputCollector<UnfilteredPartitionIterator> inputCollector = iteratorsForRange(view, controller);
+        try {
+            SSTableReadsListener readCountUpdater = newReadCountUpdater();
+            for (Memtable memtable : view.memtables) {
+                @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
+                                              // method
+                UnfilteredPartitionIterator iter = memtable.partitionIterator(columnFilter(), dataRange(),
+                        readCountUpdater);
+                controller.updateMinOldestUnrepairedTombstone(memtable.getMinLocalDeletionTime());
+                inputCollector
+                        .addMemtableIterator(
+                                RTBoundValidator.validate(iter, RTBoundValidator.Stage.MEMTABLE, false));
             }
-        } else {
 
-            ColumnFamilyStore.ViewFragment view = cfs.select(View.selectLive(dataRange().keyRange()));
-            Tracing.trace("Executing seq scan across {} sstables for {}", view.sstables.size(),
-                    dataRange().keyRange().getString(metadata().partitionKeyType));
+            for (SSTableReader sstable : view.sstables) {
+                if (sstable.isReplicationTransferredToErasureCoding()) {
+                    continue;
+                    // Tinoryj: skip metadata sstable from read
+                }
+                @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
+                                              // method
+                UnfilteredPartitionIterator iter = sstable.partitionIterator(columnFilter(), dataRange(),
+                        readCountUpdater);
+                inputCollector.addSSTableIterator(sstable,
+                        RTBoundValidator.validate(iter, RTBoundValidator.Stage.SSTABLE, false));
 
-            // fetch data from current memtable, historical memtables, and SSTables in the
-            // correct order.
-            InputCollector<UnfilteredPartitionIterator> inputCollector = iteratorsForRange(view, controller);
+                if (!sstable.isRepaired())
+                    controller.updateMinOldestUnrepairedTombstone(sstable.getMinLocalDeletionTime());
+            }
+            // iterators can be empty for offline tools
+            if (inputCollector.isEmpty())
+                return EmptyIterators.unfilteredPartition(metadata());
+
+            return checkCacheFilter(
+                    UnfilteredPartitionIterators.mergeLazily(
+                            inputCollector.finalizeIterators(cfs, nowInSec(),
+                                    controller.oldestUnrepairedTombstone())),
+                    cfs);
+        } catch (RuntimeException | Error e) {
             try {
-                SSTableReadsListener readCountUpdater = newReadCountUpdater();
-                for (Memtable memtable : view.memtables) {
-                    @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
-                                                  // method
-                    UnfilteredPartitionIterator iter = memtable.partitionIterator(columnFilter(), dataRange(),
-                            readCountUpdater);
-                    controller.updateMinOldestUnrepairedTombstone(memtable.getMinLocalDeletionTime());
-                    inputCollector
-                            .addMemtableIterator(
-                                    RTBoundValidator.validate(iter, RTBoundValidator.Stage.MEMTABLE, false));
-                }
-
-                for (SSTableReader sstable : view.sstables) {
-                    @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
-                                                  // method
-                    UnfilteredPartitionIterator iter = sstable.partitionIterator(columnFilter(), dataRange(),
-                            readCountUpdater);
-                    inputCollector.addSSTableIterator(sstable,
-                            RTBoundValidator.validate(iter, RTBoundValidator.Stage.SSTABLE, false));
-
-                    if (!sstable.isRepaired())
-                        controller.updateMinOldestUnrepairedTombstone(sstable.getMinLocalDeletionTime());
-                }
-                // iterators can be empty for offline tools
-                if (inputCollector.isEmpty())
-                    return EmptyIterators.unfilteredPartition(metadata());
-
-                return checkCacheFilter(
-                        UnfilteredPartitionIterators.mergeLazily(
-                                inputCollector.finalizeIterators(cfs, nowInSec(),
-                                        controller.oldestUnrepairedTombstone())),
-                        cfs);
-            } catch (RuntimeException | Error e) {
-                try {
-                    inputCollector.close();
-                } catch (Exception e1) {
-                    e.addSuppressed(e1);
-                }
-                throw e;
+                inputCollector.close();
+            } catch (Exception e1) {
+                e.addSuppressed(e1);
             }
+            throw e;
         }
     }
 

@@ -2210,24 +2210,27 @@ public class StorageProxy implements StorageProxyMBean {
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     if (iterator == null) {
                         logger.debug(
-                                "[Tinoryj] Could not get {} response from table {}",
+                                "[Tinoryj-ERROR] Could not get {} response from table {}",
                                 command.isDigestQuery() ? "digest" : "data",
                                 command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
                         response = command.createEmptyResponse();
                     } else {
                         response = command.createResponse(iterator, controller.getRepairedDataInfo());
                         ByteBuffer newDigest = response.digest(command);
-                        logger.debug(
-                                "[Tinoryj] Get {} response from table {}, {}",
-                                command.isDigestQuery() ? "digest" : "data",
-                                command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                                "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
+                        String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
+                        if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
+                            logger.debug(
+                                    "[Tinoryj-ERROR] Could not get non-empty {} response from table {}, {}",
+                                    command.isDigestQuery() ? "digest" : "data",
+                                    command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
+                                    "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
+                        }
                     }
                 } catch (RejectException e) {
                     if (!command.isTrackingWarnings())
                         throw e;
                     logger.debug(
-                            "[Tinoryj] In read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}, key not found, created empty response",
+                            "[Tinoryj-ERROR] In read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}, key not found, created empty response",
                             command.metadata().name, command.metadata().keyspace);
                     response = command.createEmptyResponse();
                     readRejected = true;

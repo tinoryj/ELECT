@@ -127,16 +127,18 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         }
         int noDataCount = 0;
         for (int i = 0; i < digestIndex; i++) {
-            logger.debug(
-                    "[Tinoryj] Read operation get digest from {}, digest = {}",
-                    endpoints.get(i), "0x" + ByteBufferUtil.bytesToHex(digestSet[i]));
+            // logger.debug(
+            // "[Tinoryj] Read operation get digest from {}, digest = {}",
+            // endpoints.get(i), "0x" + ByteBufferUtil.bytesToHex(digestSet[i]));
             String digestStr = "0x" + ByteBufferUtil.bytesToHex(digestSet[i]);
             if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                 noDataCount++;
             }
         }
         if (noDataCount != 0) {
-            logger.debug("[Tinoryj] Read operation get only {} success data response", snapshot.size() - noDataCount);
+            logger.error("[Tinoryj-ERROR] Read operation get only {} success data response",
+                    snapshot.size() - noDataCount);
+            return false;
         }
 
         if (isDigestMatchFlag == false) {

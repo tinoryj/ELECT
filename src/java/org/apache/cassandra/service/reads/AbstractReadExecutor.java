@@ -206,111 +206,6 @@ public abstract class AbstractReadExecutor {
         logger.debug("stack trace {}", new Exception(msg));
     }
 
-    private void makeRequestsCassandraEC(ReadCommand readCommand, Iterable<Replica> replicas) {
-        // printStackTace("makeRequestsCassandraEC");
-        boolean hasLocalEndpoint = false;
-
-        int replicationIDIndicatorForSendRequest = 0;
-        int localReplicaID = 0;
-        for (Replica replica : replicas) {
-            replicationIDIndicatorForSendRequest++;
-            assert replica.isFull() || readCommand.acceptsTransient();
-            InetAddressAndPort endpoint = replica.endpoint();
-
-            logger.debug(
-                    "[Tinoryj] Make {} read request for key token = {}, replica address = {}, target column name = {}",
-                    readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
-                    endpoint, readCommand.metadata().name);
-
-            if (traceState != null)
-                traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
-
-            if (replica.isSelf()) {
-                hasLocalEndpoint = true;
-                localReplicaID = replicationIDIndicatorForSendRequest;
-                continue;
-            }
-            switch (replicationIDIndicatorForSendRequest) {
-                case 1:
-                    // readCommand.updateTableMetadata(
-                    // Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
-                    // ColumnFilter newColumnFilter =
-                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                    // .build();
-                    // readCommand.updateColumnFilter(newColumnFilter);
-                    readCommand.setIsDigestQuery(false);
-                    break;
-                case 2:
-                    // readCommand.updateTableMetadata(
-                    // Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
-                    // ColumnFilter newColumnFilter1 =
-                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                    // .build();
-                    // readCommand.updateColumnFilter(newColumnFilter1);
-                    readCommand.setIsDigestQuery(false);
-                    break;
-                case 3:
-                    // readCommand.updateTableMetadata(
-                    // Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2).metadata());
-                    // ColumnFilter newColumnFilter2 =
-                    // ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                    // .build();
-                    // readCommand.updateColumnFilter(newColumnFilter2);
-                    readCommand.setIsDigestQuery(false);
-                    break;
-                default:
-                    logger.debug("[Tinoryj] Not support replication number more than 3!!!");
-            }
-            Message<ReadCommand> message = readCommand.createMessage(false);
-
-            MessagingService.instance().sendWithCallback(message, endpoint, handler);
-        }
-
-        // We delay the local (potentially blocking) read till the end to avoid stalling
-        // remote requests.
-        if (hasLocalEndpoint) {
-            switch (localReplicaID) {
-                case 1:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName).metadata());
-                    ColumnFilter newColumnFilter = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter);
-                    readCommand.setIsDigestQuery(false);
-                    // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(primaryLSMTreeName);
-                    // this.command = readCommand;
-                    break;
-                case 2:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1).metadata());
-                    ColumnFilter newColumnFilter1 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter1);
-                    readCommand.setIsDigestQuery(false);
-                    // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName1);
-                    // this.command = readCommand;
-                    break;
-                case 3:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2).metadata());
-                    ColumnFilter newColumnFilter2 = ColumnFilter.allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter2);
-                    readCommand.setIsDigestQuery(false);
-                    // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore(secondaryLSMTreeName2);
-                    // this.command = readCommand;
-                    break;
-                default:
-                    logger.debug("[Tinoryj] Not support replication number more than 3!!!");
-            }
-            logger.debug(
-                    "[Tinoryj] Local read request for key token = {}, replica address = {}, target column name = {}",
-                    readCommand.isDigestQuery() ? "digest" : "data", targetReadToken,
-                    FBUtilities.getJustBroadcastAddress(), readCommand.metadata().name);
-            Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
-        }
-    }
-
     /**
      * Perform additional requests if it looks like the original will time out. May
      * block while it waits
@@ -322,22 +217,13 @@ public abstract class AbstractReadExecutor {
      * send the initial set of requests
      */
     public void executeAsync() {
-        // logger.debug(
-        // "[Tinoryj] Read executeAsync replicas: {}, initialDataRequestCount: {}",
-        // replicaPlan().contacts(),
-        // initialDataRequestCount);
         EndpointsForToken selected = replicaPlan().contacts();
-        // if (command.metadata().keyspace.equals("ycsb")) {
-        // // Tinoryj-> the read path for CassandraEC test with "YCSB".
-        // makeRequestsCassandraEC(command, selected);
-        // } else {
         // Normal read path for Cassandra system tables.
         EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
         makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
         makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
         // Tinoryj-> to read the possible secondary replica.
         makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
-        // }
     }
 
     /**
@@ -357,35 +243,34 @@ public abstract class AbstractReadExecutor {
             sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
                     .metadata().keyspace,
                     command.partitionKey().getKey());
-            if (sendRequestAddresses.size() != 3) {
-                logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
-            }
-            boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
-            for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
-                if (replicaPlan.contacts().endpointList().get(i).getAddress().equals(sendRequestAddresses.get(i))) {
-                    isReplicaPlanMatchToNaturalEndpointFlag = false;
-                }
-            }
-            if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
-                logger.debug(
-                        "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
-                        command.partitionKey().getToken(),
-                        replicaPlan.contacts().endpointList(),
-                        sendRequestAddresses);
-            }
+            // [Tinoryj] Debug for replicaPlan.
+            // if (sendRequestAddresses.size() != 3) {
+            // logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
+            // }
+            // boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
+            // for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
+            // if
+            // (!replicaPlan.contacts().endpointList().get(i).getAddress().equals(sendRequestAddresses.get(i)))
+            // {
+            // isReplicaPlanMatchToNaturalEndpointFlag = false;
+            // }
+            // }
+            // if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
+            // logger.debug(
+            // "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node
+            // in the natural storage node list. The replication plan for read is {},
+            // natural storage node list = {}",
+            // command.partitionKey().getToken(),
+            // replicaPlan.contacts().endpointList(),
+            // sendRequestAddresses);
+            // }
         }
-
-        // if (command.metadata().keyspace.equals("ycsb")) {
-        // logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
-        // return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan,
-        // queryStartNanoTime, false);
-        // }
 
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
         // miscounting DC responses
         if (retry.equals(NeverSpeculativeRetryPolicy.INSTANCE) || consistencyLevel == ConsistencyLevel.EACH_QUORUM) {
-            logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
+            // logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
             return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime, false);
         }
 
@@ -396,18 +281,18 @@ public abstract class AbstractReadExecutor {
 
         {
             boolean recordFailedSpeculation = consistencyLevel != ConsistencyLevel.ALL;
-            logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
+            // logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
             return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime,
                     recordFailedSpeculation);
         }
 
         if (retry.equals(AlwaysSpeculativeRetryPolicy.INSTANCE)) {
-            logger.debug("[Tinoryj] AlwaysSpeculatingReadExecutor is in use");
+            // logger.debug("[Tinoryj] AlwaysSpeculatingReadExecutor is in use");
             return new AlwaysSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime);
         } else {
             // PERCENTILE
             // or
-            logger.debug("[Tinoryj] SpeculatingReadExecutor is in use");
+            // logger.debug("[Tinoryj] SpeculatingReadExecutor is in use");
             // CUSTOM.
             return new SpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime);
         }
@@ -590,18 +475,11 @@ public abstract class AbstractReadExecutor {
             }
         }
         // return immediately, or begin a read repair
-        // if (command.metadata().keyspace.equals("ycsb")) {
-        // setResult(digestResolver.getData());
-        // if (!digestResolver.responsesMatch()) {
-        // logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch,
-        // starting read repair for key {}",
-        // getKey());
-        // }
-        // } else {
         if (digestResolver.responsesMatch()) {
             setResult(digestResolver.getData());
         } else {
-            logger.debug("[Tinoryj] ReadExecutor awaitResponses() digest mismatch, starting read repair for key {}",
+            logger.debug(
+                    "[Tinoryj-ERROR] ReadExecutor awaitResponses() digest mismatch, starting read repair for key {}",
                     getKey());
             readRepair.startRepair(digestResolver, this::setResult);
             if (logBlockingReadRepairAttempt) {
@@ -611,7 +489,6 @@ public abstract class AbstractReadExecutor {
                         replicaPlan().contacts());
             }
         }
-        // }
     }
 
     public void awaitReadRepair() throws ReadTimeoutException {
