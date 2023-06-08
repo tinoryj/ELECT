@@ -379,7 +379,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     parityCodes[i] = ByteBuffer.allocateDirect(localParityCode.capacity());
                 }
                 parityCodes[0].put(localParityCode);
-                parityCodes[0].rewind();
+                // parityCodes[0].rewind();
 
                 // get old parity codes from old sstable hash
                 StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
@@ -427,12 +427,16 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         } else {
             throw new NullPointerException(String.format("rymERROR: We cannot get parity codes for sstable %s", oldSSTHash));
         }
+
+        for(ByteBuffer parityCode : parityCodes) {
+            parityCode.rewind();
+        }
  
     }
 
     private static boolean checkParityCodesAreReady(ByteBuffer[] parityCodes) {
         for(ByteBuffer buf : parityCodes) {
-            if(buf.capacity() == 0) {
+            if(buf.position() == 0) {
                 return false;
             }
         }
