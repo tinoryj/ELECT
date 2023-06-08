@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity> {
     public static final ECRequestParityVerbHandler instance = new ECRequestParityVerbHandler();
+    private static final int MAX_RETRY_COUNT = 5;
 
     private static final Logger logger = LoggerFactory.getLogger(ECRequestParityVerbHandler.class);
     @Override
@@ -43,6 +44,33 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         String filePath = receivedParityCodeDir + parityHash;
 
         byte[] parityCode;
+
+
+        // String filePath = "/path/to/file.txt";
+        Path path = Paths.get(filePath);
+        int retryCount = 0;
+        while(retryCount < MAX_RETRY_COUNT) {
+            if(Files.exists(path)) {
+                break;
+            } else {
+                try {
+                    Thread.sleep(1000);
+                    retryCount++;
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        if(!Files.exists(path)) {
+            throw new IllegalStateException(String.format("rymERROR: we cannot find parity code file %s requested from %s", filePath, message.from()));
+        }
+
+
+
+
+
         try {
             parityCode = ECNetutils.readBytesFromFile(filePath);
             // response this parityCode to to source node
