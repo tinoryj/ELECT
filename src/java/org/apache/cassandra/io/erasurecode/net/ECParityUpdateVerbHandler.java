@@ -412,8 +412,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         if(parityCodes != null) {
             while (!checkParityCodesAreReady(parityCodes)) {
                 try {
-                    if(retryCount < 10) {
-                        Thread.sleep(2);
+                    if(retryCount < 5) {
+                        Thread.sleep(1000);
                         retryCount++;
                     } else {
                         throw new IllegalStateException(String.format("ERROR: cannot retrieve the remote parity codes for sstHash (%s)", oldSSTHash));
@@ -432,7 +432,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
     private static boolean checkParityCodesAreReady(ByteBuffer[] parityCodes) {
         for(ByteBuffer buf : parityCodes) {
-            if(buf.limit() - buf.position() == 0) {
+            if(buf.capacity() == 0) {
                 return false;
             }
         }
@@ -590,6 +590,15 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         }
 
+    }
+
+    public static void main(String[] args){
+        ByteBuffer buffer = ByteBuffer.allocateDirect(10);
+        logger.debug("buffer.remaining = {}, buffer.hasRemaining = {}, buffer.position = {}, buffer.limit = {}, buffer.capacity = {}", buffer.remaining(), buffer.hasRemaining(), buffer.position(), buffer.limit(), buffer.capacity());
+        buffer.put((byte) 1);
+        logger.debug("buffer.remaining = {}, buffer.hasRemaining = {}, buffer.position = {}, buffer.limit = {}, buffer.capacity = {}", buffer.remaining(), buffer.hasRemaining(), buffer.position(), buffer.limit(), buffer.capacity());
+        buffer.rewind();
+        logger.debug("buffer.remaining = {}, buffer.hasRemaining = {}, buffer.position = {}, buffer.limit = {}, buffer.capacity = {}", buffer.remaining(), buffer.hasRemaining(), buffer.position(), buffer.limit(), buffer.capacity());
     }
     
 }
