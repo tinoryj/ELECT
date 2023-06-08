@@ -178,16 +178,16 @@ public class ECMetadata implements Serializable {
             e.printStackTrace();
         }
 
-        
-        // store ecMetadata locally
-        StorageService.instance.globalStripIdToECMetadataMap.put(this.stripeId, this.ecMetadataContent);
-        
-        mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(this.ecMetadataContent.sstHashIdList, this.stripeId, this.ecMetadataContent.sstHashIdToReplicaMap);
 
         
 
         // dispatch to related nodes
         distributeECMetadata(this);
+        
+        // store ecMetadata locally
+        StorageService.instance.globalStripIdToECMetadataMap.put(this.stripeId, this.ecMetadataContent);
+        
+        mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(this.ecMetadataContent.sstHashIdList, this.stripeId, this.ecMetadataContent.sstHashIdToReplicaMap);
 
     }
 
@@ -255,6 +255,11 @@ public class ECMetadata implements Serializable {
             e.printStackTrace();
         }
 
+
+        // dispatch to related nodes
+        distributeECMetadata(this);
+
+
         mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(this.ecMetadataContent.sstHashIdList, this.stripeId, this.ecMetadataContent.sstHashIdToReplicaMap);
         // StorageService.instance.globalSSTHashToStripIDMap.remove(oldSSTHash);
         
@@ -265,9 +270,6 @@ public class ECMetadata implements Serializable {
         StorageService.instance.globalUpdatingStripList.remove(oldStripId);
         logger.debug("rymDebug: We replaced the oldStrip {} with the newStrip {} successfully.", oldStripId, this.stripeId);
         // StorageService.instance.globalUpdatingStripList.compute(this.stripeId, (key, oldValue) -> oldValue - 1);
-
-        // dispatch to related nodes
-        distributeECMetadata(this);
 
     }
 
