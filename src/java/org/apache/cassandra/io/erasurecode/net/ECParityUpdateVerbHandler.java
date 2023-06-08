@@ -416,7 +416,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         Thread.sleep(1000);
                         retryCount++;
                     } else {
-                        throw new IllegalStateException(String.format("ERROR: cannot retrieve the remote parity codes for sstHash (%s)", oldSSTHash));
+                        throw new IllegalStateException(String.format("rymERROR: cannot retrieve the remote parity codes for sstHash (%s)", oldSSTHash));
                     }
                     
                 } catch (InterruptedException e) {
