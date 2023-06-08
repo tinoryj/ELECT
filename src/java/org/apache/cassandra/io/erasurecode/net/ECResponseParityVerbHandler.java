@@ -36,7 +36,7 @@ public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParit
         int parityIndex = message.payload.parityIndex;
 
         // save it to the map
-        if(StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash) == null) {
+        if(StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash) != null) {
             StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].put(parityCode);
             StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
         } else {
