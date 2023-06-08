@@ -32,6 +32,7 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -130,7 +131,24 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         ReadResponse response;
         try (ReadExecutionController controller = command.executionController(message.trackRepairedData());
                 UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
-            response = command.createResponse(iterator, controller.getRepairedDataInfo());
+            if (iterator == null) {
+                logger.error(
+                        "[Tinoryj-ERROR] ReadCommandVerbHandler Could not get {} response from table {}",
+                        command.isDigestQuery() ? "digest" : "data",
+                        command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
+                response = command.createEmptyResponse();
+            } else {
+                response = command.createResponse(iterator, controller.getRepairedDataInfo());
+                ByteBuffer newDigest = response.digest(command);
+                String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
+                if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
+                    logger.error(
+                            "[Tinoryj-ERROR] ReadCommandVerbHandler Could not get non-empty {} response from table {}, {}",
+                            command.isDigestQuery() ? "digest" : "data",
+                            command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
+                            "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
+                }
+            }
             // if (command.metadata().keyspace.equals("ycsb")) {
             // logger.debug(
             // "[Tinoryj] ReadCommandVerbHandler from {}, Read Command target table is {},

@@ -21,6 +21,7 @@ import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.util.*;
 
 import org.apache.cassandra.concurrent.Stage;
@@ -31,6 +32,7 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.RegularAndStaticColumns;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
+import org.apache.cassandra.db.PartitionRangeReadCommand;
 import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.partitions.PartitionIterator;
 import org.apache.cassandra.db.transform.DuplicateRowChecker;
@@ -81,8 +83,8 @@ public abstract class AbstractReadExecutor {
     protected final long queryStartNanoTime;
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
-    public static List<InetAddress> sendRequestAddresses;
-    public static Token targetReadToken;
+    // public static List<InetAddress> sendRequestAddresses;
+    // public static Token targetReadToken;
 
     public final String primaryLSMTreeName = "usertable";
     public final String secondaryLSMTreeName1 = "usertable1";
@@ -164,6 +166,20 @@ public abstract class AbstractReadExecutor {
         // remote requests.
         if (hasLocalEndpoint) {
             if (readCommand.metadata().keyspace.equals("ycsb")) {
+                List<InetAddress> sendRequestAddresses;
+                if (command instanceof SinglePartitionReadCommand) {
+                    ByteBuffer targetReadKey = (command instanceof SinglePartitionReadCommand
+                            ? ((SinglePartitionReadCommand) command).partitionKey().getKey()
+                            : null);
+                    sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
+                            .metadata().keyspace,
+                            targetReadKey);
+                } else {
+                    Token token = ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken();
+                    sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command
+                            .metadata().keyspace,
+                            token);
+                }
                 switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
                     case 0:
                         readCommand.updateTableMetadata(
@@ -238,33 +254,33 @@ public abstract class AbstractReadExecutor {
         ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, command.partitionKey().getToken(),
                 consistencyLevel, retry);
 
-        if (keyspace.getName().equals("ycsb")) {
-            targetReadToken = command.partitionKey().getToken();
-            sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
-                    .metadata().keyspace,
-                    command.partitionKey().getKey());
-            // [Tinoryj] Debug for replicaPlan.
-            // if (sendRequestAddresses.size() != 3) {
-            // logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
-            // }
-            // boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
-            // for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
-            // if
-            // (!replicaPlan.contacts().endpointList().get(i).getAddress().equals(sendRequestAddresses.get(i)))
-            // {
-            // isReplicaPlanMatchToNaturalEndpointFlag = false;
-            // }
-            // }
-            // if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
-            // logger.debug(
-            // "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node
-            // in the natural storage node list. The replication plan for read is {},
-            // natural storage node list = {}",
-            // command.partitionKey().getToken(),
-            // replicaPlan.contacts().endpointList(),
-            // sendRequestAddresses);
-            // }
-        }
+        // if (keyspace.getName().equals("ycsb")) {
+        // targetReadToken = command.partitionKey().getToken();
+        // sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
+        // .metadata().keyspace,
+        // command.partitionKey().getKey());
+        // [Tinoryj] Debug for replicaPlan.
+        // if (sendRequestAddresses.size() != 3) {
+        // logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
+        // }
+        // boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
+        // for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
+        // if
+        // (!replicaPlan.contacts().endpointList().get(i).getAddress().equals(sendRequestAddresses.get(i)))
+        // {
+        // isReplicaPlanMatchToNaturalEndpointFlag = false;
+        // }
+        // }
+        // if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
+        // logger.debug(
+        // "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node
+        // in the natural storage node list. The replication plan for read is {},
+        // natural storage node list = {}",
+        // command.partitionKey().getToken(),
+        // replicaPlan.contacts().endpointList(),
+        // sendRequestAddresses);
+        // }
+        // }
 
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
