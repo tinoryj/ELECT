@@ -48,8 +48,8 @@ public class ECRequestParity {
     }
 
     public void requestParityCode(InetAddressAndPort target) {
-        logger.debug("rymDebug: send parity hash {} to {}",
-                        this.parityHash, target);
+        logger.debug("rymDebug: Request parity code {} from {} to update the old sstable {}",
+                        this.parityHash, target, this.sstHash);
         Message<ECRequestParity> message = Message.outWithFlag(Verb.ECREQUESTPARITY_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, target);
     }

@@ -306,6 +306,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         // remove the entry to save memory
         StorageService.instance.globalSSTHashToParityCodeMap.remove(oldSSTable.sstHash);
+        logger.debug("rymDebug: we remove the parity code for old sstHash ({}) in memory.", oldSSTable.sstHash);
 
 
 
