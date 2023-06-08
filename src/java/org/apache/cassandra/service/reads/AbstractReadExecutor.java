@@ -167,21 +167,15 @@ public abstract class AbstractReadExecutor {
         if (hasLocalEndpoint) {
             if (readCommand.metadata().keyspace.equals("ycsb")) {
                 List<InetAddress> sendRequestAddresses;
-                if (command instanceof SinglePartitionReadCommand) {
-                    ByteBuffer targetReadKey = (command instanceof SinglePartitionReadCommand
-                            ? ((SinglePartitionReadCommand) command).partitionKey().getKey()
-                            : null);
-                    sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
-                            .metadata().keyspace,
-                            targetReadKey);
-                } else {
-                    Token token = ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken();
-                    sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command
-                            .metadata().keyspace,
-                            token);
-                }
+                Token token = (command instanceof SinglePartitionReadCommand
+                        ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                        : ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken());
+                sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command
+                        .metadata().keyspace,
+                        token);
                 switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
                     case 0:
+                        // In case received request is not for primary LSM tree
                         readCommand.updateTableMetadata(
                                 Keyspace.open("ycsb").getColumnFamilyStore("usertable")
                                         .metadata());
@@ -215,7 +209,6 @@ public abstract class AbstractReadExecutor {
             }
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
         }
-
     }
 
     public static void printStackTace(String msg) {
