@@ -170,7 +170,10 @@ public class ECMessage implements Serializable {
         InetAddressAndPort primaryNode = ecMessage.ecMessageContent.replicaNodes.get(0);
         int primaryNodeIndex = liveEndpoints.indexOf(primaryNode);
 
-        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER.getAndIncrement() % ecMessage.ecMessageContent.ecDataNum+1))%n);
+        int startIndex = ((primaryNodeIndex + n - (GLOBAL_COUNTER.getAndIncrement() % ecMessage.ecMessageContent.ecDataNum+1))%n) - 1;
+        if(startIndex == -1) {
+            startIndex = n - 1;
+        }
 
         int remaining = DatabaseDescriptor.getParityNodes();
         int index = startIndex;
