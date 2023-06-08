@@ -946,7 +946,7 @@ public class CompactionTask extends AbstractCompactionTask {
                             parityUpdate.sendParityUpdateSignal();
 
                             // remove the entry to save memory
-                            StorageService.instance.globalSSTHashToParityNodesMap.remove(oldSSTable.sstHash);
+                            // StorageService.instance.globalSSTHashToParityNodesMap.remove(oldSSTable.sstHash);
 
                         }
 
