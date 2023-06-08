@@ -265,6 +265,7 @@ public class ECMetadata implements Serializable {
         
         // store ecMetadata locally
         StorageService.instance.globalStripIdToECMetadataMap.put(this.stripeId, this.ecMetadataContent);
+        StorageService.instance.globalStripIdToECMetadataMap.remove(oldStripId);
 
         // parity update is finished, we update the globalUpdatingStripList
         StorageService.instance.globalUpdatingStripList.remove(oldStripId);

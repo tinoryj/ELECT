@@ -304,6 +304,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             throw new NullPointerException(String.format("rymERROR: we cannot get sstHash list for strip id (%s)", oldStripID));
         }
 
+        // remove the entry to save memory
+        StorageService.instance.globalSSTHashToParityCodeMap.remove(oldSSTable.sstHash);
+
+
 
         logger.debug("rymDebug: [Parity update {}] we update old sstable ({}) with new sstable ({})", updateCase,
                 oldSSTable.sstHash, newSSTable.sstHash);

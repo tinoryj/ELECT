@@ -944,6 +944,10 @@ public class CompactionTask extends AbstractCompactionTask {
 
                             logger.debug("rymDebug: send old sstable ({}) to parity node ({})", oldSSTable.sstHash, parityNodes.get(0));
                             parityUpdate.sendParityUpdateSignal();
+
+                            // remove the entry to save memory
+                            StorageService.instance.globalSSTHashToParityNodesMap.remove(oldSSTable.sstHash);
+
                         }
 
                         for (SSTableContentWithHashID newSSTable : newSSTableContentWithHashID) {
