@@ -25,6 +25,7 @@ import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.index.sasi.memory.KeyRangeIterator;
 import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
@@ -66,12 +67,21 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             // .getToken()
             // : null);
             // Update read command to the correct table
-            ByteBuffer targetReadKey = (command instanceof SinglePartitionReadCommand
-                    ? ((SinglePartitionReadCommand) command).partitionKey().getKey()
-                    : null);
-            List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
-                    .metadata().keyspace,
-                    targetReadKey);
+            List<InetAddress> sendRequestAddresses;
+            if (command instanceof SinglePartitionReadCommand) {
+                ByteBuffer targetReadKey = (command instanceof SinglePartitionReadCommand
+                        ? ((SinglePartitionReadCommand) command).partitionKey().getKey()
+                        : null);
+                sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command
+                        .metadata().keyspace,
+                        targetReadKey);
+            } else {
+                Token token = ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken();
+                sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command
+                        .metadata().keyspace,
+                        token);
+            }
+
             switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
                 case 0:
                     command.updateTableMetadata(
