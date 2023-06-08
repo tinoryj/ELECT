@@ -38,7 +38,7 @@ public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParit
         // save it to the map
         if(StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash) != null) {
             StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].put(parityCode);
-            StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
+            // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
         } else {
             throw new NullPointerException(String.format("rymERROR: We get parity code (%s) from (%s), but cannot find parity codes for sstable (%s)", parityHash, message.from(), sstHash));
         }
