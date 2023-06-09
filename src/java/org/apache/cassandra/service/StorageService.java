@@ -225,6 +225,11 @@ public class StorageService extends NotificationBroadcasterSupport
     // [In parity node]
     private static int codeLength = 0;
 
+    // [CASSANDRAEC] The following parameters are used to support recovery
+    public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();
+
+
+    
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 
     private final JMXProgressSupport progressSupport = new JMXProgressSupport(this);
@@ -4389,7 +4394,7 @@ public class StorageService extends NotificationBroadcasterSupport
 
     // [CASSANDRAEC]
     public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode, String keyspaceName) {
-        List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
+        List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getRawSeeds());
         List<InetAddressAndPort> replicaNodes = new ArrayList<>();
         int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
 
