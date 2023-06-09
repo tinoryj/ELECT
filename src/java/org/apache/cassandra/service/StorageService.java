@@ -4394,6 +4394,11 @@ public class StorageService extends NotificationBroadcasterSupport
         int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
 
         int startIndex = liveEndpoints.indexOf(primaryNode);
+
+        if(startIndex == -1) 
+            throw new IllegalStateException(String.format("rymERROR: primary node %s is not in the live member set %s.", primaryNode, liveEndpoints));
+
+
         int endIndex = startIndex + rf;
         
         if(endIndex > liveEndpoints.size()) {
