@@ -291,7 +291,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             retrieveParityCodeForOldSSTable(oldSSTable.sstHash, oldStripID, codeLength);
             oldSSTable.isRequestParityCode = true;
         }
-        waitUntilParityCodesReady(oldSSTable.sstHash);
+        waitUntilParityCodesReady(oldSSTable.sstHash, parityNodes);
 
         ByteBuffer[] parityCodes = StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash);
         List<String> sstHashList = StorageService.instance.globalStripIdToECMetadataMap.get(oldStripID).sstHashIdList;
@@ -405,7 +405,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
     // [WARNING!] Make sure to avoid dead loops
-    private static void waitUntilParityCodesReady(String oldSSTHash) {
+    private static void waitUntilParityCodesReady(String oldSSTHash, List<InetAddressAndPort> parityNodes) {
         int retryCount = 0;
 
         ByteBuffer[] parityCodes = StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTHash);
@@ -416,7 +416,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         Thread.sleep(1000);
                         retryCount++;
                     } else {
-                        throw new IllegalStateException(String.format("rymERROR: cannot retrieve the remote parity codes for sstHash (%s)", oldSSTHash));
+                        throw new IllegalStateException(String.format("rymERROR: cannot retrieve the remote parity codes for sstHash (%s) from parity nodes (%s)",
+                                                                         oldSSTHash, parityNodes.subList(1, parityNodes.size())));
                     }
                     
                 } catch (InterruptedException e) {

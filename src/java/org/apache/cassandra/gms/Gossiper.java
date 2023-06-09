@@ -1992,6 +1992,10 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         return seedList;
     }
 
+    public Set<InetAddressAndPort> getRawSeeds() {
+        return seeds;
+    }
+
     // initialize local HB state if needed, i.e., if gossiper has never been started before.
     public void maybeInitializeLocalState(int generationNbr)
     {
