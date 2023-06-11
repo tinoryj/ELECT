@@ -113,6 +113,7 @@ import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler.BlockedECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.InetAddressAndPortComparator;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
 import org.apache.cassandra.io.sstable.SSTableLoader;
@@ -4394,23 +4395,25 @@ public class StorageService extends NotificationBroadcasterSupport
 
     // [CASSANDRAEC]
     public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode, String keyspaceName) {
-        List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getRawSeeds());
+        List<InetAddressAndPort> allHosts = (List<InetAddressAndPort>) Iterables.concat(Gossiper.instance.getLiveMembers(), Gossiper.instance.getUnreachableMembers());
+        InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
+        Collections.sort(allHosts, comparator);
         List<InetAddressAndPort> replicaNodes = new ArrayList<>();
         int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
 
-        int startIndex = liveEndpoints.indexOf(primaryNode);
+        int startIndex = allHosts.indexOf(primaryNode);
 
         if(startIndex == -1) 
-            throw new IllegalStateException(String.format("rymERROR: primary node %s is not in the live member set %s.", primaryNode, liveEndpoints));
+            throw new IllegalStateException(String.format("rymERROR: primary node %s is not in the live member set %s.", primaryNode, allHosts));
 
 
         int endIndex = startIndex + rf;
         
-        if(endIndex > liveEndpoints.size()) {
-            replicaNodes.addAll(liveEndpoints.subList(startIndex, liveEndpoints.size()));
-            replicaNodes.addAll(liveEndpoints.subList(0,endIndex % liveEndpoints.size()));
+        if(endIndex > allHosts.size()) {
+            replicaNodes.addAll(allHosts.subList(startIndex, allHosts.size()));
+            replicaNodes.addAll(allHosts.subList(0,endIndex % allHosts.size()));
         } else {
-            replicaNodes.addAll(liveEndpoints.subList(startIndex, endIndex));
+            replicaNodes.addAll(allHosts.subList(startIndex, endIndex));
         }
 
         return replicaNodes;
