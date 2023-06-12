@@ -155,6 +155,7 @@ import org.apache.cassandra.utils.progress.jmx.JMXProgressSupport;
 
 import static com.google.common.collect.Iterables.transform;
 import static com.google.common.collect.Iterables.tryFind;
+import com.google.common.collect.Iterables;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -4395,7 +4396,9 @@ public class StorageService extends NotificationBroadcasterSupport
 
     // [CASSANDRAEC]
     public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode, String keyspaceName) {
-        List<InetAddressAndPort> allHosts = (List<InetAddressAndPort>) Iterables.concat(Gossiper.instance.getLiveMembers(), Gossiper.instance.getUnreachableMembers());
+        Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(), Gossiper.instance.getUnreachableMembers());
+        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>();
+        allHostsIterable.forEach(allHosts::add);
         InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
         Collections.sort(allHosts, comparator);
         List<InetAddressAndPort> replicaNodes = new ArrayList<>();
