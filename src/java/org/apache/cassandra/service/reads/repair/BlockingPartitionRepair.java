@@ -144,9 +144,13 @@ public class BlockingPartitionRepair
         return updates.isEmpty() ? null : PartitionUpdate.merge(updates);
     }
 
+    public static void printStackTace(String msg) {
+        logger.debug("stack trace {}", new Exception(msg));
+    }
+
     @VisibleForTesting
     protected void sendRR(Message<Mutation> message, InetAddressAndPort endpoint) {
-        logger.debug("Sending read-repair-mutation to {}, message {}", endpoint, message);
+        printStackTace("SendRR");
         MessagingService.instance().sendWithCallback(message, endpoint, this);
     }
 
