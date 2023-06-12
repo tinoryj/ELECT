@@ -427,6 +427,7 @@ public class DataResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRead<
                     }
 
                     public void close() {
+                        // Tinoryj issue the read-repair when scan.
                         rowListener.close();
                     }
                 };

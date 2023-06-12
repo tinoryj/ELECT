@@ -144,11 +144,13 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                 // may remove the data in secondary nodes).
                 return true;
             } else {
+                // Perform read repair when hash not match and data is invalid.
                 return false;
             }
         }
 
         if (isDigestMatchFlag == false) {
+            // Perform read repair when hash not match but they all valid (inconsistency).
             return false;
         }
 
