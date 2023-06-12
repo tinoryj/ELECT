@@ -161,7 +161,7 @@ public class BlockingPartitionRepair
             Mutation mutation = entry.getValue();
             TableId tableId = extractUpdate(mutation).metadata().id;
 
-            Tracing.trace("Sending initial read-repair-mutation to {}, key space = {}, table ID = {}", destination,
+            logger.debug("Sending initial read-repair-mutation to {}, key space = {}, table ID = {}", destination,
                     extractUpdate(mutation).metadata().keyspace,
                     extractUpdate(mutation).metadata().name);
             // use a separate verb here to avoid writing hints on timeouts
@@ -244,7 +244,7 @@ public class BlockingPartitionRepair
                 continue;
             }
 
-            Tracing.trace("Sending speculative read-repair-mutation to {} key space = {}, table ID = {}", replica,
+            logger.debug("Sending speculative read-repair-mutation to {} key space = {}, table ID = {}", replica,
                     extractUpdate(mutation).metadata().keyspace,
                     extractUpdate(mutation).metadata().name);
             sendRR(Message.out(READ_REPAIR_REQ, mutation), replica.endpoint());
