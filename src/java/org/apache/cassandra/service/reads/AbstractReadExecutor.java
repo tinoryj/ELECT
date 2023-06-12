@@ -192,6 +192,9 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter1);
+                        if (readCommand.isDigestQuery() == false) {
+                            readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
+                        }
                         break;
                     case 2:
                         readCommand.updateTableMetadata(
@@ -201,6 +204,9 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter2);
+                        if (readCommand.isDigestQuery() == false) {
+                            readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
+                        }
                         break;
                     default:
                         logger.debug("[Tinoryj] Not support replication factor larger than 3");

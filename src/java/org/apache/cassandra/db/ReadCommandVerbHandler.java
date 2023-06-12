@@ -94,6 +94,9 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             .allRegularColumnsBuilder(command.metadata(), false)
                             .build();
                     command.updateColumnFilter(newColumnFilter1);
+                    if (command.isDigestQuery() == false) {
+                        command.setShouldPerformOnlineRecoveryDuringRead(true);
+                    }
                     break;
                 case 2:
                     command.updateTableMetadata(
@@ -103,6 +106,9 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             .allRegularColumnsBuilder(command.metadata(), false)
                             .build();
                     command.updateColumnFilter(newColumnFilter2);
+                    if (command.isDigestQuery() == false) {
+                        command.setShouldPerformOnlineRecoveryDuringRead(true);
+                    }
                     break;
                 default:
                     logger.debug("[Tinoryj] Not support replication factor larger than 3");

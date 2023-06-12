@@ -339,9 +339,14 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
             }
 
             for (SSTableReader sstable : view.sstables) {
-                if (sstable.isReplicationTransferredToErasureCoding()) {
+                if (sstable.isReplicationTransferredToErasureCoding()
+                        && controller.shouldPerformOnlineRecoveryDuringRead() == false) {
                     continue;
-                    // Tinoryj: skip metadata sstable from read
+                    // Tinoryj: skip metadata sstable from read if no need to recovery
+                }
+
+                if (sstable.isReplicationTransferredToErasureCoding()) {
+                    // Tinoryj TODO: call recovery for the current sstable.
                 }
                 @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
                                               // method

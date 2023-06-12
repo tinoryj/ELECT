@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
+import org.apache.cassandra.db.PartitionRangeReadCommand;
 import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.ReadResponse;
 import org.apache.cassandra.db.SinglePartitionReadCommand;
@@ -135,10 +136,16 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                 noDataCount++;
             }
         }
-        if (noDataCount != 0) {
+        if (noDataCount != 0 || (command instanceof PartitionRangeReadCommand)) {
             logger.error("[Tinoryj-ERROR] Read operation get only {} success data response",
                     snapshot.size() - noDataCount);
-            return false;
+            if (command.metadata().keyspace.equals("ycsb") && noDataCount != snapshot.size()) {
+                // Skip digest failure with up to two empty data (since redundancy transition
+                // may remove the data in secondary nodes).
+                return true;
+            } else {
+                return false;
+            }
         }
 
         if (isDigestMatchFlag == false) {

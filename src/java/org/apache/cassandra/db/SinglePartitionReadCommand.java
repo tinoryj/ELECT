@@ -664,6 +664,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 && !metadata().isCounter()
                 && !queriesMulticellType()
                 && !controller.isTrackingRepairedStatus()) {
+            // Tinoryj: read from memtable and sstables in timestamp order
             return queryMemtableAndSSTablesInTimestampOrder(cfs, (ClusteringIndexNamesFilter) clusteringIndexFilter(),
                     controller);
         }
@@ -721,6 +722,16 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 Tracing.trace("Collecting data from sstables and tracking repaired status");
 
             for (SSTableReader sstable : view.sstables) {
+                if (!controller.shouldPerformOnlineRecoveryDuringRead()
+                        && sstable.isReplicationTransferredToErasureCoding()) {
+                    continue;
+                    // Tinoryj: skip read from metadata sstable since no need to recovery the raw
+                    // content from it.
+                }
+                if (sstable.isReplicationTransferredToErasureCoding()) {
+                    // Tinoryj TODO: call recvoery on current sstable.
+                }
+
                 // if we've already seen a partition tombstone with a timestamp greater
                 // than the most recent update to this sstable, we can skip it
                 // if we're tracking repaired status, we mark the repaired digest inconclusive
@@ -892,6 +903,16 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         view.sstables.sort(SSTableReader.maxTimestampDescending);
         // read sorted sstables
         for (SSTableReader sstable : view.sstables) {
+            if (!controller.shouldPerformOnlineRecoveryDuringRead()
+                    && sstable.isReplicationTransferredToErasureCoding()) {
+                continue;
+                // Tinoryj: skip read from metadata sstable since no need to recovery the raw
+                // content from it.
+            }
+            if (sstable.isReplicationTransferredToErasureCoding()) {
+                // Tinoryj TODO: call recvoery on current sstable.
+            }
+
             // if we've already seen a partition tombstone with a timestamp greater
             // than the most recent update to this sstable, we're done, since the rest of
             // the sstables

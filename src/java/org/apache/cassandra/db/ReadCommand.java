@@ -97,6 +97,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
     private final Kind kind;
 
     private boolean isDigestQuery;
+    private boolean shouldPerformOnlineRecoveryDuringRead;
     private final boolean acceptsTransient;
     // if a digest query, the version for which the digest is expected. Ignored if
     // not a digest.
@@ -149,6 +150,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
 
         this.kind = kind;
         this.isDigestQuery = isDigestQuery;
+        this.shouldPerformOnlineRecoveryDuringRead = false;
         this.digestVersion = digestVersion;
         this.acceptsTransient = acceptsTransient;
         this.index = index;
@@ -194,6 +196,15 @@ public abstract class ReadCommand extends AbstractReadQuery {
     public boolean setIsDigestQuery(boolean isDigestQueryFlag) {
         isDigestQuery = isDigestQueryFlag;
         return isDigestQuery;
+    }
+
+    public boolean shouldPerformOnlineRecoveryDuringRead() {
+        return this.shouldPerformOnlineRecoveryDuringRead;
+    }
+
+    public boolean setShouldPerformOnlineRecoveryDuringRead(boolean shouldPerformOnlineRecoveryDuringRead) {
+        this.shouldPerformOnlineRecoveryDuringRead = shouldPerformOnlineRecoveryDuringRead;
+        return this.shouldPerformOnlineRecoveryDuringRead;
     }
 
     /**

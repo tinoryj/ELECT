@@ -47,6 +47,7 @@ public class ReadExecutionController implements AutoCloseable {
 
     private final RepairedDataInfo repairedDataInfo;
     private int oldestUnrepairedTombstone = Integer.MAX_VALUE;
+    private boolean shouldPerformOnlineRecoveryDuringRead;
 
     ReadExecutionController(ReadCommand command,
             OpOrder.Group baseOp,
@@ -54,7 +55,7 @@ public class ReadExecutionController implements AutoCloseable {
             ReadExecutionController indexController,
             WriteContext writeContext,
             long createdAtNanos,
-            boolean trackRepairedStatus) {
+            boolean trackRepairedStatus, boolean shouldPerformOnlineRecoveryDuringRead) {
         // We can have baseOp == null, but only when empty() is called, in which case
         // the controller will never really be used
         // (which validForReadOn should ensure). But if it's not null, we should have
@@ -66,6 +67,7 @@ public class ReadExecutionController implements AutoCloseable {
         this.writeContext = writeContext;
         this.command = command;
         this.createdAtNanos = createdAtNanos;
+        this.shouldPerformOnlineRecoveryDuringRead = shouldPerformOnlineRecoveryDuringRead;
 
         if (trackRepairedStatus) {
             DataLimits.Counter repairedReadCount = command.limits().newCounter(command.nowInSec(),
@@ -99,7 +101,7 @@ public class ReadExecutionController implements AutoCloseable {
     }
 
     public static ReadExecutionController empty() {
-        return new ReadExecutionController(null, null, null, null, null, NO_SAMPLING, false);
+        return new ReadExecutionController(null, null, null, null, null, NO_SAMPLING, false, false);
     }
 
     /**
@@ -122,7 +124,7 @@ public class ReadExecutionController implements AutoCloseable {
 
         if (indexCfs == null)
             return new ReadExecutionController(command, baseCfs.readOrdering.start(), baseCfs.metadata(), null, null,
-                    createdAtNanos, trackRepairedStatus);
+                    createdAtNanos, trackRepairedStatus, command.shouldPerformOnlineRecoveryDuringRead());
 
         OpOrder.Group baseOp = null;
         WriteContext writeContext = null;
@@ -131,7 +133,7 @@ public class ReadExecutionController implements AutoCloseable {
         try {
             baseOp = baseCfs.readOrdering.start();
             indexController = new ReadExecutionController(command, indexCfs.readOrdering.start(), indexCfs.metadata(),
-                    null, null, NO_SAMPLING, false);
+                    null, null, NO_SAMPLING, false, command.shouldPerformOnlineRecoveryDuringRead());
             /*
              * TODO: this should perhaps not open and maintain a writeOp for the full
              * duration, but instead only *try*
@@ -142,7 +144,7 @@ public class ReadExecutionController implements AutoCloseable {
              */
             writeContext = baseCfs.keyspace.getWriteHandler().createContextForRead();
             return new ReadExecutionController(command, baseOp, baseCfs.metadata(), indexController, writeContext,
-                    createdAtNanos, trackRepairedStatus);
+                    createdAtNanos, trackRepairedStatus, command.shouldPerformOnlineRecoveryDuringRead());
         } catch (RuntimeException e) {
             // Note that must have writeContext == null since ReadOrderGroup ctor can't fail
             assert writeContext == null;
@@ -196,6 +198,10 @@ public class ReadExecutionController implements AutoCloseable {
     @VisibleForTesting
     public boolean isRepairedDataDigestConclusive() {
         return repairedDataInfo.isConclusive();
+    }
+
+    public boolean shouldPerformOnlineRecoveryDuringRead() {
+        return shouldPerformOnlineRecoveryDuringRead;
     }
 
     public RepairedDataInfo getRepairedDataInfo() {
