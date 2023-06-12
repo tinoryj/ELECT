@@ -62,6 +62,7 @@ import org.apache.cassandra.db.SizeEstimatesRecorder;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.SystemKeyspaceMigrator41;
 import org.apache.cassandra.db.commitlog.CommitLog;
+import org.apache.cassandra.db.compaction.LeveledGenerations;
 import org.apache.cassandra.db.virtual.SystemViewsKeyspace;
 import org.apache.cassandra.db.virtual.VirtualKeyspaceRegistry;
 import org.apache.cassandra.db.virtual.VirtualSchemaKeyspace;
@@ -439,21 +440,21 @@ public class CassandraDaemon {
         
         // schedule periodic send sstable content task submission
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
-            ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", DatabaseDescriptor.getCompactionThreshold(), DatabaseDescriptor.getTaskDelay()),
-                                                 DatabaseDescriptor.getInitialDelay(),
+            ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", LeveledGenerations.getMaxLevelCount() - 1, DatabaseDescriptor.getTaskDelay()),
+                                                 420,
                                                  DatabaseDescriptor.getTaskDelay(),
                                                  TimeUnit.MINUTES);
 
         // schedule periodical tasks of erasure coding
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMessageVerbHandler.getErasureCodingRunable(),
                                                                 (DatabaseDescriptor.getInitialDelay() + 1) * 60,
-                                                                DatabaseDescriptor.getTaskDelay() * 60 / 2,
+                                                                DatabaseDescriptor.getTaskDelay() * 60,
                                                                 TimeUnit.SECONDS);
 
         // schedule periodical tasks of consume blocked ecMetadata
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.getConsumeBlockedECMetadataRunnable(),
                                                                 (DatabaseDescriptor.getInitialDelay() + 2) * 60,
-                                                                DatabaseDescriptor.getTaskDelay() * 60 / 2,
+                                                                DatabaseDescriptor.getTaskDelay() * 60,
                                                                 TimeUnit.SECONDS);
 
         // schedule periodical tasks of ec strip update

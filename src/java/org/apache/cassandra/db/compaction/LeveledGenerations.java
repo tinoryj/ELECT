@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.config.Config;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.sstable.SSTableIdFactory;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.FBUtilities;
@@ -49,12 +50,12 @@ import static org.apache.cassandra.utils.Clock.Global.nanoTime;
  *
  * Not thread safe, all access should be synchronized in LeveledManifest
  */
-class LeveledGenerations {
+public class LeveledGenerations {
     private static final Logger logger = LoggerFactory.getLogger(LeveledGenerations.class);
     private final boolean strictLCSChecksTest = Boolean.getBoolean(Config.PROPERTY_PREFIX + "test.strict_lcs_checks");
     // It includes L0, i.e. we support [L0 - L8] levels
     // TODO: changed
-    static final int MAX_LEVEL_COUNT = 6;
+    static final int MAX_LEVEL_COUNT = DatabaseDescriptor.getMaxLevelCount();
 
     // Reset
     public static final String RESET = "\033[0m"; // Text Reset
@@ -365,5 +366,10 @@ class LeveledGenerations {
         if (!removed)
             logger.warn("Could not remove " + sstable + " from " + oldLevel);
         addAll(Collections.singleton(sstable));
+    }
+
+    // [CASSANDRAEC]
+    public static int getMaxLevelCount() {
+        return MAX_LEVEL_COUNT;
     }
 }

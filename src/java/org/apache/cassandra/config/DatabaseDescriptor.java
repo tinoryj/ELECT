@@ -1904,18 +1904,18 @@ public class DatabaseDescriptor
         conf.phi_convict_threshold = phiConvictThreshold;
     }
 
-    public static int getCompactionThreshold() 
+    public static int getMaxLevelCount() 
     {
-        return conf.compaction_threshold;
+        return conf.max_level_count;
     }
 
-    public static void setCompactionThreshold(int compaction_threshold)
+    public static void setMaxLevelCount(int max_level_count)
     {
-        if (compaction_threshold < 0)
+        if (max_level_count < 0)
         {
             throw new IllegalArgumentException("Compaction threshold nodes must be non-negative");
         }
-        conf.compaction_threshold = compaction_threshold;
+        conf.max_level_count = max_level_count;
     }
 
     

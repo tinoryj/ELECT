@@ -65,8 +65,12 @@ import org.apache.cassandra.io.erasurecode.net.ECParityNode;
 import org.apache.cassandra.io.erasurecode.net.ECParityNodeVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdateVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECRequestData;
+import org.apache.cassandra.io.erasurecode.net.ECRequestDataVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECRequestParity;
 import org.apache.cassandra.io.erasurecode.net.ECRequestParityVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECResponseData;
+import org.apache.cassandra.io.erasurecode.net.ECResponseDataVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECResponseParity;
 import org.apache.cassandra.io.erasurecode.net.ECResponseParityVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
@@ -154,6 +158,10 @@ public enum Verb {
     ECREQUESTPARITY_REQ(216, P3, writeTimeout, ERASURECODE, () -> ECRequestParity.serializer, () -> ECRequestParityVerbHandler.instance, ECREQUESTPARITY_RSP),
     ECRESPONSEPARITY_RSP(217, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
     ECRESPONSEPARITY_REQ(218, P3, writeTimeout, ERASURECODE, () -> ECResponseParity.serializer, () -> ECResponseParityVerbHandler.instance, ECRESPONSEPARITY_RSP),
+    ECREQUESTDATA_RSP(219, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECREQUESTDATA_REQ(220, P3, writeTimeout, ERASURECODE, () -> ECRequestData.serializer, () -> ECRequestDataVerbHandler.instance, ECREQUESTDATA_RSP),
+    ECRESPONSEDATA_RSP(221, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECRESPONSEDATA_REQ(222, P3, writeTimeout, ERASURECODE, () -> ECResponseData.serializer, () -> ECResponseDataVerbHandler.instance, ECRESPONSEDATA_RSP),
 
     PAXOS_PREPARE_RSP(93, P2, writeTimeout, REQUEST_RESPONSE, () -> PrepareResponse.serializer,
             () -> ResponseVerbHandler.instance),

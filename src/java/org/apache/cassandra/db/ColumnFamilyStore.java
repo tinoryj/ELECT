@@ -94,6 +94,7 @@ import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.compaction.AbstractCompactionStrategy;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.CompactionStrategyManager;
+import org.apache.cassandra.db.compaction.LeveledGenerations;
 import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.Verifier;
@@ -485,6 +486,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         private final String cfName;
         private final int level;
         private final int delay; // in minutes
+        private static final int MAX_CANDIDATES = 32;
 
         SendSSTRunnable(String keyspaceName, String cfName, int level, int delay) {
             this.keyspaceName = keyspaceName;
@@ -500,14 +502,20 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             Set<SSTableReader> sstables = cfs.getSSTableForLevel(level);
             if (!sstables.isEmpty()) {
                 logger.debug("rymDebug: get {} sstables from level {}", sstables.size(), level);
+                int count = 0;
                 for (SSTableReader sstable : sstables) {
-                    if (sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
+                    if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
+
+                        if(count >= MAX_CANDIDATES)
+                            return;
+                        
+
                         if (!sstable.isReplicationTransferredToErasureCoding() && !sstable.isSelectedByCompactionOrErasureCoding()) {
 
                             logger.debug(
                                     "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
                                     sstable.getFilename(), sstable.getSSTableLevel(),
-                                    DatabaseDescriptor.getCompactionThreshold(),
+                                    LeveledGenerations.getMaxLevelCount() - 1,
                                     sstable.descriptor.ksname,
                                     sstable.descriptor.cfname,
                                     sstable.descriptor.version,
@@ -517,10 +525,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             long delayMilli = delay * 60 * 1000;
 
-                            if (duration >= delayMilli
-                                    && sstable.getSSTableLevel() >= DatabaseDescriptor.getCompactionThreshold()) {
-                                logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                                        sstable.getSSTableLevel());
+                            if (duration >= delayMilli && sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
+                                // logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                                //         sstable.getSSTableLevel());
+                                
+                                count++;
                                 String key = sstable.first.getRawKey(sstable.metadata());
                                 try {
                                     ByteBuffer sstContent = sstable.getSSTContent();
@@ -1839,7 +1848,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     // public void triggerForceCompactionForTheLastLevel() {
     //     int maxCompactionThreshold = metadata().params.compaction.maxCompactionThreshold();
     //     // ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
-    //     int level = DatabaseDescriptor.getCompactionThreshold();
+    //     int level = LeveledGenerations.getMaxLevelCount() - 1;
     //     List<SSTableReader> sstables = new ArrayList<>(getSSTableForLevel(level));
     //     if(sstables.isEmpty())
     //         return;
@@ -1907,7 +1916,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         int maxCompactionThreshold = cfs.metadata().params.compaction.maxCompactionThreshold();
                         // ColumnFamilyStore cfs =
                         // Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
-                        int level = DatabaseDescriptor.getCompactionThreshold();
+                        int level = LeveledGenerations.getMaxLevelCount() - 1;
                         List<SSTableReader> sstables = new ArrayList<>(cfs.getSSTableForLevel(level));
                         if (sstables.isEmpty())
                             return;

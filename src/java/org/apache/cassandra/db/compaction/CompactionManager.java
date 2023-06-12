@@ -854,7 +854,7 @@ public class CompactionManager implements CompactionManagerMBean {
             }
         }
 
-        int level = DatabaseDescriptor.getCompactionThreshold(); // target level is last level
+        int level = LeveledGenerations.getMaxLevelCount() - 1; // target level is last level
         long maxSSTableBytes = cfs.getCompactionStrategyManager().getMaxSSTableBytes();
         if (txn.originals().size() > 1)
             newTask = new LeveledCompactionTask(cfs, txn, level,

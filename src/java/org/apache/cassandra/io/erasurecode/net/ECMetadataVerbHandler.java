@@ -41,6 +41,7 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.db.compaction.LeveledGenerations;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.CompactionManager.AllSSTableOpStatus;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -276,7 +277,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     
                 String fileNamePrefix = dataForRewrite.fileNamePrefix;
                 List<SSTableReader> sstables = new ArrayList<>(
-                        cfs.getSSTableForLevel(DatabaseDescriptor.getCompactionThreshold()));
+                        cfs.getSSTableForLevel(LeveledGenerations.getMaxLevelCount() - 1));
                 if (!sstables.isEmpty()) {
                     Collections.sort(sstables, new SSTableReaderComparator());
                     List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
@@ -290,7 +291,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                                                         newSSTHash, sourceIP, firstKeyForRewrite, lastKeyForRewrite);
                 } else {
                     logger.info("rymDebug: cannot replace the existing sstables yet, as {} is lower than {}",
-                                cfs.getColumnFamilyName(), DatabaseDescriptor.getCompactionThreshold());
+                                cfs.getColumnFamilyName(), LeveledGenerations.getMaxLevelCount() - 1);
                 }
             } else {
                 logger.warn("rymERROR: cannot get rewrite data of {} during erasure coding, message is from {}, target cfs is {}", newSSTHash, sourceIP, cfName);
@@ -510,9 +511,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // then search which sstable does the last key stored
         int tail = mid + 1;
         while (tail < sstables.size() && last.compareTo(sstables.get(tail).first) >= 0) {
-            if (sstables.get(tail).getSSTableLevel() != DatabaseDescriptor.getCompactionThreshold())
+            if (sstables.get(tail).getSSTableLevel() != LeveledGenerations.getMaxLevelCount() - 1)
                 logger.warn("rymWarnings: sstable level {} is not equal to threshold {}",
-                        sstables.get(tail).getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
+                        sstables.get(tail).getSSTableLevel(), LeveledGenerations.getMaxLevelCount() - 1);
             if (!sstables.get(tail).isReplicationTransferredToErasureCoding())
                 rewriteSStables.add(sstables.get(tail));
             tail++;
@@ -520,9 +521,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         int head = mid - 1;
         if (head >= 0 && (rewriteSStables.size() > 1 || first.compareTo(sstables.get(head).last) <= 0)) {
-            if (sstables.get(head).getSSTableLevel() != DatabaseDescriptor.getCompactionThreshold())
+            if (sstables.get(head).getSSTableLevel() != LeveledGenerations.getMaxLevelCount() - 1)
                 logger.warn("rymWarnings: sstable level {} is not equal to threshold {}",
-                        sstables.get(head).getSSTableLevel(), DatabaseDescriptor.getCompactionThreshold());
+                        sstables.get(head).getSSTableLevel(), LeveledGenerations.getMaxLevelCount() - 1);
             if (!sstables.get(head).isReplicationTransferredToErasureCoding())
                 rewriteSStables.add(sstables.get(head));
             head--;
