@@ -49,8 +49,10 @@ import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
 
 import org.apache.cassandra.config.Config;
+import org.apache.cassandra.service.BatchlogResponseHandler.BatchlogCleanup;
+import org.apache.cassandra.service.StorageProxy.PaxosBallotAndContention;
+import org.apache.cassandra.service.StorageProxy.WritePerformer;
 import org.apache.cassandra.service.paxos.*;
-import org.apache.cassandra.service.paxos.Paxos;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.concurrent.CountDownLatch;
 
@@ -2209,21 +2211,25 @@ public class StorageProxy implements StorageProxyMBean {
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     if (iterator == null) {
-                        logger.debug(
-                                "[Tinoryj-ERROR] Could not get {} response from table {}",
-                                command.isDigestQuery() ? "digest" : "data",
-                                command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
+                        if (command.metadata().keyspace.equals("ycsb")) {
+                            logger.debug(
+                                    "[Tinoryj-ERROR] Could not get {} response from table {}",
+                                    command.isDigestQuery() ? "digest" : "data",
+                                    command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
+                        }
                         response = command.createEmptyResponse();
                     } else {
                         response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                        ByteBuffer newDigest = response.digest(command);
-                        String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
-                        if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
-                            logger.debug(
-                                    "[Tinoryj-ERROR] Could not get non-empty {} response from table {}, {}",
-                                    command.isDigestQuery() ? "digest" : "data",
-                                    command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                                    "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
+                        if (command.metadata().keyspace.equals("ycsb")) {
+                            ByteBuffer newDigest = response.digest(command);
+                            String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
+                            if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
+                                logger.debug(
+                                        "[Tinoryj-ERROR] Could not get non-empty {} response from table {}, {}",
+                                        command.isDigestQuery() ? "digest" : "data",
+                                        command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
+                                        "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
+                            }
                         }
                     }
                 } catch (RejectException e) {
