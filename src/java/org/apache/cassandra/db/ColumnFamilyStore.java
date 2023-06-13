@@ -486,7 +486,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         private final String cfName;
         private final int level;
         private final int delay; // in minutes
-        private static final int MAX_CANDIDATES = 32;
+        private static final int MAX_EC_CANDIDATES = 32;
 
         SendSSTRunnable(String keyspaceName, String cfName, int level, int delay) {
             this.keyspaceName = keyspaceName;
@@ -506,7 +506,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 for (SSTableReader sstable : sstables) {
                     if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
 
-                        if(count >= MAX_CANDIDATES)
+                        if(count >= MAX_EC_CANDIDATES)
                             return;
                         
 

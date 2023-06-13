@@ -441,7 +441,7 @@ public class CassandraDaemon {
         // schedule periodic send sstable content task submission
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
             ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", LeveledGenerations.getMaxLevelCount() - 1, DatabaseDescriptor.getTaskDelay()),
-                                                 420,
+                                                 DatabaseDescriptor.getInitialDelay(),
                                                  DatabaseDescriptor.getTaskDelay(),
                                                  TimeUnit.MINUTES);
 
