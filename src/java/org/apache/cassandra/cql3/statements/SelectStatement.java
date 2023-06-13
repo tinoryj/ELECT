@@ -849,8 +849,12 @@ public class SelectStatement implements CQLStatement.SingleKeyspaceCqlStatement 
         }
 
         ResultSet cqlRows = result.build();
-        logger.debug("[Tinoryj] Process read results, total partition count = {}, result set size = {}",
-                totalPartitionCount, cqlRows.size());
+        if (totalPartitionCount != cqlRows.size()) {
+            logger.error(
+                    "[Tinoryj] Process read results size mismatch, total partition count = {}, result set size = {}",
+                    totalPartitionCount, cqlRows.size());
+        }
+
         maybeWarn(result, options);
 
         orderResults(cqlRows);
