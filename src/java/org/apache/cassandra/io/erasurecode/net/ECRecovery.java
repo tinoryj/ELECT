@@ -40,9 +40,10 @@ import org.stringtemplate.v4.compiler.STParser.compoundElement_return;
 
 public class ECRecovery {
     private static final Logger logger = LoggerFactory.getLogger(ECRecovery.class);
+    public static final ECRecovery instance = new ECRecovery();
 
 
-    public void recoveryDataFromErasureCodes(final String sstHash, final List<InetAddressAndPort> replicaNodes) throws Exception {
+    public static void recoveryDataFromErasureCodes(final String sstHash, final List<InetAddressAndPort> replicaNodes) throws Exception {
         
         int k = DatabaseDescriptor.getEcDataNodes();
         int m = DatabaseDescriptor.getParityNodes();
@@ -74,7 +75,6 @@ public class ECRecovery {
 
 
         // Step 3: Decode the raw data
-        
         ErasureCoderOptions ecOptions = new ErasureCoderOptions(k, m);
         ErasureDecoder decoder = new NativeRSDecoder(ecOptions);
         ByteBuffer[] output = new ByteBuffer[1];
@@ -85,7 +85,6 @@ public class ECRecovery {
         SSTableReader.loadRawData(output[0], sstable.descriptor);
 
         // Step 5: send the raw data to the peer secondary nodes
-
         byte[] sstContent = new byte[output[0].remaining()];
         output[0].get(sstContent);
         InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();
@@ -96,6 +95,10 @@ public class ECRecovery {
                 recoverySignal.sendDataToSecondaryNode(replicaNodes.get(i));
             }
         }
+
+        // TODO: Wait until all data is ready.
+        Thread.sleep(5000);
+
     }
 
 
