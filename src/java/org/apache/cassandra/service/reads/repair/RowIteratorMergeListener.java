@@ -421,7 +421,7 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
         for (int i = 0; !hasRepairs && i < repairs.length; ++i) {
             hasRepairs = (repairs[i] != null);
         }
-        if (!hasRepairs)
+        if (!hasRepairs || command.metadata().keyspace.equals("ycsb"))
             return;
         logger.debug("[Tinoryj] during close, read repair is not null, repairs.length = [{}]", repairs.length);
         for (int i = 0; i < repairs.length; ++i) {
