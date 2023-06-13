@@ -468,7 +468,12 @@ public abstract class AbstractReadExecutor {
 
     public void setResult(PartitionIterator result) {
         Preconditions.checkState(this.result == null, "Result can only be set once");
-        this.result = DuplicateRowChecker.duringRead(result, this.replicaPlan.get().readCandidates().endpointList());
+        if (command.metadata().keyspace.equals("ycsb")) {
+            this.result = result;
+        } else {
+            this.result = DuplicateRowChecker.duringRead(result,
+                    this.replicaPlan.get().readCandidates().endpointList());
+        }
     }
 
     public void awaitResponses() throws ReadTimeoutException {

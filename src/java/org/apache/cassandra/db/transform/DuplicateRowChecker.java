@@ -35,8 +35,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.DiagnosticSnapshotService;
 import org.apache.cassandra.utils.FBUtilities;
 
-public class DuplicateRowChecker extends Transformation<BaseRowIterator<?>>
-{
+public class DuplicateRowChecker extends Transformation<BaseRowIterator<?>> {
     private static final Logger logger = LoggerFactory.getLogger(DuplicateRowChecker.class);
 
     Clustering<?> previous = null;
@@ -50,11 +49,10 @@ public class DuplicateRowChecker extends Transformation<BaseRowIterator<?>>
     final boolean snapshotOnDuplicate;
 
     DuplicateRowChecker(final DecoratedKey key,
-                        final TableMetadata metadata,
-                        final String stage,
-                        final boolean snapshotOnDuplicate,
-                        final List<InetAddressAndPort> replicas)
-    {
+            final TableMetadata metadata,
+            final String stage,
+            final boolean snapshotOnDuplicate,
+            final List<InetAddressAndPort> replicas) {
         this.key = key;
         this.metadata = metadata;
         this.stage = stage;
@@ -62,25 +60,20 @@ public class DuplicateRowChecker extends Transformation<BaseRowIterator<?>>
         this.replicas = replicas;
     }
 
-    protected DeletionTime applyToDeletion(DeletionTime deletionTime)
-    {
+    protected DeletionTime applyToDeletion(DeletionTime deletionTime) {
         return deletionTime;
     }
 
-    protected RangeTombstoneMarker applyToMarker(RangeTombstoneMarker marker)
-    {
+    protected RangeTombstoneMarker applyToMarker(RangeTombstoneMarker marker) {
         return marker;
     }
 
-    protected Row applyToStatic(Row row)
-    {
+    protected Row applyToStatic(Row row) {
         return row;
     }
 
-    protected Row applyToRow(Row row)
-    {
-        if (null != previous && metadata.comparator.compare(row.clustering(), previous) == 0)
-        {
+    protected Row applyToRow(Row row) {
+        if (null != previous && metadata.comparator.compare(row.clustering(), previous) == 0) {
             duplicatesDetected++;
             hadNonEqualDuplicates |= !row.clustering().equals(previous);
         }
@@ -89,15 +82,13 @@ public class DuplicateRowChecker extends Transformation<BaseRowIterator<?>>
         return row;
     }
 
-    protected void onPartitionClose()
-    {
-        if (duplicatesDetected > 0)
-        {
+    protected void onPartitionClose() {
+        if (duplicatesDetected > 0) {
             logger.warn("Detected {} duplicate rows for {} during {}.{}",
-                        duplicatesDetected,
-                        metadata.partitionKeyType.getString(key.getKey()),
-                        stage,
-                        hadNonEqualDuplicates ? " Some duplicates had different byte representation." : "");
+                    duplicatesDetected,
+                    metadata.partitionKeyType.getString(key.getKey()),
+                    stage,
+                    hadNonEqualDuplicates ? " Some duplicates had different byte representation." : "");
             if (snapshotOnDuplicate)
                 DiagnosticSnapshotService.duplicateRows(metadata, replicas);
         }
@@ -106,39 +97,37 @@ public class DuplicateRowChecker extends Transformation<BaseRowIterator<?>>
         super.onPartitionClose();
     }
 
-    public static UnfilteredPartitionIterator duringCompaction(final UnfilteredPartitionIterator iterator, OperationType type)
-    {
+    public static UnfilteredPartitionIterator duringCompaction(final UnfilteredPartitionIterator iterator,
+            OperationType type) {
         if (!DatabaseDescriptor.checkForDuplicateRowsDuringCompaction())
             return iterator;
         final List<InetAddressAndPort> address = Collections.singletonList(FBUtilities.getBroadcastAddressAndPort());
         final boolean snapshot = DatabaseDescriptor.snapshotOnDuplicateRowDetection();
-        return Transformation.apply(iterator, new Transformation<UnfilteredRowIterator>()
-        {
-            protected UnfilteredRowIterator applyToPartition(UnfilteredRowIterator partition)
-            {
+        return Transformation.apply(iterator, new Transformation<UnfilteredRowIterator>() {
+            protected UnfilteredRowIterator applyToPartition(UnfilteredRowIterator partition) {
                 return Transformation.apply(partition, new DuplicateRowChecker(partition.partitionKey(),
-                                                                               partition.metadata(),
-                                                                               type.toString(),
-                                                                               snapshot,
-                                                                               address));
+                        partition.metadata(),
+                        type.toString(),
+                        snapshot,
+                        address));
             }
         });
     }
 
-    public static PartitionIterator duringRead(final PartitionIterator iterator, final List<InetAddressAndPort> replicas)
-    {
-        if (!DatabaseDescriptor.checkForDuplicateRowsDuringReads())
+    public static PartitionIterator duringRead(final PartitionIterator iterator,
+            final List<InetAddressAndPort> replicas) {
+        if (!DatabaseDescriptor.checkForDuplicateRowsDuringReads()) {
+            logger.debug("[Tinoryj] checkForDuplicateRowsDuringReads is false, skip checking.");
             return iterator;
+        }
         final boolean snapshot = DatabaseDescriptor.snapshotOnDuplicateRowDetection();
-        return Transformation.apply(iterator, new Transformation<RowIterator>()
-        {
-            protected RowIterator applyToPartition(RowIterator partition)
-            {
+        return Transformation.apply(iterator, new Transformation<RowIterator>() {
+            protected RowIterator applyToPartition(RowIterator partition) {
                 return Transformation.apply(partition, new DuplicateRowChecker(partition.partitionKey(),
-                                                                               partition.metadata(),
-                                                                               "Read",
-                                                                               snapshot,
-                                                                               replicas));
+                        partition.metadata(),
+                        "Read",
+                        snapshot,
+                        replicas));
             }
         });
     }
