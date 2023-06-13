@@ -18,8 +18,10 @@
 
 package org.apache.cassandra.service.reads.repair;
 
+import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -39,6 +41,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.DeletionTime;
 import org.apache.cassandra.db.LivenessInfo;
 import org.apache.cassandra.db.Mutation;
+import org.apache.cassandra.db.PartitionRangeReadCommand;
 import org.apache.cassandra.db.RangeTombstone;
 import org.apache.cassandra.db.ReadCommand;
 import org.apache.cassandra.db.RegularAndStaticColumns;
@@ -58,6 +61,7 @@ import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.locator.ReplicaPlan;
 import org.apache.cassandra.locator.ReplicaPlans;
 import org.apache.cassandra.schema.ColumnMetadata;
+import org.apache.cassandra.service.StorageService;
 
 public class RowIteratorMergeListener<E extends Endpoints<E>>
         implements UnfilteredRowIterators.MergeListener {
@@ -195,14 +199,35 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
 
     @Inline
     private void applyToPartition(int i, Consumer<PartitionUpdate.Builder> f) {
+        if (command.metadata().keyspace.equals("ycsb") && (command instanceof PartitionRangeReadCommand)) {
+            return;
+        }
         if (writeBackTo.get(i)) {
             if (repairs[i] == null)
                 repairs[i] = new PartitionUpdate.Builder(command.metadata(), partitionKey, columns, 1);
+            // List<InetAddress> sendRequestAddresses =
+            // StorageService.instance.getNaturalEndpointsForToken(command
+            // .metadata().keyspace,
+            // partitionKey.getToken());
+            // logger.debug(
+            // "[Tinoryj] add to read repair list, keyspace = {}. colunm name = {},
+            // partition key = {}, natural endpoint list = {}",
+            // command.metadata().keyspace, command.metadata().name, partitionKey,
+            // sendRequestAddresses);
             f.accept(repairs[i]);
         }
         if (buildFullDiff) {
             if (repairs[repairs.length - 1] == null)
                 repairs[repairs.length - 1] = new PartitionUpdate.Builder(command.metadata(), partitionKey, columns, 1);
+            // List<InetAddress> sendRequestAddresses =
+            // StorageService.instance.getNaturalEndpointsForToken(command
+            // .metadata().keyspace,
+            // partitionKey.getToken());
+            // logger.debug(
+            // "[Tinoryj] add to read repair list, keyspace = {}. colunm name = {},
+            // partition key = {}, natural endpoint list = {}",
+            // command.metadata().keyspace, command.metadata().name, partitionKey,
+            // sendRequestAddresses);
             f.accept(repairs[repairs.length - 1]);
         }
     }
@@ -396,8 +421,9 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
 
     public void close() {
         boolean hasRepairs = false;
-        for (int i = 0; !hasRepairs && i < repairs.length; ++i)
+        for (int i = 0; !hasRepairs && i < repairs.length; ++i) {
             hasRepairs = (repairs[i] != null);
+        }
         if (!hasRepairs)
             return;
         logger.debug("[Tinoryj] during close, read repair is not null, repairs.length = [{}]", repairs.length);
