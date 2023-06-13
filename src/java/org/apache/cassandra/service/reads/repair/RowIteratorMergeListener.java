@@ -23,11 +23,16 @@ import java.util.BitSet;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 
 import com.carrotsearch.hppc.ObjectIntHashMap;
 import net.nicoulaj.compilecommand.annotations.Inline;
+
+import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.Clustering;
 import org.apache.cassandra.db.ClusteringBound;
 import org.apache.cassandra.db.DecoratedKey;
@@ -56,6 +61,9 @@ import org.apache.cassandra.schema.ColumnMetadata;
 
 public class RowIteratorMergeListener<E extends Endpoints<E>>
         implements UnfilteredRowIterators.MergeListener {
+
+    private static final Logger logger = LoggerFactory.getLogger(RowIteratorMergeListener.class);
+
     private final DecoratedKey partitionKey;
     private final RegularAndStaticColumns columns;
     private final boolean isReversed;
@@ -392,7 +400,10 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
             hasRepairs = (repairs[i] != null);
         if (!hasRepairs)
             return;
-
+        logger.debug("[Tinoryj] during close, read repair is not null, repairs.length = [{}]", repairs.length);
+        for (int i = 0; i < repairs.length; ++i) {
+            logger.debug("\tRead repair {} is {}", i, repairs[i]);
+        }
         PartitionUpdate fullDiffRepair = null;
         if (buildFullDiff && repairs[repairs.length - 1] != null)
             fullDiffRepair = repairs[repairs.length - 1].build();

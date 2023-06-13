@@ -150,7 +150,6 @@ public class BlockingPartitionRepair
 
     @VisibleForTesting
     protected void sendRR(Message<Mutation> message, InetAddressAndPort endpoint) {
-        printStackTace("SendRR");
         MessagingService.instance().sendWithCallback(message, endpoint, this);
     }
 
