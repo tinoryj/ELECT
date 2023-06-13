@@ -426,10 +426,11 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
         }
         if (!hasRepairs || command.metadata().keyspace.equals("ycsb"))
             return;
-        logger.debug("[Tinoryj] during close, read repair is not null, repairs.length = [{}]", repairs.length);
-        for (int i = 0; i < repairs.length; ++i) {
-            logger.debug("\tRead repair {} is {}", i, repairs[i]);
-        }
+        // logger.debug("[Tinoryj] during close, read repair is not null, repairs.length
+        // = [{}]", repairs.length);
+        // for (int i = 0; i < repairs.length; ++i) {
+        // logger.debug("\tRead repair {} is {}", i, repairs[i]);
+        // }
         PartitionUpdate fullDiffRepair = null;
         if (buildFullDiff && repairs[repairs.length - 1] != null)
             fullDiffRepair = repairs[repairs.length - 1].build();
