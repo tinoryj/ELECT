@@ -183,7 +183,7 @@ public class Config {
     public int parity_nodes = 2;
     public int max_level_count = 1;
     public int initial_delay = 2; // in minute
-    public int task_delay = 1; // in minute
+    public int task_delay = 5; // in minute
 
 
     public int concurrent_ec = 3;

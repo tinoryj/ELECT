@@ -16,16 +16,36 @@
 
 . /etc/profile
 
-cd /mnt/ssd/Debug/CassandraEC
-git checkout yuanming
-git pull origin yuanming
-kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
-rm -rf data logs
-mkdir -p data/receivedParityHashes/
-mkdir -p data/localParityHashes/
-mkdir -p data/ECMetadata/
-mkdir -p data/tmp/
-mkdir -p logs
-ant realclean && ant -Duse.jdk11=true
-cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
-nohup bin/cassandra &> logs/debug.log &
+func() {
+
+    ec_data_nodes=$1
+    parity_nodes=$2
+    max_level_count=$3
+    concurrent_ec=$4
+    initial_delay=$5
+    task_delay=$6
+
+    cd /mnt/ssd/Debug/CassandraEC
+    git checkout yuanming
+    git pull origin yuanming
+    kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
+    rm -rf data logs
+    mkdir -p data/receivedParityHashes/
+    mkdir -p data/localParityHashes/
+    mkdir -p data/ECMetadata/
+    mkdir -p data/tmp/
+    mkdir -p logs
+    ant realclean && ant -Duse.jdk11=true
+    cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
+    sed -i "s/ec_data_nodes:.*$/ec_data_nodes: ${ec_data_nodes}/" conf/cassandra.yaml
+    sed -i "s/parity_nodes:.*$/parity_nodes: ${parity_nodes}/" conf/cassandra.yaml
+    sed -i "s/max_level_count:.*$/max_level_count: ${max_level_count}/" conf/cassandra.yaml
+    sed -i "s/concurrent_ec:.*$/concurrent_ec: ${concurrent_ec}/" conf/cassandra.yaml
+    sed -i "s/initial_delay:.*$/initial_delay: ${initial_delay}/" conf/cassandra.yaml
+    sed -i "s/task_delay:.*$/task_delay: ${task_delay}/" conf/cassandra.yaml
+
+
+    nohup bin/cassandra &> logs/debug.log &
+}
+
+func "$1" "$2" "$3" "$4" "$5" "$6"

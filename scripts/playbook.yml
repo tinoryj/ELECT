@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 ---
 - name: Rebuild and start Cassandra servers
   hosts: cassandra_servers
@@ -21,7 +20,7 @@
   become_user: yjren
   tasks:
   - name: Execute script start-server.sh
-    command: bash /mnt/ssd/Debug/CassandraEC/scripts/start-server.sh
+    command: bash /mnt/ssd/Debug/CassandraEC/scripts/start-server.sh 4 2 6 32 5 5# <ec_data_nodes>, <parity_nodes>, <max_level_count>, <concurrent_ec>, <initial_delay>, <task_delay>
     register: command_result
     ignore_errors: True
 
@@ -31,14 +30,14 @@
 
   - name: Wait until all nodes are ready
     pause:
-      seconds: 25
+      seconds: 30
 
 - name: Prepare keyspace and tables for evaluation
   hosts: cassandra_client
 
   tasks:
   - name: Execute script start-client.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-client.sh {{ ansible_hostname }} 4 4 # <coordinator address>, <sstable size in MB>, <fanout size>
+    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-client.sh {{ ansible_hostname }} 8 4 # <coordinator address>, <sstable size in MB>, <fanout size>
     register: command_result
     ignore_errors: True
 
@@ -52,7 +51,7 @@
 
   tasks:
   - name: Execute script start-evaluation.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} 3000000 1024 # <coordinator address>, <record count>, <field length>
+    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} 60000000 1024 # <coordinator address>, <record count>, <field length>
     register: command_result
     ignore_errors: True
 
