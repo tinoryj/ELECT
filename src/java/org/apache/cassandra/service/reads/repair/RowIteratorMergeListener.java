@@ -199,32 +199,35 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
 
     @Inline
     private void applyToPartition(int i, Consumer<PartitionUpdate.Builder> f) {
-        // if (command.metadata().keyspace.equals("ycsb") && (command instanceof
-        // PartitionRangeReadCommand)) {
-        // return;
-        // }
+        if (command.metadata().keyspace.equals("ycsb") && (command instanceof PartitionRangeReadCommand)) {
+            return;
+        }
         if (writeBackTo.get(i)) {
             if (repairs[i] == null)
                 repairs[i] = new PartitionUpdate.Builder(command.metadata(), partitionKey, columns, 1);
-            List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command
-                    .metadata().keyspace,
-                    partitionKey.getToken());
-            logger.debug(
-                    "[Tinoryj] add to read repair list, keyspace = {}. colunm name = {}, partition key = {}, natural endpoint list = {}",
-                    command.metadata().keyspace, command.metadata().name, partitionKey,
-                    sendRequestAddresses);
+            // List<InetAddress> sendRequestAddresses =
+            // StorageService.instance.getNaturalEndpointsForToken(command
+            // .metadata().keyspace,
+            // partitionKey.getToken());
+            // logger.debug(
+            // "[Tinoryj] add to read repair list, keyspace = {}. colunm name = {},
+            // partition key = {}, natural endpoint list = {}",
+            // command.metadata().keyspace, command.metadata().name, partitionKey,
+            // sendRequestAddresses);
             f.accept(repairs[i]);
         }
         if (buildFullDiff) {
             if (repairs[repairs.length - 1] == null)
                 repairs[repairs.length - 1] = new PartitionUpdate.Builder(command.metadata(), partitionKey, columns, 1);
-            List<InetAddress> sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command
-                    .metadata().keyspace,
-                    partitionKey.getToken());
-            logger.debug(
-                    "[Tinoryj] add to read repair list, keyspace = {}. colunm name = {},partition key = {}, natural endpoint list = {}",
-                    command.metadata().keyspace, command.metadata().name, partitionKey,
-                    sendRequestAddresses);
+            // List<InetAddress> sendRequestAddresses =
+            // StorageService.instance.getNaturalEndpointsForToken(command
+            // .metadata().keyspace,
+            // partitionKey.getToken());
+            // logger.debug(
+            // "[Tinoryj] add to read repair list, keyspace = {}. colunm name = {},partition
+            // key = {}, natural endpoint list = {}",
+            // command.metadata().keyspace, command.metadata().name, partitionKey,
+            // sendRequestAddresses);
             f.accept(repairs[repairs.length - 1]);
         }
     }
