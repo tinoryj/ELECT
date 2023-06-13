@@ -164,8 +164,8 @@ public enum Verb {
     ECREQUESTDATA_REQ(220, P3, writeTimeout, ERASURECODE, () -> ECRequestData.serializer, () -> ECRequestDataVerbHandler.instance, ECREQUESTDATA_RSP),
     ECRESPONSEDATA_RSP(221, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
     ECRESPONSEDATA_REQ(222, P3, writeTimeout, ERASURECODE, () -> ECResponseData.serializer, () -> ECResponseDataVerbHandler.instance, ECRESPONSEDATA_RSP),
-    ECRECOVERYDATA_RSP(221, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
-    ECRECOVERYDATA_REQ(222, P3, writeTimeout, ERASURECODE, () -> ECRecoveryForSecondary.serializer, () -> ECRecoveryForSecondaryVerbHandler.instance, ECRECOVERYDATA_RSP),
+    ECRECOVERYDATA_RSP(223, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECRECOVERYDATA_REQ(224, P3, writeTimeout, ERASURECODE, () -> ECRecoveryForSecondary.serializer, () -> ECRecoveryForSecondaryVerbHandler.instance, ECRECOVERYDATA_RSP),
 
     PAXOS_PREPARE_RSP(93, P2, writeTimeout, REQUEST_RESPONSE, () -> PrepareResponse.serializer,
             () -> ResponseVerbHandler.instance),
