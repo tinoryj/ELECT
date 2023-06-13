@@ -65,6 +65,8 @@ import org.apache.cassandra.io.erasurecode.net.ECParityNode;
 import org.apache.cassandra.io.erasurecode.net.ECParityNodeVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdateVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECRecoveryForSecondary;
+import org.apache.cassandra.io.erasurecode.net.ECRecoveryForSecondaryVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECRequestData;
 import org.apache.cassandra.io.erasurecode.net.ECRequestDataVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECRequestParity;
@@ -162,6 +164,8 @@ public enum Verb {
     ECREQUESTDATA_REQ(220, P3, writeTimeout, ERASURECODE, () -> ECRequestData.serializer, () -> ECRequestDataVerbHandler.instance, ECREQUESTDATA_RSP),
     ECRESPONSEDATA_RSP(221, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
     ECRESPONSEDATA_REQ(222, P3, writeTimeout, ERASURECODE, () -> ECResponseData.serializer, () -> ECResponseDataVerbHandler.instance, ECRESPONSEDATA_RSP),
+    ECRECOVERYDATA_RSP(221, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECRECOVERYDATA_REQ(222, P3, writeTimeout, ERASURECODE, () -> ECRecoveryForSecondary.serializer, () -> ECRecoveryForSecondaryVerbHandler.instance, ECRECOVERYDATA_RSP),
 
     PAXOS_PREPARE_RSP(93, P2, writeTimeout, REQUEST_RESPONSE, () -> PrepareResponse.serializer,
             () -> ResponseVerbHandler.instance),

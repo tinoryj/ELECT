@@ -40,6 +40,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         String parityHash = message.payload.parityHash;
         String sstHash = message.payload.sstHash;
         int parityIndex = message.payload.parityIndex;
+        boolean isRecovery = message.payload.isRecovery;
         String receivedParityCodeDir = ECNetutils.getReceivedParityCodeDir();
         String filePath = receivedParityCodeDir + parityHash;
 
@@ -74,7 +75,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         try {
             parityCode = ECNetutils.readBytesFromFile(filePath);
             // response this parityCode to to source node
-            ECResponseParity response = new ECResponseParity(parityHash, sstHash, parityCode, parityIndex);
+            ECResponseParity response = new ECResponseParity(parityHash, sstHash, parityCode, parityIndex, isRecovery);
             response.responseParity(message.from());
             
             // delete parity code file locally

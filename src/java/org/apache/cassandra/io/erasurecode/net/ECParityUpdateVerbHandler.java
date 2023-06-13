@@ -388,7 +388,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                 // get the needed parity code remotely, send a parity code request
                 for (int i = 1; i < parityHashList.size(); i++) {
-                    ECRequestParity request = new ECRequestParity(parityHashList.get(i), oldSSTHash, i);
+                    ECRequestParity request = new ECRequestParity(parityHashList.get(i), oldSSTHash, i, false);
                     request.requestParityCode(parityNodes.get(i));
                 }
                 // delete local parity code file

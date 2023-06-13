@@ -466,6 +466,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return ecSSTable;
     }
 
+    // [CASSANDRAEC]
     public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc) {
 
         File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
@@ -483,6 +484,26 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             // corrupted hence delete it and let it load it now.
             if (ecMetadataFile.exists())
                 FileUtils.deleteWithConfirm(ecMetadataFile);
+        }
+    }
+
+    // [CASSANDRA]
+    public static void loadRawData(ByteBuffer data, Descriptor desc) {
+
+        File dataFile = new File(desc.filenameFor(Component.DATA));
+        if (dataFile.exists())
+            FileUtils.deleteWithConfirm(dataFile);
+
+        try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(dataFile)) {
+
+            ByteBufferUtil.writeWithLength(data, oStream);
+
+        } catch (IOException e) {
+            logger.error("Cannot save SSTable ecMetadataFile: ", e);
+
+            // corrupted hence delete it and let it load it now.
+            if (dataFile.exists())
+                FileUtils.deleteWithConfirm(dataFile);
         }
     }
 

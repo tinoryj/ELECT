@@ -504,11 +504,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 logger.debug("rymDebug: get {} sstables from level {}", sstables.size(), level);
                 int count = 0;
                 for (SSTableReader sstable : sstables) {
-                    if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
 
-                        if(count >= MAX_EC_CANDIDATES)
-                            return;
+                    if(count >= MAX_EC_CANDIDATES)
+                        return;
                         
+                    if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
 
                         if (!sstable.isReplicationTransferredToErasureCoding() && !sstable.isSelectedByCompactionOrErasureCoding()) {
 

@@ -37,13 +37,16 @@ public class ECResponseParity {
     public final byte[] parityCode;
     public final int parityCodeSize;
     public final int parityIndex;
+    public final boolean isRecovery;
 
-    public ECResponseParity(String parityHash, String sstHash, byte[] parityCode, int parityIndex) {
+    public ECResponseParity(String parityHash, String sstHash, byte[] parityCode, int parityIndex, boolean isRecovery) {
         this.parityHash = parityHash;
         this.sstHash = sstHash;
         this.parityCode = parityCode;
         this.parityCodeSize = parityCode.length;
         this.parityIndex = parityIndex;
+        this.isRecovery = isRecovery;
+        
     }
 
 
@@ -62,6 +65,7 @@ public class ECResponseParity {
             out.writeInt(t.parityIndex);
             out.writeInt(t.parityCodeSize);
             out.write(t.parityCode);
+            out.writeBoolean(t.isRecovery);
 
 
         }
@@ -74,7 +78,8 @@ public class ECResponseParity {
             int parityCodeSize = in.readInt();
             byte[] parityCode = new byte[parityCodeSize];
             in.readFully(parityCode);
-            return new ECResponseParity(parityHash, sstHash, parityCode, parityIndex);
+            boolean isRecovery = in.readBoolean();
+            return new ECResponseParity(parityHash, sstHash, parityCode, parityIndex, isRecovery);
         }
 
         @Override
@@ -83,7 +88,8 @@ public class ECResponseParity {
                         sizeof(t.sstHash) + 
                         sizeof(t.parityIndex) +
                         sizeof(t.parityCodeSize) +
-                        t.parityCodeSize;
+                        t.parityCodeSize +
+                        sizeof(t.isRecovery);
             return size;
         }
         

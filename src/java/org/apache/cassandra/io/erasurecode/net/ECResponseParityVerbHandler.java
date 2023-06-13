@@ -34,13 +34,23 @@ public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParit
         String parityHash = message.payload.parityHash;
         byte[] parityCode = message.payload.parityCode;
         int parityIndex = message.payload.parityIndex;
+        boolean isRecovery = message.payload.isRecovery;
 
-        // save it to the map
-        if(StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash) != null) {
-            StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].put(parityCode);
-            // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
+        // save it to the map for stripe update
+        if(!isRecovery) {
+            if(StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash) != null) {
+                StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].put(parityCode);
+                // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
+            } else {
+                throw new NullPointerException(String.format("rymERROR: We receive parity code (%s) from (%s), but cannot find parity codes for sstable (%s)", parityHash, message.from(), sstHash));
+            }
         } else {
-            throw new NullPointerException(String.format("rymERROR: We get parity code (%s) from (%s), but cannot find parity codes for sstable (%s)", parityHash, message.from(), sstHash));
+            if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
+                StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].put(parityCode);
+                // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
+            } else {
+                throw new NullPointerException(String.format("rymERROR: We receive parity code (%s) from (%s), but cannot find erasure codes for sstable (%s)", parityHash, message.from(), sstHash));
+            }
         }
 
     }

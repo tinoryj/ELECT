@@ -40,11 +40,13 @@ public class ECRequestParity {
     public final String parityHash;
     public final String sstHash;
     public final int parityIndex;
+    public final boolean isRecovery;
 
-    public ECRequestParity(String parityHash, String sstHash, int parityIndex) {
+    public ECRequestParity(String parityHash, String sstHash, int parityIndex, boolean isRecovery) {
         this.parityHash = parityHash;
         this.sstHash = sstHash;
         this.parityIndex = parityIndex;
+        this.isRecovery = isRecovery;
     }
 
     public void requestParityCode(InetAddressAndPort target) {
@@ -61,6 +63,7 @@ public class ECRequestParity {
             out.writeUTF(t.parityHash);
             out.writeUTF(t.sstHash);
             out.writeInt(t.parityIndex);
+            out.writeBoolean(t.isRecovery);
         }
 
         @Override
@@ -68,14 +71,16 @@ public class ECRequestParity {
             String parityHash = in.readUTF();
             String sstHash = in.readUTF();
             int parityIndex = in.readInt();
-            return new ECRequestParity(parityHash, sstHash, parityIndex);
+            boolean isRecovery = in.readBoolean();
+            return new ECRequestParity(parityHash, sstHash, parityIndex, isRecovery);
         }
 
         @Override
         public long serializedSize(ECRequestParity t, int version) {
             long size = sizeof(t.parityHash) +
                         sizeof(t.sstHash) +
-                        sizeof(t.parityIndex);
+                        sizeof(t.parityIndex) +
+                        sizeof(t.isRecovery);
 
             return size;
         }

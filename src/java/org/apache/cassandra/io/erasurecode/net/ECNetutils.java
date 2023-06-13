@@ -268,44 +268,6 @@ public final class ECNetutils {
     }
 
 
-    // [WARNING!] Make sure to avoid dead loops
-    public static void waitUntilRequestCodesReady(ByteBuffer[] checkBuffers, String oldSSTHash) {
-        int retryCount = 0;
-        if(checkBuffers != null) {
-            while (!checkCodesAreReady(checkBuffers)) {
-                try {
-                    if(retryCount < 5) {
-                        Thread.sleep(1000);
-                        retryCount++;
-                    } else {
-                        throw new IllegalStateException(String.format("rymERROR: cannot retrieve the remote codes for sstHash (%s)", oldSSTHash));
-                    }
-                    
-                } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }
-        } else {
-            throw new NullPointerException(String.format("rymERROR: We cannot get parity codes for sstable %s", oldSSTHash));
-        }
-
-        for(ByteBuffer code : checkBuffers) {
-            code.rewind();
-        }
- 
-    }
-
-    private static boolean checkCodesAreReady(ByteBuffer[] checkBuffers) {
-        for(ByteBuffer buf : checkBuffers) {
-            if(buf.position() == 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-
 
 
     public static class InetAddressAndPortComparator implements Comparator<InetAddressAndPort> {
