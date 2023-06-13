@@ -192,6 +192,8 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter1);
+                        this.command = readCommand;
+                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
                         if (readCommand.isDigestQuery() == false) {
                             readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
                         }
@@ -204,6 +206,8 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter2);
+                        this.command = readCommand;
+                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
                         if (readCommand.isDigestQuery() == false) {
                             readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
                         }
