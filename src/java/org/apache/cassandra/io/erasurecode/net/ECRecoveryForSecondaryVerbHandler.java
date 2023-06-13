@@ -28,6 +28,7 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,20 +42,29 @@ public class ECRecoveryForSecondaryVerbHandler  implements IVerbHandler<ECRecove
         String cfName = message.payload.cfName;
 
         int level = DatabaseDescriptor.getMaxLevelCount() - 1;
-        ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore(cfName);
-        Set<SSTableReader> sstables = cfs.getSSTableForLevel(level);
-        boolean isFindSSTable = false;
-        for(SSTableReader sstable : sstables) {
-            if(sstable.isReplicationTransferredToErasureCoding() && sstable.getSSTableHashID().equals(sstHash)) {
-                
-                SSTableReader.loadRawData(ByteBuffer.wrap(message.payload.sstContent), sstable.descriptor);
-                isFindSSTable = true;
-                return;
-            }
-        }
 
-        if(!isFindSSTable)
-            throw new IllegalStateException(String.format("rymERROR:[Recovery signal] we cannot find sstable (%s) in (%s) for recovery signal from (%s)", sstHash, cfName, message.from()));
+        // ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore(cfName);
+        // Set<SSTableReader> sstables = cfs.getSSTableForLevel(level);
+        // boolean isFindSSTable = false;
+        // for(SSTableReader sstable : sstables) {
+        //     if(sstable.isReplicationTransferredToErasureCoding() && sstable.getSSTableHashID().equals(sstHash)) {
+                
+        //         SSTableReader.loadRawData(ByteBuffer.wrap(message.payload.sstContent), sstable.descriptor);
+        //         isFindSSTable = true;
+        //         return;
+        //     }
+        // }
+
+
+        SSTableReader sstable = StorageService.instance.globalSSTHashToECSSTableMap.get(sstHash);
+        if(sstable == null) 
+            throw new NullPointerException(String.format("rymERROR: Cannot get ECSSTable (%s)", sstHash));
+            
+        SSTableReader.loadRawData(ByteBuffer.wrap(message.payload.sstContent), sstable.descriptor);
+
+
+        // if(!isFindSSTable)
+        //     throw new IllegalStateException(String.format("rymERROR:[Recovery signal] we cannot find sstable (%s) in (%s) for recovery signal from (%s)", sstHash, cfName, message.from()));
 
     }
 
