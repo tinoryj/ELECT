@@ -179,10 +179,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             boolean isContainRawSStable = false;
             List<TransferredSSTableKeyRange> transferredSSTableKeyRanges = new ArrayList<>();
 
-            if(cfs.getColumnFamilyName().equals("usertable")) {
-                // for primary nodes
-
-            } else if (cfs.getColumnFamilyName().contains("usertable")) {
+            if (!cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable")) {
 
                 //for secondary node 
                 for (SSTableReader sstable : candidate.sstables) {
@@ -198,11 +195,14 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                 }
 
                 if (candidate.sstables.size() == 1 && isContainReplicationTransferredToErasureCoding) {
-                    return null;
+                    previousCandidate = candidate.sstables;
+                    continue;
                 }
 
-                if(!isContainRawSStable)
-                    return null;
+                if(!isContainRawSStable){
+                    previousCandidate = candidate.sstables;
+                    continue;
+                }
             }
 
             LifecycleTransaction txn = cfs.getTracker().tryModify(candidate.sstables, OperationType.COMPACTION);
