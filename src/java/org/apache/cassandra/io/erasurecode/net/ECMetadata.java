@@ -132,7 +132,7 @@ public class ECMetadata implements Serializable {
      * @param parityCode this is the parity block for erasure coding, size is m
      * @param parityHashes
      */
-    public void generateAndDistributeMetadata(ECMessage[] messages, List<String> parityHashes) {
+    public synchronized void generateAndDistributeMetadata(ECMessage[] messages, List<String> parityHashes) {
         logger.debug("rymDebug: this generateMetadata method");
         // get stripe id, sst content hashes and primary nodes
         String connectedSSTHash = "";
@@ -195,7 +195,7 @@ public class ECMetadata implements Serializable {
      * This method is to update the metadata for the given messages
      * @param parityHashes
      */
-    public void updateAndDistributeMetadata(List<String> newParityHashes, boolean isParityUpdate, 
+    public synchronized void updateAndDistributeMetadata(List<String> newParityHashes, boolean isParityUpdate, 
                                             String oldSSTHash, String newSSTHash, int targetIndex,
                                             List<InetAddressAndPort> oldReplicaNodes, List<InetAddressAndPort> newReplicaNodes) {
         // update isParityUpdate
@@ -282,14 +282,14 @@ public class ECMetadata implements Serializable {
      * 2. Check if there is any sstHash in the waiting list: globalPendingOldSSTableForECStripUpdateMap, 
      * if yes, we can only select one pending update signal and mark current strip id in the updating list.
      */
-    private void mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(List<String> sstHashList, String stripId, Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap) {
+    private synchronized void mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(List<String> sstHashList, String newStripId, Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap) {
 
         boolean isSelectedOneOldSSTable = false;
         for(String sstHash : sstHashList) {
-            StorageService.instance.globalSSTHashToStripIDMap.put(sstHash, stripId);
+            StorageService.instance.globalSSTHashToStripIDMap.put(sstHash, newStripId);
             logger.debug("rymDebug:[ErasureCoding] In node {}, we map sstHash {} to stripID {}", FBUtilities.getBroadcastAddressAndPort(),
                                                                                                  sstHash,
-                                                                                                 stripId);
+                                                                                                 newStripId);
 
             if(isSelectedOneOldSSTable) {
                 continue;
@@ -304,8 +304,8 @@ public class ECMetadata implements Serializable {
 
             InetAddressAndPort primaryNode = sstHashIdToReplicaMap.get(sstHash).get(0);
             SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.get(sstHash);
-            StorageService.instance.globalUpdatingStripList.add(stripId);
-            logger.debug("rymDebug: We move the old sstable {} from pending list to ready list to update strip {}", sstHash, stripId);
+            StorageService.instance.globalUpdatingStripList.add(newStripId);
+            logger.debug("rymDebug: We move the old sstable {} from pending list to ready list to update strip {}", sstHash, newStripId);
 
             if (StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.contains(primaryNode)) {
                 StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
@@ -316,6 +316,7 @@ public class ECMetadata implements Serializable {
 
             // StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
             StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.remove(sstHash);
+            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({})", StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size());
         }
 
 

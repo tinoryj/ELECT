@@ -192,7 +192,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         public void run() {
             String keyspaceName = "ycsb";
             int codeLength = StorageService.getErasureCodeLength();
- 
             // Perform parity update
             for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.entrySet()) {
                 
@@ -278,7 +277,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
      * @param codeLength The uniform code length for erasure coding.
      * @param oldReplicaNodes
      */
-    private static void performECStripUpdate(String updateCase, SSTableContentWithHashID oldSSTable, SSTableContentWithHashID newSSTable, int codeLength, List<InetAddressAndPort> oldReplicaNodes) {
+    private static synchronized void performECStripUpdate(String updateCase, SSTableContentWithHashID oldSSTable, SSTableContentWithHashID newSSTable, int codeLength, List<InetAddressAndPort> oldReplicaNodes) {
 
         List<InetAddressAndPort> parityNodes = getParityNodes();
         String oldStripID = StorageService.instance.globalSSTHashToStripIDMap.get(oldSSTable.sstHash);
