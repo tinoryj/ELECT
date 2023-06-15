@@ -775,8 +775,8 @@ public class LeveledManifest {
     // [CASSANDRAEC] Check whether select this sstable. 
     private static boolean isSelectIssuedSSTableAsCompactionCandidates(SSTableReader sstable) {
         long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
-        long delayMilli = (DatabaseDescriptor.getTaskDelay()) * 3 * 60 * 1000;
-        long delayForFirstTimeParityUpdate = DatabaseDescriptor.getTaskDelay() * 3 * 60 * 1000;
+        long delayMilli = (DatabaseDescriptor.getTaskDelay()) * 60 * 1000;
+        long delayForFirstTimeParityUpdate = DatabaseDescriptor.getTaskDelay() * 60 * 1000;
         if (sstable.isParityUpdate()) {
             if (duration < delayMilli) {
                 return false;
