@@ -78,6 +78,8 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
             ECResponseParity response = new ECResponseParity(parityHash, sstHash, parityCode, parityIndex, isRecovery);
             response.responseParity(message.from());
             
+            logger.debug("rymDebug: We get parity code file {} for sstable {} requested from {}", filePath, sstHash, message.from());
+            
             // delete parity code file locally
             ECNetutils.deleteFileByName(filePath);
         } catch (IOException e) {

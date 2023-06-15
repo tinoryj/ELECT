@@ -138,7 +138,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
     private static class ErasureCodingRunable implements Runnable {
 
         @Override
-        public void run() {
+        public synchronized void run() {
             while (StorageService.instance.globalRecvQueues.size() >= DatabaseDescriptor.getEcDataNodes()) {
                 logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
                 ECMessage tmpArray[] = new ECMessage[DatabaseDescriptor.getEcDataNodes()];

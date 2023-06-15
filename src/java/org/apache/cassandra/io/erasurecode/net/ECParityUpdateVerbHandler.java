@@ -217,9 +217,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                     SSTableContentWithHashID newSSTable = newSSTableQueue.poll();
                     SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
-                    
-
-                    logger.debug("rymDebug: [Parity update] We select a new sstable ({}) to update an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
 
 
                     // if the new obj is consumed, move the same name sstable from cache queue to old queue
@@ -283,6 +280,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
      */
     private static synchronized void performECStripUpdate(String updateCase, SSTableContentWithHashID oldSSTable, SSTableContentWithHashID newSSTable, int codeLength, List<InetAddressAndPort> oldReplicaNodes) {
 
+       logger.debug("rymDebug: [Parity update {}]  We select a new sstable ({}) to update an old sstable ({})", updateCase, newSSTable.sstHash, oldSSTable.sstHash);
         List<InetAddressAndPort> parityNodes = getParityNodes();
         String oldStripID = StorageService.instance.globalSSTHashToStripIDMap.get(oldSSTable.sstHash);
         if(oldStripID == null) {
@@ -296,33 +294,25 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         }
         waitUntilParityCodesReady(oldSSTable.sstHash, parityNodes);
 
-        ByteBuffer[] parityCodes = StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash);
-        List<String> sstHashList = StorageService.instance.globalStripIdToECMetadataMap.get(oldStripID).sstHashIdList;
-
-        if(parityCodes == null) {
+        
+        if(StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash) == null) {
             throw new NullPointerException(String.format("rymERROR: we cannot get parity codes for sstable (%s)", oldSSTable.sstHash));
         }
 
-        if(sstHashList == null || sstHashList.isEmpty()) {
+        if(StorageService.instance.globalStripIdToECMetadataMap.get(oldStripID).sstHashIdList == null ||
+           StorageService.instance.globalStripIdToECMetadataMap.get(oldStripID).sstHashIdList.isEmpty()) {
             throw new NullPointerException(String.format("rymERROR: we cannot get sstHash list for strip id (%s)", oldStripID));
         }
 
-        // remove the entry to save memory
-        StorageService.instance.globalSSTHashToParityCodeMap.remove(oldSSTable.sstHash);
-        logger.debug("rymDebug: we remove the parity code for old sstHash ({}) in memory.", oldSSTable.sstHash);
 
-
-
-        logger.debug("rymDebug: [Parity update {}] we update old sstable ({}) with new sstable ({})", updateCase,
-                oldSSTable.sstHash, newSSTable.sstHash);
         // ByteBuffer oldData = oldSSTable.sstContent;
         // ByteBuffer newData = newSSTable.sstContent;
         // codeLength = Stream.of(codeLength, newSSTable.sstContentSize,
         // oldSSTable.sstContentSize).max(Integer::compareTo).orElse(codeLength);
         Stage.ERASURECODE.maybeExecuteImmediately(new ErasureCodeUpdateRunnable(oldSSTable,
                 newSSTable,
-                parityCodes,
-                sstHashList.indexOf(oldSSTable.sstHash),
+                StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash),
+                StorageService.instance.globalStripIdToECMetadataMap.get(oldStripID).sstHashIdList.indexOf(oldSSTable.sstHash),
                 codeLength,
                 parityNodes,
                 oldReplicaNodes,
@@ -595,6 +585,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             ecMetadata.updateAndDistributeMetadata(parityHashList, true,
                                                    oldSSTable.sstHash, newSSTable.sstHash, targetDataIndex,
                                                    oldRelicaNodes, newRelicaNodes);
+
+            // remove the entry to save memory
+            StorageService.instance.globalSSTHashToParityCodeMap.remove(oldSSTable.sstHash);
+            logger.debug("rymDebug: we remove the parity code for old sstHash ({}) in memory.", oldSSTable.sstHash);
 
         }
 
