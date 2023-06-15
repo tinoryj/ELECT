@@ -203,7 +203,13 @@ public class ECMetadata implements Serializable {
         // update the old sstable hash
         this.ecMetadataContent.oldSSTHashForUpdate = oldSSTHash;
         // update sstable hash list
-        this.ecMetadataContent.sstHashIdList.set(targetIndex, newSSTHash);
+        if(this.ecMetadataContent.sstHashIdList.get(targetIndex).equals(oldSSTHash)) {
+            this.ecMetadataContent.sstHashIdList.set(targetIndex, newSSTHash);
+        } else {
+            throw new IllegalStateException(String.format("rymERROR: Unexpect state, the target index is (%s), but the truely needed index is (%s)", targetIndex,
+                                                                    this.ecMetadataContent.sstHashIdList.indexOf(oldSSTHash)));
+        }
+        
         // update parity code hash
         this.ecMetadataContent.parityHashList = newParityHashes;
         // modify sstHashIdToReplicaMap
@@ -282,10 +288,10 @@ public class ECMetadata implements Serializable {
      * 2. Check if there is any sstHash in the waiting list: globalPendingOldSSTableForECStripUpdateMap, 
      * if yes, we can only select one pending update signal and mark current strip id in the updating list.
      */
-    private synchronized void mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(List<String> sstHashList, String newStripId, Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap) {
+    private synchronized void mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(List<String> newSSTHashList, String newStripId, Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap) {
 
         boolean isSelectedOneOldSSTable = false;
-        for(String sstHash : sstHashList) {
+        for(String sstHash : newSSTHashList) {
             StorageService.instance.globalSSTHashToStripIDMap.put(sstHash, newStripId);
             logger.debug("rymDebug:[ErasureCoding] In node {}, we map sstHash {} to stripID {}", FBUtilities.getBroadcastAddressAndPort(),
                                                                                                  sstHash,
@@ -302,9 +308,9 @@ public class ECMetadata implements Serializable {
                 continue;
             }
 
+            StorageService.instance.globalUpdatingStripList.add(newStripId);
             InetAddressAndPort primaryNode = sstHashIdToReplicaMap.get(sstHash).get(0);
             SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.get(sstHash);
-            StorageService.instance.globalUpdatingStripList.add(newStripId);
             logger.debug("rymDebug: We move the old sstable {} from pending list to ready list to update strip {}", sstHash, newStripId);
 
             if (StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.contains(primaryNode)) {
@@ -316,7 +322,6 @@ public class ECMetadata implements Serializable {
 
             // StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
             StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.remove(sstHash);
-            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({})", StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size());
         }
 
 
