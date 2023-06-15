@@ -215,8 +215,13 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 // In this case, old replica nodes are the same to new replica nodes
                 while (!oldSSTableQueue.isEmpty() && !newSSTableQueue.isEmpty()) {
 
-                    SSTableContentWithHashID newSSTable = newSSTableQueue.poll();
-                    SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
+                    SSTableContentWithHashID newCandidate = newSSTableQueue.poll();
+                    SSTableContentWithHashID oldCandidate = oldSSTableQueue.poll();
+
+                    SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(newCandidate.sstHash,  ByteBuffer.wrap(newCandidate.sstContent));
+                    SSTableContentWithHashID oldSSTable = new SSTableContentWithHashID(oldCandidate.sstHash,  ByteBuffer.wrap(oldCandidate.sstContent));
+
+                    logger.debug("rymDebug: Parity update case 1, Select a new sstable ({}) and an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
 
 
                     // if the new obj is consumed, move the same name sstable from cache queue to old queue
@@ -239,13 +244,17 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                     if (StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
                         ECMessage msg = StorageService.instance.globalRecvQueues.get(primaryNode).poll();
+                        SSTableContentWithHashID oldCandidate = oldSSTableQueue.poll();
+
                         SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(msg.ecMessageContent.sstHashID, msg.sstContent);
+                        SSTableContentWithHashID oldSSTable = new SSTableContentWithHashID(oldCandidate.sstHash,  ByteBuffer.wrap(oldCandidate.sstContent));
+
+                        logger.debug("rymDebug: Parity update case 2, Select a new sstable ({}) and an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
 
                         if (StorageService.instance.globalRecvQueues.get(primaryNode).size() == 0) {
                             StorageService.instance.globalRecvQueues.remove(primaryNode);
                         }
 
-                        SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
                         performECStripUpdate("case 2", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
 
                     } else {
@@ -256,11 +265,14 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 // Case3: Old data still not completely consumed, we have to padding zero
                 while (!oldSSTableQueue.isEmpty()) {
 
-                    SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
+                    SSTableContentWithHashID oldCandidate = oldSSTableQueue.poll();
+
+                    SSTableContentWithHashID oldSSTable = new SSTableContentWithHashID(oldCandidate.sstHash,  ByteBuffer.wrap(oldCandidate.sstContent));
                     ByteBuffer newSSTContent = ByteBuffer.allocateDirect(codeLength);
                     SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())),
                             newSSTContent);
 
+                    logger.debug("rymDebug: Parity update case 3, Select a new sstable ({}) and an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
                     performECStripUpdate("case 3", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
                 }
             }

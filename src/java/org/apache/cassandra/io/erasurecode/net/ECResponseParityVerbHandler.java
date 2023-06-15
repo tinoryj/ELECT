@@ -25,9 +25,13 @@ import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.StorageService;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParity>{
     public static final ECResponseParityVerbHandler instance = new ECResponseParityVerbHandler();
 
+    private static final Logger logger = LoggerFactory.getLogger(ECResponseParityVerbHandler.class);
     @Override
     public void doVerb(Message<ECResponseParity> message) throws IOException {
         String sstHash = message.payload.sstHash;
@@ -47,6 +51,7 @@ public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParit
         } else {
             if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
                 StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].put(parityCode);
+                logger.debug("rymDebug: Get parity code ({}) from ({}) for update sstable ({})", parityHash, message.from(), sstHash);
                 // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
             } else {
                 throw new NullPointerException(String.format("rymERROR: We receive parity code (%s) from (%s), but cannot find erasure codes for sstable (%s)", parityHash, message.from(), sstHash));
