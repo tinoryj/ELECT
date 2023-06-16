@@ -285,7 +285,7 @@ public final class ECNetutils {
 
 
     public synchronized static void addOldSSTableForECStripeUpdateToReadyList(InetAddressAndPort primaryNode, SSTableContentWithHashID oldSSTable) {
-        if (StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.contains(primaryNode)) {
+        if (StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.containsKey(primaryNode)) {
             StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode).add(oldSSTable);
         } else {
             StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.put(primaryNode,
@@ -296,7 +296,7 @@ public final class ECNetutils {
     }
 
     public synchronized static void addNewSSTableForECStripeUpdateToReadyList(InetAddressAndPort primaryNode, SSTableContentWithHashID newSSTable) {
-        if (StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.contains(primaryNode)) {
+        if (StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.containsKey(primaryNode)) {
             StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.get(primaryNode)
                     .add(newSSTable);
         } else {

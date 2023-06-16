@@ -210,7 +210,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
                     // if the new obj is consumed, move the same name sstable from cache queue to old queue
-                    if(StorageService.instance.globalPendingNewOldSSTableForECStripUpdateMap.contains(newSSTable.sstHash)) {
+                    if(StorageService.instance.globalPendingNewOldSSTableForECStripUpdateMap.containsKey(newSSTable.sstHash)) {
                         oldSSTableQueue.add(StorageService.instance.globalPendingNewOldSSTableForECStripUpdateMap.get(newSSTable.sstHash));
                         StorageService.instance.globalPendingNewOldSSTableForECStripUpdateMap.remove(newSSTable.sstHash);
                     }
