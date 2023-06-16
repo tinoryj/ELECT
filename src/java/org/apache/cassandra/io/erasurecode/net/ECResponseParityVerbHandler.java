@@ -45,13 +45,14 @@ public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParit
             if(StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash) != null) {
                 StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].put(parityCode);
                 // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
+                logger.debug("rymDebug: Get parity code ({}) from ({}) for update sstable ({})", parityHash, message.from(), sstHash);
             } else {
                 throw new NullPointerException(String.format("rymERROR: We receive parity code (%s) from (%s), but cannot find parity codes for sstable (%s)", parityHash, message.from(), sstHash));
             }
         } else {
             if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
                 StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].put(parityCode);
-                logger.debug("rymDebug: Get parity code ({}) from ({}) for update sstable ({})", parityHash, message.from(), sstHash);
+                logger.debug("rymDebug: Get parity code ({}) from ({}) for recovery sstable ({})", parityHash, message.from(), sstHash);
                 // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
             } else {
                 throw new NullPointerException(String.format("rymERROR: We receive parity code (%s) from (%s), but cannot find erasure codes for sstable (%s)", parityHash, message.from(), sstHash));

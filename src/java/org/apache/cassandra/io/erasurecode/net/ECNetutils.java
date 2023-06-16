@@ -35,6 +35,7 @@ import java.io.Serializable;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -42,12 +43,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.StorageHook;
 import org.apache.cassandra.index.Index.Indexer;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
@@ -62,6 +65,7 @@ import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.tartarus.snowball.ext.porterStemmer;
 
 public final class ECNetutils {
     private static final Logger logger = LoggerFactory.getLogger(ECNetutils.class);
@@ -280,7 +284,28 @@ public final class ECNetutils {
     }
 
 
+    public synchronized static void addOldSSTableForECStripeUpdateToReadyList(InetAddressAndPort primaryNode, SSTableContentWithHashID oldSSTable) {
+        if (StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.contains(primaryNode)) {
+            StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode).add(oldSSTable);
+        } else {
+            StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.put(primaryNode,
+                    new ConcurrentLinkedQueue<SSTableContentWithHashID>(
+                            Collections.singleton(oldSSTable)));
+        }
+        logger.debug("rymDebug: add old sstable ({}) to ready list for primary node ({})", oldSSTable.sstHash, primaryNode);
+    }
 
+    public synchronized static void addNewSSTableForECStripeUpdateToReadyList(InetAddressAndPort primaryNode, SSTableContentWithHashID newSSTable) {
+        if (StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.contains(primaryNode)) {
+            StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.get(primaryNode)
+                    .add(newSSTable);
+        } else {
+            StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.put(primaryNode,
+                    new ConcurrentLinkedQueue<SSTableContentWithHashID>(
+                            Collections.singleton(newSSTable)));
+        }
+        logger.debug("rymDebug: add new sstable ({}) to ready list for primary node ({})", newSSTable.sstHash, primaryNode);
+    }
 
     public static void printStackTace(String msg) {
         // logger.debug(msg);

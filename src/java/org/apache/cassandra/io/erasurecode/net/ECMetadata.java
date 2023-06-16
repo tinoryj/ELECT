@@ -313,12 +313,8 @@ public class ECMetadata implements Serializable {
             SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.get(sstHash);
             logger.debug("rymDebug: We move the old sstable {} from pending list to ready list to update strip {}", sstHash, newStripId);
 
-            if (StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.contains(primaryNode)) {
-                StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
-            } else {
-                StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.put(primaryNode,
-                        new ConcurrentLinkedQueue<SSTableContentWithHashID>(Collections.singleton(oldSSTableForParityUpdate)));
-            }
+
+            ECNetutils.addOldSSTableForECStripeUpdateToReadyList(primaryNode, oldSSTableForParityUpdate);
 
             // StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode).add(oldSSTableForParityUpdate);
             StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.remove(sstHash);
