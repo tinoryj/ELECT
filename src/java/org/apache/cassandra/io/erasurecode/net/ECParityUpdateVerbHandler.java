@@ -189,11 +189,16 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
     private static class ParityUpdateRunnable implements Runnable {
 
         @Override
-        public void run() {
+        public synchronized void run() {
             String keyspaceName = "ycsb";
             int codeLength = StorageService.getErasureCodeLength();
 
-            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({})", StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size());
+            int cnt = 0;
+            for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.entrySet()) {
+                cnt += entry.getValue().size();
+            }
+            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({})",
+                                 StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(), cnt);
 
 
             // Perform parity update
