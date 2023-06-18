@@ -139,9 +139,13 @@ public class ECMetadata implements Serializable {
         for(ECMessage msg : messages) {
             String sstContentHash = msg.ecMessageContent.sstHashID;
             this.ecMetadataContent.sstHashIdList.add(sstContentHash);
-            this.ecMetadataContent.sstHashIdToReplicaMap.put(sstContentHash, msg.ecMessageContent.replicaNodes);
             connectedSSTHash += sstContentHash;
-            this.ecMetadataContent.primaryNodes.add(msg.ecMessageContent.replicaNodes.get(0));
+            if(msg.ecMessageContent.replicaNodes != null) {
+                this.ecMetadataContent.sstHashIdToReplicaMap.put(sstContentHash, msg.ecMessageContent.replicaNodes);
+                this.ecMetadataContent.primaryNodes.add(msg.ecMessageContent.replicaNodes.get(0));
+            } else{
+                this.ecMetadataContent.primaryNodes.add(FBUtilities.getBroadcastAddressAndPort());
+            }
         }
         
         this.stripeId = String.valueOf(connectedSSTHash.hashCode());
@@ -157,9 +161,10 @@ public class ECMetadata implements Serializable {
 
         // initialize the secondary nodes
         for(ECMessage msg : messages) {
-
-            for(int i = 1; i < msg.ecMessageContent.replicaNodes.size();i++) {
-                this.ecMetadataContent.secondaryNodes.add(msg.ecMessageContent.replicaNodes.get(i));
+            if(msg.ecMessageContent.replicaNodes != null){
+                for(int i = 1; i < msg.ecMessageContent.replicaNodes.size();i++) {
+                    this.ecMetadataContent.secondaryNodes.add(msg.ecMessageContent.replicaNodes.get(i));
+                }
             }
             // for(InetAddressAndPort pns : msg.ecMessageContent.replicaNodes) {
             //     if(!this.ecMetadataContent.primaryNodes.contains(pns))

@@ -39,6 +39,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureEncoder;
 import org.apache.cassandra.io.erasurecode.NativeRSEncoder;
+import org.apache.cassandra.io.erasurecode.net.ECMessage.ECMessageContent;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.ForwardingInfo;
@@ -137,11 +138,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
     // Once we have k different sstContent, do erasure coding locally
     private static class ErasureCodingRunable implements Runnable {
 
-        private Object lock = new Object();
 
-
-        private static int THRESHOLD_OF_PADDING_ZERO_CHUNKS = 50;
+        private static int THRESHOLD_OF_PADDING_ZERO_CHUNKS = 30;
         private static int cnt = 0;
+        private static int codeLength = StorageService.getErasureCodeLength();
 
         @Override
         public synchronized void run() {
@@ -150,6 +150,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 return;
             
 
+
             if(StorageService.instance.globalRecvQueues.size() > 0 &&
                StorageService.instance.globalRecvQueues.size() < DatabaseDescriptor.getEcDataNodes()) {
                 if(cnt < THRESHOLD_OF_PADDING_ZERO_CHUNKS){
@@ -157,6 +158,33 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 } else {
                     // Padding zero chunk to consume the blocked sstables
                     cnt = 0;
+                    logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
+                    ECMessage tmpArray[] = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
+                    // traverse the recvQueues
+                    int i = 0;
+                    for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
+                        tmpArray[i] = StorageService.instance.globalRecvQueues.get(addr).poll();
+                        if (StorageService.instance.globalRecvQueues.get(addr).size() == 0) {
+                            StorageService.instance.globalRecvQueues.remove(addr);
+                        }
+                        if (i == DatabaseDescriptor.getEcDataNodes() - 1)
+                            break;
+                        i++;
+                    }
+                    // compute erasure coding locally;
+                    int zeroChunksNum = DatabaseDescriptor.getEcDataNodes() - tmpArray.length;
+                    for(int j = 0; j < zeroChunksNum; j++) {
+                        ByteBuffer newSSTContent = ByteBuffer.allocateDirect(codeLength);
+                        ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable",
+                                                                        null));
+                        tmpArray[i+j] = zeroChunk;
+                    }
+
+                    if (tmpArray.length == DatabaseDescriptor.getEcDataNodes()) {
+                        Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
+                    } else {
+                        logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);
+                    }
                 }
                 return;
             }
@@ -177,7 +205,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 }
                 // compute erasure coding locally;
                 if (tmpArray.length == DatabaseDescriptor.getEcDataNodes()) {
-                    Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, StorageService.getErasureCodeLength()));
+                    Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
                 } else {
                     logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);
                 }
