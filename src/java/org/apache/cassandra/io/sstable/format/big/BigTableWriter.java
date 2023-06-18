@@ -457,7 +457,7 @@ public class BigTableWriter extends SSTableWriter {
                     new FileInputStream(descriptor.filenameFor(Component.DATA)))) {
                 // logger.debug("[Tinoryj] Open data file success for SSTable = {}", descriptor.filenameFor(Component.DATA));
                 long fileLength = new File(descriptor.filenameFor(Component.DATA)).length();
-                if(fileLength < 0) {
+                if(fileLength < 0 || fileLength > Integer.MAX_VALUE) {
                     throw new IllegalStateException(String.format("rymERROR: The file length of sstable (%s) is negative (%s)", descriptor.filenameFor(Component.DATA), fileLength));
                 }
                 byte[] bytes = new byte[(int) fileLength];

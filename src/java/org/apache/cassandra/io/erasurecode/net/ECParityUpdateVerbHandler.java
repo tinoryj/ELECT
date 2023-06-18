@@ -225,26 +225,26 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 // }
 
                 // Case2: If old data is not completely consumed, we select sstables from globalRecvQueues
-                while (!oldSSTableQueue.isEmpty()) {
+                // while (!oldSSTableQueue.isEmpty()) {
 
-                    if (StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
-                        ECMessage msg = StorageService.instance.globalRecvQueues.get(primaryNode).poll();
-                        SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(msg.ecMessageContent.sstHashID, msg.sstContent);
-                        SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
-                        traversedSSTables.add(oldSSTable.sstHash);
-                        logger.debug("rymDebug: Parity update case 2, Select a new sstable ({}) and an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
+                //     if (StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
+                //         ECMessage msg = StorageService.instance.globalRecvQueues.get(primaryNode).poll();
+                //         SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(msg.ecMessageContent.sstHashID, msg.sstContent);
+                //         SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
+                //         traversedSSTables.add(oldSSTable.sstHash);
+                //         logger.debug("rymDebug: Parity update case 2, Select a new sstable ({}) and an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
 
 
-                        if (StorageService.instance.globalRecvQueues.get(primaryNode).size() == 0) {
-                            StorageService.instance.globalRecvQueues.remove(primaryNode);
-                        }
+                //         if (StorageService.instance.globalRecvQueues.get(primaryNode).size() == 0) {
+                //             StorageService.instance.globalRecvQueues.remove(primaryNode);
+                //         }
 
-                        performECStripUpdate("case 2", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
+                //         performECStripUpdate("case 2", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
 
-                    } else {
-                        break;
-                    }
-                }
+                //     } else {
+                //         break;
+                //     }
+                // }
 
                 // Case3: Old data still not completely consumed, we have to padding zero
                 while (!oldSSTableQueue.isEmpty()) {

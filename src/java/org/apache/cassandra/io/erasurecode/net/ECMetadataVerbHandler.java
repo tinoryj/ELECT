@@ -400,8 +400,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         return true;
                     }
                 } else {
-                    logger.warn("rymERROR:[Parity Update] cannot get rewrite data of {} during parity update",
-                                newSSTHash);
+                    logger.warn("rymERROR:[Parity Update] cannot get rewrite data of {} during parity update for old sstable {}",
+                                newSSTHash, oldECSSTable.getSSTableHashID());
                 }
 
             } else {
@@ -447,7 +447,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         }
     }
 
-    private static void saveECMetadataToBlockList(BlockedECMetadata metadata, String oldSSTHash, boolean isAddToTheProcessQueueDirectly) {
+    private synchronized static void saveECMetadataToBlockList(BlockedECMetadata metadata, String oldSSTHash, boolean isAddToTheProcessQueueDirectly) {
 
         if(isAddToTheProcessQueueDirectly) {
             logger.debug("rymDebug: Save the ECMetadata to the [Ready List] for oldSSTHash ({}), newSSTHash ({}), metadata.oldHash is ({})", oldSSTHash, metadata.newSSTableHash, metadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate);

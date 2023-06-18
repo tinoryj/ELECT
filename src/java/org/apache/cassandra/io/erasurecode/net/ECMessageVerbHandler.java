@@ -137,8 +137,30 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
     // Once we have k different sstContent, do erasure coding locally
     private static class ErasureCodingRunable implements Runnable {
 
+        private Object lock = new Object();
+
+
+        private static int THRESHOLD_OF_PADDING_ZERO_CHUNKS = 50;
+        private static int cnt = 0;
+
         @Override
         public synchronized void run() {
+
+            if(StorageService.instance.globalRecvQueues.size() == 0) 
+                return;
+            
+
+            if(StorageService.instance.globalRecvQueues.size() > 0 &&
+               StorageService.instance.globalRecvQueues.size() < DatabaseDescriptor.getEcDataNodes()) {
+                if(cnt < THRESHOLD_OF_PADDING_ZERO_CHUNKS){
+                    cnt++;
+                } else {
+                    // Padding zero chunk to consume the blocked sstables
+                    cnt = 0;
+                }
+                return;
+            }
+
             while (StorageService.instance.globalRecvQueues.size() >= DatabaseDescriptor.getEcDataNodes()) {
                 logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
                 ECMessage tmpArray[] = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
@@ -161,6 +183,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 }
 
             }
+            cnt = 0;
         }
 
     }
