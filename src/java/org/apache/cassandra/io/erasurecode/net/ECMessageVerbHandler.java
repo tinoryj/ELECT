@@ -243,7 +243,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
      * @param ecParity the value of m
      * @param messages the input data to be processed, length equal to ecDataNum
      */
-    private static  class PerformErasureCodeRunnable implements Runnable {
+    private static class PerformErasureCodeRunnable implements Runnable {
         private final int ecDataNum;
         private final int ecParityNum;
         private final ECMessage[] messages;
@@ -257,7 +257,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         }
 
         @Override
-        public void run() {
+        public synchronized void run() {
             if(messages.length != ecDataNum) {
                 logger.error("rymERROR: message length is not equal to ecDataNum");
             }
@@ -276,10 +276,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
-                if(messages[i].sstContent == null) {
-                    throw new IllegalStateException(String.format("rymERROR: sstable (%s) content missed!", messages[i].ecMessageContent.sstHashID));
+                if(messages[i].sstContent == null || codeLength < messages[i].sstContent.length) {
+                    throw new IllegalStateException(String.format("rymERROR: sstable (%s) content is illegal, code length is (%s), content length is (%s)",
+                                                                  messages[i].ecMessageContent.sstHashID, codeLength, messages[i].sstContent.length));
                 }
                 data[i] = ByteBuffer.allocateDirect(codeLength);
+                data[i].clear();
                 data[i].put(messages[i].sstContent);
                 logger.debug("rymDebug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
                 int remaining = data[i].remaining();
