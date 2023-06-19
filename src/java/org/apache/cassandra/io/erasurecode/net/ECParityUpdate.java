@@ -94,11 +94,10 @@ public final class ECParityUpdate implements Serializable {
         public final byte[] sstContent;
         public final int sstContentSize;
         public boolean isRequestParityCode = false;
-        public SSTableContentWithHashID(String sstHash, ByteBuffer sstContent) {
+        public SSTableContentWithHashID(String sstHash, byte[] sstContent) {
             this.sstHash = sstHash;
-            this.sstContentSize = sstContent.capacity();
-            this.sstContent = new byte[this.sstContentSize];
-            sstContent.get(this.sstContent);
+            this.sstContentSize = sstContent.length;
+            this.sstContent = sstContent;
         }
     }
 

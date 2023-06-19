@@ -53,11 +53,12 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         for(SSTableReader sstable : sstables) {
             if(sstable.getSSTableHashID().equals(sstHash)) {
 
-                ByteBuffer buffer;
+                // ByteBuffer buffer;
                 try {
-                    buffer = sstable.getSSTContent();
-                    byte[] rawData = new byte[buffer.remaining()];
-                    buffer.get(rawData);
+                    // buffer = sstable.getSSTContent();
+                    // byte[] rawData = new byte[buffer.remaining()];
+                    // buffer.get(rawData);
+                    byte[] rawData = sstable.getSSTContent();
 
                     ECResponseData response = new ECResponseData(sstHash, rawData, index);
                     response.responseData(message.from());

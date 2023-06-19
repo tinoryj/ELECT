@@ -85,7 +85,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             logger.debug("rymDebug: this is a forwarding header");
         }
         
-        ByteBuffer sstContent = message.payload.sstContent;
+        byte[] sstContent = message.payload.sstContent;
         int ec_data_num = message.payload.ecMessageContent.ecDataNum;
 
         
@@ -174,7 +174,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             //             // compute erasure coding locally;
             //             int zeroChunksNum = DatabaseDescriptor.getEcDataNodes() - tmpArray.length;
             //             for(int j = 0; j < zeroChunksNum; j++) {
-            //                 ByteBuffer newSSTContent = ByteBuffer.allocateDirect(codeLength);
+            //                 byte[] newSSTContent = new byte[codeLength];
             //                 ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable",
             //                                                                 null));
             //                 tmpArray[i+j] = zeroChunk;

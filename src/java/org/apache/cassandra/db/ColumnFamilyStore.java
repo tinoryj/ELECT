@@ -532,7 +532,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 count++;
                                 String key = sstable.first.getRawKey(sstable.metadata());
                                 try {
-                                    ByteBuffer sstContent = sstable.getSSTContent();
+                                    byte[] sstContent = sstable.getSSTContent();
                                     String sstHashID = sstable.getSSTableHashID();
                                     List<InetAddressAndPort> replicaNodes = StorageService.instance
                                             .getReplicaNodesWithPort(keyspaceName, cfName, key);

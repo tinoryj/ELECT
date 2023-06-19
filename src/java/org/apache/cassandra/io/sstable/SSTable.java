@@ -234,7 +234,7 @@ public abstract class SSTable {
         return descriptor.ksname;
     }
 
-    public ByteBuffer getSSTContent() throws IOException
+    public byte[] getSSTContent() throws IOException
     {
         String fileName = descriptor.filenameFor(Component.DATA);
         File file = new File(fileName);
@@ -251,7 +251,8 @@ public abstract class SSTable {
         }
         fileStream.close();
         
-        return ByteBuffer.wrap(buffer);
+        // return ByteBuffer.wrap(buffer);
+        return buffer;
     }
 
     public List<String> getAllFilePaths()

@@ -250,7 +250,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 while (!oldSSTableQueue.isEmpty()) {
 
 
-                    ByteBuffer newSSTContent = ByteBuffer.allocateDirect(codeLength);
+                    byte[] newSSTContent = new byte[codeLength];
                     SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())),
                             newSSTContent);
                     SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();

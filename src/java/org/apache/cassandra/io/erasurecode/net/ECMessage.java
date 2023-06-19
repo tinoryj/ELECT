@@ -66,7 +66,7 @@ public class ECMessage implements Serializable {
     public byte[] ecMessageContentInBytes;
     public int ecMessageContentInBytesSize;
     
-    public final ByteBuffer sstContent;
+    public final byte[] sstContent;
     public final int sstSize;
 
     public static class ECMessageContent implements Serializable {
@@ -100,9 +100,9 @@ public class ECMessage implements Serializable {
 
 
 
-    public ECMessage(ByteBuffer sstContent, ECMessageContent ecMessageContent) {
+    public ECMessage(byte[] sstContent, ECMessageContent ecMessageContent) {
         this.sstContent = sstContent;
-        this.sstSize = sstContent.remaining();
+        this.sstSize = sstContent.length;
         this.ecMessageContent = ecMessageContent;
     }
 
@@ -213,9 +213,9 @@ public class ECMessage implements Serializable {
             out.write(t.ecMessageContentInBytes);
 
             out.writeInt(t.sstSize);
-            byte[] buf = new byte[t.sstSize];
-            t.sstContent.get(buf);
-            out.write(buf);
+            // byte[] buf = new byte[t.sstSize];
+            // t.sstContent.get(buf);
+            out.write(t.sstContent);
             // logger.debug("rymDebug: [serialize] write successfully", buf.length);
         }
 
@@ -231,9 +231,9 @@ public class ECMessage implements Serializable {
             in.readFully(ecMessageContentInBytes);
 
             int sstSize = in.readInt();
-            byte[] buf = new byte[sstSize];
-            in.readFully(buf);
-            ByteBuffer sstContent = ByteBuffer.wrap(buf);
+            byte[] sstContent = new byte[sstSize];
+            in.readFully(sstContent);
+            // ByteBuffer sstContent = ByteBuffer.wrap(buf);
 
             ECMessageContent ecMessage;
             try {
