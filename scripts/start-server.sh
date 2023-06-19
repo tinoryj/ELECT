@@ -29,14 +29,7 @@ func() {
     git checkout yuanming
     git pull origin yuanming
     
-    while true; do
-        if ps aux | grep cassandra | grep -v cassandra | awk 'NR == 1' | awk '{print $2}' | xargs kill -9; then
-            echo "Killed cassandra process"
-        else
-            break
-        fi
-        sleep 1
-    done
+    kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
 
     rm -rf data logs
     mkdir -p data/receivedParityHashes/
