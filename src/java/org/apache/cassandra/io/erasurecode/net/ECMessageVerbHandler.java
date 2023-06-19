@@ -281,7 +281,6 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                                                                   messages[i].ecMessageContent.sstHashID, codeLength, messages[i].sstContent.length));
                 }
                 data[i] = ByteBuffer.allocateDirect(codeLength);
-                data[i].clear();
                 data[i].put(messages[i].sstContent);
                 logger.debug("rymDebug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
                 int remaining = data[i].remaining();
