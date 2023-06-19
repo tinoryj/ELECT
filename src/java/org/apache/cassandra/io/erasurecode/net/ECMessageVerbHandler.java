@@ -93,9 +93,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         //     message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
         // }
 
-        logger.debug("rymDebug: get a new sstable ({}) for erasure coding!!! message is from: {}, primaryNode is {}, parityNodes is {}",
+        logger.debug("rymDebug: get a new sstable ({}) for erasure coding!!! message is from: {}, primaryNode is {}, parityNodes is {}, sstable content size is {}",
                      message.payload.ecMessageContent.sstHashID,
-                     message.from(), message.payload.ecMessageContent.replicaNodes.get(0), message.payload.ecMessageContent.parityNodes);
+                     message.from(), message.payload.ecMessageContent.replicaNodes.get(0), message.payload.ecMessageContent.parityNodes,
+                     message.payload.sstContent.length);
 
 
         InetAddressAndPort primaryNode = message.payload.ecMessageContent.replicaNodes.get(0);
@@ -192,7 +193,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             while (StorageService.instance.globalRecvQueues.size() >= DatabaseDescriptor.getEcDataNodes()) {
                 logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
-                ECMessage tmpArray[] = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
+                ECMessage[] tmpArray = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
                 // traverse the recvQueues
                 int i = 0;
                 for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
@@ -275,6 +276,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
+                if(messages[i].sstContent == null) {
+                    throw new IllegalStateException(String.format("rymERROR: sstable (%s) content missed!", messages[i].ecMessageContent.sstHashID));
+                }
                 data[i] = ByteBuffer.allocateDirect(codeLength);
                 data[i].put(messages[i].sstContent);
                 logger.debug("rymDebug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
