@@ -142,7 +142,6 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
         private static int THRESHOLD_OF_PADDING_ZERO_CHUNKS = 20;
         private static int cnt = 0;
-        private static int codeLength = StorageService.getErasureCodeLength();
 
         @Override
         public synchronized void run() {
@@ -151,6 +150,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 return;
 
 
+            int codeLength = StorageService.getErasureCodeLength();
             // if(StorageService.instance.globalRecvQueues.size() > 0 &&
             //    StorageService.instance.globalRecvQueues.size() < DatabaseDescriptor.getEcDataNodes()) {
             //     if(cnt < THRESHOLD_OF_PADDING_ZERO_CHUNKS && StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size() < 50){
