@@ -28,7 +28,16 @@ func() {
     cd /mnt/ssd/Debug/CassandraEC
     git checkout yuanming
     git pull origin yuanming
-    kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
+    
+    while true; do
+        if ps aux | grep cassandra | grep -v cassandra | awk 'NR == 1' | awk '{print $2}' | xargs kill -9; then
+            echo "Killed cassandra process"
+        else
+            break
+        fi
+        sleep 1
+    done
+
     rm -rf data logs
     mkdir -p data/receivedParityHashes/
     mkdir -p data/localParityHashes/
