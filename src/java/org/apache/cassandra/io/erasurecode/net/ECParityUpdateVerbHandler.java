@@ -87,6 +87,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
     private static volatile long consumedNewSSTable = 0;
     private static volatile long receivedNewSSTable = 0;
+    private static volatile long consumedOldSSTable = 0;
+    private static volatile long receivedOldSSTable = 0;
 
     /**
      * Receives update data from the primary node, and performs the following steps:
@@ -111,6 +113,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
         if (parityUpdateData.isOldSSTable) {
+
+            receivedOldSSTable++;
 
             logger.debug("rymDebug: [Parity Update] Get a old sstable ({}) from primary node {}", parityUpdateData.sstable.sstHash, primaryNode);
 
@@ -214,6 +218,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     SSTableContentWithHashID newSSTable = newSSTableQueue.poll();
                     SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
                     consumedNewSSTable++;
+                    consumedOldSSTable++;
                     traversedSSTables.add(oldSSTable.sstHash);
 
                     logger.debug("rymDebug: Parity update case 1, Select a new sstable ({}) and an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
@@ -230,6 +235,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
  
                 }
 
+                if (oldSSTableQueue.size() < newSSTableQueue.size()) {
+                    logger.debug("rymERROR: for primary node ({}) new sstable count ({}) is more than the old count ({})!",
+                                        primaryNode, newSSTableQueue.size(), oldSSTableQueue.size());
+                    continue;
+                }
+
                 // if (!newSSTableQueue.isEmpty()) {
                 //     logger.debug("rymERROR: The new sstables are not completely consumed!!!");
                 // }
@@ -238,6 +249,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 while (!oldSSTableQueue.isEmpty()) {
 
                     if (StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
+                        consumedOldSSTable++;
                         ECMessage msg = StorageService.instance.globalRecvQueues.get(primaryNode).poll();
                         SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(msg.ecMessageContent.sstHashID, msg.sstContent);
                         SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
@@ -260,6 +272,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 while (!oldSSTableQueue.isEmpty()) {
 
 
+                    consumedOldSSTable++;
                     byte[] newSSTContent = new byte[codeLength];
                     SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())),
                             newSSTContent);
@@ -275,8 +288,9 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.entrySet()) {
                 cnt += entry.getValue().size();
             }
-            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({})",
-                                 StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(), cnt, traversedSSTables, receivedNewSSTable, consumedNewSSTable);
+            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({})",
+                                 StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(), cnt, traversedSSTables,
+                                 receivedNewSSTable, consumedNewSSTable, receivedOldSSTable, consumedOldSSTable);
 
 
 
