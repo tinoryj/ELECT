@@ -882,7 +882,7 @@ public class CompactionTask extends AbstractCompactionTask {
                 }
 
                 if(targets.size() > 0) {
-                    throw new IllegalStateException(String.format("The parity nodes ({}) of old sstables is not unique!", targets));
+                    throw new IllegalStateException(String.format("The parity nodes (%s) of old sstables is not unique!", targets));
                 }
 
                 // handle the new data 
