@@ -319,8 +319,10 @@ public final class ECNetutils {
     }
 
     public static void main(String[] args) throws Exception{
-        logger.info("start");
-        test();
-        logger.info("end");
+        ByteBuffer bb = ByteBuffer.allocateDirect(1024*1024*500);
+         
+        TimeUnit.SECONDS.sleep(10);
+        System.out.println("ok");
+
     }
 }

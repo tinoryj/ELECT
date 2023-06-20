@@ -885,6 +885,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     // InetAddressAndPort target = entry.getKey();
                     int requireNewSSTableNum = entry.getValue().size();
                     if (requireNewSSTableNum > 0) {
+                        List<InetAddressAndPort> parityNodes = new ArrayList<>(StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
                         List<SSTableContentWithHashID> newSSTableContentWithHashID = new ArrayList<>();
                         while (requireNewSSTableNum-- > 0) {
                             if (newSSTableIterator.hasNext()) {
@@ -923,7 +924,15 @@ public class CompactionTask extends AbstractCompactionTask {
                         // newSSTables,
                         // StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
                         
-                        List<InetAddressAndPort> parityNodes = new ArrayList<>();
+
+                        for (SSTableContentWithHashID newSSTable : newSSTableContentWithHashID) {
+                            logger.debug("rymDebug: send new sstable ({}) to parity node ({})", newSSTable.sstHash, parityNodes.get(0));
+                            ECParityUpdate parityUpdate = new ECParityUpdate(newSSTable, false, parityNodes);
+
+                            parityUpdate.sendParityUpdateSignal();
+                        }
+
+                        
                         for (SSTableContentWithHashID oldSSTable : entry.getValue()) {
                             if(parityNodes.isEmpty())
                                 parityNodes = StorageService.instance.globalSSTHashToParityNodesMap.get(oldSSTable.sstHash);
@@ -949,14 +958,6 @@ public class CompactionTask extends AbstractCompactionTask {
                             StorageService.instance.globalSSTHashToParityNodesMap.remove(oldSSTable.sstHash);
 
                         }
-
-                        for (SSTableContentWithHashID newSSTable : newSSTableContentWithHashID) {
-                            logger.debug("rymDebug: send new sstable ({}) to parity node ({})", newSSTable.sstHash, parityNodes.get(0));
-                            ECParityUpdate parityUpdate = new ECParityUpdate(newSSTable, false, parityNodes);
-
-                            parityUpdate.sendParityUpdateSignal();
-                        }
-
                         if(newSSTableContentWithHashID.size() > entry.getValue().size()) {
                             logger.debug("rymERROR: New sstables count ({}) is more than old sstables count ({}), check the code.", newSSTableContentWithHashID.size(), entry.getValue().size());
                         }
