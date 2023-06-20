@@ -907,7 +907,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                         newSSTable.getSSTableHashID(),
                                         StorageService.instance.globalSSTHashToParityNodesMap
                                                 .get(entry.getValue().get(0).sstHash));
-                                newSSTableIterator.remove();
+                                // newSSTableIterator.remove();
                             } else {
                                 break;
                             }
@@ -958,6 +958,12 @@ public class CompactionTask extends AbstractCompactionTask {
                             StorageService.instance.globalSSTHashToParityNodesMap.remove(oldSSTable.sstHash);
 
                         }
+
+
+                        logger.debug("rymDebug: send ({}) new sstables and ({}) old sstables to parity node ({}), the sstables count before compaction ({}), after compaction ({})",
+                                         newSSTableContentWithHashID.size(), entry.getValue().size(), parityNodes.get(0), actuallyCompact.size(), newSStables.size());
+
+
                         if(newSSTableContentWithHashID.size() > entry.getValue().size()) {
                             logger.debug("rymERROR: New sstables count ({}) is more than old sstables count ({}), check the code.", newSSTableContentWithHashID.size(), entry.getValue().size());
                         }
