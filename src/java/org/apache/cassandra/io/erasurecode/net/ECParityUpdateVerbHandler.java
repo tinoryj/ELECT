@@ -188,6 +188,13 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             int codeLength = StorageService.getErasureCodeLength();
 
             List<String> traversedSSTables = new ArrayList<String>();
+            int cnt = 0;
+            for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.entrySet()) {
+                cnt += entry.getValue().size();
+            }
+            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({})",
+                                 StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(), cnt, traversedSSTables,
+                                 receivedNewSSTable, consumedNewSSTable, receivedOldSSTable, consumedOldSSTable);
 
             // Perform parity update
             for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.entrySet()) {
@@ -245,16 +252,11 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                     if (StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
                         consumedOldSSTable++;
-                        ECMessage msg = StorageService.instance.globalRecvQueues.get(primaryNode).poll();
+                        ECMessage msg = ECNetutils.getDataBlockFromGlobalRecvQueue(primaryNode);
                         SSTableContentWithHashID newSSTable = new SSTableContentWithHashID(msg.ecMessageContent.sstHashID, msg.sstContent);
                         SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
                         traversedSSTables.add(oldSSTable.sstHash);
                         logger.debug("rymDebug: Parity update case 2, Select a new sstable ({}) and an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
-
-
-                        if (StorageService.instance.globalRecvQueues.get(primaryNode).size() == 0) {
-                            StorageService.instance.globalRecvQueues.remove(primaryNode);
-                        }
 
                         performECStripUpdate("case 2", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
 
@@ -279,13 +281,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 }
             }
 
-            int cnt = 0;
-            for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.entrySet()) {
-                cnt += entry.getValue().size();
-            }
-            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({})",
-                                 StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(), cnt, traversedSSTables,
-                                 receivedNewSSTable, consumedNewSSTable, receivedOldSSTable, consumedOldSSTable);
+
 
 
 
@@ -429,7 +425,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         if(parityCodes != null) {
             while (!checkParityCodesAreReady(parityCodes)) {
                 try {
-                    if(retryCount < 5) {
+                    if(retryCount < 10) {
                         Thread.sleep(1000);
                         retryCount++;
                     } else {

@@ -164,27 +164,26 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                         // traverse the recvQueues
                         int i = 0;
                         for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
-                            tmpArray[i] = StorageService.instance.globalRecvQueues.get(addr).poll();
-                            if (StorageService.instance.globalRecvQueues.get(addr).size() == 0) {
-                                StorageService.instance.globalRecvQueues.remove(addr);
-                            }
+                            tmpArray[i] = ECNetutils.getDataBlockFromGlobalRecvQueue(addr);
                             if (i == DatabaseDescriptor.getEcDataNodes() - 1)
                                 break;
                             i++;
                         }
                         // compute erasure coding locally;
-                        int zeroChunksNum = DatabaseDescriptor.getEcDataNodes() - tmpArray.length;
-                        for(int j = 0; j < zeroChunksNum; j++) {
-                            byte[] newSSTContent = new byte[codeLength];
-                            ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable",
-                                                                            null));
-                            tmpArray[i+j] = zeroChunk;
+                        if(i < DatabaseDescriptor.getEcDataNodes()) {
+                            int zeroChunksNum = DatabaseDescriptor.getEcDataNodes() - i;
+                            for(int j = 0; j < zeroChunksNum; j++) {
+                                byte[] newSSTContent = new byte[codeLength];
+                                ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable",
+                                                                                null));
+                                tmpArray[i+j] = zeroChunk;
+                            }
                         }
 
-                        if (tmpArray.length == DatabaseDescriptor.getEcDataNodes()) {
+                        if (i == DatabaseDescriptor.getEcDataNodes()) {
                             Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
                         } else {
-                            logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);
+                            logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", i);
                         }
                     }
                 }
@@ -197,16 +196,13 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                     // traverse the recvQueues
                     int i = 0;
                     for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
-                        tmpArray[i] = StorageService.instance.globalRecvQueues.get(addr).poll();
-                        if (StorageService.instance.globalRecvQueues.get(addr).size() == 0) {
-                            StorageService.instance.globalRecvQueues.remove(addr);
-                        }
+                        tmpArray[i] = ECNetutils.getDataBlockFromGlobalRecvQueue(addr);
                         if (i == DatabaseDescriptor.getEcDataNodes() - 1)
                             break;
                         i++;
                     }
                     // compute erasure coding locally;
-                    if (tmpArray.length == DatabaseDescriptor.getEcDataNodes()) {
+                    if (i == DatabaseDescriptor.getEcDataNodes()) {
                         Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
                     } else {
                         logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);

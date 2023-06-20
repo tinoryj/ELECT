@@ -294,7 +294,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                 cfs.getColumnFamilyName(), LeveledGenerations.getMaxLevelCount() - 1);
                 }
             } else {
-                logger.warn("rymERROR: cannot get rewrite data of {} during erasure coding, message is from {}, target cfs is {}", newSSTHash, sourceIP, cfName);
+                throw new NullPointerException(String.format("rymERROR: cannot get rewrite data of {%s} during erasure coding, message is from {%s}, target cfs is {%s}", newSSTHash, sourceIP, cfName));
             }
             return false;
 

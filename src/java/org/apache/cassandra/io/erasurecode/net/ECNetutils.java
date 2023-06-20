@@ -307,6 +307,14 @@ public final class ECNetutils {
         logger.debug("rymDebug: add new sstable ({}) to ready list for primary node ({})", newSSTable.sstHash, primaryNode);
     }
 
+    public synchronized static ECMessage getDataBlockFromGlobalRecvQueue(InetAddressAndPort addr) {
+        ECMessage message = StorageService.instance.globalRecvQueues.get(addr).poll();
+        if (StorageService.instance.globalRecvQueues.get(addr).size() == 0) {
+            StorageService.instance.globalRecvQueues.remove(addr);
+        }
+        return message;
+    }
+
     public static void printStackTace(String msg) {
         // logger.debug(msg);
         // Throwable throwable =new Throwable();
