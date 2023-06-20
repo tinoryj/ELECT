@@ -19,6 +19,7 @@ func() {
     coordinator=$1
     record_count=$2
     field_length=$3
+    threads=$4
 
     while true; do
         if ps aux | grep ycsb | grep -v grep | awk 'NR == 1' | awk '{print $2}' | xargs kill -9; then
@@ -34,7 +35,7 @@ func() {
     sed -i "s/recordcount=.*$/recordcount=${record_count}/" workloads/workload_template
     sed -i "s/fieldlength=.*$/fieldlength=${field_length}/" workloads/workload_template
     file_name="$(date +%s)-${record_count}-${field_length}"
-    nohup bin/ycsb load cassandra-cql -p hosts=$coordinator -threads 2 -s -P workloads/workload_template > logs/${file_name}.log 2>&1 &
+    nohup bin/ycsb load cassandra-cql -p hosts=$coordinator -threads $threads -s -P workloads/workload_template > logs/${file_name}.log 2>&1 &
 }
 
-func "$1" "$2" "$3"
+func "$1" "$2" "$3" "$4"

@@ -51,7 +51,7 @@
 
   tasks:
   - name: Execute script start-evaluation.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} 60000000 1024 # <coordinator address>, <record count>, <field length>
+    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} 60000000 1024 1 # <coordinator address>, <record count>, <field length>, <threads>
     register: command_result
     ignore_errors: True
 
