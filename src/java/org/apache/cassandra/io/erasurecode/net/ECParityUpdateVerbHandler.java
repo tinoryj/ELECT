@@ -231,7 +231,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 }
 
                 if (!newSSTableQueue.isEmpty()) {
-                    logger.debug("rymERROR: for primary node ({}) new sstable is not completely consumed ({})!",
+                    logger.debug("rymDebug: for primary node ({}) new sstable is not completely consumed ({})!",
                                         primaryNode, newSSTableQueue.size(), oldSSTableQueue.size());
                     continue;
                 }

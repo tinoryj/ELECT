@@ -188,32 +188,34 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                         }
                     }
                 }
-                return;
-            }
+                
+            } else {
 
-            while (StorageService.instance.globalRecvQueues.size() >= DatabaseDescriptor.getEcDataNodes()) {
-                logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
-                ECMessage[] tmpArray = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
-                // traverse the recvQueues
-                int i = 0;
-                for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
-                    tmpArray[i] = StorageService.instance.globalRecvQueues.get(addr).poll();
-                    if (StorageService.instance.globalRecvQueues.get(addr).size() == 0) {
-                        StorageService.instance.globalRecvQueues.remove(addr);
+                while (StorageService.instance.globalRecvQueues.size() >= DatabaseDescriptor.getEcDataNodes()) {
+                    logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
+                    ECMessage[] tmpArray = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
+                    // traverse the recvQueues
+                    int i = 0;
+                    for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
+                        tmpArray[i] = StorageService.instance.globalRecvQueues.get(addr).poll();
+                        if (StorageService.instance.globalRecvQueues.get(addr).size() == 0) {
+                            StorageService.instance.globalRecvQueues.remove(addr);
+                        }
+                        if (i == DatabaseDescriptor.getEcDataNodes() - 1)
+                            break;
+                        i++;
                     }
-                    if (i == DatabaseDescriptor.getEcDataNodes() - 1)
-                        break;
-                    i++;
+                    // compute erasure coding locally;
+                    if (tmpArray.length == DatabaseDescriptor.getEcDataNodes()) {
+                        Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
+                    } else {
+                        logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);
+                    }
+
                 }
-                // compute erasure coding locally;
-                if (tmpArray.length == DatabaseDescriptor.getEcDataNodes()) {
-                    Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
-                } else {
-                    logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);
-                }
+                cnt = 0;
 
             }
-            cnt = 0;
         }
 
     }
