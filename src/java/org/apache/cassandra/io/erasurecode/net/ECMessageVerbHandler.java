@@ -153,9 +153,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             int codeLength = StorageService.getErasureCodeLength();
             if(StorageService.instance.globalRecvQueues.size() > 0 &&
                StorageService.instance.globalRecvQueues.size() < DatabaseDescriptor.getEcDataNodes()) {
-                if(cnt < THRESHOLD_OF_PADDING_ZERO_CHUNKS){
+                if(cnt < THRESHOLD_OF_PADDING_ZERO_CHUNKS && StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size() < 50){
                     cnt++;
-                } else if(StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size() >= 50){
+                } else {
                     // Padding zero chunk to consume the blocked sstables
                     cnt = 0;
                     logger.debug("rymDebug: sstContents is not enough to do erasure coding, we need to padding zero: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());

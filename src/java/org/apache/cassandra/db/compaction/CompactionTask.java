@@ -862,14 +862,16 @@ public class CompactionTask extends AbstractCompactionTask {
                 // List<InetAddressAndPort> targets = new ArrayList<>();
                 // paritNode -> oldSSTables 
                 Map<InetAddressAndPort, List<SSTableContentWithHashID>> oldSSTables = new HashMap<InetAddressAndPort, List<SSTableContentWithHashID>>();
+                Set<InetAddressAndPort> targets = new HashSet<>();
                 for (SSTableContentWithHashID oldTransferredSST : oldTransferredSSTables) {
                     String oldSSTHash = oldTransferredSST.sstHash;
                     InetAddressAndPort target = null;
                     try {
                         // target is the first parity nodes
                         target = StorageService.instance.globalSSTHashToParityNodesMap.get(oldSSTHash).get(0);
+                        targets.add(target);
                     } catch (Exception e) {
-                        logger.error("rymERROR: cannot get parity nodes for sstHash ({})", oldSSTHash);
+                        throw new NullPointerException(String.format("rymERROR: cannot get parity nodes for sstHash (%s)", oldSSTHash));
                     }
                     // targets.add(target);
                     if(oldSSTables.containsKey(target)){
@@ -879,8 +881,13 @@ public class CompactionTask extends AbstractCompactionTask {
                     }
                 }
 
+                if(targets.size() > 0) {
+                    throw new IllegalStateException(String.format("The parity nodes ({}) of old sstables is not unique!", targets));
+                }
+
                 // handle the new data 
-                Iterator<SSTableReader> newSSTableIterator = newSStables.iterator();
+                Collection<SSTableReader> newSStablesForUpdate = new ArrayList<SSTableReader>(newSStables);
+                Iterator<SSTableReader> newSSTableIterator = newSStablesForUpdate.iterator();
                 for(Map.Entry<InetAddressAndPort, List<SSTableContentWithHashID>> entry : oldSSTables.entrySet()) {
                     // InetAddressAndPort target = entry.getKey();
                     int requireNewSSTableNum = entry.getValue().size();
@@ -907,7 +914,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                         newSSTable.getSSTableHashID(),
                                         StorageService.instance.globalSSTHashToParityNodesMap
                                                 .get(entry.getValue().get(0).sstHash));
-                                // newSSTableIterator.remove();
+                                newSSTableIterator.remove();
                             } else {
                                 break;
                             }
@@ -960,8 +967,8 @@ public class CompactionTask extends AbstractCompactionTask {
                         }
 
 
-                        logger.debug("rymDebug: send ({}) new sstables and ({}) old sstables to parity node ({}), the sstables count before compaction ({}), after compaction ({})",
-                                         newSSTableContentWithHashID.size(), entry.getValue().size(), parityNodes.get(0), actuallyCompact.size(), newSStables.size());
+                        logger.debug("rymDebug: For compaction task ({}) send ({}) new sstables and ({}) old sstables to parity node ({}), the sstables count before compaction ({}), after compaction ({})",
+                                         taskId, newSSTableContentWithHashID.size(), entry.getValue().size(), targets, transaction.originals().size(), newSStables.size());
 
 
                         if(newSSTableContentWithHashID.size() > entry.getValue().size()) {
