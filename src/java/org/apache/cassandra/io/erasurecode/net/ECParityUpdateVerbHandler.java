@@ -199,11 +199,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 ConcurrentLinkedQueue<SSTableContentWithHashID> newSSTableQueue = StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.get(primaryNode);
                 ConcurrentLinkedQueue<SSTableContentWithHashID> oldSSTableQueue = entry.getValue();
 
-                if (oldSSTableQueue.size() < newSSTableQueue.size()) {
-                    logger.debug("rymERROR: for primary node ({}) new sstable count ({}) is more than the old count ({})!",
-                                        primaryNode, newSSTableQueue.size(), oldSSTableQueue.size());
-                    continue;
-                }
 
 
                 // if( oldSSTableQueue.size() < newSSTableQueue.size()) {
