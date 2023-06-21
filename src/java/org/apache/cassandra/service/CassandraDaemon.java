@@ -435,7 +435,7 @@ public class CassandraDaemon {
         // backstop against compactions stalling
         // due to scheduling errors or race conditions
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
-                ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(), 5, DatabaseDescriptor.getTaskDelay(), TimeUnit.MINUTES);
+                ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(), 5, 1, TimeUnit.MINUTES);
 
         
         // schedule periodic send sstable content task submission
@@ -449,21 +449,24 @@ public class CassandraDaemon {
         // We could set this task delay relatively low.
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMessageVerbHandler.getErasureCodingRunable(),
                                                                 DatabaseDescriptor.getInitialDelay(),
-                                                                (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
+                                                                1,
+                                                                // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
                                                                 TimeUnit.MINUTES);
 
         // schedule periodical tasks of consume blocked ecMetadata
         // We could set this task delay relatively low.
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.getConsumeBlockedECMetadataRunnable(),
                                                                 DatabaseDescriptor.getInitialDelay(),
-                                                                (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
+                                                                1,
+                                                                // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
                                                                 TimeUnit.MINUTES);
 
         // schedule periodical tasks of ec strip update
         // We could set this task delay relatively low.
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECParityUpdateVerbHandler.getParityUpdateRunnable(),
                                                                 DatabaseDescriptor.getInitialDelay(),
-                                                                (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
+                                                                1,
+                                                                // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
                                                                 TimeUnit.MINUTES);
 
         // schedule periodical tasks of force compaction the last level
