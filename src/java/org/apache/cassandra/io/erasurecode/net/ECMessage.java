@@ -91,8 +91,12 @@ public class ECMessage implements Serializable {
             this.ecDataNum = DatabaseDescriptor.getEcDataNodes();
             this.ecParityNum = DatabaseDescriptor.getParityNodes();
             this.rf = Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor().allReplicas;
-
-            this.replicaNodes = new ArrayList<InetAddressAndPort>(replicaNodes);
+            
+            if(replicaNodes == null) {
+                this.replicaNodes = null;
+            } else {
+                this.replicaNodes = new ArrayList<InetAddressAndPort>(replicaNodes);
+            }
             this.parityNodes = new ArrayList<InetAddressAndPort>();
 }
     }

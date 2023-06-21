@@ -162,28 +162,29 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                     while(StorageService.instance.globalRecvQueues.size() > 0) {
                         ECMessage tmpArray[] = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
                         // traverse the recvQueues
-                        int i = 0;
+                        int count = 0;
                         for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
-                            tmpArray[i] = ECNetutils.getDataBlockFromGlobalRecvQueue(addr);
-                            if (i == DatabaseDescriptor.getEcDataNodes() - 1)
+                            tmpArray[count] = ECNetutils.getDataBlockFromGlobalRecvQueue(addr);
+                            count++;
+                            if (count == DatabaseDescriptor.getEcDataNodes())
                                 break;
-                            i++;
                         }
                         // compute erasure coding locally;
-                        if(i < DatabaseDescriptor.getEcDataNodes()) {
-                            int zeroChunksNum = DatabaseDescriptor.getEcDataNodes() - i;
+                        if(count < DatabaseDescriptor.getEcDataNodes()) {
+                            int zeroChunksNum = DatabaseDescriptor.getEcDataNodes() - count;
                             for(int j = 0; j < zeroChunksNum; j++) {
                                 byte[] newSSTContent = new byte[codeLength];
                                 ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable",
                                                                                 null));
-                                tmpArray[i+j] = zeroChunk;
+                                tmpArray[count] = zeroChunk;
+                                count++;
                             }
                         }
 
-                        if (i == DatabaseDescriptor.getEcDataNodes()) {
+                        if (count == DatabaseDescriptor.getEcDataNodes()) {
                             Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
                         } else {
-                            logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", i);
+                            logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", count);
                         }
                     }
                 }
@@ -194,18 +195,18 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                     logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
                     ECMessage[] tmpArray = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
                     // traverse the recvQueues
-                    int i = 0;
+                    int count = 0;
                     for (InetAddressAndPort addr : StorageService.instance.globalRecvQueues.keySet()) {
-                        tmpArray[i] = ECNetutils.getDataBlockFromGlobalRecvQueue(addr);
-                        if (i == DatabaseDescriptor.getEcDataNodes() - 1)
+                        tmpArray[count] = ECNetutils.getDataBlockFromGlobalRecvQueue(addr);
+                        count++;
+                        if (count == DatabaseDescriptor.getEcDataNodes())
                             break;
-                        i++;
                     }
                     // compute erasure coding locally;
-                    if (i == DatabaseDescriptor.getEcDataNodes()) {
+                    if (count == DatabaseDescriptor.getEcDataNodes()) {
                         Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
                     } else {
-                        logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", tmpArray.length);
+                        logger.debug("rymDebug: Can not get enough data for erasure coding, count is {}.", count);
                     }
 
                 }
