@@ -20,7 +20,7 @@
   become_user: yjren
   tasks:
   - name: Execute script start-server.sh
-    command: bash /mnt/ssd/Debug/CassandraEC/scripts/start-server.sh 4 2 6 32 5 5 # <ec_data_nodes>, <parity_nodes>, <max_level_count>, <concurrent_ec>, <initial_delay>, <task_delay>
+    command: bash /mnt/ssd/Debug/CassandraEC/scripts/start-server.sh 4 2 6 32 5 5 3 # <ec_data_nodes>, <parity_nodes>, <max_level_count>, <concurrent_ec>, <initial_delay>, <task_delay>, <update_frequency>
     register: command_result
     ignore_errors: True
 

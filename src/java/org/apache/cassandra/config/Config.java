@@ -184,6 +184,7 @@ public class Config {
     public int max_level_count = 1;
     public int initial_delay = 2; // in minute
     public int task_delay = 5; // in minute
+    public int stripe_update_frequency = 1; // we select transferred sstable as compaction candidates every (task_delay * stripe_update_frequency)
 
 
     public int concurrent_ec = 3;

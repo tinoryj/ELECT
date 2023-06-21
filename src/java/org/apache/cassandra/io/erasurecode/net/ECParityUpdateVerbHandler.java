@@ -181,6 +181,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
     private static class ParityUpdateRunnable implements Runnable {
+        
+        private static long executeCount = 0;
 
         @Override
         public synchronized void run() {
@@ -188,11 +190,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             int codeLength = StorageService.getErasureCodeLength();
 
             List<String> traversedSSTables = new ArrayList<String>();
+            executeCount++;
             
-            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({})",
+            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({}), execute count is ({})",
                                  StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(),
                                  StorageService.instance.globalReadyOldSSTableForECStripUpdateCount, traversedSSTables,
-                                 receivedNewSSTable, consumedNewSSTable, receivedOldSSTable, consumedOldSSTable);
+                                 receivedNewSSTable, consumedNewSSTable, receivedOldSSTable, consumedOldSSTable, executeCount);
 
             // Perform parity update
             for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.entrySet()) {
@@ -280,7 +283,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 }
             }
 
-
+            logger.debug("rymDebug: we are going to release NO. ({}) parity update thread", executeCount);
 
 
 

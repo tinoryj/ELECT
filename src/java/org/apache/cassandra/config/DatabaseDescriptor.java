@@ -1933,6 +1933,20 @@ public class DatabaseDescriptor
         conf.initial_delay = initial_delay;
     }
 
+    public static int getUpdateFrequency() {
+        return conf.stripe_update_frequency;
+    }
+
+    public static void setUpdateFrequency(int stripe_update_frequency)
+    {
+        if (stripe_update_frequency < 0)
+        {
+            throw new IllegalArgumentException("Stripe update frequency must be non-negative");
+        }
+        conf.stripe_update_frequency = stripe_update_frequency;
+    }
+
+
     public static int getTaskDelay() 
     {
         return conf.task_delay;
