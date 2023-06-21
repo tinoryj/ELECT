@@ -64,6 +64,13 @@ public class LeveledManifest {
      */
     private static final int NO_COMPACTION_LIMIT = 25;
 
+    /** [CASSANDRAEC]
+     *  To avoid network bottleneck, we have to limit the number of parity update each transaction
+     */
+    private static final int MAX_STRIPE_UPDATE = 16;
+    private static volatile int selectedSSTablesForStripeUpdate = 0;
+
+
     private final ColumnFamilyStore cfs;
 
     private final LeveledGenerations generations;
@@ -734,6 +741,7 @@ public class LeveledManifest {
         Set<SSTableReader> sstablesNextLevel = generations.get(level + 1);
         Set<SSTableReader> sstablesCurrentLevel = generations.get(level);
         Iterator<SSTableReader> levelIterator = generations.wrappingIterator(level, lastCompactedSSTables[level]);
+        selectedSSTablesForStripeUpdate = 0;
         while (levelIterator.hasNext()) {
             SSTableReader sstable = levelIterator.next();
             // if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
@@ -741,8 +749,7 @@ public class LeveledManifest {
             if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
                 if(!isSelectIssuedSSTableAsCompactionCandidates(sstable))
                     continue;
-            }
-            if(!sstable.isReplicationTransferredToErasureCoding() && sstable.isSelectedByCompactionOrErasureCoding()) {
+            }else if(!sstable.isReplicationTransferredToErasureCoding() && sstable.isSelectedByCompactionOrErasureCoding()) {
                 continue;
             }
 
@@ -785,7 +792,10 @@ public class LeveledManifest {
             if (duration < delayForFirstTimeParityUpdate) {
                 return false;
             }
+        } else if(selectedSSTablesForStripeUpdate >= MAX_STRIPE_UPDATE){
+            return false;
         }
+        selectedSSTablesForStripeUpdate++;
         return true;
     }
 

@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.io.erasurecode.net;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -30,6 +31,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.MissingResourceException;
 import java.util.Queue;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -197,6 +199,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                                  StorageService.instance.globalReadyOldSSTableForECStripUpdateCount, traversedSSTables,
                                  receivedNewSSTable, consumedNewSSTable, receivedOldSSTable, consumedOldSSTable, executeCount);
 
+
+            long totalTimeOfRetrievedParityCodes = 0;
             // Perform parity update
             for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.entrySet()) {
                 
@@ -235,7 +239,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     }
 
                     // logger.debug("rymDebug: [Parity update] We check the parity codes for replacing a new sstable ({}) with an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
-                    performECStripUpdate("case 1", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
+                    try {
+                        totalTimeOfRetrievedParityCodes += performECStripUpdate("case 1", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
+                    } catch (FileNotFoundException | InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
  
                 }
 
@@ -260,7 +269,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         traversedSSTables.add(oldSSTable.sstHash);
                         logger.debug("rymDebug: Parity update case 2, Select a new sstable ({}) and an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
 
-                        performECStripUpdate("case 2", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
+                        try {
+                            totalTimeOfRetrievedParityCodes += performECStripUpdate("case 2", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
+                        } catch (FileNotFoundException | InterruptedException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
 
                     } else {
                         break;
@@ -279,11 +293,16 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     traversedSSTables.add(oldSSTable.sstHash);
 
                     logger.debug("rymDebug: Parity update case 3, Select a new sstable ({}) and an old sstable ({})", newSSTable.sstHash, oldSSTable.sstHash);
-                    performECStripUpdate("case 3", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
+                    try {
+                        totalTimeOfRetrievedParityCodes += performECStripUpdate("case 3", oldSSTable, newSSTable, codeLength, oldReplicaNodes);
+                    } catch (FileNotFoundException | InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                 }
             }
 
-            logger.debug("rymDebug: we are going to release NO. ({}) parity update thread", executeCount);
+            logger.debug("rymDebug: we are going to release NO. ({}) parity update thread, the total consumed time is ({})", executeCount, totalTimeOfRetrievedParityCodes);
 
 
 
@@ -299,8 +318,15 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
      * @param newSSTable The new sstable for replacing the oldSSTable in the EC strip.
      * @param codeLength The uniform code length for erasure coding.
      * @param oldReplicaNodes
+     * @return The retry times (in seconds) to retrieve the needed parity code.
+     * @throws FileNotFoundException
+     * @throws InterruptedException
      */
-    private static synchronized void performECStripUpdate(String updateCase, SSTableContentWithHashID oldSSTable, SSTableContentWithHashID newSSTable, int codeLength, List<InetAddressAndPort> oldReplicaNodes) {
+    private static synchronized int performECStripUpdate(String updateCase,
+                                                         SSTableContentWithHashID oldSSTable,
+                                                         SSTableContentWithHashID newSSTable,
+                                                         int codeLength, 
+                                                         List<InetAddressAndPort> oldReplicaNodes) throws FileNotFoundException, InterruptedException{
 
        logger.debug("rymDebug: [Parity update {}]  We select a new sstable ({}) to update an old sstable ({})", updateCase, newSSTable.sstHash, oldSSTable.sstHash);
         List<InetAddressAndPort> parityNodes = getParityNodes();
@@ -314,7 +340,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             retrieveParityCodeForOldSSTable(oldSSTable.sstHash, oldStripID, codeLength);
             oldSSTable.isRequestParityCode = true;
         }
-        waitUntilParityCodesReady(oldSSTable.sstHash, parityNodes);
+        int retryTime = waitUntilParityCodesReady(oldSSTable.sstHash, parityNodes);
+        logger.debug("rymDebug: we spend ({}) seconds to get the parity code from peers nodes ({})", retryTime, parityNodes);
 
         
         if(StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash) == null) {
@@ -339,6 +366,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 parityNodes,
                 oldReplicaNodes,
                 oldReplicaNodes));
+
+        return retryTime;
     }
 
     
@@ -419,34 +448,38 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
 
-    // [WARNING!] Make sure to avoid dead loops
-    private static void waitUntilParityCodesReady(String oldSSTHash, List<InetAddressAndPort> parityNodes) {
+    /** [WARNING!] Make sure to avoid dead loops
+     * This method
+     * @param oldSSTHash
+     * @param parityNodes
+     * @return The retry times (in seconds) to retrieve the needed parity code.
+     * @throws InterruptedException
+     * @throws FileNotFoundException
+     */
+    private static int waitUntilParityCodesReady(String oldSSTHash, List<InetAddressAndPort> parityNodes) throws InterruptedException, FileNotFoundException {
         int retryCount = 0;
 
         ByteBuffer[] parityCodes = StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTHash);
         if(parityCodes != null) {
             while (!checkParityCodesAreReady(parityCodes)) {
-                try {
-                    if(retryCount < 10) {
-                        Thread.sleep(1000);
-                        retryCount++;
-                    } else {
-                        throw new IllegalStateException(String.format("rymERROR: cannot retrieve the remote parity codes for sstHash (%s) from parity nodes (%s)",
-                                                                         oldSSTHash, parityNodes.subList(1, parityNodes.size())));
-                    }
-                    
-                } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+                if(retryCount < 10) {
+                    Thread.sleep(1000);
+                    retryCount++;
+                } else {
+                    throw new FileNotFoundException(String.format("rymERROR: cannot retrieve the remote parity codes for sstHash (%s) from parity nodes (%s)",
+                                                                    oldSSTHash, parityNodes.subList(1, parityNodes.size())));
                 }
             }
         } else {
-            throw new NullPointerException(String.format("rymERROR: We cannot get parity codes for sstable %s", oldSSTHash));
+            throw new InterruptedException(String.format("rymERROR: We cannot get parity codes for sstable %s", oldSSTHash));
+
         }
 
         for(ByteBuffer parityCode : parityCodes) {
             parityCode.rewind();
         }
+
+        return retryCount;
  
     }
 
@@ -616,13 +649,27 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
     }
 
+    public static void test1() throws FileNotFoundException{
+        throw new FileNotFoundException("test throws IllegalStateException");
+    }
+
+    public static void test() throws FileNotFoundException {
+        test1();
+    }
+
     public static void main(String[] args){
-        ByteBuffer buffer = ByteBuffer.allocateDirect(10);
-        logger.debug("buffer.remaining = {}, buffer.hasRemaining = {}, buffer.position = {}, buffer.limit = {}, buffer.capacity = {}", buffer.remaining(), buffer.hasRemaining(), buffer.position(), buffer.limit(), buffer.capacity());
-        buffer.put((byte) 1);
-        logger.debug("buffer.remaining = {}, buffer.hasRemaining = {}, buffer.position = {}, buffer.limit = {}, buffer.capacity = {}", buffer.remaining(), buffer.hasRemaining(), buffer.position(), buffer.limit(), buffer.capacity());
-        buffer.rewind();
-        logger.debug("buffer.remaining = {}, buffer.hasRemaining = {}, buffer.position = {}, buffer.limit = {}, buffer.capacity = {}", buffer.remaining(), buffer.hasRemaining(), buffer.position(), buffer.limit(), buffer.capacity());
+        try {
+            test();
+        } catch (FileNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        // ByteBuffer buffer = ByteBuffer.allocateDirect(10);
+        // logger.debug("buffer.remaining = {}, buffer.hasRemaining = {}, buffer.position = {}, buffer.limit = {}, buffer.capacity = {}", buffer.remaining(), buffer.hasRemaining(), buffer.position(), buffer.limit(), buffer.capacity());
+        // buffer.put((byte) 1);
+        // logger.debug("buffer.remaining = {}, buffer.hasRemaining = {}, buffer.position = {}, buffer.limit = {}, buffer.capacity = {}", buffer.remaining(), buffer.hasRemaining(), buffer.position(), buffer.limit(), buffer.capacity());
+        // buffer.rewind();
+        // logger.debug("buffer.remaining = {}, buffer.hasRemaining = {}, buffer.position = {}, buffer.limit = {}, buffer.capacity = {}", buffer.remaining(), buffer.hasRemaining(), buffer.position(), buffer.limit(), buffer.capacity());
     }
     
 }
