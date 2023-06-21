@@ -209,40 +209,45 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 String cfName = entry.getKey();
 
                 for (BlockedECMetadata metadata : entry.getValue()) {
-                    if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.newSSTableHash,
-                            metadata.sourceIP)) {
-                        logger.debug("rymDebug: Perform transformECMetadataToECSSTable successfully");
-                        entry.getValue().remove(metadata);
-                    } else if (metadata.retryCount < MAX_RETRY_COUNT) {
-                        metadata.retryCount++;
-                        continue;
-                    } else {
-                        logger.debug("rymDebug: Still cannot create transactions, but we won't try it again, write the data down immediately.");
-                        ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
-
-                        // If the ecMetadata is for erasure coding, just transform it
-                        if (!metadata.ecMetadata.ecMetadataContent.isParityUpdate) {
-                            DataForRewrite dataForRewrite = StorageService.instance.globalSSTHashToSyncedFileMap
-                                    .get(metadata.newSSTableHash);
-                            if (dataForRewrite != null) {
-                                String fileNamePrefix = dataForRewrite.fileNamePrefix;
-                                transformECMetadataToECSSTableForErasureCode(metadata.ecMetadata,
-                                        new ArrayList<SSTableReader>(),
-                                        cfs,
-                                        fileNamePrefix,
-                                        metadata.newSSTableHash,
-                                        null, null, null);
-                                entry.getValue().remove(metadata);
-                            } else {
-                                logger.warn("rymDebug: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
-                                            metadata.newSSTableHash);
-                            }
+                    try {
+                        if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.newSSTableHash,
+                                metadata.sourceIP)) {
+                            logger.debug("rymDebug: Perform transformECMetadataToECSSTable successfully");
+                            entry.getValue().remove(metadata);
+                        } else if (metadata.retryCount < MAX_RETRY_COUNT) {
+                            metadata.retryCount++;
+                            continue;
                         } else {
-                            // TODO: Wait until the target ecSSTable is released
-                            // transformECMetadataToECSSTableForParityUpdate(metadata.ecMetadata, cfs, metadata.sstableHash);
-                            logger.debug("rymERROR: wait until the target ecSSTable is released");
-                        }
+                            logger.debug("rymDebug: Still cannot create transactions, but we won't try it again, write the data down immediately.");
+                            ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
 
+                            // If the ecMetadata is for erasure coding, just transform it
+                            if (!metadata.ecMetadata.ecMetadataContent.isParityUpdate) {
+                                DataForRewrite dataForRewrite = StorageService.instance.globalSSTHashToSyncedFileMap
+                                        .get(metadata.newSSTableHash);
+                                if (dataForRewrite != null) {
+                                    String fileNamePrefix = dataForRewrite.fileNamePrefix;
+                                    transformECMetadataToECSSTableForErasureCode(metadata.ecMetadata,
+                                            new ArrayList<SSTableReader>(),
+                                            cfs,
+                                            fileNamePrefix,
+                                            metadata.newSSTableHash,
+                                            null, null, null);
+                                    entry.getValue().remove(metadata);
+                                } else {
+                                    logger.warn("rymDebug: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
+                                                metadata.newSSTableHash);
+                                }
+                            } else {
+                                // TODO: Wait until the target ecSSTable is released
+                                // transformECMetadataToECSSTableForParityUpdate(metadata.ecMetadata, cfs, metadata.sstableHash);
+                                logger.debug("rymERROR: wait until the target ecSSTable is released");
+                            }
+
+                        }
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
                     }
 
                     // entry.getValue().remove(metadata);
@@ -264,8 +269,9 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
      * @param sourceIP
      * @return Is failed to create the transaction?
      * Add a concurrent lock here
+     * @throws InterruptedException
      */
-    private static boolean transformECMetadataToECSSTable(ECMetadata ecMetadata, String ks, String cfName, String newSSTHash, InetAddressAndPort sourceIP) {
+    private static boolean transformECMetadataToECSSTable(ECMetadata ecMetadata, String ks, String cfName, String newSSTHash, InetAddressAndPort sourceIP) throws InterruptedException {
 
         ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
         // get the dedicated level of sstables
@@ -294,7 +300,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                 cfs.getColumnFamilyName(), LeveledGenerations.getMaxLevelCount() - 1);
                 }
             } else {
-                throw new NullPointerException(String.format("rymERROR: cannot get rewrite data of {%s} during erasure coding, message is from {%s}, target cfs is {%s}", newSSTHash, sourceIP, cfName));
+                throw new InterruptedException(String.format("rymERROR: cannot get rewrite data of {%s} during erasure coding, message is from {%s}, target cfs is {%s}", newSSTHash, sourceIP, cfName));
             }
             return false;
 

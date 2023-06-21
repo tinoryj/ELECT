@@ -506,9 +506,10 @@ public class LeveledManifest {
                     if(!isSelectIssuedSSTableAsCompactionCandidates(pair.getKey()))
                         continue;
                 }
-
-                if(!pair.getKey().isReplicationTransferredToErasureCoding() && pair.getKey().isSelectedByCompactionOrErasureCoding())
+                
+                if(!pair.getKey().isReplicationTransferredToErasureCoding() && pair.getKey().isSelectedByCompactionOrErasureCoding()) {
                     continue;
+                }
                 
                 overlapped.add(pair.getKey());
             }
@@ -748,7 +749,9 @@ public class LeveledManifest {
             if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
                 if(!isSelectIssuedSSTableAsCompactionCandidates(sstable))
                     continue;
-            }else if(!sstable.isReplicationTransferredToErasureCoding() && sstable.isSelectedByCompactionOrErasureCoding()) {
+            }
+            
+            if(!sstable.isReplicationTransferredToErasureCoding() && sstable.isSelectedByCompactionOrErasureCoding()) {
                 continue;
             }
 
@@ -791,7 +794,7 @@ public class LeveledManifest {
             if (duration < delayForFirstTimeParityUpdate) {
                 return false;
             }
-        } else if(selectedSSTablesForStripeUpdate >= DatabaseDescriptor.getMaxSendSSTables()){
+        } else if(selectedSSTablesForStripeUpdate > DatabaseDescriptor.getMaxSendSSTables()){
             return false;
         }
         selectedSSTablesForStripeUpdate++;

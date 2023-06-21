@@ -762,6 +762,9 @@ public class CompactionTask extends AbstractCompactionTask {
                         transferredSSTablesNum++;
                     }
                 }
+                if(transferredSSTablesNum > DatabaseDescriptor.getMaxSendSSTables()) {
+                    logger.debug("rymERROR: The selected sstable count ({}) is exceed the limit ({})", transferredSSTablesNum, DatabaseDescriptor.getMaxSendSSTables());
+                }
             }
 
 
@@ -967,8 +970,8 @@ public class CompactionTask extends AbstractCompactionTask {
                         }
 
 
-                        logger.debug("rymDebug: For compaction task ({}), we send ({}) new sstables and ({}) old sstables to parity node ({}), the sstables count before compaction ({}), after compaction ({})",
-                                         taskId, newSSTableContentWithHashID.size(), entry.getValue().size(), entry.getKey(), transaction.originals().size(), newSStables.size());
+                        logger.debug("rymDebug: For compaction task ({}), we send ({}) new sstables and ({}) old sstables to parity node ({}), the sstables count before compaction ({}), after compaction ({}), this txn has ({}) transferred sstables.",
+                                         taskId, newSSTableContentWithHashID.size(), entry.getValue().size(), entry.getKey(), transaction.originals().size(), newSStables.size(), transferredSSTablesNum);
 
 
                         if(newSSTableContentWithHashID.size() > entry.getValue().size()) {
