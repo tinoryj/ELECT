@@ -447,19 +447,19 @@ public class CassandraDaemon {
 
         // schedule periodical tasks of erasure coding
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMessageVerbHandler.getErasureCodingRunable(),
-                                                                (long) (DatabaseDescriptor.getInitialDelay() * 1.5),
+                                                                DatabaseDescriptor.getInitialDelay(),
                                                                 DatabaseDescriptor.getTaskDelay(),
                                                                 TimeUnit.MINUTES);
 
         // schedule periodical tasks of consume blocked ecMetadata
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.getConsumeBlockedECMetadataRunnable(),
-                                                                (long) (DatabaseDescriptor.getInitialDelay() * 1.5),
+                                                                DatabaseDescriptor.getInitialDelay(),
                                                                 DatabaseDescriptor.getTaskDelay(),
                                                                 TimeUnit.MINUTES);
 
         // schedule periodical tasks of ec strip update
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECParityUpdateVerbHandler.getParityUpdateRunnable(),
-                                                                (long) (DatabaseDescriptor.getInitialDelay() * 1.5),
+                                                                DatabaseDescriptor.getInitialDelay(),
                                                                 DatabaseDescriptor.getTaskDelay(),
                                                                 TimeUnit.MINUTES);
 

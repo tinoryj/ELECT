@@ -188,12 +188,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             int codeLength = StorageService.getErasureCodeLength();
 
             List<String> traversedSSTables = new ArrayList<String>();
-            int cnt = 0;
-            for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> entry : StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.entrySet()) {
-                cnt += entry.getValue().size();
-            }
+            
             logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({})",
-                                 StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(), cnt, traversedSSTables,
+                                 StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(),
+                                 StorageService.instance.globalReadyOldSSTableForECStripUpdateCount, traversedSSTables,
                                  receivedNewSSTable, consumedNewSSTable, receivedOldSSTable, consumedOldSSTable);
 
             // Perform parity update
@@ -218,6 +216,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 while (!oldSSTableQueue.isEmpty() && !newSSTableQueue.isEmpty()) {
 
                     SSTableContentWithHashID newSSTable = newSSTableQueue.poll();
+                    StorageService.instance.globalReadyOldSSTableForECStripUpdateCount--;
                     SSTableContentWithHashID oldSSTable = oldSSTableQueue.poll();
                     consumedNewSSTable++;
                     consumedOldSSTable++;
@@ -363,7 +362,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
      * @param stripID
      * @param codeLength
      */
-    public static void retrieveParityCodeForOldSSTable(String oldSSTHash, String stripID, int codeLength) {
+    public static synchronized void retrieveParityCodeForOldSSTable(String oldSSTHash, String stripID, int codeLength) {
 
         String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
 

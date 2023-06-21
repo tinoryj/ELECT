@@ -216,6 +216,7 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, SSTableContentWithHashID> globalPendingOldSSTableForECStripUpdateMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
     // [In parity node], this is the global map <primary node, old sstables for parity update>
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalReadyOldSSTableForECStripUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
+    public volatile long globalReadyOldSSTableForECStripUpdateCount = 0;
     // [In parity node], this is the global map <sstHash, old sstable>
     public ConcurrentHashMap<String, SSTableContentWithHashID> globalPendingNewOldSSTableForECStripUpdateMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
     // [In parity node], this is the global map <primary node, new sstables for parity update>

@@ -23,6 +23,8 @@ import org.apache.cassandra.net.Verb;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -31,6 +33,8 @@ import org.apache.cassandra.locator.InetAddressAndPort;
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 public class ECResponseParity {
     public static final Serializer serializer = new Serializer();
+
+    private static final Logger logger = LoggerFactory.getLogger(ECResponseParity.class);
 
     public final String parityHash;
     public final String sstHash;
@@ -52,6 +56,7 @@ public class ECResponseParity {
 
     public void responseParity(InetAddressAndPort target) {
         
+        logger.debug("rymDebug: We send parity code file {} for sstable {} to {}", this.parityHash, this.sstHash, target);
         Message<ECResponseParity> message = Message.outWithFlag(Verb.ECRESPONSEPARITY_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, target);
     }

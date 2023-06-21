@@ -47,6 +47,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         byte[] parityCode;
 
 
+        logger.debug("rymDebug: get a request parity code ({}) message from node ({})", parityHash, message.from());
         // String filePath = "/path/to/file.txt";
         Path path = Paths.get(filePath);
         int retryCount = 0;
@@ -78,7 +79,6 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
             ECResponseParity response = new ECResponseParity(parityHash, sstHash, parityCode, parityIndex, isRecovery);
             response.responseParity(message.from());
             
-            logger.debug("rymDebug: We get parity code file {} for sstable {} requested from {}", filePath, sstHash, message.from());
             
             // delete parity code file locally
             ECNetutils.deleteFileByName(filePath);

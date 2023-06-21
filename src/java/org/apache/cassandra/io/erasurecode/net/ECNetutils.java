@@ -292,6 +292,7 @@ public final class ECNetutils {
                     new ConcurrentLinkedQueue<SSTableContentWithHashID>(
                             Collections.singleton(oldSSTable)));
         }
+        StorageService.instance.globalReadyOldSSTableForECStripUpdateCount++;
         logger.debug("rymDebug: add old sstable ({}) to ready list for primary node ({})", oldSSTable.sstHash, primaryNode);
     }
 

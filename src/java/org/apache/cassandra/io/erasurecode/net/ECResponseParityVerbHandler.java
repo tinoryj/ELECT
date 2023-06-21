@@ -40,6 +40,8 @@ public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParit
         int parityIndex = message.payload.parityIndex;
         boolean isRecovery = message.payload.isRecovery;
 
+        logger.debug("rymDebug: Get parity code ({}) from ({}) for sstable ({}), the recovery flag is ({})", parityHash, message.from(), sstHash, isRecovery);
+
         // save it to the map for stripe update
         if(!isRecovery) {
             if(StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash) != null) {
