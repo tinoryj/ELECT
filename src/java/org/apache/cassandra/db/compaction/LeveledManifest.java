@@ -67,7 +67,6 @@ public class LeveledManifest {
     /** [CASSANDRAEC]
      *  To avoid network bottleneck, we have to limit the number of parity update each transaction
      */
-    private static final int MAX_STRIPE_UPDATE = 16;
     private static volatile int selectedSSTablesForStripeUpdate = 0;
 
 
@@ -792,7 +791,7 @@ public class LeveledManifest {
             if (duration < delayForFirstTimeParityUpdate) {
                 return false;
             }
-        } else if(selectedSSTablesForStripeUpdate >= MAX_STRIPE_UPDATE){
+        } else if(selectedSSTablesForStripeUpdate >= DatabaseDescriptor.getMaxSendSSTables()){
             return false;
         }
         selectedSSTablesForStripeUpdate++;

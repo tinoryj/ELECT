@@ -185,6 +185,7 @@ public class Config {
     public int initial_delay = 2; // in minute
     public int task_delay = 5; // in minute
     public int stripe_update_frequency = 1; // we select transferred sstable as compaction candidates every (task_delay * stripe_update_frequency)
+    public int max_send_sstables = 16; // To avoid the network bottleneck, we should limit the number of sstables
 
 
     public int concurrent_ec = 3;

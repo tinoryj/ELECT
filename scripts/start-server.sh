@@ -25,6 +25,7 @@ func() {
     initial_delay=$5
     task_delay=$6
     stripe_update_frequency=$7
+    max_send_sstables=$8
 
     cd /mnt/ssd/Debug/CassandraEC
     git checkout yuanming
@@ -47,9 +48,10 @@ func() {
     sed -i "s/initial_delay:.*$/initial_delay: ${initial_delay}/" conf/cassandra.yaml
     sed -i "s/task_delay:.*$/task_delay: ${task_delay}/" conf/cassandra.yaml
     sed -i "s/stripe_update_frequency:.*$/stripe_update_frequency: ${stripe_update_frequency}/" conf/cassandra.yaml
+    sed -i "s/max_send_sstables:.*$/max_send_sstables: ${max_send_sstables}/" conf/cassandra.yaml
 
 
     nohup bin/cassandra &> logs/debug.log &
 }
 
-func "$1" "$2" "$3" "$4" "$5" "$6" "$7"
+func "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"

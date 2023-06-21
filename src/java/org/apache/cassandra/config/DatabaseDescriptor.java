@@ -1933,6 +1933,18 @@ public class DatabaseDescriptor
         conf.initial_delay = initial_delay;
     }
 
+    public static int getMaxSendSSTables() {
+        return conf.max_send_sstables;
+    }
+
+    public static void setMaxSendSSTables(int max_send_sstables) {
+        if (max_send_sstables < 0)
+        {
+            throw new IllegalArgumentException("Max send sstables must be non-negative");
+        }
+        conf.max_send_sstables = max_send_sstables;
+    }
+
     public static int getUpdateFrequency() {
         return conf.stripe_update_frequency;
     }

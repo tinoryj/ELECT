@@ -145,6 +145,7 @@ import org.apache.cassandra.io.sstable.SSTableMultiWriter;
 import org.apache.cassandra.io.sstable.format.SSTableFormat;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.Version;
+import org.apache.cassandra.io.sstable.format.big.BigFormat;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileOutputStreamPlus;
@@ -486,7 +487,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         private final String cfName;
         private final int level;
         private final int delay; // in minutes
-        private static final int MAX_EC_CANDIDATES = 24;
+        private static final int MAX_EC_CANDIDATES = DatabaseDescriptor.getMaxSendSSTables();
 
         SendSSTRunnable(String keyspaceName, String cfName, int level, int delay) {
             this.keyspaceName = keyspaceName;
