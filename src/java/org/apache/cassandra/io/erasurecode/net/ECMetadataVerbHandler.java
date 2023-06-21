@@ -191,7 +191,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         private final int MAX_RETRY_COUNT = 5;
 
         @Override
-        public void run() {
+        public synchronized void run() {
             if(StorageService.instance.globalReadyECMetadatas.isEmpty()){
                 logger.debug("rymDebug: globalReadyECMetadatas is empty.");
                 return;

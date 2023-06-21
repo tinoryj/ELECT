@@ -316,6 +316,18 @@ public final class ECNetutils {
         return message;
     }
 
+    public synchronized static void saveECMessageToGlobalRecvQueue(InetAddressAndPort primaryNode, ECMessage message) {
+        if(!StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
+            ConcurrentLinkedQueue<ECMessage> recvQueue = new ConcurrentLinkedQueue<ECMessage>();
+            recvQueue.add(message);
+            StorageService.instance.globalRecvQueues.put(primaryNode, recvQueue);
+        }
+        else {
+            StorageService.instance.globalRecvQueues.get(primaryNode).add(message);
+        }
+    }
+
+
     public static void printStackTace(String msg) {
         // logger.debug(msg);
         // Throwable throwable =new Throwable();

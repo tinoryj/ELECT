@@ -102,14 +102,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         InetAddressAndPort primaryNode = message.payload.ecMessageContent.replicaNodes.get(0);
 
         // save the received data to recvQueue
-        if(!StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
-            ConcurrentLinkedQueue<ECMessage> recvQueue = new ConcurrentLinkedQueue<ECMessage>();
-            recvQueue.add(message.payload);
-            StorageService.instance.globalRecvQueues.put(primaryNode, recvQueue);
-        }
-        else {
-            StorageService.instance.globalRecvQueues.get(primaryNode).add(message.payload);
-        }
+        ECNetutils.saveECMessageToGlobalRecvQueue(primaryNode, message.payload);
         
         // logger.debug("rymDebug: recvQueues is {}", recvQueues);
 
