@@ -785,20 +785,17 @@ public class LeveledManifest {
     private static boolean isSelectIssuedSSTableAsCompactionCandidates(SSTableReader sstable) {
         long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
         long delayMilli = DatabaseDescriptor.getTaskDelay() * DatabaseDescriptor.getUpdateFrequency() * 60 * 1000;
-        long delayForFirstTimeParityUpdate = DatabaseDescriptor.getTaskDelay() *  DatabaseDescriptor.getUpdateFrequency()  * 60 * 1000;
-        if (sstable.isParityUpdate()) {
-            if (duration < delayMilli) {
-                return false;
-            }
-        } else if (sstable.isReplicationTransferredToErasureCoding()) {
-            if (duration < delayForFirstTimeParityUpdate) {
-                return false;
-            }
-        } else if(selectedSSTablesForStripeUpdate > DatabaseDescriptor.getMaxSendSSTables()){
-            return false;
-        }
-        selectedSSTablesForStripeUpdate++;
-        return true;
+        // long delayForFirstTimeParityUpdate = DatabaseDescriptor.getTaskDelay() *  DatabaseDescriptor.getUpdateFrequency()  * 60 * 1000;
+        if ((sstable.isParityUpdate() || sstable.isReplicationTransferredToErasureCoding()) && 
+            duration >= delayMilli &&
+            selectedSSTablesForStripeUpdate <= DatabaseDescriptor.getMaxSendSSTables()) {
+            
+            selectedSSTablesForStripeUpdate++;
+            return true;
+        } 
+
+        
+        return false;
     }
 
 
