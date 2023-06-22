@@ -194,10 +194,11 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             List<String> traversedSSTables = new ArrayList<String>();
             executeCount++;
             
-            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({}), execute count is ({})",
+            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({}), total received ec messages are ({}), consumed ec messages are ({}), execute count is ({})",
                                  StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(),
                                  StorageService.instance.globalReadyOldSSTableForECStripUpdateCount, traversedSSTables,
-                                 globalReceivedNewSSTable, globalConsumedNewSSTable, globalReceivedOldSSTable, globalConsumedOldSSTable, executeCount);
+                                 globalReceivedNewSSTable, globalConsumedNewSSTable, globalReceivedOldSSTable, globalConsumedOldSSTable,
+                                 StorageService.instance.totalReceivedECMessages, StorageService.instance.totalConsumedECMessages, executeCount);
             long traversedNewSSTables = 0;
 
             long totalTimeOfRetrievedParityCodes = 0;

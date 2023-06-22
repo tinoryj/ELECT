@@ -192,8 +192,12 @@ public class StorageService extends NotificationBroadcasterSupport
     public static final int SCHEMA_DELAY_MILLIS = getSchemaDelay();
 
     // [CASSANDRAEC] The following properties belong to CassandraEC.
+    public volatile boolean isInsertRecently = false;
+
     // [In parity node] This queue is used to receive ECMessages for erasure coding.
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>>();
+    public volatile long totalReceivedECMessages = 0;
+    public volatile long totalConsumedECMessages = 0;
     // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
     public ConcurrentHashMap<String, DataForRewrite> globalSSTHashToSyncedFileMap = new ConcurrentHashMap<String, DataForRewrite>();
 

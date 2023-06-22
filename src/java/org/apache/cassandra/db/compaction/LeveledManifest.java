@@ -788,7 +788,7 @@ public class LeveledManifest {
         // long delayForFirstTimeParityUpdate = DatabaseDescriptor.getTaskDelay() *  DatabaseDescriptor.getUpdateFrequency()  * 60 * 1000;
         if ((sstable.isParityUpdate() || sstable.isReplicationTransferredToErasureCoding()) && 
             duration >= delayMilli &&
-            selectedSSTablesForStripeUpdate <= DatabaseDescriptor.getMaxSendSSTables()) {
+            selectedSSTablesForStripeUpdate < DatabaseDescriptor.getMaxSendSSTables()) {
             
             selectedSSTablesForStripeUpdate++;
             return true;

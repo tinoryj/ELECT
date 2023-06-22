@@ -20,7 +20,24 @@
   become_user: yjren
   tasks:
   - name: Execute script start-server.sh
-    command: bash /mnt/ssd/Debug/CassandraEC/scripts/start-server.sh 4 2 6 32 5 5 3 16 # <ec_data_nodes>, <parity_nodes>, <max_level_count>, <concurrent_ec>, <initial_delay>, <task_delay>, <update_frequency>, <max_send_sstables>
+    command: bash /mnt/ssd/Debug/CassandraEC/scripts/start-server.sh {{ ec_data_nodes }} {{ parity_nodes }} {{ max_level_count }} {{ concurrent_ec }} {{ initial_delay }} {{ task_delay }} {{ stripe_update_frequency }} {{ max_send_sstables }} {{ internode_max_message_size }} {{ internode_application_send_queue_capacity }} {{ internode_application_send_queue_reserve_endpoint_capacity }} {{ internode_application_send_queue_reserve_global_capacity }} {{ internode_application_receive_queue_capacity }} {{ internode_application_receive_queue_reserve_endpoint_capacity }} {{ internode_application_receive_queue_reserve_global_capacity }}
+    vars:
+      ec_data_nodes: 4
+      parity_nodes: 2
+      max_level_count: 4
+      concurrent_ec: 64
+      initial_delay: 2
+      task_delay: 2
+      stripe_update_frequency: 2
+      max_send_sstables: 8
+      internode_max_message_size: 16MiB
+      internode_application_send_queue_capacity: 128MiB
+      internode_application_send_queue_reserve_endpoint_capacity: 256MiB
+      internode_application_send_queue_reserve_global_capacity: 1024MiB
+      internode_application_receive_queue_capacity: 128MiB
+      internode_application_receive_queue_reserve_endpoint_capacity: 256MiB
+      internode_application_receive_queue_reserve_global_capacity: 1024MiB
+
     register: command_result
     ignore_errors: True
 
@@ -37,7 +54,10 @@
 
   tasks:
   - name: Execute script start-client.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-client.sh {{ ansible_hostname }} 8 4 # <coordinator address>, <sstable size in MB>, <fanout size>
+    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-client.sh {{ ansible_hostname }} {{ sstable_size_in_mb }} {{ fanout_size }}
+    vars:
+      sstable_size_in_mb: 4
+      fanout_size: 4
     register: command_result
     ignore_errors: True
 
@@ -51,7 +71,11 @@
 
   tasks:
   - name: Execute script start-evaluation.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} 60000000 1024 1 # <coordinator address>, <record count>, <field length>, <threads>
+    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} {{ record_count }} {{ filed_length }} {{ threads }}
+    vars:
+      record_count: 60000000
+      filed_length: 1024
+      threads: 1
     register: command_result
     ignore_errors: True
 

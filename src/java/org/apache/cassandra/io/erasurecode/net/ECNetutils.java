@@ -309,6 +309,7 @@ public final class ECNetutils {
     }
 
     public synchronized static ECMessage getDataBlockFromGlobalRecvQueue(InetAddressAndPort addr) {
+        StorageService.instance.totalConsumedECMessages++;
         ECMessage message = StorageService.instance.globalRecvQueues.get(addr).poll();
         if (StorageService.instance.globalRecvQueues.get(addr).size() == 0) {
             StorageService.instance.globalRecvQueues.remove(addr);
@@ -317,6 +318,7 @@ public final class ECNetutils {
     }
 
     public synchronized static void saveECMessageToGlobalRecvQueue(InetAddressAndPort primaryNode, ECMessage message) {
+        StorageService.instance.totalReceivedECMessages++;
         if(!StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
             ConcurrentLinkedQueue<ECMessage> recvQueue = new ConcurrentLinkedQueue<ECMessage>();
             recvQueue.add(message);

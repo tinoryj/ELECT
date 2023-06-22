@@ -126,7 +126,8 @@ public final class ECParityUpdate implements Serializable {
         }
 
         Message<ECParityUpdate> message = Message.outWithFlag(Verb.ECPARITYUPDATE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
-        logger.debug("rymDebug: Send sstable ({}) [isOldSSTable: {}] to parity node ({})", this.sstable.sstHash, this.isOldSSTable, this.parityNodes.get(0));
+        logger.debug("rymDebug: Send sstable ({}) [isOldSSTable: {}] to parity node ({}), the size is ({})",
+                     this.sstable.sstHash, this.isOldSSTable, this.parityNodes.get(0), this.sstable.sstContentSize);
         MessagingService.instance().send(message, this.parityNodes.get(0));
     }
 

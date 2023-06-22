@@ -487,7 +487,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         private final String cfName;
         private final int level;
         private final int delay; // in minutes
-        private static final int MAX_EC_CANDIDATES = DatabaseDescriptor.getMaxSendSSTables();
+        private static final int MAX_EC_CANDIDATES = DatabaseDescriptor.getMaxSendSSTables() * 2;
 
         SendSSTRunnable(String keyspaceName, String cfName, int level, int delay) {
             this.keyspaceName = keyspaceName;
@@ -572,6 +572,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     }
 
                 }
+
+                if(count == 0) {
+                    logger.debug("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
+                }
+
             } else {
                 logger.debug("rymDebug: cannot get sstables from level {}", level);
             }

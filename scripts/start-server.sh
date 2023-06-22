@@ -26,6 +26,13 @@ func() {
     task_delay=$6
     stripe_update_frequency=$7
     max_send_sstables=$8
+    internode_max_message_size=$9
+    internode_application_send_queue_capacity=$10
+    internode_application_send_queue_reserve_endpoint_capacity=$11
+    internode_application_send_queue_reserve_global_capacity=$12
+    internode_application_receive_queue_capacity=$13
+    internode_application_receive_queue_reserve_endpoint_capacity=$14
+    internode_application_receive_queue_reserve_global_capacity=$15
 
     cd /mnt/ssd/Debug/CassandraEC
     git checkout yuanming
@@ -41,6 +48,7 @@ func() {
     mkdir -p logs
     ant realclean && ant -Duse.jdk11=true
     cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
+    
     sed -i "s/ec_data_nodes:.*$/ec_data_nodes: ${ec_data_nodes}/" conf/cassandra.yaml
     sed -i "s/parity_nodes:.*$/parity_nodes: ${parity_nodes}/" conf/cassandra.yaml
     sed -i "s/max_level_count:.*$/max_level_count: ${max_level_count}/" conf/cassandra.yaml
@@ -50,8 +58,15 @@ func() {
     sed -i "s/stripe_update_frequency:.*$/stripe_update_frequency: ${stripe_update_frequency}/" conf/cassandra.yaml
     sed -i "s/max_send_sstables:.*$/max_send_sstables: ${max_send_sstables}/" conf/cassandra.yaml
 
+    sed -i "s/internode_max_message_size:.*$/internode_max_message_size: ${internode_max_message_size}/" conf/cassandra.yaml
+    sed -i "s/internode_application_send_queue_capacity:.*$/internode_application_send_queue_capacity: ${internode_application_send_queue_capacity}/" conf/cassandra.yaml
+    sed -i "s/internode_application_send_queue_reserve_endpoint_capacity:.*$/internode_application_send_queue_reserve_endpoint_capacity: ${internode_application_send_queue_reserve_endpoint_capacity}/" conf/cassandra.yaml
+    sed -i "s/internode_application_send_queue_reserve_global_capacity:.*$/internode_application_send_queue_reserve_global_capacity: ${internode_application_send_queue_reserve_global_capacity}/" conf/cassandra.yaml
+    sed -i "s/internode_application_receive_queue_capacity:.*$/internode_application_receive_queue_capacity: ${internode_application_receive_queue_capacity}/" conf/cassandra.yaml
+    sed -i "s/internode_application_receive_queue_reserve_endpoint_capacity:.*$/internode_application_receive_queue_reserve_endpoint_capacity: ${internode_application_receive_queue_reserve_endpoint_capacity}/" conf/cassandra.yaml
+    sed -i "s/internode_application_receive_queue_reserve_global_capacity:.*$/internode_application_receive_queue_reserve_global_capacity: ${internode_application_receive_queue_reserve_global_capacity}/" conf/cassandra.yaml
 
     nohup bin/cassandra &> logs/debug.log &
 }
 
-func "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+func "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "$10" "$11" "$12" "$13" "$14" "$15"
