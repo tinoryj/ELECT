@@ -27,12 +27,12 @@ func() {
     stripe_update_frequency=$7
     max_send_sstables=$8
     internode_max_message_size=$9
-    internode_application_send_queue_capacity=128
-    internode_application_send_queue_reserve_endpoint_capacity=256
-    internode_application_send_queue_reserve_global_capacity=1024
-    internode_application_receive_queue_capacity=128
-    internode_application_receive_queue_reserve_endpoint_capacity=256
-    internode_application_receive_queue_reserve_global_capacity=1024
+    internode_application_send_queue_capacity="128MiB"
+    internode_application_send_queue_reserve_endpoint_capacity="256MiB"
+    internode_application_send_queue_reserve_global_capacity="1024MiB"
+    internode_application_receive_queue_capacity="128MiB"
+    internode_application_receive_queue_reserve_endpoint_capacity="256MiB"
+    internode_application_receive_queue_reserve_global_capacity="1024MiB"
 
     cd /mnt/ssd/Debug/CassandraEC
     git checkout yuanming
@@ -46,7 +46,7 @@ func() {
     mkdir -p data/ECMetadata/
     mkdir -p data/tmp/
     mkdir -p logs
-    # ant realclean && ant -Duse.jdk11=true
+    ant realclean && ant -Duse.jdk11=true
     cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
     
     sed -i "s/ec_data_nodes:.*$/ec_data_nodes: ${ec_data_nodes}/" conf/cassandra.yaml
@@ -58,13 +58,13 @@ func() {
     sed -i "s/stripe_update_frequency:.*$/stripe_update_frequency: ${stripe_update_frequency}/" conf/cassandra.yaml
     sed -i "s/max_send_sstables:.*$/max_send_sstables: ${max_send_sstables}/" conf/cassandra.yaml
 
-    sed -i "s/internode_max_message_size:.*$/internode_max_message_size: ${internode_max_message_size}MiB/" conf/cassandra.yaml
-    sed -i "s/internode_application_send_queue_capacity:.*$/internode_application_send_queue_capacity: ${internode_application_send_queue_capacity}MiB/" conf/cassandra.yaml
-    sed -i "s/internode_application_send_queue_reserve_endpoint_capacity:.*$/internode_application_send_queue_reserve_endpoint_capacity: ${internode_application_send_queue_reserve_endpoint_capacity}MiB/" conf/cassandra.yaml
-    sed -i "s/internode_application_send_queue_reserve_global_capacity:.*$/internode_application_send_queue_reserve_global_capacity: ${internode_application_send_queue_reserve_global_capacity}MiB/" conf/cassandra.yaml
-    sed -i "s/internode_application_receive_queue_capacity:.*$/internode_application_receive_queue_capacity: ${internode_application_receive_queue_capacity}MiB/" conf/cassandra.yaml
-    sed -i "s/internode_application_receive_queue_reserve_endpoint_capacity:.*$/internode_application_receive_queue_reserve_endpoint_capacity: ${internode_application_receive_queue_reserve_endpoint_capacity}MiB/" conf/cassandra.yaml
-    sed -i "s/internode_application_receive_queue_reserve_global_capacity:.*$/internode_application_receive_queue_reserve_global_capacity: ${internode_application_receive_queue_reserve_global_capacity}MiB/" conf/cassandra.yaml
+    sed -i "s/internode_max_message_size:.*$/internode_max_message_size: ${internode_max_message_size}/" conf/cassandra.yaml
+    sed -i "s/internode_application_send_queue_capacity:.*$/internode_application_send_queue_capacity: ${internode_application_send_queue_capacity}/" conf/cassandra.yaml
+    sed -i "s/internode_application_send_queue_reserve_endpoint_capacity:.*$/internode_application_send_queue_reserve_endpoint_capacity: ${internode_application_send_queue_reserve_endpoint_capacity}/" conf/cassandra.yaml
+    sed -i "s/internode_application_send_queue_reserve_global_capacity:.*$/internode_application_send_queue_reserve_global_capacity: ${internode_application_send_queue_reserve_global_capacity}/" conf/cassandra.yaml
+    sed -i "s/internode_application_receive_queue_capacity:.*$/internode_application_receive_queue_capacity: ${internode_application_receive_queue_capacity}/" conf/cassandra.yaml
+    sed -i "s/internode_application_receive_queue_reserve_endpoint_capacity:.*$/internode_application_receive_queue_reserve_endpoint_capacity: ${internode_application_receive_queue_reserve_endpoint_capacity}/" conf/cassandra.yaml
+    sed -i "s/internode_application_receive_queue_reserve_global_capacity:.*$/internode_application_receive_queue_reserve_global_capacity: ${internode_application_receive_queue_reserve_global_capacity}/" conf/cassandra.yaml
 
     nohup bin/cassandra &> logs/debug.log &
 }
