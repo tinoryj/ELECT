@@ -66,8 +66,8 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
                 logger.debug("rymDebug: write the parity code {} successfully!", message.payload.parityHash);
             } 
         catch (IOException e) {
-                logger.error("rymERROR: Perform erasure code error", e);
-            }
+                logger.error("rymERROR: Failed to write erasure code ({})", message.payload.parityHash);
+        }
     }
 
     
