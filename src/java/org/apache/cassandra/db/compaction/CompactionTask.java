@@ -689,8 +689,8 @@ public class CompactionTask extends AbstractCompactionTask {
         assert transaction != null;
         Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
         TimeUUID taskId = transaction.opId();
-        logger.debug("rymDebug:[Raw Compaction Strategy] rewrite {} sstables, original sstbales number is {}, task id is {}",
-                     sstables.size(), transaction.originals().size(), taskId);
+        // logger.debug("rymDebug:[Raw Compaction Strategy] rewrite {} sstables, original sstbales number is {}, task id is {}",
+        //              sstables.size(), transaction.originals().size(), taskId);
 
         if (transaction.originals().isEmpty())
             return;
