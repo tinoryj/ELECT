@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 func() {
-    coordinator="192.168.10.30"
+    coordinator=$1
     sstable_size=$2
     fanout_size=$3
     cd /home/yjren/cassandra

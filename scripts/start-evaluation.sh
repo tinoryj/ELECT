@@ -14,8 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 func() {
-    coordinator="192.168.10.30"
+    coordinator=$1
     record_count=$2
     field_length=$3
     threads=$4

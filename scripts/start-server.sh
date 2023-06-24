@@ -15,7 +15,6 @@
 # limitations under the License.
 
 . /etc/profile
-unset JAVA_HOME
 
 func() {
 
