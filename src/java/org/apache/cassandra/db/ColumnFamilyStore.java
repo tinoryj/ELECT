@@ -487,7 +487,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         private final String cfName;
         private final int level;
         private final int delay; // in minutes
-        private static final int MAX_EC_CANDIDATES = 16;
+        private static final int MAX_EC_CANDIDATES = 32;
 
         SendSSTRunnable(String keyspaceName, String cfName, int level, int delay) {
             this.keyspaceName = keyspaceName;

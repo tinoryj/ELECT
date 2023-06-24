@@ -396,7 +396,8 @@ public class LeveledManifest {
                     Range<PartitionPosition> boundaries = new Range<>(min, max);
                     for (SSTableReader sstable : generations.get(i)) {
                         Range<PartitionPosition> r = new Range<>(sstable.first, sstable.last);
-                        if (boundaries.contains(r) && !compacting.contains(sstable)) {
+                        if (boundaries.contains(r) && !compacting.contains(sstable) &&
+                            !sstable.isReplicationTransferredToErasureCoding() && !sstable.isParityUpdate()) {
                             logger.info("Adding high-level (L{}) {} to candidates", sstable.getSSTableLevel(), sstable);
                             withStarvedCandidate.add(sstable);
                             return withStarvedCandidate;
