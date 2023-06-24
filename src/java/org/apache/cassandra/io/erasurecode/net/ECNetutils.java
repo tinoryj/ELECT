@@ -338,14 +338,14 @@ public final class ECNetutils {
     }
 
     public static void test() throws Exception{
-        logger.debug("stack trace {}", new Exception("test"));
+        printStackTace("test print stack trace method");
+
+        System.out.println("ok");
     }
 
     public static void main(String[] args) throws Exception{
-        ByteBuffer bb = ByteBuffer.allocateDirect(1024*1024*500);
-         
-        TimeUnit.SECONDS.sleep(10);
-        System.out.println("ok");
+        
+        test();
 
     }
 }
