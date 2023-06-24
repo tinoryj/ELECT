@@ -112,7 +112,7 @@ public final class Ref<T> implements RefCounted<T>
         this.state = new State(new GlobalState(tidy), this, referenceQueue);
         this.referent = referent;
         if(referent instanceof SSTableReader) {
-            ECNetutils.printStackTace(String.format("New a reference for %s", ((SSTableReader)referent).descriptor ));
+            ECNetutils.printStackTace(String.format("New a reference %s for %s",this.state.globalState.toString() ,((SSTableReader)referent).descriptor ));
         }
     }
 
@@ -121,7 +121,7 @@ public final class Ref<T> implements RefCounted<T>
         this.state = new State(state, this, referenceQueue);
         this.referent = referent;
         if(referent instanceof SSTableReader) {
-            ECNetutils.printStackTace(String.format("Add a reference for %s", ((SSTableReader)referent).descriptor ));
+            ECNetutils.printStackTace(String.format("Add a reference %s for %s", this.state.globalState.toString(), ((SSTableReader)referent).descriptor ));
         }
     }
 
@@ -347,6 +347,7 @@ public final class Ref<T> implements RefCounted<T>
         // release a single reference, and cleanup if no more are extant
         Throwable release(Ref.State ref, Throwable accumulate)
         {
+            ECNetutils.printStackTace(String.format("rymDebug: release a reference %s", this.toString()));
             locallyExtant.remove(ref);
             if (-1 == counts.decrementAndGet())
             {
