@@ -41,6 +41,7 @@ import org.apache.cassandra.concurrent.Shutdownable;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.lifecycle.View;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.Memory;
 import org.apache.cassandra.io.util.SafeMemory;
@@ -48,6 +49,7 @@ import org.apache.cassandra.utils.ExecutorUtils;
 import org.apache.cassandra.utils.NoSpamLogger;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.Shared;
+
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 
@@ -109,12 +111,18 @@ public final class Ref<T> implements RefCounted<T>
     {
         this.state = new State(new GlobalState(tidy), this, referenceQueue);
         this.referent = referent;
+        if(referent instanceof SSTableReader) {
+            ECNetutils.printStackTace(String.format("New a reference for %s", ((SSTableReader)referent).descriptor ));
+        }
     }
 
     Ref(T referent, GlobalState state)
     {
         this.state = new State(state, this, referenceQueue);
         this.referent = referent;
+        if(referent instanceof SSTableReader) {
+            ECNetutils.printStackTace(String.format("Add a reference for %s", ((SSTableReader)referent).descriptor ));
+        }
     }
 
     /**
@@ -330,8 +338,9 @@ public final class Ref<T> implements RefCounted<T>
                 int cur = counts.get();
                 if (cur < 0)
                     return false;
-                if (counts.compareAndSet(cur, cur + 1))
+                if (counts.compareAndSet(cur, cur + 1)) {
                     return true;
+                }
             }
         }
 
