@@ -105,6 +105,7 @@ public class ECRecovery {
 
         // TODO: Wait until all data is ready.
         Thread.sleep(5000);
+        logger.debug("rymDebug: recovery for sstHash is done!");
 
     }
 
