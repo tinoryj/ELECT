@@ -43,7 +43,8 @@ public class ECRecovery {
     public static final ECRecovery instance = new ECRecovery();
 
 
-    public static void recoveryDataFromErasureCodes(final String sstHash, final List<InetAddressAndPort> replicaNodes) throws Exception {
+    public static void recoveryDataFromErasureCodes(final String sstHash) throws Exception {
+        logger.debug("rymDebug: This is recovery for sstHash ({}), the replica nodes are ({})", sstHash);
         
         int k = DatabaseDescriptor.getEcDataNodes();
         int m = DatabaseDescriptor.getParityNodes();
@@ -70,7 +71,7 @@ public class ECRecovery {
 
         int[] decodeIndexes = waitUntilRequestCodesReady(recoveryOriginalSrc, sstHash, k);
 
-        int eraseIndex = ecMetadata.ecMetadataContent.primaryNodes.indexOf(replicaNodes.get(0));
+        int eraseIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstHash);
         int[] eraseIndexes = { eraseIndex };
 
 
@@ -85,6 +86,12 @@ public class ECRecovery {
         SSTableReader.loadRawData(output[0], sstable.descriptor);
 
         // Step 5: send the raw data to the peer secondary nodes
+        List<InetAddressAndPort> replicaNodes = ecMetadata.ecMetadataContent.sstHashIdToReplicaMap.get(sstHash);
+        if(replicaNodes == null) {
+            throw new NullPointerException(String.format("rymERROR: we cannot get replica nodes for sstable (%s)", sstHash));
+        }
+
+        // Step 6: send the raw data to the peer secondary nodes
         byte[] sstContent = new byte[output[0].remaining()];
         output[0].get(sstContent);
         InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();

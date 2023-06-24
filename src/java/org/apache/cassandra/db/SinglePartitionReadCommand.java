@@ -40,10 +40,12 @@ import org.apache.cassandra.db.transform.Transformation;
 import org.apache.cassandra.db.virtual.VirtualKeyspaceRegistry;
 import org.apache.cassandra.db.virtual.VirtualTable;
 import org.apache.cassandra.exceptions.RequestExecutionException;
+import org.apache.cassandra.io.erasurecode.net.ECRecovery;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.metrics.TableMetrics;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.schema.ColumnMetadata;
@@ -728,8 +730,15 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     // Tinoryj: skip read from metadata sstable since no need to recovery the raw
                     // content from it.
                 }
-                if (sstable.isReplicationTransferredToErasureCoding()) {
+                if (sstable.isReplicationTransferredToErasureCoding() && 
+                    !sstable.getColumnFamilyName().equals("usertable")) {
                     // Tinoryj TODO: call recvoery on current sstable.
+                    try {
+                        ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID());
+                    } catch (Exception e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                 }
 
                 // if we've already seen a partition tombstone with a timestamp greater
@@ -909,8 +918,15 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // Tinoryj: skip read from metadata sstable since no need to recovery the raw
                 // content from it.
             }
-            if (sstable.isReplicationTransferredToErasureCoding()) {
+            if (sstable.isReplicationTransferredToErasureCoding() && 
+                !sstable.getColumnFamilyName().equals("usertable")) {
                 // Tinoryj TODO: call recvoery on current sstable.
+                try {
+                    ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID());
+                } catch (Exception e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
             }
 
             // if we've already seen a partition tombstone with a timestamp greater

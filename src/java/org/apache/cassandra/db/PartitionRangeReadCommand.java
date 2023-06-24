@@ -18,6 +18,7 @@
 package org.apache.cassandra.db;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -42,16 +43,19 @@ import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Bounds;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.index.Index;
+import org.apache.cassandra.io.erasurecode.net.ECRecovery;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.metrics.TableMetrics;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.schema.IndexMetadata;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.StorageProxy;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 
 /**
@@ -345,8 +349,15 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     // Tinoryj: skip metadata sstable from read if no need to recovery
                 }
 
-                if (sstable.isReplicationTransferredToErasureCoding()) {
+                if (sstable.isReplicationTransferredToErasureCoding() && 
+                    !sstable.getColumnFamilyName().equals("usertable")) {
                     // Tinoryj TODO: call recovery for the current sstable.
+                    try {
+                        ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID());
+                    } catch (Exception e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                 }
                 @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
                                               // method
