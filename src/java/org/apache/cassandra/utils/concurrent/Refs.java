@@ -217,7 +217,7 @@ public final class Refs<T extends RefCounted<T>> extends AbstractCollection<T> i
             Ref<T> ref = rc.tryRef();
             if (ref == null)
             {
-                logger.debug("rymERROR: cannot get reference for {}.", ref);
+                logger.debug("rymERROR: cannot get reference for {}.", rc);
                 release(refs.values());
                 return null;
             }
