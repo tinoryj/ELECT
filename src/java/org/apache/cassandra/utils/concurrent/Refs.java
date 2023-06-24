@@ -221,7 +221,7 @@ public final class Refs<T extends RefCounted<T>> extends AbstractCollection<T> i
                 release(refs.values());
                 return null;
             }
-            ECNetutils.printStackTace(String.format("rymDebug: get reference for %s", rc));
+            ECNetutils.printStackTace(String.format("rymDebug: get reference %s for %s", ref, rc));
             refs.put(rc, ref);
         }
         return new Refs<T>(refs);
