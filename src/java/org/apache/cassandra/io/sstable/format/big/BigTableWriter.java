@@ -107,7 +107,6 @@ public class BigTableWriter extends SSTableWriter {
                     writerOption);
         }
 
-        
         dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA)).compressed(compression)
                 .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
 
@@ -177,8 +176,9 @@ public class BigTableWriter extends SSTableWriter {
     protected long beforeAppend(DecoratedKey decoratedKey) {
         assert decoratedKey != null : "Keys must not be null"; // empty keys ARE allowed b/c of indexed column values
         // if (lastWrittenKey != null && lastWrittenKey.compareTo(decoratedKey) >= 0)
-        //     throw new RuntimeException("Last written key " + lastWrittenKey + " >= current key " + decoratedKey
-        //             + " writing into " + getFilename());
+        // throw new RuntimeException("Last written key " + lastWrittenKey + " >=
+        // current key " + decoratedKey
+        // + " writing into " + getFilename());
         return (lastWrittenKey == null) ? 0 : dataFile.position();
     }
 
@@ -455,7 +455,8 @@ public class BigTableWriter extends SSTableWriter {
 
             try (DataInputStream dataFileReadForHash = new DataInputStream(
                     new FileInputStream(descriptor.filenameFor(Component.DATA)))) {
-                // logger.debug("[Tinoryj] Open data file success for SSTable = {}", descriptor.filenameFor(Component.DATA));
+                // logger.debug("[Tinoryj] Open data file success for SSTable = {}",
+                // descriptor.filenameFor(Component.DATA));
                 long fileLength = new File(descriptor.filenameFor(Component.DATA)).length();
                 if(fileLength < 0 || fileLength > Integer.MAX_VALUE) {
                     throw new IllegalStateException(String.format("rymERROR: The file length of sstable (%s) is negative (%s)", descriptor.filenameFor(Component.DATA), fileLength));
@@ -484,16 +485,19 @@ public class BigTableWriter extends SSTableWriter {
                         hashID = sb.toString();
                     }
 
-                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash length is {}",
-                    //  hashID, hashID.length());
+                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash
+                    // length is {}",
+                    // hashID, hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     hashID = null;
-                    logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", descriptor.filenameFor(Component.DATA));
+                    logger.error("[Tinoryj-ERROR]: Could not generated hash value for current SSTable = {}",
+                            descriptor.filenameFor(Component.DATA));
                     e.printStackTrace();
                 }
             } catch (IOException e) {
                 hashID = null;
-                logger.debug("[Tinoryj]: Could not read SSTable = {} for hash ID generation", descriptor.filenameFor(Component.DATA));
+                logger.error("[Tinoryj-ERROR]: Could not read SSTable = {} for hash ID generation",
+                        descriptor.filenameFor(Component.DATA));
                 e.printStackTrace();
             }
 
@@ -684,7 +688,8 @@ public class BigTableWriter extends SSTableWriter {
 
     // @Override
     // public void updateState() {
-    //     // TODO Auto-generated method stub
-    //     throw new UnsupportedOperationException("Unimplemented method 'updateState'");
+    // // TODO Auto-generated method stub
+    // throw new UnsupportedOperationException("Unimplemented method
+    // 'updateState'");
     // }
 }

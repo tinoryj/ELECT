@@ -180,19 +180,18 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     private static final ScheduledExecutorPlus syncExecutor = initSyncExecutor();
 
+    // Reset
+    public static final String RESET = "\033[0m"; // Text Reset
 
-        // Reset
-        public static final String RESET = "\033[0m"; // Text Reset
-
-        // Regular Colors
-        public static final String WHITE = "\033[0;30m"; // WHITE
-        public static final String RED = "\033[0;31m"; // RED
-        public static final String GREEN = "\033[0;32m"; // GREEN
-        public static final String YELLOW = "\033[0;33m"; // YELLOW
-        public static final String BLUE = "\033[0;34m"; // BLUE
-        public static final String PURPLE = "\033[0;35m"; // PURPLE
-        public static final String CYAN = "\033[0;36m"; // CYAN
-        public static final String GREY = "\033[0;37m"; // GREY
+    // Regular Colors
+    public static final String WHITE = "\033[0;30m"; // WHITE
+    public static final String RED = "\033[0;31m"; // RED
+    public static final String GREEN = "\033[0;32m"; // GREEN
+    public static final String YELLOW = "\033[0;33m"; // YELLOW
+    public static final String BLUE = "\033[0;34m"; // BLUE
+    public static final String PURPLE = "\033[0;35m"; // PURPLE
+    public static final String CYAN = "\033[0;36m"; // CYAN
+    public static final String GREY = "\033[0;37m"; // GREY
 
     private static ScheduledExecutorPlus initSyncExecutor() {
         if (DatabaseDescriptor.isClientOrToolInitialized())
@@ -436,12 +435,12 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             String destFileName = dataDir + "/nb-" + ecSSTableId + "-big-" + component;
             Path sourcePath = Paths.get(sourceFileName);
             Path destPath = Paths.get(destFileName);
-            if(Files.exists(sourcePath)) {
+            if (Files.exists(sourcePath)) {
                 Files.move(sourcePath, destPath);
             } else {
                 throw new IOException("No such a path for " + sourceFileName);
             }
-            
+
         }
 
         // Write a TOC.txt file and rename other files
@@ -454,7 +453,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         Descriptor desc = Descriptor.fromFilename(tocFileName);
         // write ECMetadata
         loadECMetadata(ecMetadata, desc);
-        
+
         SSTableReader ecSSTable = open(desc);
         if(ecSSTable.getSSTableHashID().equals(sstHash) || sstHash == null) {
             StorageService.instance.globalSSTHashToECSSTableMap.put(ecSSTable.getSSTableHashID(), ecSSTable);
@@ -526,11 +525,12 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return open(descriptor, componentsFor(descriptor), metadata, false, true);
     }
 
-    public Boolean readAndSetHashIDIfNotExists(){
+    public Boolean readAndSetHashIDIfNotExists() {
         String fileName = descriptor.filenameFor(Component.DATA);
         sstableMetadata.setupHashIDIfMissed(fileName);
         return true;
     }
+
     /**
      * Open SSTable reader to be used in batch mode(such as sstableloader).
      *
@@ -658,8 +658,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             if (sstable.getKeyCache() != null)
                 logger.trace("key cache contains {}/{} keys", sstable.getKeyCache().size(),
                         sstable.getKeyCache().getCapacity());
-            if(components.contains(Component.EC_METADATA)) {
-                logger.info(RESET+"Open EC SSTables successfully! {}", sstable.getFilename()+YELLOW);
+            if (components.contains(Component.EC_METADATA)) {
+                logger.info(RESET + "Open EC SSTables successfully! {}", sstable.getFilename() + YELLOW);
             }
             return sstable;
         } catch (Throwable t) {
@@ -830,8 +830,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public String getSSTableHashID() {
-        if(!readAndSetHashIDIfNotExists()){
-            logger.debug("[Tinoryj] could not setup hash ID for current sstable = {}",descriptor.filenameFor(Component.DATA));
+        if (!readAndSetHashIDIfNotExists()) {
+            logger.error("[Tinoryj-ERROR] could not setup hash ID for current sstable = {}",
+                    descriptor.filenameFor(Component.DATA));
         }
         return stringToHex(sstableMetadata.hashID());
     }
@@ -849,7 +850,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     public void updateBloomFilter(ColumnFamilyStore cfs, List<DecoratedKey> allKeys) throws IOException {
         long allKeysNum = allKeys.size();
         IFilter newBf;
-        
+
         newBf = FilterFactory.getFilter(allKeysNum, metadata.get().params.bloomFilterFpChance);
         for (DecoratedKey key : allKeys) {
             newBf.add(key);
@@ -863,20 +864,21 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    public void replaceDatabyECMetadata(ECMetadata message, String sstableHash, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
+    public void replaceDatabyECMetadata(ECMetadata message, String sstableHash, ColumnFamilyStore cfs,
+            String fileNamePrefix) throws IOException {
 
         // delete sstable
         deleteComponentOnlyData(descriptor, sstableHash);
 
-        // write ECMetadata 
+        // write ECMetadata
         File ecMetadataFile = new File(descriptor.filenameFor(Component.EC_METADATA));
         if (ecMetadataFile.exists())
             FileUtils.deleteWithConfirm(ecMetadataFile);
-        
+
         byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) message);
-        
+
         try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
-            
+
             // IndexSummary.serializer.serialize(summary, oStream);
             ByteBufferUtil.writeWithLength(first.getKey(), oStream);
         } catch (IOException e) {
@@ -1678,28 +1680,31 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public List<String> getAllKeys() {
-        // final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
-        //         Collections.singletonList(fullRange()));
+        // final List<IndexesBounds> indexRanges =
+        // getSampleIndexesForRanges(indexSummary,
+        // Collections.singletonList(fullRange()));
         // logger.debug("rymDebug: this is get all keys");
-        
+
         ISSTableScanner scanner = this.getScanner();
         List<String> allKeys = new ArrayList<String>();
-        while(scanner.hasNext()) {
+        while (scanner.hasNext()) {
             UnfilteredRowIterator rowIterator = scanner.next();
             allKeys.add(rowIterator.partitionKey().getRawKey(metadata()));
         }
         scanner.close();
-        
-        // logger.debug("rymDebug: this is get all keys successfully, key number is {}", allKeys.size());
+
+        // logger.debug("rymDebug: this is get all keys successfully, key number is {}",
+        // allKeys.size());
         return allKeys;
     }
 
     public List<DecoratedKey> getAllDecoratedKeys() {
-        // final List<IndexesBounds> indexRanges = getSampleIndexesForRanges(indexSummary,
-        //         Collections.singletonList(fullRange()));
+        // final List<IndexesBounds> indexRanges =
+        // getSampleIndexesForRanges(indexSummary,
+        // Collections.singletonList(fullRange()));
         ISSTableScanner scanner = this.getScanner();
         List<DecoratedKey> allKeys = new ArrayList<DecoratedKey>();
-        while(scanner.hasNext()) {
+        while (scanner.hasNext()) {
             UnfilteredRowIterator rowIterator = scanner.next();
             allKeys.add(rowIterator.partitionKey());
         }
@@ -1718,9 +1723,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
      * @return A Scanner for seeking over the rows of the SSTable.
      */
     public ISSTableScanner getScanner(Range<Token> range) {
-        
-        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner7",
-        //              this.getColumnFamilyName(), this.getSSTableLevel());
+
+        // logger.debug("rymDebug: cfName is {}, sstable level is {},
+        // BigTableScanner.getscanner7",
+        // this.getColumnFamilyName(), this.getSSTableLevel());
         if (range == null)
             return getScanner();
         return getScanner(Collections.singletonList(range));
@@ -1859,6 +1865,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             return false;
         }
     }
+
     public boolean isParityUpdate() {
         return this.isParityUpdate;
     }

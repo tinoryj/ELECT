@@ -125,11 +125,11 @@ public class LeveledManifest {
                 long modificationTime;
                 if (ssTableReader.getFileExistFlagFor(Component.DATA)) {
                     modificationTime = ssTableReader.getCreationTimeFor(Component.DATA);
-                } else if (ssTableReader.getFileExistFlagFor(Component.EC_METADATA)){
+                } else if (ssTableReader.getFileExistFlagFor(Component.EC_METADATA)) {
                     modificationTime = ssTableReader.getCreationTimeFor(Component.EC_METADATA);
-                }else {
-                    modificationTime=0;
-                    logger.debug("[Tinoryj] could not found both EC metadata and data, modify time to 0");
+                } else {
+                    modificationTime = 0;
+                    logger.debug("[Tinoryj] could not found both EC metadata and data, set modify time to 0");
                 }
 
                 if (modificationTime >= maxModificationTime) {
@@ -188,7 +188,8 @@ public class LeveledManifest {
         if (level == 0)
             return 4L * maxSSTableSizeInBytes;
         double bytes = Math.pow(levelFanoutSize, level) * maxSSTableSizeInBytes;
-        // logger.debug("[Tinoryj] generate new level size for level = {}, new size = {}", level, bytes/1024/1024);
+        // logger.debug("[Tinoryj] generate new level size for level = {}, new size =
+        // {}", level, bytes/1024/1024);
         if (bytes > Long.MAX_VALUE)
             throw new RuntimeException("At most " + Long.MAX_VALUE
                     + " bytes may be in a compaction level; your maxSSTableSize must be absurdly high to compute "
@@ -314,11 +315,11 @@ public class LeveledManifest {
         // [CASSANDRAEC]
         // TODO: Wrong place for remove sstables of transient sstables.
         // for(SSTableReader sstable : candidates) {
-        //     if(!sstable.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
-        //         candidates.remove(sstable);
-        //     }
+        // if(!sstable.getColumnFamilyName().equals("usertable") &&
+        // sstable.isReplicationTransferredToErasureCoding()) {
+        // candidates.remove(sstable);
         // }
-
+        // }
 
         return new CompactionCandidate(candidates, getNextLevel(candidates), maxSSTableSizeInBytes);
     }
@@ -489,7 +490,8 @@ public class LeveledManifest {
         Bounds<Token> promotedBounds = new Bounds<>(start, end);
 
         for (Map.Entry<SSTableReader, Bounds<Token>> pair : sstables.entrySet()) {
-            // we cannot select the sstables that isReplicationTransferredToErasureCoding is (true) and 
+            // we cannot select the sstables that isReplicationTransferredToErasureCoding is
+            // (true) and
             // this sstable is belong to primary LSM tree
             if (pair.getValue().intersects(promotedBounds)) {
 
@@ -514,7 +516,7 @@ public class LeveledManifest {
                 
                 overlapped.add(pair.getKey());
             }
-                
+
         }
         return overlapped;
     }
@@ -641,7 +643,9 @@ public class LeveledManifest {
     }
 
     /**
-     * A leveled compaction strategy implemented by the idea of RocksDB for CASSANDRAEC.
+     * A leveled compaction strategy implemented by the idea of RocksDB for
+     * CASSANDRAEC.
+     * 
      * @return highest-priority sstables to compact for the given level.
      *         If no compactions are possible (because of concurrent compactions or
      *         because some sstables are excluded
@@ -736,7 +740,8 @@ public class LeveledManifest {
         // look for a non-suspect keyspace to compact with, starting with where we left
         // off last time,
         // and wrapping back to the beginning of the generation if necessary
-        // Map<SSTableReader, Bounds<Token>> sstablesNextLevel = genBounds(generations.get(level + 1));
+        // Map<SSTableReader, Bounds<Token>> sstablesNextLevel =
+        // genBounds(generations.get(level + 1));
         // TODO: for primary node
         // [CASSANDRAEC]
         Set<SSTableReader> sstablesNextLevel = generations.get(level + 1);
@@ -766,10 +771,12 @@ public class LeveledManifest {
             Token startOutputToken = outputLevel.iterator().next().first.getToken();
             Token endOutputToken = outputLevel.iterator().next().last.getToken();
             for (SSTableReader sst : outputLevel) {
-                startOutputToken = startOutputToken.compareTo(sst.first.getToken()) > 0 ? sst.first.getToken() : startOutputToken;
-                endOutputToken = endOutputToken.compareTo(sst.last.getToken()) < 0 ? sst.last.getToken() : endOutputToken;
+                startOutputToken = startOutputToken.compareTo(sst.first.getToken()) > 0 ? sst.first.getToken()
+                        : startOutputToken;
+                endOutputToken = endOutputToken.compareTo(sst.last.getToken()) < 0 ? sst.last.getToken()
+                        : endOutputToken;
             }
-            Set<SSTableReader> candidates = Sets.union(outputLevel, 
+            Set<SSTableReader> candidates = Sets.union(outputLevel,
                     overlapping(startOutputToken, endOutputToken, sstablesCurrentLevel));
 
             if (Iterables.any(candidates, SSTableReader::isMarkedSuspect))

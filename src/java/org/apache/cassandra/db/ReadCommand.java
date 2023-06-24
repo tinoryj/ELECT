@@ -96,7 +96,8 @@ public abstract class ReadCommand extends AbstractReadQuery {
 
     private final Kind kind;
 
-    private final boolean isDigestQuery;
+    private boolean isDigestQuery;
+    private boolean shouldPerformOnlineRecoveryDuringRead;
     private final boolean acceptsTransient;
     // if a digest query, the version for which the digest is expected. Ignored if
     // not a digest.
@@ -149,6 +150,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
 
         this.kind = kind;
         this.isDigestQuery = isDigestQuery;
+        this.shouldPerformOnlineRecoveryDuringRead = false;
         this.digestVersion = digestVersion;
         this.acceptsTransient = acceptsTransient;
         this.index = index;
@@ -189,6 +191,20 @@ public abstract class ReadCommand extends AbstractReadQuery {
      */
     public boolean isDigestQuery() {
         return isDigestQuery;
+    }
+
+    public boolean setIsDigestQuery(boolean isDigestQueryFlag) {
+        isDigestQuery = isDigestQueryFlag;
+        return isDigestQuery;
+    }
+
+    public boolean shouldPerformOnlineRecoveryDuringRead() {
+        return this.shouldPerformOnlineRecoveryDuringRead;
+    }
+
+    public boolean setShouldPerformOnlineRecoveryDuringRead(boolean shouldPerformOnlineRecoveryDuringRead) {
+        this.shouldPerformOnlineRecoveryDuringRead = shouldPerformOnlineRecoveryDuringRead;
+        return this.shouldPerformOnlineRecoveryDuringRead;
     }
 
     /**
@@ -784,18 +800,21 @@ public abstract class ReadCommand extends AbstractReadQuery {
     }
 
     @SuppressWarnings("resource") // resultant iterators are closed by their callers
-    InputCollector<UnfilteredPartitionIterator> iteratorsForRange(ColumnFamilyStore.ViewFragment view, ReadExecutionController controller)
-    {
-        final BiFunction<List<UnfilteredPartitionIterator>, RepairedDataInfo, UnfilteredPartitionIterator> merge =
-            (unfilteredPartitionIterators, repairedDataInfo) -> {
-                UnfilteredPartitionIterator repaired = UnfilteredPartitionIterators.merge(unfilteredPartitionIterators,
-                                                                                          NOOP, false, null);
-                return repairedDataInfo.withRepairedDataInfo(repaired);
-            };
+    InputCollector<UnfilteredPartitionIterator> iteratorsForRange(ColumnFamilyStore.ViewFragment view,
+            ReadExecutionController controller) {
+        final BiFunction<List<UnfilteredPartitionIterator>, RepairedDataInfo, UnfilteredPartitionIterator> merge = (
+                unfilteredPartitionIterators, repairedDataInfo) -> {
+            UnfilteredPartitionIterator repaired = UnfilteredPartitionIterators.merge(unfilteredPartitionIterators,
+                    NOOP, false, null);
+            return repairedDataInfo.withRepairedDataInfo(repaired);
+        };
 
-        // Uses identity function to provide additional partitions to be consumed after the command's
-        // DataLimits are satisfied. The input to the function will be the iterator of merged, repaired partitions
-        // which we'll keep reading until the RepairedDataInfo's internal counter is satisfied.
+        // Uses identity function to provide additional partitions to be consumed after
+        // the command's
+        // DataLimits are satisfied. The input to the function will be the iterator of
+        // merged, repaired partitions
+        // which we'll keep reading until the RepairedDataInfo's internal counter is
+        // satisfied.
         return new InputCollector<>(view, controller, merge, Function.identity());
     }
 

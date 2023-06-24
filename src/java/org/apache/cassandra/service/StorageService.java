@@ -842,7 +842,8 @@ public class StorageService extends NotificationBroadcasterSupport
             }
 
             @Override
-            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                    throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
@@ -853,7 +854,7 @@ public class StorageService extends NotificationBroadcasterSupport
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
-            
+
             @Override
             protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
                     String fileNamePrefix) throws Exception {
@@ -4088,9 +4089,7 @@ public class StorageService extends NotificationBroadcasterSupport
      * @return collection of ranges that match ring layout in TokenMetadata
      */
     @VisibleForTesting
-    public
-    Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken)
-    {
+    public Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken) {
         Token parsedBeginToken = getTokenFactory().fromString(beginToken);
         Token parsedEndToken = getTokenFactory().fromString(endToken);
 
@@ -4370,11 +4369,18 @@ public class StorageService extends NotificationBroadcasterSupport
         return Replicas.stringify(getNaturalReplicasForToken(keyspaceName, cf, key), true);
     }
 
-    @Deprecated
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, ByteBuffer key) {
         EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, key);
         List<InetAddress> inetList = new ArrayList<>(replicas.size());
         replicas.forEach(r -> inetList.add(r.endpoint().getAddress()));
+        return inetList;
+    }
+
+    // [CASSANDRAEC]
+    public List<InetAddressAndPort> getNaturalEndpointsForCassandraEC(String keyspaceName, ByteBuffer key) {
+        EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, key);
+        List<InetAddressAndPort> inetList = new ArrayList<>(replicas.size());
+        replicas.forEach(r -> inetList.add(r.endpoint()));
         return inetList;
     }
 
@@ -4430,7 +4436,16 @@ public class StorageService extends NotificationBroadcasterSupport
     public List<InetAddress> getNaturalEndpointsForToken(String keyspaceName, String tokenStr) {
         List<InetAddress> inetList = new ArrayList<>();
         Token token = getTokenFactory().fromString(tokenStr);
-        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy()
+                .getNaturalReplicasForToken(token);
+        replicas.forEach(r -> inetList.add(r.endpoint().getAddress()));
+        return inetList;
+    }
+
+    public List<InetAddress> getNaturalEndpointsForToken(String keyspaceName, Token token) {
+        List<InetAddress> inetList = new ArrayList<>();
+        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy()
+                .getNaturalReplicasForToken(token);
         replicas.forEach(r -> inetList.add(r.endpoint().getAddress()));
         return inetList;
     }
@@ -4450,12 +4465,12 @@ public class StorageService extends NotificationBroadcasterSupport
 
     public ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key) {
         KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
-        
+
         if (ksMetaData == null)
             throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
 
         TableMetadata metadata = ksMetaData.getTableOrViewNullable(cf);
-        
+
         if (metadata == null)
             throw new IllegalArgumentException("Unknown table '" + cf + "' in keyspace '" + keyspaceName + "'");
 

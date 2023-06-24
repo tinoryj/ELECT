@@ -570,15 +570,15 @@ public class CompactionStrategyManager implements INotificationConsumer {
         maybeReloadDiskBoundaries();
         readLock.lock();
         try {
-            if(repaired.first() instanceof LeveledCompactionStrategy) {
+            if (repaired.first() instanceof LeveledCompactionStrategy) {
                 Set<SSTableReader> res = new HashSet<SSTableReader>();
                 for (AbstractCompactionStrategy strategy : getAllStrategies()) {
                     res = Sets.union(res, ((LeveledCompactionStrategy) strategy).getSStablesForLevel(sstableLevel));
                 }
-                
+
                 return res;
             }
-            
+
         } finally {
             readLock.unlock();
         }
@@ -806,8 +806,10 @@ public class CompactionStrategyManager implements INotificationConsumer {
         maybeReloadDiskBoundaries();
         List<ISSTableScanner> scanners = new ArrayList<>(sstables.size());
         readLock.lock();
-        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner3",
-        //              sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
+        // logger.debug("rymDebug: cfName is {}, sstable level is {},
+        // BigTableScanner.getscanner3",
+        // sstables.iterator().next().getColumnFamilyName(),
+        // sstables.iterator().next().getSSTableLevel());
         try {
             List<GroupedSSTableContainer> sstableGroups = groupSSTables(sstables);
             for (int i = 0; i < holders.size(); i++) {
@@ -817,11 +819,13 @@ public class CompactionStrategyManager implements INotificationConsumer {
             }
 
             // if(scanners.size() != sstables.size()) {
-            //     for (int i = 0; i < holders.size(); i++) {
-            //         if( sstableGroups.get(i).groups[0] != null ) 
-            //             logger.debug("holder is {}, group.sstable num is {}", holders.get(i).getClass(), sstableGroups.get(i).groups[0].size());
-            //     }
-            //     logger.debug("rymDebug: sstableGroups num is {}, sstables num is {}, scanner num is {}", sstableGroups.size(), sstables.size(), scanners.size());
+            // for (int i = 0; i < holders.size(); i++) {
+            // if( sstableGroups.get(i).groups[0] != null )
+            // logger.debug("holder is {}, group.sstable num is {}",
+            // holders.get(i).getClass(), sstableGroups.get(i).groups[0].size());
+            // }
+            // logger.debug("rymDebug: sstableGroups num is {}, sstables num is {}, scanner
+            // num is {}", sstableGroups.size(), sstables.size(), scanners.size());
             // }
 
         } catch (PendingRepairManager.IllegalSSTableArgumentException e) {
@@ -836,8 +840,10 @@ public class CompactionStrategyManager implements INotificationConsumer {
             Collection<Range<Token>> ranges) {
         while (true) {
             try {
-                // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner2",
-                //      sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
+                // logger.debug("rymDebug: cfName is {}, sstable level is {},
+                // BigTableScanner.getscanner2",
+                // sstables.iterator().next().getColumnFamilyName(),
+                // sstables.iterator().next().getSSTableLevel());
                 return maybeGetScanners(sstables, ranges);
             } catch (ConcurrentModificationException e) {
                 logger.debug("SSTable repairedAt/pendingRepaired values changed while getting scanners");
@@ -846,8 +852,10 @@ public class CompactionStrategyManager implements INotificationConsumer {
     }
 
     public AbstractCompactionStrategy.ScannerList getScanners(Collection<SSTableReader> sstables) {
-        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner1",
-        //              sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
+        // logger.debug("rymDebug: cfName is {}, sstable level is {},
+        // BigTableScanner.getscanner1",
+        // sstables.iterator().next().getColumnFamilyName(),
+        // sstables.iterator().next().getSSTableLevel());
         return getScanners(sstables, null);
     }
 

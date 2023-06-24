@@ -65,7 +65,8 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         // write number of component
         out.writeInt(components.size());
-        // logger.debug("[Tinoryj] write check sum total number = {}", components.size());
+        // logger.debug("[Tinoryj] write check sum total number = {}",
+        // components.size());
         updateChecksumInt(crc, components.size());
         maybeWriteChecksum(crc, out, version);
 
@@ -101,10 +102,11 @@ public class MetadataSerializer implements IMetadataSerializer {
             Boolean isSizeCorrectFlag;
             if (bytes.length != sizes.get(component.getType())) {
                 // logger.debug(
-                //         "[Tinoryj] the component = {}, generated serialized size = {}, the actual get serialized size = {}",
-                //         component.getType(),
-                //         sizes.get(component.getType()),
-                //         bytes.length);
+                // "[Tinoryj] the component = {}, generated serialized size = {}, the actual get
+                // serialized size = {}",
+                // component.getType(),
+                // sizes.get(component.getType()),
+                // bytes.length);
                 isSizeCorrectFlag = false;
             } else {
                 isSizeCorrectFlag = true;
@@ -124,10 +126,11 @@ public class MetadataSerializer implements IMetadataSerializer {
             maybeWriteChecksum(crc, out, version);
             MetadataType type = component.getType();
             // logger.debug(
-            //         "[Tinoryj] gen CRC for metadata type = {}, type in int = [{}], crc = [{}], the serialized size = {}, the generated serialized size = {}",
-            //         type,
-            //         type.ordinal(),
-            //         (int) crc.getValue(), bytes.length, sizes.get(component.getType()));
+            // "[Tinoryj] gen CRC for metadata type = {}, type in int = [{}], crc = [{}],
+            // the serialized size = {}, the generated serialized size = {}",
+            // type,
+            // type.ordinal(),
+            // (int) crc.getValue(), bytes.length, sizes.get(component.getType()));
         }
     }
 
@@ -171,7 +174,8 @@ public class MetadataSerializer implements IMetadataSerializer {
         int length = (int) in.bytesRemaining();
 
         int count = in.readInt();
-        // logger.debug("[Tinoryj] read check sum total number = {}, total length is = {}", count, length);
+        // logger.debug("[Tinoryj] read check sum total number = {}, total length is =
+        // {}", count, length);
 
         updateChecksumInt(crc, count);
         maybeValidateChecksum(crc, in, descriptor);
@@ -186,7 +190,8 @@ public class MetadataSerializer implements IMetadataSerializer {
 
             offsets[i] = in.readInt();
             updateChecksumInt(crc, offsets[i]);
-            // logger.debug("[Tinoryj] read check sum ordinals[{}] = {}, offsets[{}] = {}", i, ordinals[i], i, offsets[i]);
+            // logger.debug("[Tinoryj] read check sum ordinals[{}] = {}, offsets[{}] = {}",
+            // i, ordinals[i], i, offsets[i]);
         }
         maybeValidateChecksum(crc, in, descriptor);
 
@@ -199,8 +204,9 @@ public class MetadataSerializer implements IMetadataSerializer {
          */
 
         MetadataType[] allMetadataTypes = MetadataType.values();
-        // logger.debug("[Tinoryj] Target process metadata type number = {}, include {}", allMetadataTypes.length,
-        //         allMetadataTypes);
+        // logger.debug("[Tinoryj] Target process metadata type number = {}, include
+        // {}", allMetadataTypes.length,
+        // allMetadataTypes);
         Map<MetadataType, MetadataComponent> components = new EnumMap<>(MetadataType.class);
 
         for (int i = 0; i < count; i++) {
@@ -211,7 +217,7 @@ public class MetadataSerializer implements IMetadataSerializer {
                 continue;
             }
             // logger.debug("[Tinoryj] Process metadata type = {}, length = {}", type,
-            //         isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]);
+            // isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]);
             byte[] buffer = new byte[isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]];
             in.readFully(buffer);
 
@@ -235,26 +241,21 @@ public class MetadataSerializer implements IMetadataSerializer {
         String filename = descriptor.filenameFor(Component.STATS);
         if (actualChecksum != expectedChecksum) {
             logger.debug(
-                    "[Tinoryj] ERROR!!! get original check sum [{}], the actual check sum is [{}], file name = {}, actual file size = {}",
+                    "[Tinoryj-ERROR] get original check sum [{}], the actual check sum is [{}], file name = {}, actual file size = {}",
                     expectedChecksum,
                     actualChecksum, filename, (new File(filename)).length());
-        } 
-        // else {
-        //     logger.debug(
-        //             "[Tinoryj] SUCCESS!!! get original check sum [{}], the actual check sum is [{}], file name = {}, actual file size = {}",
-        //             expectedChecksum,
-        //             actualChecksum, filename, (new File(filename)).length());
-
-        // }
-        return;
+        }
         // if (actualChecksum != expectedChecksum) {
         // String filename = descriptor.filenameFor(Component.STATS);
         // throw new CorruptSSTableException(new IOException("Checksums do not match for
         // " + filename), filename);
         // }
+        return;
+
     }
 
-    private static void maybeValidateChecksum(CRC32 crc, FileDataInput in, Descriptor descriptor, MetadataType type) throws IOException {
+    private static void maybeValidateChecksum(CRC32 crc, FileDataInput in, Descriptor descriptor, MetadataType type)
+            throws IOException {
         if (!descriptor.version.hasMetadataChecksum())
             return;
 
@@ -264,10 +265,11 @@ public class MetadataSerializer implements IMetadataSerializer {
         String filename = descriptor.filenameFor(Component.STATS);
         if (actualChecksum != expectedChecksum) {
             logger.error("rymERROR: actual checksum is {}, expected checksum is {}, check type is {}, file name is {}",
-             actualChecksum, expectedChecksum, type, filename);
+                    actualChecksum, expectedChecksum, type, filename);
             throw new CorruptSSTableException(new IOException("Checksums do not match for " + filename), filename);
-        }else if (!filename.contains("usertable-")){
-            // logger.info("rymInfo: file name {} for type {} checksum is correct", filename, type);
+        } else if (!filename.contains("usertable-")) {
+            // logger.info("rymInfo: file name {} for type {} checksum is correct",
+            // filename, type);
         }
     }
 
@@ -295,8 +297,7 @@ public class MetadataSerializer implements IMetadataSerializer {
             logger.trace("Mutating {} to repairedAt time {} and pendingRepair {}",
                     descriptor.filenameFor(Component.STATS), newRepairedAt, newPendingRepair);
 
-        mutate(descriptor, stats -> stats.mutateRepairedMetadata(newRepairedAt, newPendingRepair, isTransient
-               ));
+        mutate(descriptor, stats -> stats.mutateRepairedMetadata(newRepairedAt, newPendingRepair, isTransient));
     }
 
     private void mutate(Descriptor descriptor, UnaryOperator<StatsMetadata> transform) throws IOException {

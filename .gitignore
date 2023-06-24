@@ -6,6 +6,7 @@ logs/
 data/
 !test/data
 conf/hotspot_compiler
+conf/cassandra.yaml
 doc/cql3/CQL.html
 doc/build/
 lib/
@@ -83,3 +84,6 @@ venv/
 # build-scripts will put cassandra-builds into the directory
 cassandra-builds/
 cassandra-dtest/
+
+# isal-jni implementation
+./src/native/src/org/apache/cassandra/io/erasurecode/libec.so

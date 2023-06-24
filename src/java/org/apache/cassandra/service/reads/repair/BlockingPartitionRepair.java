@@ -53,15 +53,16 @@ import org.apache.cassandra.schema.TableId;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.concurrent.UncheckedInterruptedException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import static org.apache.cassandra.net.Verb.*;
 import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 import static org.apache.cassandra.utils.concurrent.CountDownLatch.newCountDownLatch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class BlockingPartitionRepair
         extends AsyncFuture<Object> implements RequestCallback<Object> {
+
     private static final Logger logger = LoggerFactory.getLogger(BlockingPartitionRepair.class);
 
     private final DecoratedKey key;
@@ -143,10 +144,12 @@ public class BlockingPartitionRepair
         return updates.isEmpty() ? null : PartitionUpdate.merge(updates);
     }
 
+    public static void printStackTace(String msg) {
+        logger.debug("stack trace {}", new Exception(msg));
+    }
+
     @VisibleForTesting
     protected void sendRR(Message<Mutation> message, InetAddressAndPort endpoint) {
-        logger.debug("[Tinoryj] Send read request by sendRR func, message payload is {}, endpoint: {}",
-                message.payload.getClass(), endpoint);
         MessagingService.instance().sendWithCallback(message, endpoint, this);
     }
 
@@ -161,7 +164,9 @@ public class BlockingPartitionRepair
             Mutation mutation = entry.getValue();
             TableId tableId = extractUpdate(mutation).metadata().id;
 
-            Tracing.trace("Sending read-repair-mutation to {}", destination);
+            logger.debug("Sending initial read-repair-mutation to {}, key space = {}, table ID = {}", destination,
+                    extractUpdate(mutation).metadata().keyspace,
+                    extractUpdate(mutation).metadata().name);
             // use a separate verb here to avoid writing hints on timeouts
             sendRR(Message.out(READ_REPAIR_REQ, mutation), destination.endpoint());
             ColumnFamilyStore.metricsFor(tableId).readRepairRequests.mark();
@@ -242,7 +247,9 @@ public class BlockingPartitionRepair
                 continue;
             }
 
-            Tracing.trace("Sending speculative read-repair-mutation to {}", replica);
+            logger.debug("Sending speculative read-repair-mutation to {} key space = {}, table ID = {}", replica,
+                    extractUpdate(mutation).metadata().keyspace,
+                    extractUpdate(mutation).metadata().name);
             sendRR(Message.out(READ_REPAIR_REQ, mutation), replica.endpoint());
             ReadRepairDiagnostics.speculatedWrite(this, replica.endpoint(), mutation);
         }

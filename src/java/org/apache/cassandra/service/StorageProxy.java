@@ -49,8 +49,10 @@ import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
 
 import org.apache.cassandra.config.Config;
+import org.apache.cassandra.service.BatchlogResponseHandler.BatchlogCleanup;
+import org.apache.cassandra.service.StorageProxy.PaxosBallotAndContention;
+import org.apache.cassandra.service.StorageProxy.WritePerformer;
 import org.apache.cassandra.service.paxos.*;
-import org.apache.cassandra.service.paxos.Paxos;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.concurrent.CountDownLatch;
 
@@ -85,6 +87,7 @@ import org.apache.cassandra.db.partitions.PartitionIterators;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.rows.RowIterator;
+import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.db.view.ViewUtils;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.CasWriteTimeoutException;
@@ -138,6 +141,7 @@ import org.apache.cassandra.service.reads.range.RangeCommands;
 import org.apache.cassandra.service.reads.repair.ReadRepair;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.triggers.TriggerExecutor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Clock;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MBeanWrapper;
@@ -371,6 +375,7 @@ public class StorageProxy implements StorageProxyMBean {
             long queryStartNanoTime)
             throws UnavailableException, IsBootstrappingException, RequestFailureException, RequestTimeoutException,
             InvalidRequestException {
+        // logger.debug("[Tinoryj] legacyCas read command to column family {}", cfName);
         final long startTimeForMetrics = nanoTime();
         try {
             TableMetadata metadata = Schema.instance.validateTable(keyspaceName, cfName);
@@ -2102,11 +2107,15 @@ public class StorageProxy implements StorageProxyMBean {
      * 4. If the digests (if any) match the data return the data
      * 5. else carry out read repair by getting data from all the nodes.
      */
+    public static void printStackTace(String msg) {
+        logger.debug("stack trace {}", new Exception(msg));
+    }
+
     private static PartitionIterator fetchRows(List<SinglePartitionReadCommand> commands,
             ConsistencyLevel consistencyLevel, long queryStartNanoTime)
             throws UnavailableException, ReadFailureException, ReadTimeoutException {
         int cmdCount = commands.size();
-        logger.debug("[Tinoryj] total read command count: {}", cmdCount);
+        // logger.debug("[Tinoryj] total read command count: {}", cmdCount);
         AbstractReadExecutor[] reads = new AbstractReadExecutor[cmdCount];
 
         // Get the replica locations, sorted by response time according to the snitch,
@@ -2188,17 +2197,9 @@ public class StorageProxy implements StorageProxyMBean {
             this.command = command;
             this.handler = handler;
             this.trackRepairedStatus = trackRepairedStatus;
-            // if (command instanceof SinglePartitionReadCommand) {
-            // logger.debug("[Tinoryj] touch SinglePartitionReadCommand in storage proxy");
-            // } else {
-            // logger.debug("[Tinoryj] touch PartitionRangeReadCommand in storage proxy");
-            // }
         }
 
         protected void runMayThrow() {
-            logger.debug(
-                    "[Tinoryj] touch read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}",
-                    command.metadata().name, command.metadata().keyspace);
             try {
                 MessageParams.reset();
 
@@ -2209,13 +2210,33 @@ public class StorageProxy implements StorageProxyMBean {
                 ReadResponse response;
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
-                    response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                    logger.debug("[Tinoryj] get read response in storage proxy: {}", response);
+                    if (iterator == null) {
+                        if (command.metadata().keyspace.equals("ycsb")) {
+                            logger.debug(
+                                    "[Tinoryj-ERROR] Could not get {} response from table {}",
+                                    command.isDigestQuery() ? "digest" : "data",
+                                    command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
+                        }
+                        response = command.createEmptyResponse();
+                    } else {
+                        response = command.createResponse(iterator, controller.getRepairedDataInfo());
+                        if (command.metadata().keyspace.equals("ycsb")) {
+                            ByteBuffer newDigest = response.digest(command);
+                            String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
+                            if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
+                                logger.debug(
+                                        "[Tinoryj-ERROR] Could not get non-empty {} response from table {}, {}",
+                                        command.isDigestQuery() ? "digest" : "data",
+                                        command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
+                                        "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
+                            }
+                        }
+                    }
                 } catch (RejectException e) {
                     if (!command.isTrackingWarnings())
                         throw e;
                     logger.debug(
-                            "[Tinoryj] In read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}, could not get key, created empty response",
+                            "[Tinoryj-ERROR] In read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}, key not found, created empty response",
                             command.metadata().name, command.metadata().keyspace);
                     response = command.createEmptyResponse();
                     readRejected = true;

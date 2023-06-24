@@ -17,8 +17,6 @@
  */
 package org.apache.cassandra.db;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -108,19 +106,23 @@ public class Keyspace {
     private static int TEST_FAIL_MV_LOCKS_COUNT = Integer.getInteger("cassandra.test.fail_mv_locks_count", 0);
 
     private static final String ycsbUsertableCql = "CREATE TABLE %s ("
-                                    + "y_id varchar primary key,"
-                                    + "field0 varchar,"
-                                    + "field1 varchar,"
-                                    + "field2 varchar,"
-                                    + "field3 varchar,"
-                                    + "field4 varchar,"
-                                    + "field5 varchar,"
-                                    + "field6 varchar,"
-                                    + "field7 varchar,"
-                                    + "field8 varchar,"
-                                    + "field9 varchar)";
+            + "y_id varchar primary key,"
+            + "field0 varchar,"
+            + "field1 varchar,"
+            + "field2 varchar,"
+            + "field3 varchar,"
+            + "field4 varchar,"
+            + "field5 varchar,"
+            + "field6 varchar,"
+            + "field7 varchar,"
+            + "field8 varchar,"
+            + "field9 varchar)";
 
     public final KeyspaceMetrics metric;
+    public final InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
+    public final String primaryColumnNameStr = "usertable";
+    public final String secondaryColumn1NameStr = "usertable1";
+    public final String secondaryColumn2NameStr = "usertable2";
 
     // It is possible to call Keyspace.open without a running daemon, so it makes
     // sense to ensure
@@ -459,7 +461,7 @@ public class Keyspace {
                 globalNodeIDtoCFIDMap.put(globalNodeIDtoCFIDMap.size(), metadata.id);
                 // logger.debug("rymDebug: globalNodeIDtoCFIDMap is {}", globalNodeIDtoCFIDMap);
             }
-            
+
             // CFS mbean instantiation will error out before we hit this, but in case that
             // changes...
             if (oldCfs != null)
@@ -478,13 +480,12 @@ public class Keyspace {
         if (keyspaceName.equals("ycsb")) {
 
             return applyInternalYCSB(mutation, writeCommitLog, updateIndexes, true, true,
-                                    new AsyncPromise<>());
+                    new AsyncPromise<>());
         } else {
 
             return applyInternal(mutation, writeCommitLog, updateIndexes, true, true, new AsyncPromise<>());
         }
 
-        
     }
 
     public Future<?> applyFuture(Mutation mutation, boolean writeCommitLog, boolean updateIndexes, boolean isDroppable,
@@ -497,10 +498,10 @@ public class Keyspace {
                     new AsyncPromise<>());
         } else {
 
-            return applyInternal(mutation, writeCommitLog, updateIndexes, isDroppable, isDeferrable, new AsyncPromise<>());
+            return applyInternal(mutation, writeCommitLog, updateIndexes, isDroppable, isDeferrable,
+                    new AsyncPromise<>());
         }
 
-        
     }
 
     public void apply(Mutation mutation, boolean writeCommitLog, boolean updateIndexes) {
@@ -535,19 +536,19 @@ public class Keyspace {
         String keyspaceName = mutation.getKeyspaceName();
         if (keyspaceName.equals("ycsb")) {
             // if(keyspaceName.equals("ycsb")) {
-            //     for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
-            //         String fileName = "receivedkeyLocal";
-            //         try {
-            //             FileWriter writer = new FileWriter("logs/" + fileName, true);
-            //             BufferedWriter buffer = new BufferedWriter(writer);
-            //             buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
-            //             buffer.close();
-            //         } catch (IOException e) {
-            //             // TODO Auto-generated catch block
-            //             e.printStackTrace();
-            //         }
-    
-            //     }
+            // for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+            // String fileName = "receivedkeyLocal";
+            // try {
+            // FileWriter writer = new FileWriter("logs/" + fileName, true);
+            // BufferedWriter buffer = new BufferedWriter(writer);
+            // buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+            // buffer.close();
+            // } catch (IOException e) {
+            // // TODO Auto-generated catch block
+            // e.printStackTrace();
+            // }
+
+            // }
             // }
 
             applyInternalYCSB(mutation, makeDurable, updateIndexes, isDroppable, false, null);
@@ -555,7 +556,6 @@ public class Keyspace {
             applyInternal(mutation, makeDurable, updateIndexes, isDroppable, false, null);
         }
 
-        
     }
 
     private Future<?> applyInternalYCSB(final Mutation mutation,
@@ -658,7 +658,6 @@ public class Keyspace {
             // ColumnFamilyStore cfs = columnFamilyStores.get("replicaUUID");
             for (PartitionUpdate upd : mutation.getPartitionUpdates()) {
 
-
                 // ColumnFamilyStore cfs = columnFamilyStores.get(upd.metadata().id);
                 ColumnFamilyStore cfs = getColumnFamilyStore(upd);
                 if (cfs == null) {
@@ -710,10 +709,11 @@ public class Keyspace {
         List<InetAddress> eps = StorageService.instance.getNaturalEndpoints(keyspaceName, key);
         InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
         TableId replicaUUID = null;
-        // logger.debug("rymDebug: Storage servers list size :{}, list content : {}", columnFamilyStores.size(), ep);
+        // logger.debug("rymDebug: Storage servers list size :{}, list content : {}",
+        // columnFamilyStores.size(), ep);
         // logger.debug("localAddress is {}, replicaNodes are {}",localAddress, eps);
         // make sure whether the mutation is for a primary or not.
-        int  index = eps.indexOf(localAddress);
+        int index = eps.indexOf(localAddress);
         replicaUUID = globalNodeIDtoCFIDMap.get(index);
         
         // String fileName = "usertable";
