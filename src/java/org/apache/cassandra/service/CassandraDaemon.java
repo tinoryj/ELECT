@@ -471,7 +471,7 @@ public class CassandraDaemon {
 
         // schedule periodical tasks of force compaction the last level
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ColumnFamilyStore.getForceCompactionForTheLastLevelRunnable(),
-                                                                420,
+                                                                480,
                                                                 5,
                                                                 TimeUnit.MINUTES);
 
