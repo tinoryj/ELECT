@@ -818,10 +818,11 @@ public class CompactionManager implements CompactionManagerMBean {
                 if (task == null) {
                     return;
                 } else if(task.isContainReplicationTransferredToErasureCoding){
-                    logger.debug("rymDebug[transferred]: this task contains transferred sstables.");
+                    logger.debug("rymDebug[Force compaction for the last level]: this task contains transferred sstables.");
                     List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = ((LeveledCompactionTask) task).transferredSSTableKeyRanges;
                     task.execute(active, TransferredSSTableKeyRanges);
                 } else {
+                    logger.debug("rymDebug[Force compaction for the last level]: this task not contains transferred sstables.");
                     task.execute(active);
                 }
             }
