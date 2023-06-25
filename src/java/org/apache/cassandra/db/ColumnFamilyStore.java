@@ -1944,7 +1944,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             
                             // cfs.isPerformForceCompactionLastLevel = true;
 
-                            int maxCompactionThreshold = 16;
+                            int maxCompactionThreshold = 32;
                             logger.debug("rymDebug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
                                         cfs.getColumnFamilyName(), maxCompactionThreshold);
                             // ColumnFamilyStore cfs =
@@ -1993,6 +1993,14 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     logger.debug(
                                             "rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
                                 }
+
+                                try {
+                                    Thread.sleep(60000);
+                                } catch (InterruptedException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+
                             }
 
                         }
