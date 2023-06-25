@@ -836,7 +836,7 @@ public class CompactionManager implements CompactionManagerMBean {
         List<TransferredSSTableKeyRange> transferredSSTableKeyRanges = new ArrayList<>();
 
         AbstractCompactionTask newTask = null;
-        if (cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable")) {
+        if (!cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable")) {
 
             // for secondary node
             for (SSTableReader sstable : txn.originals()) {
