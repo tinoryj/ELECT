@@ -1933,69 +1933,75 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         public synchronized void run() {
 
             logger.debug("rymDebug: This is ForceCompactionForTheLastLevelRunnable");
-            for (Keyspace keyspace : Keyspace.all()){
-                for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
-                    if (cfs.getColumnFamilyName().contains("usertable") // &&
-                        // !cfs.isPerformForceCompactionLastLevel
-                        ) {
-                        
-                        // cfs.isPerformForceCompactionLastLevel = true;
 
-                        int maxCompactionThreshold = cfs.metadata().params.compaction.maxCompactionThreshold();
-                        logger.debug("rymDebug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
-                                     cfs.getColumnFamilyName(), maxCompactionThreshold);
-                        // ColumnFamilyStore cfs =
-                        // Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
-                        int level = LeveledGenerations.getMaxLevelCount() - 1;
-                        List<SSTableReader> sstables = new ArrayList<>(cfs.getSSTableForLevel(level));
-                        if (sstables.isEmpty())
-                            return;
+            if(StorageService.instance.totalReceivedECMessages !=0 && StorageService.instance.totalReceivedECMessages == StorageService.instance.totalConsumedECMessages) {
 
-                        Collections.sort(sstables, new SSTableReaderComparator());
-                        int startIndex = 0;
-                        while (startIndex < sstables.size()) {
-                            List<SSTableReader> candidates;
-                            if (startIndex + maxCompactionThreshold <= sstables.size()) {
-                                candidates = sstables.subList(startIndex, startIndex + maxCompactionThreshold);
-                            } else {
-                                candidates = sstables.subList(startIndex, sstables.size());
-                            }
-                            startIndex += maxCompactionThreshold;
+                for (Keyspace keyspace : Keyspace.all()){
+                    for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
+                        if (cfs.getColumnFamilyName().contains("usertable") // &&
+                            // !cfs.isPerformForceCompactionLastLevel
+                            ) {
+                            
+                            // cfs.isPerformForceCompactionLastLevel = true;
 
-                            // boolean isContainUnTransferredSSTables = false;
-                            // for (SSTableReader sstable : candidates) {
-                            //     if(!sstable.isReplicationTransferredToErasureCoding()) {
-                            //         isContainUnTransferredSSTables = true;
-                            //         break;
-                            //     }
-                            // }
+                            int maxCompactionThreshold = 16;
+                            logger.debug("rymDebug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
+                                        cfs.getColumnFamilyName(), maxCompactionThreshold);
+                            // ColumnFamilyStore cfs =
+                            // Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
+                            int level = LeveledGenerations.getMaxLevelCount() - 1;
+                            List<SSTableReader> sstables = new ArrayList<>(cfs.getSSTableForLevel(level));
+                            if (sstables.isEmpty())
+                                return;
 
-                            // if(!isContainUnTransferredSSTables)
-                            //     continue;
-
-                            final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates,
-                                    OperationType.COMPACTION);
-                            if (txn != null) {
-                                try {
-                                    AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(candidates, txn,
-                                            false,
-                                            Long.MAX_VALUE, false, 1);
-                                    if (status != AllSSTableOpStatus.SUCCESSFUL)
-                                        ECNetutils.printStatusCode(status.statusCode, cfs.getColumnFamilyName());
-                                } catch (ExecutionException | InterruptedException e) {
-                                    // TODO Auto-generated catch block
-                                    e.printStackTrace();
+                            Collections.sort(sstables, new SSTableReaderComparator());
+                            int startIndex = 0;
+                            while (startIndex < sstables.size()) {
+                                List<SSTableReader> candidates;
+                                if (startIndex + maxCompactionThreshold <= sstables.size()) {
+                                    candidates = sstables.subList(startIndex, startIndex + maxCompactionThreshold);
+                                } else {
+                                    candidates = sstables.subList(startIndex, sstables.size());
                                 }
-                            } else {
-                                logger.debug(
-                                        "rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
-                            }
-                        }
+                                startIndex += maxCompactionThreshold;
 
+                                // boolean isContainUnTransferredSSTables = false;
+                                // for (SSTableReader sstable : candidates) {
+                                //     if(!sstable.isReplicationTransferredToErasureCoding()) {
+                                //         isContainUnTransferredSSTables = true;
+                                //         break;
+                                //     }
+                                // }
+
+                                // if(!isContainUnTransferredSSTables)
+                                //     continue;
+
+                                final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates,
+                                        OperationType.COMPACTION);
+                                if (txn != null) {
+                                    try {
+                                        AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(candidates, txn,
+                                                false,
+                                                Long.MAX_VALUE, false, 1);
+                                        if (status != AllSSTableOpStatus.SUCCESSFUL)
+                                            ECNetutils.printStatusCode(status.statusCode, cfs.getColumnFamilyName());
+                                    } catch (ExecutionException | InterruptedException e) {
+                                        // TODO Auto-generated catch block
+                                        e.printStackTrace();
+                                    }
+                                } else {
+                                    logger.debug(
+                                            "rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
+                                }
+                            }
+
+                        }
                     }
                 }
+
+            } else {
+                logger.debug("rymDebug: It's not time to perform the forceCompactionForTheLastLevel.");
             }
-                
 
 
 
