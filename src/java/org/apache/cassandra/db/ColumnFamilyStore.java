@@ -491,7 +491,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         private final String cfName;
         private final int level;
         private final int delay; // in minutes
-        private static final int MAX_EC_CANDIDATES = 32;
+        private static final int MAX_EC_CANDIDATES = 16;
 
         SendSSTRunnable(String keyspaceName, String cfName, int level, int delay) {
             this.keyspaceName = keyspaceName;
@@ -1983,7 +1983,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 List<SSTableReader> lowerLevelSSTables = new ArrayList<>(cfs.getSSTableForLevel(level -1));
                                 List<SSTableReader> overlappedSSTables = new ArrayList<>(LeveledManifest.overlapping(startToken, endToken, lowerLevelSSTables));
                                 candidates.addAll(overlappedSSTables);
-                                
+
                                 final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates,
                                         OperationType.COMPACTION);
                                 if (txn != null) {
