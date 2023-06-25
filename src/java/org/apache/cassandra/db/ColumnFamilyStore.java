@@ -1965,7 +1965,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 continue;
                             }
 
-                            if(lastSSTable.last.compareTo(sstables.get(i).first) > 0 && !(lastSSTable.isReplicationTransferredToErasureCoding() &&
+                            if(lastSSTable.last.compareTo(sstables.get(i).first) >= 0 && !(lastSSTable.isReplicationTransferredToErasureCoding() &&
                                                                                         sstables.get(i).isReplicationTransferredToErasureCoding())) {
                                 
                                 // TODO: select from a lower level.
