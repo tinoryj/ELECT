@@ -1686,14 +1686,14 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             Collection<SSTableReader> overlapped = getOverlappingLiveSSTables(sstables);
 
             // [CASSANDRAEC]
-            List<SSTableReader> resultOverlapped = new ArrayList<>();
-            for(SSTableReader sstable : overlapped) {
-                if(!sstable.isReplicationTransferredToErasureCoding() && sstable.getColumnFamilyName().equals("usertable")) {
-                    resultOverlapped.add(sstable);
-                }
-            }
+            // List<SSTableReader> resultOverlapped = new ArrayList<>();
+            // for(SSTableReader sstable : overlapped) {
+            //     if(!sstable.isReplicationTransferredToErasureCoding() || sstable.getColumnFamilyName().equals("usertable")) {
+            //         resultOverlapped.add(sstable);
+            //     }
+            // }
 
-            Refs<SSTableReader> refs = Refs.tryRef(resultOverlapped);
+            Refs<SSTableReader> refs = Refs.tryRef(overlapped);
             if (refs != null)
                 return refs;
         }
