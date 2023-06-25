@@ -46,6 +46,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
 
     // [CASSANDRAEC]
     protected boolean isContainReplicationTransferredToErasureCoding = false;
+    protected boolean isContainECSSTable = false;
 
     private static final Logger logger = LoggerFactory.getLogger(AbstractCompactionTask.class);
 

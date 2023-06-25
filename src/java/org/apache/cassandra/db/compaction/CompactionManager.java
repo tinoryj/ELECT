@@ -813,16 +813,16 @@ public class CompactionManager implements CompactionManagerMBean {
                 // AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
                 // task.setUserDefined(true);
                 // task.setCompactionType(OperationType.COMPACTION);
-                AbstractCompactionTask task = getCompactionTaskForSecondaryLSMTree(cfs, txn);
+                AbstractCompactionTask task = getCompactionTaskForForceCompaction(cfs, txn);
 
                 if (task == null) {
                     return;
-                } else if(task.isContainReplicationTransferredToErasureCoding){
-                    logger.debug("rymDebug[Force compaction for the last level]: this task contains transferred sstables.");
+                } else if(task.isContainECSSTable){
+                    logger.debug("rymDebug[Force compaction for the last level]: this task {} contains EC sstables.", task.transaction.opId());
                     List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = ((LeveledCompactionTask) task).transferredSSTableKeyRanges;
                     task.execute(active, TransferredSSTableKeyRanges);
                 } else {
-                    logger.debug("rymDebug[Force compaction for the last level]: this task not contains transferred sstables.");
+                    logger.debug("rymDebug[Force compaction for the last level]: this task {} not contains EC sstables.", task.transaction.opId());
                     task.execute(active);
                 }
             }
@@ -830,9 +830,9 @@ public class CompactionManager implements CompactionManagerMBean {
     }
 
     // [CASSANDRAEC]
-    private static AbstractCompactionTask getCompactionTaskForSecondaryLSMTree(ColumnFamilyStore cfs, LifecycleTransaction txn) {
-        boolean isContainReplicationTransferredToErasureCoding = false;
-        boolean isContainUnTransferredSSTables = false;
+    private static AbstractCompactionTask getCompactionTaskForForceCompaction(ColumnFamilyStore cfs, LifecycleTransaction txn) {
+        boolean isContainECSSTable = false;
+        boolean isContainRawSSTable = false;
         List<TransferredSSTableKeyRange> transferredSSTableKeyRanges = new ArrayList<>();
 
         AbstractCompactionTask newTask = null;
@@ -842,18 +842,17 @@ public class CompactionManager implements CompactionManagerMBean {
             for (SSTableReader sstable : txn.originals()) {
                 if (sstable.isReplicationTransferredToErasureCoding()
                         && !sstable.getColumnFamilyName().equals("usertable")) {
-                    isContainReplicationTransferredToErasureCoding = true;
+                    isContainECSSTable = true;
                     TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                     transferredSSTableKeyRanges.add(range);
                     logger.debug("rymDebug[transferred]: Selected transferred sstable {}, candidate count is {}",
                             sstable.descriptor, txn.originals().size());
                 } else if(!sstable.isReplicationTransferredToErasureCoding()) {
-                    isContainUnTransferredSSTables = true;
+                    isContainRawSSTable = true;
                 }
             }
 
-            if ((txn.originals().size() == 1 && isContainReplicationTransferredToErasureCoding) ||
-                !isContainUnTransferredSSTables) {
+            if (txn.originals().size() == 1 || !isContainRawSSTable) {
                 return newTask;
             }
         }
@@ -866,14 +865,14 @@ public class CompactionManager implements CompactionManagerMBean {
                     false, transferredSSTableKeyRanges);
         else
             newTask = new SingleSSTableLCSTask(cfs, txn, level);
-        if (isContainReplicationTransferredToErasureCoding == true) {
-            newTask.isContainReplicationTransferredToErasureCoding = true;
+        if (isContainECSSTable == true) {
+            newTask.isContainECSSTable = true;
         }
 
         logger.debug(
                 "rymDebug[transferred]: task {} is contain transferred ({}), isContainReplicationTransferredToErasureCoding is ({})",
-                newTask.transaction.opId(), newTask.isContainReplicationTransferredToErasureCoding,
-                isContainReplicationTransferredToErasureCoding);
+                newTask.transaction.opId(), newTask.isContainECSSTable,
+                isContainECSSTable);
         newTask.setUserDefined(true);
         newTask.setCompactionType(OperationType.COMPACTION);
 
