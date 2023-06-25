@@ -1934,86 +1934,83 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
             logger.debug("rymDebug: This is ForceCompactionForTheLastLevelRunnable");
 
-            if(StorageService.instance.totalReceivedECMessages !=0 && StorageService.instance.totalReceivedECMessages == StorageService.instance.totalConsumedECMessages) {
 
-                for (Keyspace keyspace : Keyspace.all()){
-                    for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
-                        if (cfs.getColumnFamilyName().contains("usertable") || cfs.getColumnFamilyName().equals("usertable") // &&
-                            // !cfs.isPerformForceCompactionLastLevel
-                            ) {
-                            
-                            // cfs.isPerformForceCompactionLastLevel = true;
+            for (Keyspace keyspace : Keyspace.all()){
+                for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
+                    if (cfs.getColumnFamilyName().contains("usertable") || cfs.getColumnFamilyName().equals("usertable") // &&
+                        // !cfs.isPerformForceCompactionLastLevel
+                        ) {
+                        
+                        // cfs.isPerformForceCompactionLastLevel = true;
 
-                            int maxCompactionThreshold = 32;
-                            logger.debug("rymDebug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
-                                        cfs.getColumnFamilyName(), maxCompactionThreshold);
-                            // ColumnFamilyStore cfs =
-                            // Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
-                            int level = LeveledGenerations.getMaxLevelCount() - 1;
-                            List<SSTableReader> sstables = new ArrayList<>(cfs.getSSTableForLevel(level));
-                            if (sstables.isEmpty())
-                                return;
+                        int maxCompactionThreshold = 32;
+                        logger.debug("rymDebug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
+                                    cfs.getColumnFamilyName(), maxCompactionThreshold);
+                        // ColumnFamilyStore cfs =
+                        // Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
+                        int level = LeveledGenerations.getMaxLevelCount() - 1;
+                        List<SSTableReader> sstables = new ArrayList<>(cfs.getSSTableForLevel(level));
+                        if (sstables.isEmpty())
+                            return;
 
-                            Collections.sort(sstables, new SSTableReaderComparator());
-                            int startIndex = 0;
-                            while (startIndex < sstables.size()) {
-                                List<SSTableReader> candidates;
-                                if (startIndex + maxCompactionThreshold <= sstables.size()) {
-                                    candidates = sstables.subList(startIndex, startIndex + maxCompactionThreshold);
-                                } else {
-                                    candidates = sstables.subList(startIndex, sstables.size());
-                                }
-                                startIndex += maxCompactionThreshold;
+                        Collections.sort(sstables, new SSTableReaderComparator());
+                        
+                        SSTableReader lastSSTable = null;
+                        List<SSTableReader> candidates = new ArrayList<SSTableReader>();
+                        for(int i = 0; i < sstables.size(); i++) {
 
-                                // boolean isContainUnTransferredSSTables = false;
-                                // for (SSTableReader sstable : candidates) {
-                                //     if(!sstable.isReplicationTransferredToErasureCoding()) {
-                                //         isContainUnTransferredSSTables = true;
-                                //         break;
-                                //     }
-                                // }
+                            if(candidates.isEmpty()) {
+                                lastSSTable = sstables.get(i);
+                                candidates.add(lastSSTable);
+                                continue;
+                            }
 
-                                // if(!isContainUnTransferredSSTables)
-                                //     continue;
+                            if(lastSSTable.last.compareTo(sstables.get(i).first) > 0 && !(lastSSTable.isReplicationTransferredToErasureCoding() &&
+                                                                                        sstables.get(i).isReplicationTransferredToErasureCoding())) {
+                                
+                                // TODO: select from a lower level.
+                                candidates.add(sstables.get(i));
+                                lastSSTable = sstables.get(i);
+                            }
 
-                                final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates,
-                                        OperationType.COMPACTION);
-                                if (txn != null) {
+                            if(candidates.size() >= maxCompactionThreshold || i == candidates.size() - 1) {
+                                if(candidates.size() > 1) {
+                                    final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates,
+                                            OperationType.COMPACTION);
+                                    if (txn != null) {
+                                        try {
+                                            AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(candidates, txn,
+                                                    false,
+                                                    Long.MAX_VALUE, false, 1);
+                                            if (status != AllSSTableOpStatus.SUCCESSFUL)
+                                                ECNetutils.printStatusCode(status.statusCode, cfs.getColumnFamilyName());
+                                        } catch (ExecutionException | InterruptedException e) {
+                                            // TODO Auto-generated catch block
+                                            e.printStackTrace();
+                                        }
+                                    } else {
+                                        logger.debug(
+                                                "rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
+                                    }
+
                                     try {
-                                        AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(candidates, txn,
-                                                false,
-                                                Long.MAX_VALUE, false, 1);
-                                        if (status != AllSSTableOpStatus.SUCCESSFUL)
-                                            ECNetutils.printStatusCode(status.statusCode, cfs.getColumnFamilyName());
-                                    } catch (ExecutionException | InterruptedException e) {
+                                        Thread.sleep(20000);
+                                    } catch (InterruptedException e) {
                                         // TODO Auto-generated catch block
                                         e.printStackTrace();
                                     }
-                                } else {
-                                    logger.debug(
-                                            "rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
+                                    candidates.clear();
+                                    
                                 }
-
-                                try {
-                                    Thread.sleep(60000);
-                                } catch (InterruptedException e) {
-                                    // TODO Auto-generated catch block
-                                    e.printStackTrace();
-                                }
-
                             }
 
+
                         }
+                        
+
                     }
                 }
-
-            } else {
-                logger.debug("rymDebug: It's not time to perform the forceCompactionForTheLastLevel.");
             }
-
-
-
-
 
         }
     }
