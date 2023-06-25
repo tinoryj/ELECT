@@ -98,6 +98,7 @@ import org.apache.cassandra.db.compaction.AbstractCompactionStrategy;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.CompactionStrategyManager;
 import org.apache.cassandra.db.compaction.LeveledGenerations;
+import org.apache.cassandra.db.compaction.LeveledManifest;
 import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.Verifier;
@@ -1968,40 +1969,46 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             if(lastSSTable.last.compareTo(sstables.get(i).first) >= 0 && !(lastSSTable.isReplicationTransferredToErasureCoding() &&
                                                                                         sstables.get(i).isReplicationTransferredToErasureCoding())) {
                                 
-                                // TODO: select from a lower level.
+                                
                                 candidates.add(sstables.get(i));
                                 lastSSTable = sstables.get(i);
                             }
 
-                            if(candidates.size() >= maxCompactionThreshold || i == candidates.size() - 1) {
-                                if(candidates.size() > 1) {
-                                    final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates,
-                                            OperationType.COMPACTION);
-                                    if (txn != null) {
-                                        try {
-                                            AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(candidates, txn,
-                                                    false,
-                                                    Long.MAX_VALUE, false, 1);
-                                            if (status != AllSSTableOpStatus.SUCCESSFUL)
-                                                ECNetutils.printStatusCode(status.statusCode, cfs.getColumnFamilyName());
-                                        } catch (ExecutionException | InterruptedException e) {
-                                            // TODO Auto-generated catch block
-                                            e.printStackTrace();
-                                        }
-                                    } else {
-                                        logger.debug(
-                                                "rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
-                                    }
+                            if(candidates.size() >= maxCompactionThreshold || (i == candidates.size() - 1) && candidates.size() > 1) {
 
+                                // TODO: select from a lower level.
+                                Token startToken = candidates.get(0).first.getToken();
+                                Token endToken = candidates.get(candidates.size() - 1).last.getToken();
+
+                                List<SSTableReader> lowerLevelSSTables = new ArrayList<>(cfs.getSSTableForLevel(level -1));
+                                List<SSTableReader> overlappedSSTables = new ArrayList<>(LeveledManifest.overlapping(startToken, endToken, lowerLevelSSTables));
+                                candidates.addAll(overlappedSSTables);
+                                
+                                final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates,
+                                        OperationType.COMPACTION);
+                                if (txn != null) {
                                     try {
-                                        Thread.sleep(20000);
-                                    } catch (InterruptedException e) {
+                                        AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(candidates, txn,
+                                                false,
+                                                Long.MAX_VALUE, false, 1);
+                                        if (status != AllSSTableOpStatus.SUCCESSFUL)
+                                            ECNetutils.printStatusCode(status.statusCode, cfs.getColumnFamilyName());
+                                    } catch (ExecutionException | InterruptedException e) {
                                         // TODO Auto-generated catch block
                                         e.printStackTrace();
                                     }
-                                    candidates.clear();
-                                    
+                                } else {
+                                    logger.debug(
+                                            "rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
                                 }
+
+                                try {
+                                    Thread.sleep(20000);
+                                } catch (InterruptedException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+                                candidates.clear();
                             }
 
 

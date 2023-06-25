@@ -479,7 +479,7 @@ public class LeveledManifest {
      *         and @param end, inclusive.
      */
     @VisibleForTesting
-    static Set<SSTableReader> overlapping(Token start, Token end, Iterable<SSTableReader> sstables) {
+    public static Set<SSTableReader> overlapping(Token start, Token end, Iterable<SSTableReader> sstables) {
         return overlappingWithBounds(start, end, genBounds(sstables));
     }
 
