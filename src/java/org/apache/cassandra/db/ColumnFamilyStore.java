@@ -1688,7 +1688,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             // [CASSANDRAEC]
             List<SSTableReader> resultOverlapped = new ArrayList<>();
             for(SSTableReader sstable : overlapped) {
-                if(!sstable.isReplicationTransferredToErasureCoding() || sstable.getColumnFamilyName().equals("usertable")) {
+                if(!sstable.isReplicationTransferredToErasureCoding() && sstable.getColumnFamilyName().equals("usertable")) {
                     resultOverlapped.add(sstable);
                 }
             }
