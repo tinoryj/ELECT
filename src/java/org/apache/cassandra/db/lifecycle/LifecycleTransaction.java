@@ -422,9 +422,9 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
     {
         // [rymDebug]
         // ECNetutils.printStackTace("Invoke LifecycleTransaction.update method");
-        if(reader.isReplicationTransferredToErasureCoding()) {
-            logger.debug("update a transferred sstable {}", reader.descriptor);
-        }
+        // if(reader.isReplicationTransferredToErasureCoding()) {
+        //     logger.debug("rymDebug: update a transferred sstable {}", reader.descriptor);
+        // }
         
         assert !staged.update.contains(reader) : "each reader may only be updated once per checkpoint: " + reader;
         assert !identities.contains(reader.instanceId) : "each reader instance may only be provided as an update once: " + reader;
@@ -437,9 +437,9 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         if (!isOffline())
             reader.setupOnline();
         
-        if(reader.isReplicationTransferredToErasureCoding()) {
-            logger.debug("rymDebug: successfully update a transferred sstable {}", reader.descriptor);
-        }
+        // if(reader.isReplicationTransferredToErasureCoding()) {
+        //     logger.debug("rymDebug: successfully update a transferred sstable {}", reader.descriptor);
+        // }
         // throw new IllegalStateException("Debug method LifcycleTransaction.update");
     }
 
@@ -796,14 +796,14 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         // this is now the point of no return; we cannot safely rollback, so we ignore exceptions until we're done
         // we restore state by obsoleting our obsolete files, releasing our references to them, and updating our size
         // and notification status for the obsolete and new files
-        logger.debug("rymDebug: commit ec_metadata {}", ecSSTable.descriptor);
+        // logger.debug("rymDebug: commit ec_metadata {}", ecSSTable.descriptor);
         // logger.debug("rymDebug: Before update live set, the size of sstables map is {}", tracker.view.get().sstablesMap.size());
         // accumulate = tracker.apply(updateLiveSet(Collections.emptySet(), Collections.singletonList(ecSSTable)), accumulate);
         // logger.debug("rymDebug: After update live set, the size of sstables map is {}", tracker.view.get().sstablesMap.size());
         accumulate = markObsolete(obsoletions, accumulate);
         accumulate = tracker.updateSizeTracking(logged.obsolete, logged.update, accumulate, ecSSTable);
         accumulate = runOnCommitHooks(accumulate);
-        logged.obsolete.add(ecSSTable);
+        // logged.obsolete.add(ecSSTable);
         accumulate = release(selfRefs(logged.obsolete), accumulate);
         accumulate = tracker.notifySSTablesChanged(originals, logged.update, log.type(), accumulate, ecSSTable);
 
