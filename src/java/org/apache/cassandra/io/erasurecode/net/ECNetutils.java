@@ -347,5 +347,8 @@ public final class ECNetutils {
         
         test();
 
+        String ss = "usertbale";
+        System.out.println(ss.contains("usertable"));
+
     }
 }

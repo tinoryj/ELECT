@@ -841,15 +841,17 @@ public class SelectStatement implements CQLStatement.SingleKeyspaceCqlStatement 
         ResultSetBuilder result = new ResultSetBuilder(getResultMetadata(), selectors, groupMaker);
         // Tinoryj: debug on scan
         int totalPartitionCount = 0;
+        String ksName = "";
         while (partitions.hasNext()) {
             try (RowIterator partition = partitions.next()) {
+                ksName = partition.metadata().keyspace;
                 processPartition(partition, options, result, nowInSec);
             }
             totalPartitionCount++;
         }
 
         ResultSet cqlRows = result.build();
-        if (totalPartitionCount != cqlRows.size()) {
+        if (totalPartitionCount != cqlRows.size() && ksName.equals("ycsb")) {
             logger.error(
                     "[Tinoryj] Process read results size mismatch, total partition count = {}, result set size = {}",
                     totalPartitionCount, cqlRows.size());

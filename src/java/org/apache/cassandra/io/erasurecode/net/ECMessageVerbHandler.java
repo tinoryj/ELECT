@@ -150,6 +150,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                    StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size() < 50 ||
                    StorageService.instance.globalReadyOldSSTableForECStripUpdateCount > 0){
                     cnt++;
+                    logger.debug("rymDebug: retry to perform erasure coding count is {}", cnt);
                 } else {
                     // Padding zero chunk to consume the blocked sstables
                     cnt = 0;

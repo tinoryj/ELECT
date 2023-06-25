@@ -1938,7 +1938,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                 for (Keyspace keyspace : Keyspace.all()){
                     for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
-                        if (cfs.getColumnFamilyName().contains("usertable") // &&
+                        if (cfs.getColumnFamilyName().contains("usertable") || cfs.getColumnFamilyName().equals("usertable") // &&
                             // !cfs.isPerformForceCompactionLastLevel
                             ) {
                             
