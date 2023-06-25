@@ -1928,19 +1928,20 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         // }
 
         @Override
-        public void run() {
+        public synchronized void run() {
 
             logger.debug("rymDebug: This is ForceCompactionForTheLastLevelRunnable");
             for (Keyspace keyspace : Keyspace.all()){
                 for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
-                    if (!cfs.getColumnFamilyName().equals("usertable") &&
-                        cfs.getColumnFamilyName().contains("usertable") &&
-                        !cfs.isPerformForceCompactionLastLevel) {
+                    if (cfs.getColumnFamilyName().contains("usertable") // &&
+                        // !cfs.isPerformForceCompactionLastLevel
+                        ) {
                         
-                        cfs.isPerformForceCompactionLastLevel = true;
+                        // cfs.isPerformForceCompactionLastLevel = true;
 
-                        logger.debug("rymDebug: perform force compaction in cfs ({})", cfs.getColumnFamilyName());
                         int maxCompactionThreshold = cfs.metadata().params.compaction.maxCompactionThreshold();
+                        logger.debug("rymDebug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
+                                     cfs.getColumnFamilyName(), maxCompactionThreshold);
                         // ColumnFamilyStore cfs =
                         // Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
                         int level = LeveledGenerations.getMaxLevelCount() - 1;
@@ -1959,16 +1960,16 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             }
                             startIndex += maxCompactionThreshold;
 
-                            boolean isContainUnTransferredSSTables = false;
-                            for (SSTableReader sstable : candidates) {
-                                if(!sstable.isReplicationTransferredToErasureCoding()) {
-                                    isContainUnTransferredSSTables = true;
-                                    break;
-                                }
-                            }
+                            // boolean isContainUnTransferredSSTables = false;
+                            // for (SSTableReader sstable : candidates) {
+                            //     if(!sstable.isReplicationTransferredToErasureCoding()) {
+                            //         isContainUnTransferredSSTables = true;
+                            //         break;
+                            //     }
+                            // }
 
-                            if(!isContainUnTransferredSSTables)
-                                continue;
+                            // if(!isContainUnTransferredSSTables)
+                            //     continue;
 
                             final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates,
                                     OperationType.COMPACTION);
