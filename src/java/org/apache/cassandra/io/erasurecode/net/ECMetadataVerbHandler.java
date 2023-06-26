@@ -209,47 +209,52 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 String cfName = entry.getKey();
 
                 for (BlockedECMetadata metadata : entry.getValue()) {
-                    try {
-                        if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.newSSTableHash,
-                                metadata.sourceIP)) {
-                            logger.debug("rymDebug: Perform transformECMetadataToECSSTable successfully");
-                            StorageService.instance.globalConsumedECMetadatas++;
-                            entry.getValue().remove(metadata);
-                        } else if (metadata.retryCount < MAX_RETRY_COUNT) {
-                            metadata.retryCount++;
-                            continue;
-                        } else {
-                            logger.debug("rymDebug: Still cannot create transactions, but we won't try it again, write the data down immediately.");
-                            ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
-
-                            StorageService.instance.globalConsumedECMetadatas++;
-                            // If the ecMetadata is for erasure coding, just transform it
-                            if (!metadata.ecMetadata.ecMetadataContent.isParityUpdate) {
-                                DataForRewrite dataForRewrite = StorageService.instance.globalSSTHashToSyncedFileMap
-                                        .get(metadata.newSSTableHash);
-                                if (dataForRewrite != null) {
-                                    String fileNamePrefix = dataForRewrite.fileNamePrefix;
-                                    transformECMetadataToECSSTableForErasureCode(metadata.ecMetadata,
-                                            new ArrayList<SSTableReader>(),
-                                            cfs,
-                                            fileNamePrefix,
-                                            metadata.newSSTableHash,
-                                            null, null, null);
-                                    entry.getValue().remove(metadata);
-                                } else {
-                                    logger.warn("rymDebug: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
-                                                metadata.newSSTableHash);
-                                }
+                    while(metadata.retryCount < MAX_RETRY_COUNT) {
+                        try {
+                            if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.newSSTableHash,
+                                    metadata.sourceIP)) {
+                                logger.debug("rymDebug: Perform transformECMetadataToECSSTable successfully");
+                                StorageService.instance.globalConsumedECMetadatas++;
+                                entry.getValue().remove(metadata);
+                                break;
+                            } else if (metadata.retryCount < MAX_RETRY_COUNT) {
+                                metadata.retryCount++;
+                                logger.debug("rymDebug: Cannot transform ecmetadata ({}) to ecSSTable, retry count is ({})", metadata.ecMetadata.stripeId, metadata.retryCount);
                             } else {
-                                // TODO: Wait until the target ecSSTable is released
-                                // transformECMetadataToECSSTableForParityUpdate(metadata.ecMetadata, cfs, metadata.sstableHash);
-                                logger.debug("rymERROR: wait until the target ecSSTable is released");
-                            }
+                                logger.debug("rymDebug: Still cannot create transactions, but we won't try it again, write the data down immediately.");
+                                ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
 
+                                StorageService.instance.globalConsumedECMetadatas++;
+                                // If the ecMetadata is for erasure coding, just transform it
+                                if (!metadata.ecMetadata.ecMetadataContent.isParityUpdate) {
+                                    DataForRewrite dataForRewrite = StorageService.instance.globalSSTHashToSyncedFileMap
+                                            .get(metadata.newSSTableHash);
+                                    if (dataForRewrite != null) {
+                                        String fileNamePrefix = dataForRewrite.fileNamePrefix;
+                                        transformECMetadataToECSSTableForErasureCode(metadata.ecMetadata,
+                                                new ArrayList<SSTableReader>(),
+                                                cfs,
+                                                fileNamePrefix,
+                                                metadata.newSSTableHash,
+                                                null, null, null);
+                                        entry.getValue().remove(metadata);
+                                    } else {
+                                        logger.warn("rymDebug: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
+                                                    metadata.newSSTableHash);
+                                    }
+                                } else {
+                                    // TODO: Wait until the target ecSSTable is released
+                                    // transformECMetadataToECSSTableForParityUpdate(metadata.ecMetadata, cfs, metadata.sstableHash);
+                                    logger.debug("rymERROR: wait until the target ecSSTable is released");
+                                }
+                                break;
+
+                            }
+                        } catch (InterruptedException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
                         }
-                    } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
+
                     }
 
                     // entry.getValue().remove(metadata);
@@ -434,6 +439,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
          while(!StorageService.instance.globalPendingECMetadata.get(oldECSSTable.getSSTableHashID()).isEmpty()) {
              BlockedECMetadata blockedECMetadata = StorageService.instance.globalPendingECMetadata.get(oldECSSTable.getSSTableHashID()).poll();
              logger.debug("rymDebug: we move an ECMetadata for old sstable {} from [Pending list] to [Ready list]", oldECSSTable.getSSTableHashID());
+             StorageService.instance.globalBolckedECMetadataCount--;
              saveECMetadataToBlockList(blockedECMetadata, null, true);
          }
      }
@@ -467,6 +473,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 blockList.add(metadata);
                 StorageService.instance.globalReadyECMetadatas.put(metadata.cfName, blockList);
             }
+            StorageService.instance.globalReadyECMetadataCount++;
         } else {
             logger.debug("rymDebug: Save the ECMetadata to global [Pending List] for oldSSTHash ({}), newSSTHash ({}), metadata.oldHash is ({})", oldSSTHash, metadata.newSSTableHash, metadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
             if(StorageService.instance.globalPendingECMetadata.containsKey(oldSSTHash)) {
@@ -477,6 +484,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 blockList.add(metadata);
                 StorageService.instance.globalPendingECMetadata.put(oldSSTHash, blockList);
             }
+            StorageService.instance.globalBolckedECMetadataCount++;
         }
     }
 
