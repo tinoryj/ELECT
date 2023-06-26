@@ -262,6 +262,25 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 }
 
             }
+
+            if(StorageService.instance.globalReadyECMetadataCount == StorageService.instance.globalConsumedECMetadatas && 
+               StorageService.instance.globalBolckedECMetadataCount > 0) {
+
+                List<String> pendingECMetadata = new ArrayList<String>();
+                for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalPendingECMetadata.entrySet()) {
+                    if(!entry.getValue().isEmpty()) {
+                        for(BlockedECMetadata metadata : entry.getValue()) {
+                            pendingECMetadata.add(metadata.ecMetadata.stripeId);
+                        }
+                    }
+                }
+
+                logger.debug("rymDebug: globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({}) ",
+                                 StorageService.instance.globalRecvECMetadatas, StorageService.instance.globalConsumedECMetadatas,
+                                 StorageService.instance.globalReadyECMetadataCount, StorageService.instance.globalBolckedECMetadataCount);
+                
+            }
+
             // isConsumeBlockedECMetadataOccupied = false;
 
         }
