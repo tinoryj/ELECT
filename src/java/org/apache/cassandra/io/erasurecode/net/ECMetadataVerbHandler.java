@@ -209,7 +209,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 String cfName = entry.getKey();
 
                 for (BlockedECMetadata metadata : entry.getValue()) {
-                    while(metadata.retryCount < MAX_RETRY_COUNT) {
+                    while(metadata.retryCount <= MAX_RETRY_COUNT) {
                         try {
                             if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.newSSTableHash,
                                     metadata.sourceIP)) {
@@ -220,6 +220,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             } else if (metadata.retryCount < MAX_RETRY_COUNT) {
                                 metadata.retryCount++;
                                 logger.debug("rymDebug: Cannot transform ecmetadata ({}) to ecSSTable, retry count is ({})", metadata.ecMetadata.stripeId, metadata.retryCount);
+                                Thread.sleep(1000);
                             } else {
                                 logger.debug("rymDebug: Still cannot create transactions, but we won't try it again, write the data down immediately.");
                                 ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
