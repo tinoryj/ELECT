@@ -121,7 +121,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 BlockedECMetadata blockedECMetadata;
 
                 // Check if the old sstable is available, if not, add it to the queue
-
+                StorageService.instance.globalRecvECMetadatas++;
                 if(ecMetadata.ecMetadataContent.isParityUpdate){
                     if(!entry.getKey().equals(newSSTHashForUpdate)){
                         blockedECMetadata = new BlockedECMetadata(newSSTableHash,
@@ -197,12 +197,12 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 return;
             }
 
-            if(isConsumeBlockedECMetadataOccupied) {
-                logger.debug("rymDebug: ConsumeBlockedECMetadataOccupied is true");
-                return;
-            }
+            // if(isConsumeBlockedECMetadataOccupied) {
+            //     logger.debug("rymDebug: ConsumeBlockedECMetadataOccupied is true");
+            //     return;
+            // }
 
-            isConsumeBlockedECMetadataOccupied = true;
+            // isConsumeBlockedECMetadataOccupied = true;
             logger.debug("rymDebug: This is ConsumeBlockedECMetadataRunnable");
             for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalReadyECMetadatas.entrySet()) {
                 String ks = "ycsb";
@@ -213,6 +213,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.newSSTableHash,
                                 metadata.sourceIP)) {
                             logger.debug("rymDebug: Perform transformECMetadataToECSSTable successfully");
+                            StorageService.instance.globalConsumedECMetadatas++;
                             entry.getValue().remove(metadata);
                         } else if (metadata.retryCount < MAX_RETRY_COUNT) {
                             metadata.retryCount++;
@@ -221,6 +222,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                             logger.debug("rymDebug: Still cannot create transactions, but we won't try it again, write the data down immediately.");
                             ColumnFamilyStore cfs = Keyspace.open(ks).getColumnFamilyStore(cfName);
 
+                            StorageService.instance.globalConsumedECMetadatas++;
                             // If the ecMetadata is for erasure coding, just transform it
                             if (!metadata.ecMetadata.ecMetadataContent.isParityUpdate) {
                                 DataForRewrite dataForRewrite = StorageService.instance.globalSSTHashToSyncedFileMap
@@ -254,7 +256,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 }
 
             }
-            isConsumeBlockedECMetadataOccupied = false;
+            // isConsumeBlockedECMetadataOccupied = false;
 
         }
 

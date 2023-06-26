@@ -214,6 +214,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, SSTableReader> globalSSTHashToECSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
     // [In secondary node] Record the ECMetadata data, <cfName, BlockedECMetadata>
     public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalReadyECMetadatas = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
+    public volatile long globalRecvECMetadatas = 0;
+    public volatile long globalConsumedECMetadatas = 0;
     // [In secondary node] Record the updated ECMetadata to avoid concurrent conflict <sstHash, BlockedECMetadata> 
     public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalPendingECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
     // [In parity node], <old sstable hash, parity update sstable>

@@ -1944,7 +1944,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         
                         // cfs.isPerformForceCompactionLastLevel = true;
 
-                        int maxCompactionThreshold = 32;
+                        int maxCompactionThreshold = 50;
                         logger.debug("rymDebug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
                                     cfs.getColumnFamilyName(), maxCompactionThreshold);
                         // ColumnFamilyStore cfs =
