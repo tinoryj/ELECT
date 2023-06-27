@@ -275,9 +275,10 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     }
                 }
 
-                logger.debug("rymDebug: globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({}) ",
+                logger.debug("rymDebug: globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({}), pending ECMetadatas are ({})",
                                  StorageService.instance.globalRecvECMetadatas, StorageService.instance.globalConsumedECMetadatas,
-                                 StorageService.instance.globalReadyECMetadataCount, StorageService.instance.globalBolckedECMetadataCount);
+                                 StorageService.instance.globalReadyECMetadataCount, StorageService.instance.globalBolckedECMetadataCount,
+                                 pendingECMetadata);
                 
             }
 
