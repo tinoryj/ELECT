@@ -441,8 +441,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             } else {
                 // Just replace the files
                 SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor);
-                // remove the entry to save memory
-                StorageService.instance.globalSSTHashToECSSTableMap.remove(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
+                StorageService.instance.globalUpdatingSSTHashList.remove(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
             }
         } else {
             ECNetutils.printStackTace(String.format("rymERROR: [Parity Update] cannot get ecSSTable for sstHash(%s)", ecMetadata.ecMetadataContent.oldSSTHashForUpdate));
