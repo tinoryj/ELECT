@@ -427,7 +427,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         StorageService.instance.globalUpdatingSSTHashList.remove(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
                         logger.debug("rymDebug: We get a transaction for old sstable ({}), and new sstable ({}) successfully.", ecMetadata.ecMetadataContent.oldSSTHashForUpdate, newSSTHash);
                         // remove the entry to save memory
-                        StorageService.instance.globalSSTHashToECSSTableMap.remove(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
+                        // StorageService.instance.globalSSTHashToECSSTableMap.remove(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
                         return false;
                     } else {
                         logger.debug("rymDebug:[Parity Update] failed to get transactions for the old sstables ({}), and new sstable ({}) we will try it later",
