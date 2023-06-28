@@ -98,6 +98,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             .build();
                     command.updateColumnFilter(newColumnFilter1);
                     if (command.isDigestQuery() == false) {
+                        logger.debug("[Tinoryj] Should perform online recovery on the secondary lsm-tree usertable 1");
                         command.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
                     break;
@@ -110,6 +111,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             .build();
                     command.updateColumnFilter(newColumnFilter2);
                     if (command.isDigestQuery() == false) {
+                        logger.debug("[Tinoryj] Should perform online recovery on the secondary lsm-tree usertable 2");
                         command.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
                     break;

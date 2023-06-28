@@ -97,7 +97,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
     private final Kind kind;
 
     private boolean isDigestQuery;
-    private boolean shouldPerformOnlineRecoveryDuringRead;
+    private boolean shouldPerformOnlineRecoveryDuringRead = false;
     private final boolean acceptsTransient;
     // if a digest query, the version for which the digest is expected. Ignored if
     // not a digest.

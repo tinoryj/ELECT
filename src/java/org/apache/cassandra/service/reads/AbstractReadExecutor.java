@@ -198,6 +198,8 @@ public abstract class AbstractReadExecutor {
                         this.command = readCommand;
                         this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
                         if (readCommand.isDigestQuery() == false) {
+                            logger.debug(
+                                    "[Tinoryj] Should perform online recovery on the secondary lsm-tree usertable 1");
                             readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
                         }
                         break;
@@ -212,6 +214,8 @@ public abstract class AbstractReadExecutor {
                         this.command = readCommand;
                         this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
                         if (readCommand.isDigestQuery() == false) {
+                            logger.debug(
+                                    "[Tinoryj] Should perform online recovery on the secondary lsm-tree usertable 2");
                             readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
                         }
                         break;
