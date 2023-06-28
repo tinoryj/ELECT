@@ -183,6 +183,9 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter);
+                        if (readCommand.isDigestQuery() == true) {
+                            logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
+                        }
                         break;
                     case 1:
                         readCommand.updateTableMetadata(

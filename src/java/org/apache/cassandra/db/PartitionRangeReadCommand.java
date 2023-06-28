@@ -345,12 +345,17 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
             for (SSTableReader sstable : view.sstables) {
                 if (sstable.isReplicationTransferredToErasureCoding()
                         && controller.shouldPerformOnlineRecoveryDuringRead() == false) {
+                    logger.debug("[Tinoryj] Skip metadata sstable from read since no need to recovery: [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename());
                     continue;
                     // Tinoryj: skip metadata sstable from read if no need to recovery
                 }
 
-                if (sstable.isReplicationTransferredToErasureCoding() && 
-                    !sstable.getColumnFamilyName().equals("usertable")) {
+                if (sstable.isReplicationTransferredToErasureCoding() &&
+                        !sstable.getColumnFamilyName().equals("usertable")
+                        && controller.shouldPerformOnlineRecoveryDuringRead() == true) {
+                    logger.warn("[Tinoryj] Recovery metadata sstable from read: [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: call recovery for the current sstable.
                     try {
                         ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID());

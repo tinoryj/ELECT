@@ -726,12 +726,17 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             for (SSTableReader sstable : view.sstables) {
                 if (!controller.shouldPerformOnlineRecoveryDuringRead()
                         && sstable.isReplicationTransferredToErasureCoding()) {
+                    logger.debug("[Tinoryj] Skip metadata sstable from read since no need to recovery: [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename());
                     continue;
                     // Tinoryj: skip read from metadata sstable since no need to recovery the raw
                     // content from it.
                 }
-                if (sstable.isReplicationTransferredToErasureCoding() && 
-                    !sstable.getColumnFamilyName().equals("usertable")) {
+                if (sstable.isReplicationTransferredToErasureCoding() &&
+                        !sstable.getColumnFamilyName().equals("usertable")
+                        && controller.shouldPerformOnlineRecoveryDuringRead() == true) {
+                    logger.warn("[Tinoryj] Recovery metadata sstable from read: [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: call recvoery on current sstable.
                     try {
                         ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID());
@@ -918,9 +923,12 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // Tinoryj: skip read from metadata sstable since no need to recovery the raw
                 // content from it.
             }
-            if (sstable.isReplicationTransferredToErasureCoding() && 
-                !sstable.getColumnFamilyName().equals("usertable")) {
+            if (sstable.isReplicationTransferredToErasureCoding() &&
+                    !sstable.getColumnFamilyName().equals("usertable")
+                    && controller.shouldPerformOnlineRecoveryDuringRead() == true) {
                 // Tinoryj TODO: call recvoery on current sstable.
+                logger.warn("[Tinoryj] Recovery metadata sstable from read: [{},{}]",
+                        sstable.getSSTableHashID(), sstable.getFilename());
                 try {
                     ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID());
                 } catch (Exception e) {
