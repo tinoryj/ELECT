@@ -85,6 +85,9 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             .allRegularColumnsBuilder(command.metadata(), false)
                             .build();
                     command.updateColumnFilter(newColumnFilter);
+                    if (command.isDigestQuery() == true) {
+                        logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
+                    }
                     break;
                 case 1:
                     command.updateTableMetadata(
