@@ -136,13 +136,18 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                 noDataCount++;
             }
         }
-        if (noDataCount != 0 || (command instanceof PartitionRangeReadCommand)) {
-            logger.error("[Tinoryj-ERROR] Read operation get only {} success data response",
-                    snapshot.size() - noDataCount);
-            if (command.metadata().keyspace.equals("ycsb") && noDataCount != snapshot.size()) {
+        if (noDataCount != 0) {
+            if (command.metadata().keyspace.equals("ycsb")) {
                 // Skip digest failure with up to two empty data (since redundancy transition
                 // may remove the data in secondary nodes).
-                return true;
+                if (noDataCount != snapshot.size()) {
+                    return true;
+                } else {
+                    logger.error(
+                            "[Tinoryj-ERROR] Read operation get only {} success data response.",
+                            snapshot.size() - noDataCount);
+                    return false;
+                }
             } else {
                 // Perform read repair when hash not match and data is invalid.
                 return false;
