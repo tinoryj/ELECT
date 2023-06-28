@@ -343,12 +343,14 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
             }
 
             for (SSTableReader sstable : view.sstables) {
-                if (sstable.isReplicationTransferredToErasureCoding()
-                        && controller.shouldPerformOnlineRecoveryDuringRead() == false) {
-                    logger.debug("[Tinoryj] Skip metadata sstable from read since no need to recovery: [{},{}]",
-                            sstable.getSSTableHashID(), sstable.getFilename());
-                    continue;
-                    // Tinoryj: skip metadata sstable from read if no need to recovery
+                if (!sstable.getColumnFamilyName().equals("usertable")) {
+                    if (sstable.isReplicationTransferredToErasureCoding()
+                            && controller.shouldPerformOnlineRecoveryDuringRead() == false) {
+                        logger.debug("[Tinoryj] Skip metadata sstable from read since no need to recovery: [{},{}]",
+                                sstable.getSSTableHashID(), sstable.getFilename());
+                        continue;
+                        // Tinoryj: skip metadata sstable from read if no need to recovery
+                    }
                 }
 
                 if (sstable.isReplicationTransferredToErasureCoding() &&

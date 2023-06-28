@@ -724,14 +724,17 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 Tracing.trace("Collecting data from sstables and tracking repaired status");
 
             for (SSTableReader sstable : view.sstables) {
-                if (!controller.shouldPerformOnlineRecoveryDuringRead()
-                        && sstable.isReplicationTransferredToErasureCoding()) {
-                    logger.debug("[Tinoryj] Skip metadata sstable from read since no need to recovery: [{},{}]",
-                            sstable.getSSTableHashID(), sstable.getFilename());
-                    continue;
-                    // Tinoryj: skip read from metadata sstable since no need to recovery the raw
-                    // content from it.
+                if (!sstable.getColumnFamilyName().equals("usertable")) {
+                    if (!controller.shouldPerformOnlineRecoveryDuringRead()
+                            && sstable.isReplicationTransferredToErasureCoding()) {
+                        logger.debug("[Tinoryj] Skip metadata sstable from read since no need to recovery: [{},{}]",
+                                sstable.getSSTableHashID(), sstable.getFilename());
+                        continue;
+                        // Tinoryj: skip read from metadata sstable since no need to recovery the raw
+                        // content from it.
+                    }
                 }
+
                 if (sstable.isReplicationTransferredToErasureCoding() &&
                         !sstable.getColumnFamilyName().equals("usertable")
                         && controller.shouldPerformOnlineRecoveryDuringRead() == true) {
@@ -917,11 +920,13 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         view.sstables.sort(SSTableReader.maxTimestampDescending);
         // read sorted sstables
         for (SSTableReader sstable : view.sstables) {
-            if (!controller.shouldPerformOnlineRecoveryDuringRead()
-                    && sstable.isReplicationTransferredToErasureCoding()) {
-                continue;
-                // Tinoryj: skip read from metadata sstable since no need to recovery the raw
-                // content from it.
+            if (!sstable.getColumnFamilyName().equals("usertable")) {
+                if (!controller.shouldPerformOnlineRecoveryDuringRead()
+                        && sstable.isReplicationTransferredToErasureCoding()) {
+                    continue;
+                    // Tinoryj: skip read from metadata sstable since no need to recovery the raw
+                    // content from it.
+                }
             }
             if (sstable.isReplicationTransferredToErasureCoding() &&
                     !sstable.getColumnFamilyName().equals("usertable")
