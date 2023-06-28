@@ -227,140 +227,140 @@ public abstract class AbstractReadExecutor {
         }
     }
 
-    private void makeRequestsForELECT(ReadCommand readCommand, Iterable<Replica> replicas) {
-        List<InetAddress> sendRequestAddresses;
-        Token token = (readCommand instanceof SinglePartitionReadCommand
-                ? ((SinglePartitionReadCommand) readCommand).partitionKey().getToken()
-                : ((PartitionRangeReadCommand) readCommand).dataRange().keyRange().right.getToken());
-        sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(readCommand
-                .metadata().keyspace,
-                token);
+    // private void makeRequestsForELECT(ReadCommand readCommand, Iterable<Replica> replicas) {
+    //     List<InetAddress> sendRequestAddresses;
+    //     Token token = (readCommand instanceof SinglePartitionReadCommand
+    //             ? ((SinglePartitionReadCommand) readCommand).partitionKey().getToken()
+    //             : ((PartitionRangeReadCommand) readCommand).dataRange().keyRange().right.getToken());
+    //     sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(readCommand
+    //             .metadata().keyspace,
+    //             token);
 
-        boolean hasLocalEndpoint = false;
-        Message<ReadCommand> message = null;
-        for (int i = 0; i < sendRequestAddresses.size(); i++) {
-            InetAddressAndPort endpoint = sendRequestAddresses[i];
+    //     boolean hasLocalEndpoint = false;
+    //     Message<ReadCommand> message = null;
+    //     for (int i = 0; i < sendRequestAddresses.size(); i++) {
+    //         InetAddressAndPort endpoint = sendRequestAddresses[i];
 
-            if (traceState != null)
-                traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
+    //         if (traceState != null)
+    //             traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
 
-            if (replica.isSelf()) {
-                hasLocalEndpoint = true;
-                continue;
-            }
+    //         if (replica.isSelf()) {
+    //             hasLocalEndpoint = true;
+    //             continue;
+    //         }
 
-            switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
-                case 0:
-                    // In case received request is not for primary LSM tree
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable")
-                                    .metadata());
-                    ColumnFilter newColumnFilter = ColumnFilter
-                            .allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter);
-                    if (readCommand.isDigestQuery() == true) {
-                        logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
-                    }
-                    break;
-                case 1:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
-                                    .metadata());
-                    ColumnFilter newColumnFilter1 = ColumnFilter
-                            .allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter1);
-                    this.command = readCommand;
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
-                    if (readCommand.isDigestQuery() == false) {
-                        logger.debug(
-                                "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
-                        readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
-                    }
-                    break;
-                case 2:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
-                                    .metadata());
-                    ColumnFilter newColumnFilter2 = ColumnFilter
-                            .allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter2);
-                    this.command = readCommand;
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
-                    if (readCommand.isDigestQuery() == false) {
-                        logger.debug(
-                                "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
-                        readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
-                    }
-                    break;
-                default:
-                    logger.debug("[Tinoryj] Not support replication factor larger than 3");
-                    break;
-            }
-            if (null == message)
-                message = readCommand.createMessage(false);
+    //         switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
+    //             case 0:
+    //                 // In case received request is not for primary LSM tree
+    //                 readCommand.updateTableMetadata(
+    //                         Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+    //                                 .metadata());
+    //                 ColumnFilter newColumnFilter = ColumnFilter
+    //                         .allRegularColumnsBuilder(readCommand.metadata(), false)
+    //                         .build();
+    //                 readCommand.updateColumnFilter(newColumnFilter);
+    //                 if (readCommand.isDigestQuery() == true) {
+    //                     logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
+    //                 }
+    //                 break;
+    //             case 1:
+    //                 readCommand.updateTableMetadata(
+    //                         Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+    //                                 .metadata());
+    //                 ColumnFilter newColumnFilter1 = ColumnFilter
+    //                         .allRegularColumnsBuilder(readCommand.metadata(), false)
+    //                         .build();
+    //                 readCommand.updateColumnFilter(newColumnFilter1);
+    //                 this.command = readCommand;
+    //                 this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
+    //                 if (readCommand.isDigestQuery() == false) {
+    //                     logger.debug(
+    //                             "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
+    //                     readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
+    //                 }
+    //                 break;
+    //             case 2:
+    //                 readCommand.updateTableMetadata(
+    //                         Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+    //                                 .metadata());
+    //                 ColumnFilter newColumnFilter2 = ColumnFilter
+    //                         .allRegularColumnsBuilder(readCommand.metadata(), false)
+    //                         .build();
+    //                 readCommand.updateColumnFilter(newColumnFilter2);
+    //                 this.command = readCommand;
+    //                 this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
+    //                 if (readCommand.isDigestQuery() == false) {
+    //                     logger.debug(
+    //                             "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
+    //                     readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
+    //                 }
+    //                 break;
+    //             default:
+    //                 logger.debug("[Tinoryj] Not support replication factor larger than 3");
+    //                 break;
+    //         }
+    //         if (null == message)
+    //             message = readCommand.createMessage(false);
 
-            MessagingService.instance().sendWithCallback(message, endpoint, handler);
-        }
+    //         MessagingService.instance().sendWithCallback(message, endpoint, handler);
+    //     }
 
-        // We delay the local (potentially blocking) read till the end to avoid stalling
-        // remote requests.
-        if (hasLocalEndpoint) {
-            switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
-                case 0:
-                    // In case received request is not for primary LSM tree
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable")
-                                    .metadata());
-                    ColumnFilter newColumnFilter = ColumnFilter
-                            .allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter);
-                    if (readCommand.isDigestQuery() == true) {
-                        logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
-                    }
-                    break;
-                case 1:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
-                                    .metadata());
-                    ColumnFilter newColumnFilter1 = ColumnFilter
-                            .allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter1);
-                    this.command = readCommand;
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
-                    if (readCommand.isDigestQuery() == false) {
-                        logger.debug(
-                                "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
-                        readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
-                    }
-                    break;
-                case 2:
-                    readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
-                                    .metadata());
-                    ColumnFilter newColumnFilter2 = ColumnFilter
-                            .allRegularColumnsBuilder(readCommand.metadata(), false)
-                            .build();
-                    readCommand.updateColumnFilter(newColumnFilter2);
-                    this.command = readCommand;
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
-                    if (readCommand.isDigestQuery() == false) {
-                        logger.debug(
-                                "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
-                        readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
-                    }
-                    break;
-                default:
-                    logger.debug("[Tinoryj] Not support replication factor larger than 3");
-                    break;
-            }
-            Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
-        }
-    }
+    //     // We delay the local (potentially blocking) read till the end to avoid stalling
+    //     // remote requests.
+    //     if (hasLocalEndpoint) {
+    //         switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
+    //             case 0:
+    //                 // In case received request is not for primary LSM tree
+    //                 readCommand.updateTableMetadata(
+    //                         Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+    //                                 .metadata());
+    //                 ColumnFilter newColumnFilter = ColumnFilter
+    //                         .allRegularColumnsBuilder(readCommand.metadata(), false)
+    //                         .build();
+    //                 readCommand.updateColumnFilter(newColumnFilter);
+    //                 if (readCommand.isDigestQuery() == true) {
+    //                     logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
+    //                 }
+    //                 break;
+    //             case 1:
+    //                 readCommand.updateTableMetadata(
+    //                         Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+    //                                 .metadata());
+    //                 ColumnFilter newColumnFilter1 = ColumnFilter
+    //                         .allRegularColumnsBuilder(readCommand.metadata(), false)
+    //                         .build();
+    //                 readCommand.updateColumnFilter(newColumnFilter1);
+    //                 this.command = readCommand;
+    //                 this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
+    //                 if (readCommand.isDigestQuery() == false) {
+    //                     logger.debug(
+    //                             "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
+    //                     readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
+    //                 }
+    //                 break;
+    //             case 2:
+    //                 readCommand.updateTableMetadata(
+    //                         Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+    //                                 .metadata());
+    //                 ColumnFilter newColumnFilter2 = ColumnFilter
+    //                         .allRegularColumnsBuilder(readCommand.metadata(), false)
+    //                         .build();
+    //                 readCommand.updateColumnFilter(newColumnFilter2);
+    //                 this.command = readCommand;
+    //                 this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
+    //                 if (readCommand.isDigestQuery() == false) {
+    //                     logger.debug(
+    //                             "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
+    //                     readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
+    //                 }
+    //                 break;
+    //             default:
+    //                 logger.debug("[Tinoryj] Not support replication factor larger than 3");
+    //                 break;
+    //         }
+    //         Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
+    //     }
+    // }
 
     public static void printStackTace(String msg) {
         logger.debug("stack trace {}", new Exception(msg));
