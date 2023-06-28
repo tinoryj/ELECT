@@ -155,7 +155,8 @@ public abstract class AbstractReadExecutor {
                 hasLocalEndpoint = true;
                 continue;
             }
-
+            logger.debug("[Tinoryj] Perform {} read operation to node {}",
+                    readCommand.isDigestQuery() ? "digest" : "data", endpoint);
             if (null == message)
                 message = readCommand.createMessage(false);
 
@@ -247,9 +248,12 @@ public abstract class AbstractReadExecutor {
         // Normal read path for Cassandra system tables.
         EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
         makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+        logger.debug("[Tinoryj] Try to read the primary replica, {}", fullDataRequests);
         makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
         // Tinoryj-> to read the possible secondary replica.
         makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+        logger.debug("[Tinoryj] Try to read the secondary replica, {}",
+                selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
     }
 
     /**
