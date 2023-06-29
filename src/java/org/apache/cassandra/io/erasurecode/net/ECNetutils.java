@@ -337,20 +337,36 @@ public final class ECNetutils {
         logger.debug("stack trace {}", new Exception(msg));
     }
 
+    public static void throwError(String msg) throws InterruptedException {
+        
+        throw new InterruptedException(msg);
+    }
+
     public static void test() throws Exception{
         printStackTace("test print stack trace method");
 
         System.out.println("ok");
     }
 
-    public static void main(String[] args) throws Exception{
+    public static void main(String[] args) {
         
-        test();
+        // test();
 
-        String ss = "usertbale";
-        boolean a = false;
-        boolean b = false;
-        System.out.println(a&&b);
+
+        try {
+            throwError("test throw interrupted error method");
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        System.out.println("ok");
+
+
+        // String ss = "usertbale";
+        // boolean a = false;
+        // boolean b = false;
+        // System.out.println(a&&b);
 
     }
 }

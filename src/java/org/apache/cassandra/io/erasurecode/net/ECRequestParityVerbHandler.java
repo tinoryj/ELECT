@@ -61,6 +61,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
                 } catch (InterruptedException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
+                    break;
                 }
             }
         }

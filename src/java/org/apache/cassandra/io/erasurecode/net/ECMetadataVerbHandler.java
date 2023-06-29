@@ -255,6 +255,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         } catch (InterruptedException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
+                            break;
                         }
 
                     }
