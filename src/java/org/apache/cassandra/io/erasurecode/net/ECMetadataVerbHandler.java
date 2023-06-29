@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.io.erasurecode.net;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -442,7 +443,12 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
             } else {
                 // Just replace the files
-                SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor);
+                try {
+                    SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor);
+                } catch (FileNotFoundException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
                 StorageService.instance.globalUpdatingSSTHashList.remove(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
             }
         } else {

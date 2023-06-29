@@ -18,6 +18,7 @@
 package org.apache.cassandra.io.sstable.format;
 
 import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
@@ -466,11 +467,13 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRAEC]
-    public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc) {
+    public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc) throws FileNotFoundException {
 
         File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
         if (ecMetadataFile.exists())
             FileUtils.deleteWithConfirm(ecMetadataFile);
+        else if(ecMetadata.ecMetadataContent.isParityUpdate)
+            throw new FileNotFoundException(String.format("rymERROR: Cabbit found EC metadata file ({})", desc));
 
         try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
 
