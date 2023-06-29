@@ -1988,7 +1988,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             lastSSTable = sstables.get(i);
                             // }
 
-                            if(candidates.size() >= maxCompactionThreshold || (i == candidates.size() - 1) && candidates.size() > 1) {
+                            if(candidates.size() >= maxCompactionThreshold || (i == sstables.size() - 1) && candidates.size() > 1) {
 
                                 // TODO: select from a lower level.
                                 Token startToken = candidates.get(0).first.getToken();
