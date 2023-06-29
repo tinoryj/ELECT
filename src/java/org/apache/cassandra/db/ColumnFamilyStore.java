@@ -581,6 +581,20 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                 if(count == 0) {
                     logger.debug("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
+                    for (Keyspace keyspace : Keyspace.all()){
+                        for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
+                            if(cfs1.getColumnFamilyName().equals("usertable") || cfs1.getColumnFamilyName().contains("usertable")) {
+                                List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
+                                Collections.sort(sstables1, new SSTableReaderComparator());
+
+                                logger.debug("rymDebug: We insight the last level of the ({}), the first token is ({}), the last token is ({})",
+                                             cfs1.getColumnFamilyName(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
+                            }
+
+                        }
+                    }
+
+
                 }
 
             } else {
