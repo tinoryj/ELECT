@@ -508,94 +508,94 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             if (!sstables.isEmpty()) {
                 logger.debug("rymDebug: get {} sstables from level {}", sstables.size(), level);
                 int count = 0;
-                for (SSTableReader sstable : sstables) {
+                // for (SSTableReader sstable : sstables) {
 
-                    if(count >= MAX_EC_CANDIDATES)
-                        return;
+                //     if(count >= MAX_EC_CANDIDATES)
+                //         return;
                         
-                    if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
+                //     if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
 
-                        if (!sstable.isReplicationTransferredToErasureCoding() && !sstable.isSelectedByCompactionOrErasureCoding()) {
+                //         if (!sstable.isReplicationTransferredToErasureCoding() && !sstable.isSelectedByCompactionOrErasureCoding()) {
 
-                            logger.debug(
-                                    "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
-                                    sstable.getFilename(), sstable.getSSTableLevel(),
-                                    LeveledGenerations.getMaxLevelCount() - 1,
-                                    sstable.descriptor.ksname,
-                                    sstable.descriptor.cfname,
-                                    sstable.descriptor.version,
-                                    sstable.descriptor.id,
-                                    sstable.descriptor);
-                            long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+                //             logger.debug(
+                //                     "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
+                //                     sstable.getFilename(), sstable.getSSTableLevel(),
+                //                     LeveledGenerations.getMaxLevelCount() - 1,
+                //                     sstable.descriptor.ksname,
+                //                     sstable.descriptor.cfname,
+                //                     sstable.descriptor.version,
+                //                     sstable.descriptor.id,
+                //                     sstable.descriptor);
+                //             long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 
-                            long delayMilli = delay * 60 * 1000;
+                //             long delayMilli = delay * 60 * 1000;
 
-                            if (duration >= delayMilli && sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
-                                // logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                                //         sstable.getSSTableLevel());
+                //             if (duration >= delayMilli && sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
+                //                 // logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                //                 //         sstable.getSSTableLevel());
                                 
-                                count++;
-                                String key = sstable.first.getRawKey(sstable.metadata());
-                                try {
-                                    byte[] sstContent = sstable.getSSTContent();
-                                    String sstHashID = sstable.getSSTableHashID();
-                                    List<InetAddressAndPort> replicaNodes = StorageService.instance
-                                            .getReplicaNodesWithPort(keyspaceName, cfName, key);
+                //                 count++;
+                //                 String key = sstable.first.getRawKey(sstable.metadata());
+                //                 try {
+                //                     byte[] sstContent = sstable.getSSTContent();
+                //                     String sstHashID = sstable.getSSTableHashID();
+                //                     List<InetAddressAndPort> replicaNodes = StorageService.instance
+                //                             .getReplicaNodesWithPort(keyspaceName, cfName, key);
 
-                                    // Sync sstable with secondary nodes for rewrite
-                                    ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID, "Erasure Coding", cfs);
+                //                     // Sync sstable with secondary nodes for rewrite
+                //                     ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID, "Erasure Coding", cfs);
                                     
-                                    // Send selected sstable for perform erasure coding.
-                                    ECMessage ecMessage = new ECMessage(sstContent,
-                                            new ECMessageContent(sstHashID, keyspaceName, cfName,
-                                                    replicaNodes));
-                                    ecMessage.sendSSTableToParity();
-                                    StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.ecMessageContent.sstHashID,
-                                                                                              ecMessage.ecMessageContent.parityNodes);
-                                    logger.debug("rymDebug: we map sstHash ({}) to parity Nodes ({})", ecMessage.ecMessageContent.sstHashID,
-                                                                                                              ecMessage.ecMessageContent.parityNodes);
+                //                     // Send selected sstable for perform erasure coding.
+                //                     ECMessage ecMessage = new ECMessage(sstContent,
+                //                             new ECMessageContent(sstHashID, keyspaceName, cfName,
+                //                                     replicaNodes));
+                //                     ecMessage.sendSSTableToParity();
+                //                     StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.ecMessageContent.sstHashID,
+                //                                                                               ecMessage.ecMessageContent.parityNodes);
+                //                     logger.debug("rymDebug: we map sstHash ({}) to parity Nodes ({})", ecMessage.ecMessageContent.sstHashID,
+                //                                                                                               ecMessage.ecMessageContent.parityNodes);
 
-                                    if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
-                                        logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
-                                    }
+                //                     if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
+                //                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+                //                     }
 
-                                } catch (IOException e) {
-                                    logger.error("rymERROR: {}", e);
-                                } catch (Exception e) {
-                                    // TODO Auto-generated catch block
-                                    e.printStackTrace();
-                                }
-                            }
+                //                 } catch (IOException e) {
+                //                     logger.error("rymERROR: {}", e);
+                //                 } catch (Exception e) {
+                //                     // TODO Auto-generated catch block
+                //                     e.printStackTrace();
+                //                 }
+                //             }
 
-                            sstable.unsetIsSelectedByCompactionOrErasureCoding();
-                        } else {
-                            // logger.info("SSTable is transferred");
-                            continue;
+                //             sstable.unsetIsSelectedByCompactionOrErasureCoding();
+                //         } else {
+                //             // logger.info("SSTable is transferred");
+                //             continue;
+                //         }
+                //     } else {
+                //         throw new IllegalStateException(
+                //                 "The method of getting sstables from a certain level is error!");
+                //     }
+
+                // }
+
+                // if(count == 0) {
+                logger.debug("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
+                for (Keyspace keyspace : Keyspace.all()){
+                    for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
+                        if(cfs1.getColumnFamilyName().equals("usertable") || cfs1.getColumnFamilyName().contains("usertable")) {
+                            List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
+                            Collections.sort(sstables1, new SSTableReaderComparator());
+
+                            logger.debug("rymDebug: We insight the last level of the ({}), the first token is ({}), the last token is ({})",
+                                        cfs1.getColumnFamilyName(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
                         }
-                    } else {
-                        throw new IllegalStateException(
-                                "The method of getting sstables from a certain level is error!");
-                    }
 
+                    }
                 }
 
-                if(count == 0) {
-                    logger.debug("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
-                    for (Keyspace keyspace : Keyspace.all()){
-                        for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
-                            if(cfs1.getColumnFamilyName().equals("usertable") || cfs1.getColumnFamilyName().contains("usertable")) {
-                                List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
-                                Collections.sort(sstables1, new SSTableReaderComparator());
 
-                                logger.debug("rymDebug: We insight the last level of the ({}), the first token is ({}), the last token is ({})",
-                                             cfs1.getColumnFamilyName(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
-                            }
-
-                        }
-                    }
-
-
-                }
+                // }
 
             } else {
                 logger.debug("rymDebug: cannot get sstables from level {}", level);
