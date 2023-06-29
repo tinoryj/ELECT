@@ -1944,6 +1944,17 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         //     this.cfs = cfs;
         // }
 
+        private static class ForceCompactionCandidates {
+            List<SSTableReader> selectedSSTables;
+            List<SSTableReader> suspectedSSTables;
+
+            ForceCompactionCandidates() {
+                this.selectedSSTables = new ArrayList<SSTableReader>();
+                this.suspectedSSTables = new ArrayList<SSTableReader>();
+            }
+            
+        }
+
         @Override
         public synchronized void run() {
 
@@ -1971,38 +1982,51 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         Collections.sort(sstables, new SSTableReaderComparator());
                         
                         SSTableReader lastSSTable = null;
-                        List<SSTableReader> candidates = new ArrayList<SSTableReader>();
+                        // List<SSTableReader> candidates = new ArrayList<SSTableReader>();
+                        ForceCompactionCandidates candidates = new ForceCompactionCandidates();
+
                         for(int i = 0; i < sstables.size(); i++) {
 
-                            if(candidates.isEmpty()) {
+                            if(candidates.selectedSSTables.isEmpty()) {
                                 lastSSTable = sstables.get(i);
-                                candidates.add(lastSSTable);
+                                candidates.selectedSSTables.add(lastSSTable);
                                 continue;
                             }
 
-                            // if(lastSSTable.last.compareTo(sstables.get(i).first) >= 0 && !(lastSSTable.isReplicationTransferredToErasureCoding() &&
-                            //                                                             sstables.get(i).isReplicationTransferredToErasureCoding())) {
-                                
-                                
-                            candidates.add(sstables.get(i));
+                            if(lastSSTable.last.compareTo(sstables.get(i).first) >= 0 && !(lastSSTable.isReplicationTransferredToErasureCoding() &&
+                                                                                        sstables.get(i).isReplicationTransferredToErasureCoding()) ) {
+                                    
+                                candidates.selectedSSTables.add(sstables.get(i));
+                            } else {
+                                candidates.suspectedSSTables.add(sstables.get(i));
+                            }
                             lastSSTable = sstables.get(i);
-                            // }
 
-                            if(candidates.size() >= maxCompactionThreshold || (i == sstables.size() - 1) && candidates.size() > 1) {
+                            if(candidates.selectedSSTables.size() + candidates.suspectedSSTables.size() >= maxCompactionThreshold || (i == sstables.size() - 1) && candidates.selectedSSTables.size() > 1) {
 
-                                // TODO: select from a lower level.
-                                Token startToken = candidates.get(0).first.getToken();
-                                Token endToken = candidates.get(candidates.size() - 1).last.getToken();
-
+                                // TODO: select from the lower level.
                                 List<SSTableReader> lowerLevelSSTables = new ArrayList<>(cfs.getSSTableForLevel(level -1));
-                                List<SSTableReader> overlappedSSTables = new ArrayList<>(LeveledManifest.overlapping(startToken, endToken, lowerLevelSSTables));
-                                candidates.addAll(overlappedSSTables);
 
-                                final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates,
+                                Token startSelectedToken = candidates.selectedSSTables.get(0).first.getToken();
+                                Token endSelectedToken = candidates.selectedSSTables.get(candidates.selectedSSTables.size() - 1).last.getToken();
+                                List<SSTableReader> overlappedSSTables = new ArrayList<>(LeveledManifest.overlapping(startSelectedToken, endSelectedToken, lowerLevelSSTables));
+                                candidates.selectedSSTables.addAll(overlappedSSTables);
+
+                                
+                                Token startSuspectedToken = candidates.suspectedSSTables.get(0).first.getToken();
+                                Token endSuspectedToken = candidates.suspectedSSTables.get(candidates.suspectedSSTables.size() - 1).last.getToken();
+                                List<SSTableReader> overlappedSSTablesForSuspected = new ArrayList<>(LeveledManifest.overlapping(startSuspectedToken, endSuspectedToken, lowerLevelSSTables));
+
+                                if(!overlappedSSTablesForSuspected.isEmpty()) {
+                                    candidates.selectedSSTables.addAll(overlappedSSTablesForSuspected);
+                                    candidates.selectedSSTables.addAll(candidates.suspectedSSTables);
+                                }
+
+                                final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates.selectedSSTables,
                                         OperationType.COMPACTION);
                                 if (txn != null) {
                                     try {
-                                        AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(candidates, txn,
+                                        AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(candidates.selectedSSTables, txn,
                                                 false,
                                                 Long.MAX_VALUE, false, 1);
                                         if (status != AllSSTableOpStatus.SUCCESSFUL)
@@ -2022,7 +2046,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     // TODO Auto-generated catch block
                                     e.printStackTrace();
                                 }
-                                candidates.clear();
+                                candidates.selectedSSTables.clear();
+                                candidates.suspectedSSTables.clear();
                             }
 
 
@@ -2034,6 +2059,15 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
 
         }
+    }
+
+
+    public static boolean isOverlappedWithLowerLevelSSTables(SSTableReader sstable) {
+
+
+
+
+        return false;
     }
     
 
