@@ -2002,7 +2002,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             }
                             lastSSTable = sstables.get(i);
 
-                            if(candidates.selectedSSTables.size() + candidates.suspectedSSTables.size() >= maxCompactionThreshold || (i == sstables.size() - 1) && candidates.selectedSSTables.size() > 1) {
+                            if(candidates.selectedSSTables.size() >= maxCompactionThreshold || (i == sstables.size() - 1) && candidates.selectedSSTables.size() > 1) {
 
                                 // TODO: select from the lower level.
                                 List<SSTableReader> lowerLevelSSTables = new ArrayList<>(cfs.getSSTableForLevel(level -1));
