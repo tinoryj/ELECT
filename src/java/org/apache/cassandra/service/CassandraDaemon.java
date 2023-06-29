@@ -439,11 +439,11 @@ public class CassandraDaemon {
 
         
         // schedule periodic send sstable content task submission
-        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
-        //     ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", LeveledGenerations.getMaxLevelCount() - 1, DatabaseDescriptor.getTaskDelay()),
-        //                                          DatabaseDescriptor.getInitialDelay(),
-        //                                          1,
-        //                                          TimeUnit.MINUTES);
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
+            ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable", LeveledGenerations.getMaxLevelCount() - 1, DatabaseDescriptor.getTaskDelay()),
+                                                 DatabaseDescriptor.getInitialDelay(),
+                                                 1,
+                                                 TimeUnit.MINUTES);
 
         // schedule periodical tasks of erasure coding
         // We could set this task delay relatively low.
