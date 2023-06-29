@@ -204,19 +204,27 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             // }
 
             // isConsumeBlockedECMetadataOccupied = true;
+            
             logger.debug("rymDebug: This is ConsumeBlockedECMetadataRunnable");
+
+                logger.debug("rymDebug: globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({})",
+                                 StorageService.instance.globalRecvECMetadatas, StorageService.instance.globalConsumedECMetadatas,
+                                 StorageService.instance.globalReadyECMetadataCount, StorageService.instance.globalBolckedECMetadataCount);
+
             for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalReadyECMetadatas.entrySet()) {
                 String ks = "ycsb";
                 String cfName = entry.getKey();
 
-                for (BlockedECMetadata metadata : entry.getValue()) {
+                // for (BlockedECMetadata metadata : entry.getValue()) {
+                while(!entry.getValue().isEmpty()){
+                    BlockedECMetadata metadata = entry.getValue().poll();
                     while(metadata.retryCount <= MAX_RETRY_COUNT) {
                         try {
                             if (!transformECMetadataToECSSTable(metadata.ecMetadata, ks, cfName, metadata.newSSTableHash,
                                     metadata.sourceIP)) {
                                 logger.debug("rymDebug: Perform transformECMetadataToECSSTable successfully");
                                 StorageService.instance.globalConsumedECMetadatas++;
-                                entry.getValue().remove(metadata);
+                                // entry.getValue().remove(metadata);
                                 break;
                             } else if (metadata.retryCount < MAX_RETRY_COUNT) {
                                 metadata.retryCount++;
@@ -239,7 +247,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                                 fileNamePrefix,
                                                 metadata.newSSTableHash,
                                                 null, null, null);
-                                        entry.getValue().remove(metadata);
+                                        // entry.getValue().remove(metadata);
                                     } else {
                                         logger.warn("rymERROR: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
                                                     metadata.newSSTableHash);
