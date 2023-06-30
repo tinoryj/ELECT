@@ -139,7 +139,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
     private static class ErasureCodingRunable implements Runnable {
 
 
-        private static int THRESHOLD_OF_PADDING_ZERO_CHUNKS = 10;
+        private static int THRESHOLD_OF_PADDING_ZERO_CHUNKS = 5;
         private static int cnt = 0;
 
         @Override

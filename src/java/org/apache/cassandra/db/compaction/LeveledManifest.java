@@ -288,7 +288,7 @@ public class LeveledManifest {
                 Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(i);
                 if (!candidates.isEmpty()) {
                     int nextLevel = getNextLevel(candidates);
-                    candidates = getOverlappingStarvedSSTables(nextLevel, candidates);
+                    // candidates = getOverlappingStarvedSSTables(nextLevel, candidates);
                     if (logger.isTraceEnabled())
                         logger.trace("Compaction candidates for L{} are {}", i, toString(candidates));
                     return new CompactionCandidate(candidates, nextLevel, maxSSTableSizeInBytes);
@@ -495,26 +495,26 @@ public class LeveledManifest {
             // this sstable is belong to primary LSM tree
             if (pair.getValue().intersects(promotedBounds)) {
 
-                if((pair.getKey().isReplicationTransferredToErasureCoding() &&
-                    pair.getKey().getColumnFamilyName().equals("usertable"))){
-                    logger.debug("rymDebug: we cannot select sstable {}", pair.getKey().descriptor);
-                } else {
-                    overlapped.add(pair.getKey());
-                    if(pair.getKey().isReplicationTransferredToErasureCoding()) {
-                        logger.debug("rymDebug[transferred]: select a transferred sstable {}", pair.getKey().descriptor);
-                    }
-                }
+                // if((pair.getKey().isReplicationTransferredToErasureCoding() &&
+                //     pair.getKey().getColumnFamilyName().equals("usertable"))){
+                //     logger.debug("rymDebug: we cannot select sstable {}", pair.getKey().descriptor);
+                // } else {
+                //     overlapped.add(pair.getKey());
+                //     if(pair.getKey().isReplicationTransferredToErasureCoding()) {
+                //         logger.debug("rymDebug[transferred]: select a transferred sstable {}", pair.getKey().descriptor);
+                //     }
+                // }
 
-                // if(pair.getKey().getColumnFamilyName().equals("usertable") && pair.getKey().isReplicationTransferredToErasureCoding()) {
-                //     if(!isSelectIssuedSSTableAsCompactionCandidates(pair.getKey()))
-                //         continue;
-                // }
+                if(pair.getKey().getColumnFamilyName().equals("usertable") && pair.getKey().isReplicationTransferredToErasureCoding()) {
+                    if(!isSelectIssuedSSTableAsCompactionCandidates(pair.getKey()))
+                        continue;
+                }
                 
-                // if(!pair.getKey().isReplicationTransferredToErasureCoding() && pair.getKey().isSelectedByCompactionOrErasureCoding()) {
-                //     continue;
-                // }
+                if(!pair.getKey().isReplicationTransferredToErasureCoding() && pair.getKey().isSelectedByCompactionOrErasureCoding()) {
+                    continue;
+                }
                 
-                // overlapped.add(pair.getKey());
+                overlapped.add(pair.getKey());
             }
 
         }
@@ -750,12 +750,12 @@ public class LeveledManifest {
         selectedSSTablesForStripeUpdate = 0;
         while (levelIterator.hasNext()) {
             SSTableReader sstable = levelIterator.next();
-            if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
-                continue;
-            // if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
-            //     if(!isSelectIssuedSSTableAsCompactionCandidates(sstable))
-            //         continue;
-            // }
+            // if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
+            //     continue;
+            if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
+                if(!isSelectIssuedSSTableAsCompactionCandidates(sstable))
+                    continue;
+            }
             
             if(!sstable.isReplicationTransferredToErasureCoding() && sstable.isSelectedByCompactionOrErasureCoding()) {
                 continue;
