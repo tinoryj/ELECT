@@ -77,7 +77,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
      * 3. Send code to another parity nodes
      */
     @Override
-    public void doVerb(Message<ECMessage> message) throws IOException {
+    public synchronized void doVerb(Message<ECMessage> message) throws IOException {
         // Check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
@@ -178,6 +178,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                         }
 
                         if (count == DatabaseDescriptor.getEcDataNodes()) {
+                            StorageService.instance.generatedNormalECMetadata++;
                             Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
                         } else {
                             logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", count);
@@ -200,6 +201,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                     }
                     // compute erasure coding locally;
                     if (count == DatabaseDescriptor.getEcDataNodes()) {
+                        StorageService.instance.generatedPaddingZeroECMetadata++;
                         Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
                     } else {
                         logger.debug("rymDebug: Can not get enough data for erasure coding, count is {}.", count);

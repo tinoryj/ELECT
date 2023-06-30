@@ -46,7 +46,7 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
      * 1. Receive erasure code from a parity node, and record it.
      */
     @Override
-    public void doVerb(Message<ECParityNode> message) throws IOException {
+    public synchronized void doVerb(Message<ECParityNode> message) throws IOException {
         
         // Check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();

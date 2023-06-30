@@ -198,6 +198,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>>();
     public volatile long totalReceivedECMessages = 0;
     public volatile long totalConsumedECMessages = 0;
+    public volatile long generatedNormalECMetadata = 0;
+    public volatile long generatedPaddingZeroECMetadata = 0;
     // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
     public ConcurrentHashMap<String, DataForRewrite> globalSSTHashToSyncedFileMap = new ConcurrentHashMap<String, DataForRewrite>();
 

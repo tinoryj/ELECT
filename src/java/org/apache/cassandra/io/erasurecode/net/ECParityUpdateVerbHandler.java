@@ -98,7 +98,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
      * 2. If new data is empty while the old data is not empty, add old data to the global queue
      */
     @Override
-    public void doVerb(Message<ECParityUpdate> message) throws IOException {
+    public synchronized void doVerb(Message<ECParityUpdate> message) throws IOException {
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
             forwardToLocalNodes(message, forwardTo);
@@ -194,13 +194,14 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             List<String> traversedSSTables = new ArrayList<String>();
             executeCount++;
             
-            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({}), total received ec messages are ({}), consumed ec messages are ({}), globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({}), execute count is ({})",
+            logger.debug("rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({}), total received ec messages are ({}), consumed ec messages are ({}), globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({}), generated normal metadata is ({}), padding zero metadata is ({}), execute count is ({})",
                                  StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(),
                                  StorageService.instance.globalReadyOldSSTableForECStripUpdateCount, traversedSSTables,
                                  globalReceivedNewSSTable, globalConsumedNewSSTable, globalReceivedOldSSTable, globalConsumedOldSSTable,
                                  StorageService.instance.totalReceivedECMessages, StorageService.instance.totalConsumedECMessages,
                                  StorageService.instance.globalRecvECMetadatas, StorageService.instance.globalConsumedECMetadatas,
-                                 StorageService.instance.globalReadyECMetadataCount, StorageService.instance.globalBolckedECMetadataCount, executeCount);
+                                 StorageService.instance.globalReadyECMetadataCount, StorageService.instance.globalBolckedECMetadataCount,
+                                 StorageService.instance.generatedNormalECMetadata, StorageService.instance.generatedPaddingZeroECMetadata, executeCount);
             long traversedNewSSTables = 0;
 
             long totalTimeOfRetrievedParityCodes = 0;
