@@ -200,6 +200,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public volatile long totalConsumedECMessages = 0;
     public volatile long generatedNormalECMetadata = 0;
     public volatile long generatedPaddingZeroECMetadata = 0;
+    public volatile List<String> globalRecvSSTHashList = new ArrayList<String>();
+    
     // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
     public ConcurrentHashMap<String, DataForRewrite> globalSSTHashToSyncedFileMap = new ConcurrentHashMap<String, DataForRewrite>();
 

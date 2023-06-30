@@ -140,7 +140,7 @@ public class ECMetadata implements Serializable {
             String sstContentHash = msg.ecMessageContent.sstHashID;
             this.ecMetadataContent.sstHashIdList.add(sstContentHash);
             connectedSSTHash += sstContentHash;
-            if(msg.ecMessageContent.replicaNodes != null) {
+            if(!msg.ecMessageContent.replicaNodes.isEmpty()) {
                 this.ecMetadataContent.sstHashIdToReplicaMap.put(sstContentHash, msg.ecMessageContent.replicaNodes);
                 this.ecMetadataContent.primaryNodes.add(msg.ecMessageContent.replicaNodes.get(0));
             } else{
@@ -161,7 +161,7 @@ public class ECMetadata implements Serializable {
 
         // initialize the secondary nodes
         for(ECMessage msg : messages) {
-            if(msg.ecMessageContent.replicaNodes != null){
+            if(!msg.ecMessageContent.replicaNodes.isEmpty()){
                 for(int i = 1; i < msg.ecMessageContent.replicaNodes.size();i++) {
                     this.ecMetadataContent.secondaryNodes.add(msg.ecMessageContent.replicaNodes.get(i));
                 }

@@ -84,6 +84,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             forwardToLocalNodes(message, forwardTo);
             logger.debug("rymDebug: this is a forwarding header");
         }
+
+        if(StorageService.instance.globalRecvSSTHashList.contains(message.payload.ecMessageContent.sstHashID)) {
+            return;
+        } else {
+            StorageService.instance.globalRecvSSTHashList.add(message.payload.ecMessageContent.sstHashID);
+        }
         
         byte[] sstContent = message.payload.sstContent;
         int ec_data_num = message.payload.ecMessageContent.ecDataNum;
@@ -171,14 +177,14 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                             for(int j = 0; j < zeroChunksNum; j++) {
                                 byte[] newSSTContent = new byte[codeLength];
                                 ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable",
-                                                                                null));
+                                                                                new ArrayList<InetAddressAndPort>()));
                                 tmpArray[count] = zeroChunk;
                                 count++;
                             }
                         }
 
                         if (count == DatabaseDescriptor.getEcDataNodes()) {
-                            StorageService.instance.generatedNormalECMetadata++;
+                            StorageService.instance.generatedPaddingZeroECMetadata++;
                             Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
                         } else {
                             logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", count);
@@ -201,7 +207,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                     }
                     // compute erasure coding locally;
                     if (count == DatabaseDescriptor.getEcDataNodes()) {
-                        StorageService.instance.generatedPaddingZeroECMetadata++;
+                        StorageService.instance.generatedNormalECMetadata++;
                         Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
                     } else {
                         logger.debug("rymDebug: Can not get enough data for erasure coding, count is {}.", count);
