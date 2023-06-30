@@ -602,8 +602,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                                 List<String> keyRanges = new ArrayList<>();
                                 for(SSTableReader sst : sstables1) {
+
                                     String range = String.format("SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s), isECSSTable (%s) \n",
-                                                                 sst.getSSTableHashID(), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
+                                                                 sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
                                                                  SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
                                     keyRanges.add(range);
                                 }
@@ -2114,7 +2115,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     // [CASSANDRAEC]
-    public void replaceSSTable(ECMetadata metadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix, final LifecycleTransaction txn) {
+    public void updateECSSTable(ECMetadata metadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix, final LifecycleTransaction txn) {
         // notify sstable changes to view and leveled generation
         // unmark sstable compacting status
 
@@ -2127,10 +2128,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
             logger.debug("rymDebug: this is replace SSTable method, replacing SSTable {}", ecSSTable.descriptor);
             txn.update(ecSSTable, false);
-            // ecSSTable.setupOnline();
             txn.checkpoint();
-            // txn.tracker.apply(View.updateLiveSet(Collections.emptySet(), Collections.singleton(ecSSTable)));
-            // txn.prepareToCommit(ecSSTable);
             maybeFail(txn.commitEC(null, ecSSTable, false));
             logger.debug("rymDebug: replaced SSTable {} successfully", ecSSTable.descriptor);
             // move BlockedUpdateECMetadata if necessary

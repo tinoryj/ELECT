@@ -50,6 +50,7 @@ import org.apache.cassandra.db.lifecycle.Tracker;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.SSTableReaderComparator;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
+import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.*;
@@ -363,7 +364,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
         // secondary node
         if (rewriteSStables.isEmpty()) {
             logger.warn("rymWarn: rewriteSStables is empty, just record it!");
-            cfs.replaceSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
+            cfs.updateECSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
             StorageService.instance.globalSSTHashToSyncedFileMap.remove(newSSTHash);
             return false;
         }
@@ -372,7 +373,17 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
             if (rewriteSStables.size() == 1) {
                 logger.debug("rymDebug: Anyway, we just replace the sstables");
-                cfs.replaceSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
+                List<String> expiredFiles = new ArrayList<String>();
+                for(Component comp : SSTableReader.componentsFor(rewriteSStables.get(0).descriptor)) {
+                    expiredFiles.add(rewriteSStables.get(0).descriptor.filenameFor(comp));
+                }
+
+                cfs.updateECSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
+                // delete the old sstables after we update the new one
+                for(String fileName : expiredFiles) {
+                    ECNetutils.deleteFileByName(fileName);
+                }
+
             } else if (rewriteSStables.size() > 1) {
                 logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!", rewriteSStables.size());
                 // logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db",
@@ -429,7 +440,16 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                     final LifecycleTransaction updateTxn = cfs.getTracker()
                             .tryModify(Collections.singletonList(oldECSSTable), OperationType.COMPACTION);
                     if (updateTxn != null) {
-                        cfs.replaceSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
+
+                        List<String> expiredFiles = new ArrayList<String>();
+                        for(Component comp : SSTableReader.componentsFor(oldECSSTable.descriptor)) {
+                            expiredFiles.add(oldECSSTable.descriptor.filenameFor(comp));
+                        }
+                        cfs.updateECSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
+                        for(String fileName : expiredFiles) {
+                            ECNetutils.deleteFileByName(fileName);
+                        }
+
                         StorageService.instance.globalUpdatingSSTHashList.remove(ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
                         logger.debug("rymDebug: We get a transaction for old sstable ({}), and new sstable ({}) successfully.", ecMetadata.ecMetadataContent.oldSSTHashForUpdate, newSSTHash);
                         // remove the entry to save memory
