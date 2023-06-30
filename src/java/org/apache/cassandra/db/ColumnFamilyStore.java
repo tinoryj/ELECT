@@ -500,6 +500,18 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             this.delay = delay;
         }
 
+        private static class KeyRangeOfSSTable {
+            Token firstToken;
+            Token lastToken;
+            Boolean isTransferredSSTable = false;
+
+            KeyRangeOfSSTable(Token firstToken, Token lastToken, Boolean isTransferredSSTable) {
+                this.firstToken = firstToken;
+                this.lastToken = lastToken;
+                this.isTransferredSSTable = isTransferredSSTable;
+            }
+        }
+
         @Override
         public void run() {
 
@@ -588,6 +600,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
                                 Collections.sort(sstables1, new SSTableReaderComparator());
 
+                                List<KeyRangeOfSSTable> keyRanges = new ArrayList<>();
+                                for(SSTableReader sst : sstables1) {
+                                    keyRanges.add(new KeyRangeOfSSTable(sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding()));
+                                }
+
+                                logger.debug("rymDebug: Let's check the key ranges of the sstables in the last level. ({})", keyRanges);
+                                
                                 logger.debug("rymDebug: We insight the last level of the ({}), the first token is ({}), the last token is ({})",
                                             cfs1.getColumnFamilyName(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
                             }

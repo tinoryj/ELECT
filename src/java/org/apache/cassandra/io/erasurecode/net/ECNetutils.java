@@ -182,6 +182,11 @@ public final class ECNetutils {
             }
         }
 
+        if(!allKeys.get(0).equals(firstKey) || !allKeys.get(allKeys.size() - 1).equals(lastKey)) {
+            logger.debug("rymERROR: keys are different, first key is {}, last key is {}, first entry of allKeys {}, last key {}",
+                         firstKey, lastKey, allKeys.get(0), allKeys.get(allKeys.size()-1));
+        }
+
         logger.debug(
             "rymDebug: [{}] send sstables ({}), replicaNodes are {}, row num is {}, all key num is {}, first key is {}, last key is {}, first entry of allKeys {}, last key {}", operationType,
             sstHashID,
