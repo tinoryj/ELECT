@@ -600,9 +600,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
                                 Collections.sort(sstables1, new SSTableReaderComparator());
 
-                                List<KeyRangeOfSSTable> keyRanges = new ArrayList<>();
+                                List<String> keyRanges = new ArrayList<>();
                                 for(SSTableReader sst : sstables1) {
-                                    keyRanges.add(new KeyRangeOfSSTable(sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding()));
+                                    String range = String.format("rymDebug: SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s)",
+                                                                 sst.getSSTableHashID(), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding());
+                                    keyRanges.add(range);
                                 }
 
                                 logger.debug("rymDebug: Let's check the key ranges of the sstables in the last level. ({})", keyRanges);

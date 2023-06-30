@@ -365,6 +365,11 @@ public final class ECNetutils {
             e.printStackTrace();
         }
 
+        List<String> tt = new ArrayList<String>();
+        tt.add("11");
+        tt.add("22");
+        logger.debug("{}", tt);
+
         System.out.println("ok");
 
 
