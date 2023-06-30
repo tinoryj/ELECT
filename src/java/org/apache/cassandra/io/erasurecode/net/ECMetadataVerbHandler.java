@@ -207,10 +207,6 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             
             logger.debug("rymDebug: This is ConsumeBlockedECMetadataRunnable");
 
-                logger.debug("rymDebug: globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({})",
-                                 StorageService.instance.globalRecvECMetadatas, StorageService.instance.globalConsumedECMetadatas,
-                                 StorageService.instance.globalReadyECMetadataCount, StorageService.instance.globalBolckedECMetadataCount);
-
             for (Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalReadyECMetadatas.entrySet()) {
                 String ks = "ycsb";
                 String cfName = entry.getKey();
