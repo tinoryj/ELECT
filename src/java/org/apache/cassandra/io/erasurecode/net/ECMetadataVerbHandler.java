@@ -83,7 +83,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     public static final String GREY = "\033[0;37m"; // GREY
 
     @Override
-    public void doVerb(Message<ECMetadata> message) throws IOException {
+    public synchronized void doVerb(Message<ECMetadata> message) throws IOException {
         // Check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
