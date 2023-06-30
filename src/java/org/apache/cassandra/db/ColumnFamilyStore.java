@@ -609,7 +609,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     keyRanges.add(range);
                                 }
 
-                                logger.debug("rymDebug: Let's check the key ranges of the sstables in the ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
+                                // logger.debug("rymDebug: Let's check the key ranges of the sstables in the ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
                                 
                                 logger.debug("rymDebug: We insight the last level of the ({}), the first token is ({}), the last token is ({})",
                                             cfs1.getColumnFamilyName(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
