@@ -169,7 +169,7 @@ public final class ECNetutils {
         byte[] summaryFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.SUMMARY));
 
         SSTablesInBytes sstInBytes = new SSTablesInBytes(filterFile, indexFile, statsFile, summaryFile);
-        // List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
+        List<String> allKeys = new ArrayList<>(sstable.getAllKeys());
         String firstKey = sstable.first.getRawKey(cfs.metadata());
         String lastKey = sstable.last.getRawKey(cfs.metadata());
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
@@ -183,10 +183,10 @@ public final class ECNetutils {
         }
 
         logger.debug(
-            "rymDebug: [{}] send sstables ({}), replicaNodes are {}, row num is {}, first key is {}, last key is {}", operationType,
+            "rymDebug: [{}] send sstables ({}), replicaNodes are {}, row num is {}, all key num is {}, first key is {}, last key is {}, first entry of allKeys {}, last key {}", operationType,
             sstHashID,
-            replicaNodes, sstable.getTotalRows(),
-            firstKey, lastKey);
+            replicaNodes, sstable.getTotalRows(), allKeys.size(),
+            firstKey, lastKey, allKeys.get(0), allKeys.get(allKeys.size()-1));
 
     }
 
