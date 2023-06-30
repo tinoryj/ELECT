@@ -602,12 +602,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                                 List<String> keyRanges = new ArrayList<>();
                                 for(SSTableReader sst : sstables1) {
-                                    String range = String.format("rymDebug: SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s)",
-                                                                 sst.getSSTableHashID(), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding());
+                                    String range = String.format("SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s), isECSSTable (%s) \n",
+                                                                 sst.getSSTableHashID(), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
+                                                                 SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
                                     keyRanges.add(range);
                                 }
 
-                                logger.debug("rymDebug: Let's check the key ranges of the sstables in the last level. ({})", keyRanges);
+                                logger.debug("rymDebug: Let's check the key ranges of the sstables in the ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
                                 
                                 logger.debug("rymDebug: We insight the last level of the ({}), the first token is ({}), the last token is ({})",
                                             cfs1.getColumnFamilyName(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
