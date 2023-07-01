@@ -30,6 +30,7 @@ import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 
 import org.apache.cassandra.db.PartitionPosition;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.slf4j.Logger;
@@ -510,7 +511,11 @@ public class LeveledManifest {
                         continue;
                 }
                 
-                if(!pair.getKey().isReplicationTransferredToErasureCoding() && pair.getKey().isSelectedByCompactionOrErasureCoding()) {
+                // if(!pair.getKey().isReplicationTransferredToErasureCoding() && pair.getKey().isSelectedByCompactionOrErasureCoding()) {
+                //     continue;
+                // }
+
+                if(!pair.getKey().isReplicationTransferredToErasureCoding() && ECNetutils.isSSTableCompactingOrErasureCoding(pair.getKey())) {
                     continue;
                 }
                 
@@ -756,10 +761,14 @@ public class LeveledManifest {
                 if(!isSelectIssuedSSTableAsCompactionCandidates(sstable))
                     continue;
             }
-            
-            if(!sstable.isReplicationTransferredToErasureCoding() && sstable.isSelectedByCompactionOrErasureCoding()) {
+
+            if(!sstable.isReplicationTransferredToErasureCoding() && ECNetutils.isSSTableCompactingOrErasureCoding(sstable)) {
                 continue;
             }
+            
+            // if(!sstable.isReplicationTransferredToErasureCoding() && sstable.isSelectedByCompactionOrErasureCoding()) {
+            //     continue;
+            // }
 
 
             Token startInputToken = sstable.first.getToken();

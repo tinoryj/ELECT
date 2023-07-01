@@ -55,6 +55,7 @@ import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.sstable.Descriptor;
+import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.metadata.MetadataComponent;
 import org.apache.cassandra.io.sstable.metadata.MetadataType;
@@ -332,6 +333,17 @@ public final class ECNetutils {
         else {
             StorageService.instance.globalRecvQueues.get(primaryNode).add(message);
         }
+    }
+
+    public synchronized static boolean isSSTableCompactingOrErasureCoding(SSTableReader sstable) {
+
+        if(StorageService.instance.compactingOrErasureCodingSSTables.contains(sstable.getSSTableHashID())) {
+            return true;
+        } else {
+            StorageService.instance.compactingOrErasureCodingSSTables.add(sstable.getSSTableHashID());
+            return false;
+        }
+        
     }
 
 

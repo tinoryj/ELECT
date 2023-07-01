@@ -53,6 +53,7 @@ import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 import org.apache.cassandra.io.util.*;
 import org.apache.cassandra.schema.CompressionParams;
 import org.apache.cassandra.schema.TableMetadataRef;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.concurrent.SharedCloseableImpl;
 import org.apache.cassandra.utils.concurrent.Transactional;
@@ -446,6 +447,7 @@ public class BigTableWriter extends SSTableWriter {
 
     class TransactionalProxy extends SSTableWriter.TransactionalProxy {
         // finalise our state on disk, including renaming
+        private static final int contentSizeForGeneratingHash = 64 * 1024;
         protected void doPrepare() {
             iwriter.prepareToCommit();
 
@@ -458,9 +460,15 @@ public class BigTableWriter extends SSTableWriter {
                 // logger.debug("[Tinoryj] Open data file success for SSTable = {}",
                 // descriptor.filenameFor(Component.DATA));
                 long fileLength = new File(descriptor.filenameFor(Component.DATA)).length();
+                if(fileLength > contentSizeForGeneratingHash) {
+                    fileLength = contentSizeForGeneratingHash;
+                }
+
                 if(fileLength < 0 || fileLength > Integer.MAX_VALUE) {
                     throw new IllegalStateException(String.format("rymERROR: The file length of sstable (%s) is negative (%s)", descriptor.filenameFor(Component.DATA), fileLength));
                 }
+
+
                 byte[] bytes = new byte[(int) fileLength];
                 dataFileReadForHash.readFully(bytes);
                 dataFileReadForHash.close();

@@ -695,6 +695,7 @@ public class CompactionTask extends AbstractCompactionTask {
         if (transaction.originals().isEmpty())
             return;
 
+
         // Note that the current compaction strategy, is not necessarily the one this
         // task was created under.
         // This should be harmless; see comments to CFS.maybeReloadCompactionStrategy.

@@ -26,6 +26,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
+import java.sql.Array;
 import java.time.Instant;
 import java.util.*;
 import java.util.Map.Entry;
@@ -193,6 +194,7 @@ public class StorageService extends NotificationBroadcasterSupport
 
     // [CASSANDRAEC] The following properties belong to CassandraEC.
     public volatile boolean isInsertRecently = false;
+    public volatile List<String> compactingOrErasureCodingSSTables = new ArrayList<String>();
 
     // [In parity node] This queue is used to receive ECMessages for erasure coding.
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>>();
