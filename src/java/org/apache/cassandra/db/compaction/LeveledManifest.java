@@ -515,7 +515,7 @@ public class LeveledManifest {
                 //     continue;
                 // }
 
-                if(!pair.getKey().isReplicationTransferredToErasureCoding() && ECNetutils.isSSTableCompactingOrErasureCoding(pair.getKey())) {
+                if(!pair.getKey().isReplicationTransferredToErasureCoding() && ECNetutils.isSSTableCompactingOrErasureCoding(pair.getKey().getSSTableHashID())) {
                     continue;
                 }
                 
@@ -762,7 +762,7 @@ public class LeveledManifest {
                     continue;
             }
 
-            if(!sstable.isReplicationTransferredToErasureCoding() && ECNetutils.isSSTableCompactingOrErasureCoding(sstable)) {
+            if(!sstable.isReplicationTransferredToErasureCoding() && ECNetutils.isSSTableCompactingOrErasureCoding(sstable.getSSTableHashID())) {
                 continue;
             }
             

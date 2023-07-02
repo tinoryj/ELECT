@@ -402,6 +402,7 @@ public class CompactionTask extends AbstractCompactionTask {
             StringBuilder newSSTableNames = new StringBuilder();
             for (SSTableReader reader : newSSTables) {
                 newSSTableNames.append(reader.descriptor.baseFilename()).append(",");
+                ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(reader.getSSTableHashID());
             }
             long totalSourceRows = 0;
             for (int i = 0; i < mergedRowCounts.length; i++)
@@ -623,8 +624,10 @@ public class CompactionTask extends AbstractCompactionTask {
             double ratio = (double) endsize / (double) startsize;
 
             StringBuilder newSSTableNames = new StringBuilder();
-            for (SSTableReader reader : newSStables)
+            for (SSTableReader reader : newSStables) {
                 newSSTableNames.append(reader.descriptor.baseFilename()).append(",");
+                ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(reader.getSSTableHashID());
+            }
             long totalSourceRows = 0;
             for (int i = 0; i < mergedRowCounts.length; i++)
                 totalSourceRows += mergedRowCounts[i] * (i + 1);
@@ -993,8 +996,10 @@ public class CompactionTask extends AbstractCompactionTask {
 
 
             StringBuilder newSSTableNames = new StringBuilder();
-            for (SSTableReader reader : newSStables)
+            for (SSTableReader reader : newSStables) {
                 newSSTableNames.append(reader.descriptor.baseFilename()).append(",");
+                ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(reader.getSSTableHashID());
+            }
             long totalSourceRows = 0;
             for (int i = 0; i < mergedRowCounts.length; i++)
                 totalSourceRows += mergedRowCounts[i] * (i + 1);

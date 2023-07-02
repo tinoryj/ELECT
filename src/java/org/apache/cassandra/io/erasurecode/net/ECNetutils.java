@@ -335,15 +335,23 @@ public final class ECNetutils {
         }
     }
 
-    public synchronized static boolean isSSTableCompactingOrErasureCoding(SSTableReader sstable) {
+    public synchronized static boolean isSSTableCompactingOrErasureCoding(String sstableHash) {
 
-        if(StorageService.instance.compactingOrErasureCodingSSTables.contains(sstable.getSSTableHashID())) {
+        if(StorageService.instance.compactingOrErasureCodingSSTables.contains(sstableHash)) {
             return true;
         } else {
-            StorageService.instance.compactingOrErasureCodingSSTables.add(sstable.getSSTableHashID());
+            StorageService.instance.compactingOrErasureCodingSSTables.add(sstableHash);
             return false;
         }
         
+    }
+
+    public synchronized static void unsetIsSelectedByCompactionOrErasureCodingSSTables(String sstableHash){
+        if(StorageService.instance.compactingOrErasureCodingSSTables.contains(sstableHash)) {
+            StorageService.instance.compactingOrErasureCodingSSTables.remove(sstableHash);
+        } else {
+            logger.debug("rymERROR: we can not find the specified stable hash ({})", sstableHash);
+        }
     }
 
 

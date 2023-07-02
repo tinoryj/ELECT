@@ -527,8 +527,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         
                     if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
 
-                        if (!sstable.isReplicationTransferredToErasureCoding() &&// !sstable.isSelectedByCompactionOrErasureCoding() && 
-                            !ECNetutils.isSSTableCompactingOrErasureCoding(sstable)) {
+                        if (!sstable.isReplicationTransferredToErasureCoding() //&&!sstable.isSelectedByCompactionOrErasureCoding() && 
+                            ) {
 
                             logger.debug(
                                     "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
@@ -546,6 +546,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             if (duration >= delayMilli && sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
                                 // logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
                                 //         sstable.getSSTableLevel());
+
+                                if(sstable.isSelectedByCompactionOrErasureCoding())
+                                    continue;
                                 
                                 count++;
                                 if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
@@ -581,7 +584,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 }
                             }
 
-                            sstable.unsetIsSelectedByCompactionOrErasureCoding();
+                            // sstable.unsetIsSelectedByCompactionOrErasureCoding();
+                            ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(sstable.getSSTableHashID());
                         } else {
                             // logger.info("SSTable is transferred");
                             continue;
