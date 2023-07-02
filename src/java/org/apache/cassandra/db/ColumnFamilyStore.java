@@ -547,7 +547,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 // logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
                                 //         sstable.getSSTableLevel());
 
-                                if(sstable.isSelectedByCompactionOrErasureCoding())
+                                if(ECNetutils.isSSTableCompactingOrErasureCoding(sstable.getSSTableHashID()))
                                     continue;
                                 
                                 count++;
