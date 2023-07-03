@@ -44,7 +44,7 @@ public class ECRecovery {
 
 
     public static void recoveryDataFromErasureCodes(final String sstHash) throws Exception {
-        logger.debug("rymDebug: This is recovery for sstHash ({}), the replica nodes are ({})", sstHash);
+        logger.debug("rymDebug: [Debug recovery] This is recovery for sstHash ({})", sstHash);
         
         int k = DatabaseDescriptor.getEcDataNodes();
         int m = DatabaseDescriptor.getParityNodes();
@@ -58,6 +58,7 @@ public class ECRecovery {
 
         byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
         ECMetadata ecMetadata = (ECMetadata) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
+        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.stripeId, sstHash);
 
         // Step 2: Request the coding blocks from related nodes
         int codeLength = StorageService.getErasureCodeLength();
@@ -74,6 +75,8 @@ public class ECRecovery {
         int eraseIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstHash);
         int[] eraseIndexes = { eraseIndex };
 
+        logger.debug("rymDebug: [Debug recovery] When we recovery sstable ({}), the data blocks of strip id ({}) is ready.", sstHash, ecMetadata.stripeId);
+
 
         // Step 3: Decode the raw data
         ErasureCoderOptions ecOptions = new ErasureCoderOptions(k, m);
@@ -81,6 +84,9 @@ public class ECRecovery {
         ByteBuffer[] output = new ByteBuffer[1];
         output[0] = ByteBuffer.allocateDirect(codeLength);
         decoder.decode(recoveryOriginalSrc, decodeIndexes, eraseIndexes, output);
+
+        logger.debug("rymDebug: [Debug recovery] When we recovered the raw data of sstable ({}).", sstHash);
+
 
         // Step 4: record the raw data locally
         SSTableReader.loadRawData(output[0], sstable.descriptor);

@@ -349,9 +349,10 @@ public final class ECNetutils {
     public synchronized static void unsetIsSelectedByCompactionOrErasureCodingSSTables(String sstableHash){
         if(StorageService.instance.compactingOrErasureCodingSSTables.contains(sstableHash)) {
             StorageService.instance.compactingOrErasureCodingSSTables.remove(sstableHash);
-        } else {
-            logger.debug("rymERROR: we can not find the specified stable hash ({})", sstableHash);
         }
+        // else {
+        //     logger.debug("rymERROR: we can not find the specified stable hash ({})", sstableHash);
+        // }
     }
 
 
