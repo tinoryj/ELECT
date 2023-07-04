@@ -18,7 +18,11 @@
 package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -26,13 +30,18 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureDecoder;
 import org.apache.cassandra.io.erasurecode.NativeRSDecoder;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.io.util.DataOutputStreamPlus;
 import org.apache.cassandra.io.util.File;
+import org.apache.cassandra.io.util.FileOutputStreamPlus;
+import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +66,11 @@ public class ECRecovery {
         String ecMetadataFile = sstable.descriptor.filenameFor(Component.EC_METADATA);
 
         byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
+        logger.debug("rymDebug: [Debug recovery] the size of ecMetadataInBytes for sstHash ({}) is ({})", sstHash, ecMetadataInBytes.length);
         ECMetadata ecMetadata = (ECMetadata) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
+        if(ecMetadata == null)
+            throw new NullPointerException(String.format("rymDebug: [Debug recovery] The ecMetadata for sstHash ({}) is null!", sstHash));
+
         logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.stripeId, sstHash);
 
         // Step 2: Request the coding blocks from related nodes
@@ -215,6 +228,7 @@ public class ECRecovery {
         }
         return false;
     }
+
 
 
 }

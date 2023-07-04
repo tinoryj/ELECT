@@ -473,7 +473,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         if (ecMetadataFile.exists())
             FileUtils.deleteWithConfirm(ecMetadataFile);
         else if(ecMetadata.ecMetadataContent.isParityUpdate)
-            throw new FileNotFoundException(String.format("rymERROR: Cabbit found EC metadata file ({})", desc));
+            throw new FileNotFoundException(String.format("rymERROR: Cannot found EC metadata file ({})", desc));
 
         try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
 

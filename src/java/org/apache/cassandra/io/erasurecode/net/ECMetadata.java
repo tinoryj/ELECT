@@ -20,6 +20,7 @@ package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -46,6 +47,7 @@ import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
+import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.locator.InetAddressAndPort;
 
 import static org.apache.cassandra.db.TypeSizes.sizeof;
@@ -392,6 +394,45 @@ public class ECMetadata implements Serializable {
             return size;
         }
 
+    }
+
+
+
+
+    public static byte[] readBytesFromFile(String fileName) throws IOException
+    {
+        // String fileName = descriptor.filenameFor(Component.DATA);
+        File file = new File(fileName);
+        long fileLength = file.length();
+        FileInputStream fileStream = new FileInputStream(fileName);
+        byte[] buffer = new byte[(int)fileLength];
+        int offset = 0;
+        int numRead = 0;
+        while (offset < buffer.length && (numRead = fileStream.read(buffer, offset, buffer.length - offset)) >= 0) {
+            offset += numRead;
+        }
+        if (offset != buffer.length) {
+            throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
+        }
+        fileStream.close();
+        logger.debug("rymDebug: read file {} successfully!", fileName);
+        return buffer;
+        // return ByteBuffer.wrap(buffer);
+    }
+
+    public static Object byteArrayToObject(byte[] bytes) throws Exception {
+        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+        ObjectInputStream ois = new ObjectInputStream(bis);
+        Object obj = ois.readObject();
+        bis.close();
+        ois.close();
+        return obj;
+    }
+    public static void main(String[] args) throws Exception {
+        String ecMetadataFile = "/mnt/ssd/Debug/CassandraEC/data/data/ycsb/usertable2-1493366019ae11eead6e6b7f5b3cfb55/nb-924-big-EC.db";
+        byte[] ecMetadataInBytes = readBytesFromFile(ecMetadataFile);
+        ECMetadata ecMetadata = (ECMetadata) byteArrayToObject(ecMetadataInBytes);
+        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.stripeId);
     }
 
 }
