@@ -81,14 +81,14 @@ public class ECRecovery {
         retrieveErasureCodesForRecovery(ecMetadataContent, sstHash, codeLength, k, m);
         logger.debug("rymDebug: [Debug recovery] retrieve chunks for ecmetadata ({}) successfully", sstHash);
 
-        ByteBuffer[] recoveryOriginalSrc = StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash);
+        // ByteBuffer[] recoveryOriginalSrc = StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash);
 
-        if(recoveryOriginalSrc == null) {
+        if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) == null) {
             throw new NullPointerException(String.format("rymERROR: we cannot get erasure code for sstable (%s)", sstHash));
         }
 
         logger.debug("rymDebug: [Debug recovery] wait chunks for sstable ({})", sstHash);
-        int[] decodeIndexes = waitUntilRequestCodesReady(recoveryOriginalSrc, sstHash, k);
+        int[] decodeIndexes = waitUntilRequestCodesReady(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash), sstHash, k);
 
         int eraseIndex = ecMetadataContent.sstHashIdList.indexOf(sstHash);
         int[] eraseIndexes = { eraseIndex };
@@ -97,6 +97,15 @@ public class ECRecovery {
 
 
         // Step 3: Decode the raw data
+
+        ByteBuffer[] recoveryOriginalSrc = new ByteBuffer[k];
+
+        for(int i = 0; i < k; i++) {
+            recoveryOriginalSrc[i] = ByteBuffer.allocateDirect(codeLength);
+            recoveryOriginalSrc[i].put(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[decodeIndexes[i]]);
+            recoveryOriginalSrc[i].rewind();
+        }
+
         ErasureCoderOptions ecOptions = new ErasureCoderOptions(k, m);
         ErasureDecoder decoder = new NativeRSDecoder(ecOptions);
         ByteBuffer[] output = new ByteBuffer[1];
