@@ -382,7 +382,7 @@ public final class ECNetutils {
     }
 
     public synchronized static void setIsRecovered(String sstHash) {
-        if(StorageService.instance.recoveredSSTables.contains(sstHash)){
+        if(!StorageService.instance.recoveredSSTables.contains(sstHash)){
             StorageService.instance.recoveredSSTables.add(sstHash);
         }
     }
