@@ -499,16 +499,14 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRA]
-    public static void loadRawData(ByteBuffer data, Descriptor desc) {
+    public static void loadRawData(byte[] data, Descriptor desc) {
 
         File dataFile = new File(desc.filenameFor(Component.DATA));
         if (dataFile.exists())
             FileUtils.deleteWithConfirm(dataFile);
 
-        try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(dataFile)) {
-
-            ByteBufferUtil.writeWithLength(data, oStream);
-
+        try {
+            ECNetutils.writeBytesToFile(dataFile.absolutePath(), data);
         } catch (IOException e) {
             logger.error("Cannot save SSTable ecMetadataFile: ", e);
 
@@ -516,6 +514,18 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             if (dataFile.exists())
                 FileUtils.deleteWithConfirm(dataFile);
         }
+
+        // try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(dataFile)) {
+
+        //     ByteBufferUtil.writeWithLength(data, oStream);
+
+        // } catch (IOException e) {
+        //     logger.error("Cannot save SSTable ecMetadataFile: ", e);
+
+        //     // corrupted hence delete it and let it load it now.
+        //     if (dataFile.exists())
+        //         FileUtils.deleteWithConfirm(dataFile);
+        // }
     }
 
     public static SSTableReader open(Descriptor desc, TableMetadataRef metadata) {
@@ -889,17 +899,19 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) message);
 
-        try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
+        ECNetutils.writeBytesToFile(ecMetadataFile.absolutePath(), buffer);
 
-            // IndexSummary.serializer.serialize(summary, oStream);
-            ByteBufferUtil.writeWithLength(first.getKey(), oStream);
-        } catch (IOException e) {
-            logger.error("Cannot save SSTable ecMetadataFile: ", e);
+        // try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
 
-            // corrupted hence delete it and let it load it now.
-            if (ecMetadataFile.exists())
-                FileUtils.deleteWithConfirm(ecMetadataFile);
-        }
+        //     // IndexSummary.serializer.serialize(summary, oStream);
+        //     ByteBufferUtil.writeWithLength(first.getKey(), oStream);
+        // } catch (IOException e) {
+        //     logger.error("Cannot save SSTable ecMetadataFile: ", e);
+
+        //     // corrupted hence delete it and let it load it now.
+        //     if (ecMetadataFile.exists())
+        //         FileUtils.deleteWithConfirm(ecMetadataFile);
+        // }
 
     }
 

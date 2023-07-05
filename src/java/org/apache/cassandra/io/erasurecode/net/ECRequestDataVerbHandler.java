@@ -44,6 +44,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         
         String sstHash = message.payload.sstHash;
         int index = message.payload.index;
+        String requestSSTHash = message.payload.requestSSTHash;
 
         int level =  LeveledGenerations.getMaxLevelCount() - 1;
         ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable");
@@ -51,7 +52,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
 
         boolean isFound = false;
         for(SSTableReader sstable : sstables) {
-            if(sstable.getSSTableHashID().equals(sstHash)) {
+            if(sstable.getSSTableHashID().equals(requestSSTHash)) {
 
                 // ByteBuffer buffer;
                 try {
@@ -73,7 +74,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         }
 
         if(!isFound)
-            throw new IllegalStateException(String.format("rymERROR: cannot find sstable (%s) in usertable", sstHash));
+            throw new IllegalStateException(String.format("rymERROR: cannot find sstable (%s) in usertable", requestSSTHash));
         
         
     }

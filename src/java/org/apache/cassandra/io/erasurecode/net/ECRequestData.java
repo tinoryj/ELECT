@@ -40,10 +40,12 @@ public class ECRequestData {
     // public final String parityHash;
     public final String sstHash;
     public final int index;
+    public final String requestSSTHash;
 
-    public ECRequestData(String sstHash, int index) {
+    public ECRequestData(String sstHash, String requestSSTHash, int index) {
         // this.parityHash = parityHash;
         this.sstHash = sstHash;
+        this.requestSSTHash = requestSSTHash;
         this.index = index;
     }
 
@@ -59,19 +61,22 @@ public class ECRequestData {
         @Override
         public void serialize(ECRequestData t, DataOutputPlus out, int version) throws IOException {
             out.writeUTF(t.sstHash);
+            out.writeUTF(t.requestSSTHash);
             out.writeInt(t.index);
         }
 
         @Override
         public ECRequestData deserialize(DataInputPlus in, int version) throws IOException {
             String sstHash = in.readUTF();
+            String requestSSTHash = in.readUTF();
             int index = in.readInt();
-            return new ECRequestData(sstHash, index);
+            return new ECRequestData(sstHash, requestSSTHash, index);
         }
 
         @Override
         public long serializedSize(ECRequestData t, int version) {
             long size = sizeof(t.sstHash) +
+                        sizeof(t.requestSSTHash) +
                         sizeof(t.index);
 
             return size;

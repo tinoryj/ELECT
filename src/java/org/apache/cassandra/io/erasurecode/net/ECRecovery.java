@@ -103,11 +103,13 @@ public class ECRecovery {
         output[0] = ByteBuffer.allocateDirect(codeLength);
         decoder.decode(recoveryOriginalSrc, decodeIndexes, eraseIndexes, output);
 
-        logger.debug("rymDebug: [Debug recovery] When we recovered the raw data of sstable ({}).", sstHash);
+        logger.debug("rymDebug: [Debug recovery] We recovered the raw data of sstable ({}) successfully.", sstHash);
 
 
         // Step 4: record the raw data locally
-        SSTableReader.loadRawData(output[0], sstable.descriptor);
+        byte[] sstContent = new byte[output[0].remaining()];
+        output[0].get(sstContent);
+        SSTableReader.loadRawData(sstContent, sstable.descriptor);
 
         // Step 5: send the raw data to the peer secondary nodes
         List<InetAddressAndPort> replicaNodes = ecMetadataContent.sstHashIdToReplicaMap.get(sstHash);
@@ -116,8 +118,6 @@ public class ECRecovery {
         }
 
         // Step 6: send the raw data to the peer secondary nodes
-        byte[] sstContent = new byte[output[0].remaining()];
-        output[0].get(sstContent);
         InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();
         for (int i = 1; i< replicaNodes.size(); i++) {
             if(!replicaNodes.get(i).equals(localIP)){
@@ -158,7 +158,7 @@ public class ECRecovery {
         if(ecMetadataContent.sstHashIdToReplicaMap != null) {
             int index = 0;
             for (Map.Entry<String, List<InetAddressAndPort>> entry : ecMetadataContent.sstHashIdToReplicaMap.entrySet()) {
-                ECRequestData request = new ECRequestData(oldSSTHash, index);
+                ECRequestData request = new ECRequestData(oldSSTHash, entry.getKey(),index);
                 request.requestData(entry.getValue().get(0));
                 index++;
             }
