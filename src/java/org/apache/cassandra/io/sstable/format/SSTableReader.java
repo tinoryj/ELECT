@@ -475,18 +475,27 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         else if(ecMetadata.ecMetadataContent.isParityUpdate)
             throw new FileNotFoundException(String.format("rymERROR: Cannot found EC metadata file ({})", desc));
 
-        try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
 
-            byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata);
-            ByteBufferUtil.writeWithLength(ByteBuffer.wrap(buffer), oStream);
-
+        try {
+            byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata.ecMetadataContent);
+            ECNetutils.writeBytesToFile(ecMetadataFile.absolutePath(), buffer);
         } catch (IOException e) {
-            logger.error("Cannot save SSTable ecMetadataFile: ", e);
-
-            // corrupted hence delete it and let it load it now.
-            if (ecMetadataFile.exists())
+            logger.error("rymERROR: Cannot save SSTable ecMetadataFile: ", e);
+             if (ecMetadataFile.exists())
                 FileUtils.deleteWithConfirm(ecMetadataFile);
         }
+        // try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
+
+        //     byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata.ecMetadataContent);
+        //     ByteBufferUtil.writeWithLength(ByteBuffer.wrap(buffer), oStream);
+
+        // } catch (IOException e) {
+        //     logger.error("Cannot save SSTable ecMetadataFile: ", e);
+
+        //     // corrupted hence delete it and let it load it now.
+        //     if (ecMetadataFile.exists())
+        //         FileUtils.deleteWithConfirm(ecMetadataFile);
+        // }
     }
 
     // [CASSANDRA]
