@@ -36,8 +36,7 @@ public class ECResponseDataVerbHandler implements IVerbHandler<ECResponseData>{
 
         // save it to the map
         if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
-            StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[index].put(rawData);
-            // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
+            StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].put(rawData);
         } else {
             throw new NullPointerException(String.format("rymERROR: We cannot find data blocks for sstable (%s)", message.from(), sstHash));
         }
