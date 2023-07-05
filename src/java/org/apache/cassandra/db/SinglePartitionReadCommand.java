@@ -949,8 +949,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         sstable.getSSTableHashID(), sstable.getFilename());
                 CountDownLatch latch = new CountDownLatch(1);
                 try {
-                    ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
                     ECNetutils.setIsRecovered(sstable.getSSTableHashID());
+                    ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
                 } catch (Exception e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
