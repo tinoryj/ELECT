@@ -200,24 +200,24 @@ public final class ECNetutils {
     {
         // String fileName = descriptor.filenameFor(Component.DATA);
 
-        File file = new File(fileName);
-        long fileLength = file.length();
-        FileInputStream fileStream = new FileInputStream(fileName);
-        byte[] buffer = new byte[(int)fileLength];
-        int offset = 0;
-        int numRead = 0;
-        while (offset < buffer.length && (numRead = fileStream.read(buffer, offset, buffer.length - offset)) >= 0) {
-            offset += numRead;
-        }
-        if (offset != buffer.length) {
-            throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
-        }
-        fileStream.close();
-        logger.debug("rymDebug: read file {} successfully!", fileName);
-        return buffer;
+        // File file = new File(fileName);
+        // long fileLength = file.length();
+        // FileInputStream fileStream = new FileInputStream(fileName);
+        // byte[] buffer = new byte[(int)fileLength];
+        // int offset = 0;
+        // int numRead = 0;
+        // while (offset < buffer.length && (numRead = fileStream.read(buffer, offset, buffer.length - offset)) >= 0) {
+        //     offset += numRead;
+        // }
+        // if (offset != buffer.length) {
+        //     throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
+        // }
+        // fileStream.close();
+        // logger.debug("rymDebug: read file {} successfully!", fileName);
+        // return buffer;
 
-        // byte[] byteArray = Files.readAllBytes(Paths.get(fileName));
-        // return byteArray;
+        byte[] byteArray = Files.readAllBytes(Paths.get(fileName));
+        return byteArray;
 
         // return ByteBuffer.wrap(buffer);
     }
@@ -225,12 +225,12 @@ public final class ECNetutils {
     public static void writeBytesToFile(String fileName, byte[] buffer) throws IOException
     {
 
-        // Files.write(Paths.get(fileName), buffer);
-        try (FileOutputStream outputStream = new FileOutputStream(fileName)) {
-            outputStream.write(buffer);
-        } catch (Exception e) {
-            logger.error("rymERROR: failed to write bytes to file, {}", e);
-        }
+        Files.write(Paths.get(fileName), buffer);
+        // try (FileOutputStream outputStream = new FileOutputStream(fileName)) {
+        //     outputStream.write(buffer);
+        // } catch (Exception e) {
+        //     logger.error("rymERROR: failed to write bytes to file, {}", e);
+        // }
     }
 
 

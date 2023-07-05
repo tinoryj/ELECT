@@ -52,7 +52,7 @@ public class ECRecovery {
     public static final ECRecovery instance = new ECRecovery();
 
 
-    public static void recoveryDataFromErasureCodes(final String sstHash) throws Exception {
+    public synchronized static void recoveryDataFromErasureCodes(final String sstHash) throws Exception {
         logger.debug("rymDebug: [Debug recovery] This is recovery for sstHash ({})", sstHash);
         
         int k = DatabaseDescriptor.getEcDataNodes();
@@ -67,15 +67,15 @@ public class ECRecovery {
 
         byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
         logger.debug("rymDebug: [Debug recovery] the size of ecMetadataInBytes for sstHash ({}) is ({})", sstHash, ecMetadataInBytes.length);
-        ECMetadata ecMetadata = (ECMetadata) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
-        if(ecMetadata == null)
+        ECMetadataContent ecMetadataContent = (ECMetadataContent) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
+        if(ecMetadataContent == null)
             throw new NullPointerException(String.format("rymDebug: [Debug recovery] The ecMetadata for sstHash ({}) is null!", sstHash));
 
-        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.ecMetadataContent.stripeId, sstHash);
+        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadataContent.stripeId, sstHash);
 
         // Step 2: Request the coding blocks from related nodes
         int codeLength = StorageService.getErasureCodeLength();
-        retrieveErasureCodesForRecovery(ecMetadata, sstHash, codeLength, k, m);
+        retrieveErasureCodesForRecovery(ecMetadataContent, sstHash, codeLength, k, m);
 
         ByteBuffer[] recoveryOriginalSrc = StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash);
 
@@ -85,10 +85,10 @@ public class ECRecovery {
 
         int[] decodeIndexes = waitUntilRequestCodesReady(recoveryOriginalSrc, sstHash, k);
 
-        int eraseIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstHash);
+        int eraseIndex = ecMetadataContent.sstHashIdList.indexOf(sstHash);
         int[] eraseIndexes = { eraseIndex };
 
-        logger.debug("rymDebug: [Debug recovery] When we recovery sstable ({}), the data blocks of strip id ({}) is ready.", sstHash, ecMetadata.ecMetadataContent.stripeId);
+        logger.debug("rymDebug: [Debug recovery] When we recovery sstable ({}), the data blocks of strip id ({}) is ready.", sstHash, ecMetadataContent.stripeId);
 
 
         // Step 3: Decode the raw data
@@ -105,7 +105,7 @@ public class ECRecovery {
         SSTableReader.loadRawData(output[0], sstable.descriptor);
 
         // Step 5: send the raw data to the peer secondary nodes
-        List<InetAddressAndPort> replicaNodes = ecMetadata.ecMetadataContent.sstHashIdToReplicaMap.get(sstHash);
+        List<InetAddressAndPort> replicaNodes = ecMetadataContent.sstHashIdToReplicaMap.get(sstHash);
         if(replicaNodes == null) {
             throw new NullPointerException(String.format("rymERROR: we cannot get replica nodes for sstable (%s)", sstHash));
         }
@@ -137,7 +137,7 @@ public class ECRecovery {
      * @param stripID
      * @param codeLength
      */
-    private static void retrieveErasureCodesForRecovery(ECMetadata ecMetadata, String oldSSTHash, int codeLength, int k, int m) {
+    private static void retrieveErasureCodesForRecovery(ECMetadataContent ecMetadataContent, String oldSSTHash, int codeLength, int k, int m) {
 
         // Step 0: Initialize the data and parity blocks
         ByteBuffer[] erasureCodes = new ByteBuffer[k];
@@ -149,9 +149,9 @@ public class ECRecovery {
 
         // Step 1: Retrieve the data blocks.
         StorageService.instance.globalSSTHashToErasureCodesMap.put(oldSSTHash, erasureCodes);
-        if(ecMetadata.ecMetadataContent.sstHashIdToReplicaMap != null) {
+        if(ecMetadataContent.sstHashIdToReplicaMap != null) {
             int index = 0;
-            for (Map.Entry<String, List<InetAddressAndPort>> entry : ecMetadata.ecMetadataContent.sstHashIdToReplicaMap.entrySet()) {
+            for (Map.Entry<String, List<InetAddressAndPort>> entry : ecMetadataContent.sstHashIdToReplicaMap.entrySet()) {
                 ECRequestData request = new ECRequestData(oldSSTHash, index);
                 request.requestData(entry.getValue().get(0));
                 index++;
@@ -161,14 +161,14 @@ public class ECRecovery {
         }
 
         // Step 2: Retrieve parity blocks.
-        if(ecMetadata.ecMetadataContent.parityHashList == null || 
-           ecMetadata.ecMetadataContent.parityNodes == null) {
-            ECNetutils.printStackTace(String.format("rymERROR: When we are update old sstable (%s), we cannot to get parity hash or parity code for stripID (%s)", oldSSTHash, ecMetadata.ecMetadataContent.stripeId));
+        if(ecMetadataContent.parityHashList == null || 
+           ecMetadataContent.parityNodes == null) {
+            ECNetutils.printStackTace(String.format("rymERROR: When we are update old sstable (%s), we cannot to get parity hash or parity code for stripID (%s)", oldSSTHash, ecMetadataContent.stripeId));
         } else {
             // get the needed parity code remotely, send a parity code request
-            for (int i = 0; i < ecMetadata.ecMetadataContent.parityHashList.size(); i++) {
-                ECRequestParity request = new ECRequestParity(ecMetadata.ecMetadataContent.parityHashList.get(i), oldSSTHash, i + k, true);
-                request.requestParityCode(ecMetadata.ecMetadataContent.parityNodes.get(i));
+            for (int i = 0; i < ecMetadataContent.parityHashList.size(); i++) {
+                ECRequestParity request = new ECRequestParity(ecMetadataContent.parityHashList.get(i), oldSSTHash, i + k, true);
+                request.requestParityCode(ecMetadataContent.parityNodes.get(i));
             }
 
         }

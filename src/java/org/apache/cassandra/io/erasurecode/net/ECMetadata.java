@@ -434,10 +434,10 @@ public class ECMetadata implements Serializable {
     //     return obj;
     // }
     public static void main(String[] args) throws Exception {
-        String ecMetadataFile = "/home/rym/nb-623-big-EC.db";
+        String ecMetadataFile = "/home/rym/nb-627-big-EC.db";
         byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
-        ECMetadata ecMetadata = (ECMetadata) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
-        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.ecMetadataContent.stripeId);
+        ECMetadataContent ecMetadata = (ECMetadataContent) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
+        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.stripeId);
 
 
     }
