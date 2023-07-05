@@ -146,7 +146,7 @@ public class ECRecovery {
     private static void retrieveErasureCodesForRecovery(ECMetadataContent ecMetadataContent, String oldSSTHash, int codeLength, int k, int m) {
 
         // Step 0: Initialize the data and parity blocks
-        ByteBuffer[] erasureCodes = new ByteBuffer[k];
+        ByteBuffer[] erasureCodes = new ByteBuffer[k + m];
         for(int i = 0; i < k + m; i++) {
             erasureCodes[i] = ByteBuffer.allocateDirect(codeLength);
         }
