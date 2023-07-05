@@ -381,6 +381,16 @@ public final class ECNetutils {
         System.out.println("ok");
     }
 
+    public synchronized static void setIsRecovered(String sstHash) {
+        if(StorageService.instance.recoveredSSTables.contains(sstHash)){
+            StorageService.instance.recoveredSSTables.add(sstHash);
+        }
+    }
+
+    public synchronized static boolean getIsRecovered(String sstHash) {
+        return StorageService.instance.recoveredSSTables.contains(sstHash);
+    }
+
     public static void main(String[] args) {
         
         // test();

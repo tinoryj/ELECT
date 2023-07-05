@@ -41,6 +41,7 @@ import org.apache.cassandra.db.transform.Transformation;
 import org.apache.cassandra.db.virtual.VirtualKeyspaceRegistry;
 import org.apache.cassandra.db.virtual.VirtualTable;
 import org.apache.cassandra.exceptions.RequestExecutionException;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECRecovery;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener;
@@ -739,14 +740,15 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 if (sstable.isReplicationTransferredToErasureCoding() &&
                     !sstable.getColumnFamilyName().equals("usertable") && 
                     controller.shouldPerformOnlineRecoveryDuringRead() == true && 
-                    !sstable.getIsRecovered()) {
+                    !ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     logger.warn("[Tinoryj] Recovery metadata sstable from read: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: call recvoery on current sstable.
                     CountDownLatch latch = new CountDownLatch(1);
                     try {
                         ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
-                        sstable.setIsRecovered();
+                        ECNetutils.setIsRecovered(sstable.getSSTableHashID());
+
                     } catch (Exception e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
@@ -941,14 +943,14 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             if (sstable.isReplicationTransferredToErasureCoding() &&
                 !sstable.getColumnFamilyName().equals("usertable") && 
                 controller.shouldPerformOnlineRecoveryDuringRead() == true && 
-                !sstable.getIsRecovered()) {
+                !ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                 // Tinoryj TODO: call recvoery on current sstable.
                 logger.warn("[Tinoryj] Recovery metadata sstable from read: [{},{}]",
                         sstable.getSSTableHashID(), sstable.getFilename());
                 CountDownLatch latch = new CountDownLatch(1);
                 try {
                     ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
-                    sstable.setIsRecovered();
+                    ECNetutils.setIsRecovered(sstable.getSSTableHashID());
                 } catch (Exception e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();

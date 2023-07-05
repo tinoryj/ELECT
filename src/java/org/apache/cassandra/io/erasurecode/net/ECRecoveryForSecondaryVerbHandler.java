@@ -61,7 +61,7 @@ public class ECRecoveryForSecondaryVerbHandler  implements IVerbHandler<ECRecove
             throw new NullPointerException(String.format("rymERROR: Cannot get ECSSTable (%s)", sstHash));
             
         SSTableReader.loadRawData(message.payload.sstContent, sstable.descriptor);
-        sstable.setIsRecovered();
+        ECNetutils.setIsRecovered(sstable.getSSTableHashID());
 
 
         // if(!isFindSSTable)

@@ -44,6 +44,7 @@ import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Bounds;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.index.Index;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECRecovery;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener;
@@ -357,14 +358,15 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 if (sstable.isReplicationTransferredToErasureCoding() &&
                         !sstable.getColumnFamilyName().equals("usertable")
                         && controller.shouldPerformOnlineRecoveryDuringRead() == true
-                        && !sstable.getIsRecovered()) {
+                        && !ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     logger.warn("[Tinoryj] Recovery metadata sstable from read: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: call recovery for the current sstable.
                     CountDownLatch latch = new CountDownLatch(1);
                     try {
                         ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
-                        sstable.setIsRecovered();
+                        ECNetutils.setIsRecovered(sstable.getSSTableHashID());
+;
                     } catch (Exception e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
