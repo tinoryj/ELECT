@@ -173,8 +173,20 @@ public class ECRecovery {
            ecMetadataContent.parityNodes == null) {
             ECNetutils.printStackTace(String.format("rymERROR: When we are update old sstable (%s), we cannot to get parity hash or parity code for stripID (%s)", oldSSTHash, ecMetadataContent.stripeId));
         } else {
+
+            // first get local parity codes
+            String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
+            String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(0);
+            try {
+                ByteBuffer localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
+                StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k].put(localParityCode);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
             // get the needed parity code remotely, send a parity code request
-            for (int i = 0; i < ecMetadataContent.parityHashList.size(); i++) {
+            for (int i = 1; i < ecMetadataContent.parityHashList.size(); i++) {
                 ECRequestParity request = new ECRequestParity(ecMetadataContent.parityHashList.get(i), oldSSTHash, i + k, true);
                 request.requestParityCode(ecMetadataContent.parityNodes.get(i));
             }
