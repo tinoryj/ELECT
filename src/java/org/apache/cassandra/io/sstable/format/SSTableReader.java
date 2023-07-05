@@ -286,6 +286,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     protected Boolean isReplicationTransferredToErasureCoding = false;
     protected Boolean isParityUpdate = false;
     protected volatile Boolean isSelectedByCompactionOrErasureCoding = false;
+    protected boolean isRecovered = false;
 
     public final SerializationHeader header;
 
@@ -1860,6 +1861,14 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     public boolean isTransient() {
         return sstableMetadata.isTransient;
+    }
+
+    public synchronized void setIsRecovered() {
+        this.isRecovered = true;
+    }
+
+    public boolean getIsRecovered() {
+        return this.isRecovered;
     }
 
     public synchronized boolean isSelectedByCompactionOrErasureCoding() {
