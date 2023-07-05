@@ -19,6 +19,7 @@ package org.apache.cassandra.db;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -359,10 +360,17 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     logger.warn("[Tinoryj] Recovery metadata sstable from read: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: call recovery for the current sstable.
+                    CountDownLatch latch = new CountDownLatch(1);
                     try {
-                        ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID());
+                        ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
                     } catch (Exception e) {
                         // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+
+                    try {
+                        latch.await();
+                    } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                 }

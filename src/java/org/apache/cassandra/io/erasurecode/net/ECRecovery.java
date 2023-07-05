@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
@@ -52,7 +53,8 @@ public class ECRecovery {
     public static final ECRecovery instance = new ECRecovery();
 
 
-    public synchronized static void recoveryDataFromErasureCodes(final String sstHash) throws Exception {
+    public synchronized static void recoveryDataFromErasureCodes(final String sstHash, CountDownLatch latch) throws Exception {
+
         logger.debug("rymDebug: [Debug recovery] This is recovery for sstHash ({})", sstHash);
         
         int k = DatabaseDescriptor.getEcDataNodes();
@@ -75,7 +77,9 @@ public class ECRecovery {
 
         // Step 2: Request the coding blocks from related nodes
         int codeLength = StorageService.getErasureCodeLength();
+        logger.debug("rymDebug: [Debug recovery] retrieve chunks for sstable ({})", sstHash);
         retrieveErasureCodesForRecovery(ecMetadataContent, sstHash, codeLength, k, m);
+        logger.debug("rymDebug: [Debug recovery] retrieve chunks for ecmetadata ({}) successfully", sstHash);
 
         ByteBuffer[] recoveryOriginalSrc = StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash);
 
@@ -83,6 +87,7 @@ public class ECRecovery {
             throw new NullPointerException(String.format("rymERROR: we cannot get erasure code for sstable (%s)", sstHash));
         }
 
+        logger.debug("rymDebug: [Debug recovery] wait chunks for sstable ({})", sstHash);
         int[] decodeIndexes = waitUntilRequestCodesReady(recoveryOriginalSrc, sstHash, k);
 
         int eraseIndex = ecMetadataContent.sstHashIdList.indexOf(sstHash);
@@ -125,6 +130,7 @@ public class ECRecovery {
         // TODO: Wait until all data is ready.
         Thread.sleep(5000);
         logger.debug("rymDebug: recovery for sstHash is done!");
+        latch.countDown();
 
     }
 
@@ -146,7 +152,7 @@ public class ECRecovery {
         }
 
 
-
+        logger.debug("rymDebug: [Debug recovery] retrieve data chunks for sstable ({})", oldSSTHash);
         // Step 1: Retrieve the data blocks.
         StorageService.instance.globalSSTHashToErasureCodesMap.put(oldSSTHash, erasureCodes);
         if(ecMetadataContent.sstHashIdToReplicaMap != null) {
@@ -160,6 +166,8 @@ public class ECRecovery {
             throw new IllegalArgumentException(String.format("rymERROR: sstHashIDToReplicaMap is null!"));
         }
 
+
+        logger.debug("rymDebug: [Debug recovery] retrieve parity chunks for sstable ({})", oldSSTHash);
         // Step 2: Retrieve parity blocks.
         if(ecMetadataContent.parityHashList == null || 
            ecMetadataContent.parityNodes == null) {
