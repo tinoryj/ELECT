@@ -71,7 +71,7 @@ public class ECRecovery {
         if(ecMetadata == null)
             throw new NullPointerException(String.format("rymDebug: [Debug recovery] The ecMetadata for sstHash ({}) is null!", sstHash));
 
-        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.stripeId, sstHash);
+        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.ecMetadataContent.stripeId, sstHash);
 
         // Step 2: Request the coding blocks from related nodes
         int codeLength = StorageService.getErasureCodeLength();
@@ -88,7 +88,7 @@ public class ECRecovery {
         int eraseIndex = ecMetadata.ecMetadataContent.sstHashIdList.indexOf(sstHash);
         int[] eraseIndexes = { eraseIndex };
 
-        logger.debug("rymDebug: [Debug recovery] When we recovery sstable ({}), the data blocks of strip id ({}) is ready.", sstHash, ecMetadata.stripeId);
+        logger.debug("rymDebug: [Debug recovery] When we recovery sstable ({}), the data blocks of strip id ({}) is ready.", sstHash, ecMetadata.ecMetadataContent.stripeId);
 
 
         // Step 3: Decode the raw data
@@ -163,7 +163,7 @@ public class ECRecovery {
         // Step 2: Retrieve parity blocks.
         if(ecMetadata.ecMetadataContent.parityHashList == null || 
            ecMetadata.ecMetadataContent.parityNodes == null) {
-            ECNetutils.printStackTace(String.format("rymERROR: When we are update old sstable (%s), we cannot to get parity hash or parity code for stripID (%s)", oldSSTHash, ecMetadata.stripeId));
+            ECNetutils.printStackTace(String.format("rymERROR: When we are update old sstable (%s), we cannot to get parity hash or parity code for stripID (%s)", oldSSTHash, ecMetadata.ecMetadataContent.stripeId));
         } else {
             // get the needed parity code remotely, send a parity code request
             for (int i = 0; i < ecMetadata.ecMetadataContent.parityHashList.size(); i++) {

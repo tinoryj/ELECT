@@ -645,7 +645,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             String stripID = StorageService.instance.globalSSTHashToStripIDMap.get(oldSSTable.sstHash);
             ECMetadataContent oldMetadata = StorageService.instance.globalStripIdToECMetadataMap.get(stripID);
             // update the isParityUpdate, sstHashIdList, parityHashList, replication nodes, stripID
-            ECMetadata ecMetadata = new ECMetadata(stripID, oldMetadata);
+            ECMetadata ecMetadata = new ECMetadata(oldMetadata);
             ecMetadata.updateAndDistributeMetadata(parityHashList, true,
                                                    oldSSTable.sstHash, newSSTable.sstHash, targetDataIndex,
                                                    oldRelicaNodes, newRelicaNodes);

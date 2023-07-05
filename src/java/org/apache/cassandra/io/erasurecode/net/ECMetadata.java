@@ -26,6 +26,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -80,7 +82,8 @@ import org.slf4j.LoggerFactory;
 
 public class ECMetadata implements Serializable {
     // TODO: improve the performance
-    public String stripeId;
+    // public String stripeId;
+    
     public ECMetadataContent ecMetadataContent;
 
     public byte[] ecMetadataContentBytes;
@@ -92,6 +95,7 @@ public class ECMetadata implements Serializable {
 
     public static class ECMetadataContent implements Serializable {
         
+        public String stripeId;
         public String keyspace;
         public String cfName;
         public List<String> sstHashIdList;
@@ -106,9 +110,10 @@ public class ECMetadata implements Serializable {
         public int targetIndex;
         public String oldSSTHashForUpdate;
 
-        public ECMetadataContent(String ks, String cf, List<String> sstHashIdList, List<String> parityHashList,
+        public ECMetadataContent(String stripeId, String ks, String cf, List<String> sstHashIdList, List<String> parityHashList,
         List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> secondaryNodes, List<InetAddressAndPort> parityNodes,
         Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap, String oldSSTHashForUpdate, boolean isParityUpdate, int targetIndex) {
+            this.stripeId = stripeId;
             this.keyspace = ks;
             this.cfName = cf;
             this.sstHashIdList = sstHashIdList;
@@ -123,8 +128,8 @@ public class ECMetadata implements Serializable {
         }
     }
 
-    public ECMetadata(String stripeId, ECMetadataContent ecMetadataContent) {
-        this.stripeId = stripeId;
+    public ECMetadata(ECMetadataContent ecMetadataContent) {
+        // this.stripeId = stripeId;
         this.ecMetadataContent = ecMetadataContent;
     }
 
@@ -150,7 +155,7 @@ public class ECMetadata implements Serializable {
             }
         }
         
-        this.stripeId = String.valueOf(connectedSSTHash.hashCode());
+        this.ecMetadataContent.stripeId = String.valueOf(connectedSSTHash.hashCode());
         this.ecMetadataContent.keyspace = messages[0].ecMessageContent.keyspace;
         this.ecMetadataContent.cfName = messages[0].ecMessageContent.cfName;
 
@@ -192,9 +197,9 @@ public class ECMetadata implements Serializable {
         distributeECMetadata(this);
         
         // store ecMetadata locally
-        StorageService.instance.globalStripIdToECMetadataMap.put(this.stripeId, this.ecMetadataContent);
+        StorageService.instance.globalStripIdToECMetadataMap.put(this.ecMetadataContent.stripeId, this.ecMetadataContent);
         
-        mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(this.ecMetadataContent.sstHashIdList, this.stripeId, this.ecMetadataContent.sstHashIdToReplicaMap);
+        mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(this.ecMetadataContent.sstHashIdList, this.ecMetadataContent.stripeId, this.ecMetadataContent.sstHashIdToReplicaMap);
 
     }
 
@@ -250,12 +255,12 @@ public class ECMetadata implements Serializable {
         for(String sstHash : this.ecMetadataContent.sstHashIdList) {
             connectedSSTHash += sstHash;
         }
-        String oldStripId = this.stripeId;
-        this.stripeId = ECNetutils.stringToHex(String.valueOf(connectedSSTHash.hashCode()));
-        logger.debug("rymDebug: Update old strip id ({}) with a new one ({})", oldStripId, this.stripeId);
+        String oldStripId = this.ecMetadataContent.stripeId;
+        this.ecMetadataContent.stripeId = ECNetutils.stringToHex(String.valueOf(connectedSSTHash.hashCode()));
+        logger.debug("rymDebug: Update old strip id ({}) with a new one ({})", oldStripId, this.ecMetadataContent.stripeId);
 
 
-        logger.debug("rymDebug: this update ECMetadata method, we update old sstable ({}) with new sstable ({}) for strip id ({})", oldSSTHash, newSSTHash, this.stripeId);
+        logger.debug("rymDebug: this update ECMetadata method, we update old sstable ({}) with new sstable ({}) for strip id ({})", oldSSTHash, newSSTHash, this.ecMetadataContent.stripeId);
 
         try {
             this.ecMetadataContentBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMetadataContent);
@@ -273,16 +278,16 @@ public class ECMetadata implements Serializable {
         distributeECMetadata(this);
 
 
-        mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(this.ecMetadataContent.sstHashIdList, this.stripeId, this.ecMetadataContent.sstHashIdToReplicaMap);
+        mapSSTHashToStripIdAndSelectOldSSTableFromWaitingListIfNeeded(this.ecMetadataContent.sstHashIdList, this.ecMetadataContent.stripeId, this.ecMetadataContent.sstHashIdToReplicaMap);
         // StorageService.instance.globalSSTHashToStripIDMap.remove(oldSSTHash);
         
         // store ecMetadata locally
-        StorageService.instance.globalStripIdToECMetadataMap.put(this.stripeId, this.ecMetadataContent);
+        StorageService.instance.globalStripIdToECMetadataMap.put(this.ecMetadataContent.stripeId, this.ecMetadataContent);
         StorageService.instance.globalStripIdToECMetadataMap.remove(oldStripId);
 
         // parity update is finished, we update the globalUpdatingStripList
         StorageService.instance.globalUpdatingStripList.remove(oldStripId);
-        logger.debug("rymDebug: We replaced the oldStrip {} with the newStrip {} successfully.", oldStripId, this.stripeId);
+        logger.debug("rymDebug: We replaced the oldStrip {} with the newStrip {} successfully.", oldStripId, this.ecMetadataContent.stripeId);
         // StorageService.instance.globalUpdatingStripList.compute(this.stripeId, (key, oldValue) -> oldValue - 1);
 
     }
@@ -336,14 +341,14 @@ public class ECMetadata implements Serializable {
      */
     public void distributeECMetadata(ECMetadata ecMetadata) {
         logger.debug("rymDebug: [In parity node ({})] This distributeEcMetadata method, we should send stripId ({}) with sstables list ({}) to node ({}), the sstHashToRelicaMap is ({}), old sstable hash is ({}). We can check that the primary nodes are ({}), parity nodes are ({})",
-                    FBUtilities.getBroadcastAddressAndPort(), ecMetadata.stripeId, ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.ecMetadataContent.secondaryNodes, 
+                    FBUtilities.getBroadcastAddressAndPort(), ecMetadata.ecMetadataContent.stripeId, ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.ecMetadataContent.secondaryNodes, 
                     ecMetadata.ecMetadataContent.sstHashIdToReplicaMap, ecMetadata.ecMetadataContent.oldSSTHashForUpdate,
                     ecMetadata.ecMetadataContent.primaryNodes, ecMetadata.ecMetadataContent.parityNodes);
         Message<ECMetadata> message = Message.outWithFlag(Verb.ECMETADATA_REQ, ecMetadata, MessageFlag.CALL_BACK_ON_FAILURE);
         
         // send to secondary nodes 
         int rf = 3;
-        logger.debug("rymDebug: For strip id ({}), we should record ecSSTable ({}) times in total", ecMetadata.stripeId, DatabaseDescriptor.getEcDataNodes() * (rf-1));
+        logger.debug("rymDebug: For strip id ({}), we should record ecSSTable ({}) times in total", ecMetadata.ecMetadataContent.stripeId, DatabaseDescriptor.getEcDataNodes() * (rf-1));
         for (InetAddressAndPort node : ecMetadata.ecMetadataContent.secondaryNodes) {
             MessagingService.instance().send(message, node);
         }
@@ -355,7 +360,7 @@ public class ECMetadata implements Serializable {
         //     }
         // }
 
-        logger.debug("rymDebug: store stripID {} in node {}", ecMetadata.stripeId, FBUtilities.getBroadcastAddressAndPort());
+        logger.debug("rymDebug: store stripID {} in node {}", ecMetadata.ecMetadataContent.stripeId, FBUtilities.getBroadcastAddressAndPort());
     }
 
     public static final class Serializer implements IVersionedSerializer<ECMetadata>{
@@ -363,7 +368,7 @@ public class ECMetadata implements Serializable {
         @Override
         public void serialize(ECMetadata t, DataOutputPlus out, int version) throws IOException {
             
-            out.writeUTF(t.stripeId);
+            // out.writeUTF(t.ecMetadataContent.stripeId);
             out.writeInt(t.ecMetadataContentBytesSize);
             out.write(t.ecMetadataContentBytes);            
         }
@@ -371,14 +376,14 @@ public class ECMetadata implements Serializable {
         @Override
         public ECMetadata deserialize(DataInputPlus in, int version) throws IOException {
             // TODO: Correct data types, and revise the Constructor
-            String stripeId = in.readUTF();
+            // String stripeId = in.readUTF();
             int ecMetadataContentBytesSize = in.readInt();
             byte[] ecMetadataContentBytes = new byte[ecMetadataContentBytesSize];
             in.readFully(ecMetadataContentBytes);
 
             try {
                 ECMetadataContent eMetadataContent = (ECMetadataContent) ByteObjectConversion.byteArrayToObject(ecMetadataContentBytes);
-                return new ECMetadata(stripeId, eMetadataContent);
+                return new ECMetadata(eMetadataContent);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 logger.error("ERROR: get sstables in bytes error!");
@@ -388,7 +393,7 @@ public class ECMetadata implements Serializable {
 
         @Override
         public long serializedSize(ECMetadata t, int version) {
-            long size = sizeof(t.stripeId) + 
+            long size = //sizeof(t.stripeId) + 
                         sizeof(t.ecMetadataContentBytesSize) +
                         t.ecMetadataContentBytesSize;
             return size;
@@ -399,40 +404,42 @@ public class ECMetadata implements Serializable {
 
 
 
-    public static byte[] readBytesFromFile(String fileName) throws IOException
-    {
-        // String fileName = descriptor.filenameFor(Component.DATA);
-        File file = new File(fileName);
-        long fileLength = file.length();
-        FileInputStream fileStream = new FileInputStream(fileName);
-        byte[] buffer = new byte[(int)fileLength];
-        int offset = 0;
-        int numRead = 0;
-        while (offset < buffer.length && (numRead = fileStream.read(buffer, offset, buffer.length - offset)) >= 0) {
-            offset += numRead;
-        }
-        if (offset != buffer.length) {
-            throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
-        }
-        fileStream.close();
-        logger.debug("rymDebug: read file {} successfully!", fileName);
-        return buffer;
-        // return ByteBuffer.wrap(buffer);
-    }
+    // public static byte[] readBytesFromFile(String fileName) throws IOException
+    // {
+    //     // String fileName = descriptor.filenameFor(Component.DATA);
+    //     File file = new File(fileName);
+    //     long fileLength = file.length();
+    //     FileInputStream fileStream = new FileInputStream(fileName);
+    //     byte[] buffer = new byte[(int)fileLength];
+    //     int offset = 0;
+    //     int numRead = 0;
+    //     while (offset < buffer.length && (numRead = fileStream.read(buffer, offset, buffer.length - offset)) >= 0) {
+    //         offset += numRead;
+    //     }
+    //     if (offset != buffer.length) {
+    //         throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
+    //     }
+    //     fileStream.close();
+    //     logger.debug("rymDebug: read file {} successfully!", fileName);
+    //     return buffer;
+    //     // return ByteBuffer.wrap(buffer);
+    // }
 
-    public static Object byteArrayToObject(byte[] bytes) throws Exception {
-        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-        ObjectInputStream ois = new ObjectInputStream(bis);
-        Object obj = ois.readObject();
-        bis.close();
-        ois.close();
-        return obj;
-    }
+    // public static Object byteArrayToObject(byte[] bytes) throws Exception {
+    //     ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+    //     ObjectInputStream ois = new ObjectInputStream(bis);
+    //     Object obj = ois.readObject();
+    //     bis.close();
+    //     ois.close();
+    //     return obj;
+    // }
     public static void main(String[] args) throws Exception {
-        String ecMetadataFile = "/mnt/ssd/Debug/CassandraEC/data/data/ycsb/usertable2-1493366019ae11eead6e6b7f5b3cfb55/nb-924-big-EC.db";
-        byte[] ecMetadataInBytes = readBytesFromFile(ecMetadataFile);
-        ECMetadata ecMetadata = (ECMetadata) byteArrayToObject(ecMetadataInBytes);
-        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.stripeId);
+        String ecMetadataFile = "/home/rym/nb-623-big-EC.db";
+        byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
+        ECMetadata ecMetadata = (ECMetadata) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
+        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.ecMetadataContent.stripeId);
+
+
     }
 
 }

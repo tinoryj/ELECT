@@ -199,6 +199,7 @@ public final class ECNetutils {
     public static byte[] readBytesFromFile(String fileName) throws IOException
     {
         // String fileName = descriptor.filenameFor(Component.DATA);
+
         File file = new File(fileName);
         long fileLength = file.length();
         FileInputStream fileStream = new FileInputStream(fileName);
@@ -214,11 +215,17 @@ public final class ECNetutils {
         fileStream.close();
         logger.debug("rymDebug: read file {} successfully!", fileName);
         return buffer;
+
+        // byte[] byteArray = Files.readAllBytes(Paths.get(fileName));
+        // return byteArray;
+
         // return ByteBuffer.wrap(buffer);
     }
 
     public static void writeBytesToFile(String fileName, byte[] buffer) throws IOException
     {
+
+        // Files.write(Paths.get(fileName), buffer);
         try (FileOutputStream outputStream = new FileOutputStream(fileName)) {
             outputStream.write(buffer);
         } catch (Exception e) {

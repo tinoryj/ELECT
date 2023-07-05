@@ -337,7 +337,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             // Transform to ECMetadata and dispatch to related nodes
             // ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
             //             new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
-            ECMetadata ecMetadata = new ECMetadata("", new ECMetadataContent("", "", new ArrayList<String>(),new ArrayList<String>(),
+            ECMetadata ecMetadata = new ECMetadata(new ECMetadataContent("", "", "", new ArrayList<String>(),new ArrayList<String>(),
                                                    new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new ArrayList<InetAddressAndPort>(),
                                                 new HashMap<String, List<InetAddressAndPort>>(), "", false, 0));
             ecMetadata.generateAndDistributeMetadata(messages, parityHashList);

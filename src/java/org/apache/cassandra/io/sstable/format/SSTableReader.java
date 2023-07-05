@@ -458,7 +458,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         SSTableReader ecSSTable = open(desc);
         if(ecSSTable.getSSTableHashID().equals(sstHash) || sstHash == null) {
             StorageService.instance.globalSSTHashToECSSTableMap.put(ecSSTable.getSSTableHashID(), ecSSTable);
-            logger.debug("rymDebug: [In secondary node] map sstHash ({}) to ecSSTable ({}) for ecMetadata ({})", ecSSTable.getSSTableHashID(), ecSSTable.descriptor, ecMetadata.stripeId);
+            logger.debug("rymDebug: [In secondary node] map sstHash ({}) to ecSSTable ({}) for ecMetadata ({})", ecSSTable.getSSTableHashID(), ecSSTable.descriptor, ecMetadata.ecMetadataContent.stripeId);
         } else {
             logger.warn("rymDebug: sstHash ({}) is not equal to ecSSTable ({})", sstHash, ecSSTable.getSSTableHashID());
         }
