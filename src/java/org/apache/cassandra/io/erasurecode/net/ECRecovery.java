@@ -158,6 +158,10 @@ public class ECRecovery {
         if(ecMetadataContent.sstHashIdToReplicaMap != null) {
             int index = 0;
             for (Map.Entry<String, List<InetAddressAndPort>> entry : ecMetadataContent.sstHashIdToReplicaMap.entrySet()) {
+
+                if(entry.getKey().equals(oldSSTHash))
+                    continue;
+
                 ECRequestData request = new ECRequestData(oldSSTHash, entry.getKey(),index);
                 request.requestData(entry.getValue().get(0));
                 index++;
