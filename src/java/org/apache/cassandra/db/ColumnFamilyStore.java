@@ -154,7 +154,10 @@ import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileOutputStreamPlus;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.ReplicaPlan;
+import org.apache.cassandra.locator.ReplicaPlans;
 import org.apache.cassandra.metrics.Sampler;
 import org.apache.cassandra.metrics.Sampler.Sample;
 import org.apache.cassandra.metrics.Sampler.SamplerType;
@@ -560,6 +563,15 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     String sstHashID = sstable.getSSTableHashID();
                                     List<InetAddressAndPort> replicaNodes = StorageService.instance
                                             .getReplicaNodesWithPort(keyspaceName, cfName, key);
+
+                                    Token tk = sstable.first.getToken();
+                                    ReplicaPlan.ForWrite replicaPlan = ReplicaPlans.forWrite(Keyspace.open(keyspaceName), ConsistencyLevel.ALL, tk,
+                                            ReplicaPlans.writeNormal);
+                                    ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(replicaPlan, replicaNodes, tk);
+
+                                    // AbstractReplicationStrategy rs = replicaPlan.replicationStrategy();
+
+                                    
 
                                     // Sync sstable with secondary nodes for rewrite
                                     ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID, "Erasure Coding", cfs);

@@ -714,7 +714,10 @@ public class Keyspace {
         // logger.debug("localAddress is {}, replicaNodes are {}",localAddress, eps);
         // make sure whether the mutation is for a primary or not.
         int index = eps.indexOf(localAddress);
-        replicaUUID = globalNodeIDtoCFIDMap.get(index);
+        if(index != -1)
+            replicaUUID = globalNodeIDtoCFIDMap.get(index);
+        else
+            throw new IllegalStateException(String.format("rymERROR: the local address (%s) is not belong to the replica nodes (%s)", localAddress, eps));
         
         // String fileName = "usertable";
         // if(index!=0) {

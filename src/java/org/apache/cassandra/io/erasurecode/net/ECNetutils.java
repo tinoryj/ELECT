@@ -49,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.StorageHook;
+import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.index.Index.Indexer;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
@@ -62,11 +63,14 @@ import org.apache.cassandra.io.sstable.metadata.MetadataType;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.ReplicaPlan;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.tartarus.snowball.ext.italianStemmer;
 import org.tartarus.snowball.ext.porterStemmer;
+
 
 public final class ECNetutils {
     private static final Logger logger = LoggerFactory.getLogger(ECNetutils.class);
@@ -389,6 +393,21 @@ public final class ECNetutils {
 
     public synchronized static boolean getIsRecovered(String sstHash) {
         return StorageService.instance.recoveredSSTables.contains(sstHash);
+    }
+
+    public static void checkTheReplicaPlanIsEqualsToNaturalEndpoint(ReplicaPlan.ForWrite replicaPlan, List<InetAddressAndPort> sendRequestAddresses, Token targetReadToken) {
+        boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
+        for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
+            if (!replicaPlan.contacts().endpointList().get(i).equals(sendRequestAddresses.get(i))) {
+                isReplicaPlanMatchToNaturalEndpointFlag = false;
+            }
+        }
+        if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
+            throw new IllegalStateException(String.format("rymERROR: for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
+                                                          targetReadToken,
+                                                          replicaPlan.contacts().endpointList(),
+                                                          sendRequestAddresses));
+        }
     }
 
     public static void main(String[] args) {
