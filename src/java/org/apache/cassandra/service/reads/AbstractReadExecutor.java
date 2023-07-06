@@ -416,13 +416,12 @@ public abstract class AbstractReadExecutor {
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(command.metadata().id);
         SpeculativeRetryPolicy retry = cfs.metadata().params.speculativeRetry;
 
-        ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, command.partitionKey().getToken(),
+        targetReadToken = command.partitionKey().getToken();
+        ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, targetReadToken,
                 consistencyLevel, retry);
 
         if (keyspace.getName().equals("ycsb")) {
-            targetReadToken = command.partitionKey().getToken();
-            sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command.metadata().keyspace,
-                    command.partitionKey().getKey());
+            sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command.metadata().keyspace, targetReadToken);
             if (sendRequestAddresses.size() != 3) {
                 logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
             }
