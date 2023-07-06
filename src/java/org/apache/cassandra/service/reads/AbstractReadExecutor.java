@@ -166,12 +166,10 @@ public abstract class AbstractReadExecutor {
         if (hasLocalEndpoint) {
             if (readCommand.metadata().keyspace.equals("ycsb")) {
                 List<InetAddress> sendRequestAddresses;
-                Token token = (command instanceof SinglePartitionReadCommand
-                        ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
-                        : ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken());
-                sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command
-                        .metadata().keyspace,
-                        token);
+                String rawKey = (command instanceof SinglePartitionReadCommand
+                    ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(((SinglePartitionReadCommand) command).metadata())
+                    : ((PartitionRangeReadCommand) command).dataRange().keyRange().left.getPartitioner().toString());
+                sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command.metadata().keyspace, command.metadata().name, rawKey);
                 switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
                     case 0:
                         // In case received request is not for primary LSM tree

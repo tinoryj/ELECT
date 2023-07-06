@@ -4417,6 +4417,21 @@ public class StorageService extends NotificationBroadcasterSupport
 
     }
 
+    public List<InetAddressAndPort> getReplicaNodesWithPortFromRawKeyForDegradeRead(String keyspaceName, String cf, String key) {
+        List<String> inetStringList = getNaturalEndpointsWithPort(keyspaceName, cf, key);
+        List<InetAddressAndPort> inetList = new ArrayList<>(inetStringList.size());
+        inetStringList.forEach(r -> {
+            try {
+                inetList.add(InetAddressAndPort.getByName(r));
+            } catch (UnknownHostException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        });
+        return inetList;
+
+    }
+
     // [CASSANDRAEC]
     public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode, String keyspaceName) {
         Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(), Gossiper.instance.getUnreachableMembers());
