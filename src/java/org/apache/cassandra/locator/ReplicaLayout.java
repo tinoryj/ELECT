@@ -365,8 +365,8 @@ public abstract class ReplicaLayout<E extends Endpoints<E>> {
     static ReplicaLayout.ForRangeRead forRangeReadLiveSorted(AbstractReplicationStrategy replicationStrategy,
             AbstractBounds<PartitionPosition> range) {
         EndpointsForRange replicas = replicationStrategy.getNaturalReplicas(range.right);
-        replicas = DatabaseDescriptor.getEndpointSnitch().sortedByProximity(FBUtilities.getBroadcastAddressAndPort(),
-                replicas);
+        // replicas = DatabaseDescriptor.getEndpointSnitch().sortedByProximity(FBUtilities.getBroadcastAddressAndPort(),
+        //         replicas);
         replicas = replicas.filter(FailureDetector.isReplicaAlive);
         return new ReplicaLayout.ForRangeRead(replicationStrategy, range, replicas);
     }
