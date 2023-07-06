@@ -421,7 +421,9 @@ public abstract class AbstractReadExecutor {
                 consistencyLevel, retry);
 
         if (keyspace.getName().equals("ycsb")) {
-            sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command.metadata().keyspace, targetReadToken);
+            sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(keyspace.getName(), targetReadToken);
+            String rawKey = command.partitionKey().getRawKey(command.metadata());
+            List<InetAddress> addresses = StorageService.instance.getNaturalEndpoints(command.metadata().keyspace, command.metadata().name, rawKey);
             if (sendRequestAddresses.size() != 3) {
                 logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
             }
@@ -433,10 +435,11 @@ public abstract class AbstractReadExecutor {
             }
             if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
                 logger.debug(
-                        "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
+                        "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}, ({})",
                         command.partitionKey().getToken(),
                         replicaPlan.contacts().endpointList(),
-                        sendRequestAddresses);
+                        sendRequestAddresses,
+                        addresses);
             }
         }
 

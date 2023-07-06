@@ -4370,7 +4370,6 @@ public class StorageService extends NotificationBroadcasterSupport
      * @param key          key for which we need to find the endpoint
      * @return the endpoint responsible for this key
      */
-    @Deprecated
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, String cf, String key) {
         EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, cf, key);
         List<InetAddress> inetList = new ArrayList<>(replicas.size());
