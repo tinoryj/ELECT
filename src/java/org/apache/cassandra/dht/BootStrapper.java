@@ -158,6 +158,8 @@ public class BootStrapper extends ProgressEventNotifierSupport
         String allocationKeyspace = DatabaseDescriptor.getAllocateTokensForKeyspace();
         Integer allocationLocalRf = DatabaseDescriptor.getAllocateTokensForLocalRf();
         Collection<String> initialTokens = DatabaseDescriptor.getInitialTokens();
+
+
         if (initialTokens.size() > 0 && allocationKeyspace != null)
             logger.warn("manually specified tokens override automatic allocation");
 

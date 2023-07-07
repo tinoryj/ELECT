@@ -83,7 +83,7 @@ public abstract class AbstractReadExecutor {
     protected final long queryStartNanoTime;
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
-    public static List<InetAddress> sendRequestAddresses;
+    public static List<InetAddressAndPort> sendRequestAddresses;
     public static Token targetReadToken;
 
     public final String primaryLSMTreeName = "usertable";
@@ -165,12 +165,12 @@ public abstract class AbstractReadExecutor {
         // remote requests.
         if (hasLocalEndpoint) {
             if (readCommand.metadata().keyspace.equals("ycsb")) {
-                List<InetAddress> sendRequestAddresses;
-                String rawKey = (command instanceof SinglePartitionReadCommand
-                    ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(((SinglePartitionReadCommand) command).metadata())
-                    : ((PartitionRangeReadCommand) command).dataRange().keyRange().left.getPartitioner().toString());
-                sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command.metadata().keyspace, command.metadata().name, rawKey);
-                switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
+                List<InetAddressAndPort> sendRequestAddresses;
+                Token tk = (command instanceof SinglePartitionReadCommand
+                    ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                    : ((PartitionRangeReadCommand) command).dataRange().keyRange().left.getToken());
+                sendRequestAddresses = StorageService.instance.getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, tk);
+                switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                     case 0:
                         // In case received request is not for primary LSM tree
                         readCommand.updateTableMetadata(
@@ -419,14 +419,14 @@ public abstract class AbstractReadExecutor {
                 consistencyLevel, retry);
 
         if (keyspace.getName().equals("ycsb")) {
-            String rawKey = command.partitionKey().getRawKey(command.metadata());
-            sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command.metadata().keyspace, command.metadata().name, rawKey);
+            // String rawKey = command.partitionKey().getRawKey(command.metadata());
+            sendRequestAddresses = StorageService.instance.getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, targetReadToken);
             if (sendRequestAddresses.size() != 3) {
                 logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
             }
             boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
             for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
-                if (!replicaPlan.contacts().endpointList().get(i).getAddress().equals(sendRequestAddresses.get(i))) {
+                if (!replicaPlan.contacts().endpointList().get(i).equals(sendRequestAddresses.get(i))) {
                     isReplicaPlanMatchToNaturalEndpointFlag = false;
                 }
             }

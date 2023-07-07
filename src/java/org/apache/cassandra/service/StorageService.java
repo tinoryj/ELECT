@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOError;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -73,6 +74,7 @@ import org.apache.cassandra.fql.FullQueryLoggerOptionsCompositeData;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.locator.ReplicaCollection.Builder.Conflict;
 import org.apache.cassandra.schema.Keyspaces;
+import org.apache.cassandra.service.ActiveRepairService.ParentRepairStatus;
 import org.apache.cassandra.service.disk.usage.DiskUsageBroadcaster;
 import org.apache.cassandra.service.snapshot.SnapshotLoader;
 import org.apache.cassandra.utils.concurrent.Future;
@@ -105,6 +107,7 @@ import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTab
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.virtual.VirtualKeyspaceRegistry;
 import org.apache.cassandra.dht.*;
+import org.apache.cassandra.dht.RandomPartitioner.BigIntegerToken;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token.TokenFactory;
 import org.apache.cassandra.exceptions.*;
@@ -140,8 +143,6 @@ import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.schema.ViewMetadata;
 import org.apache.cassandra.service.snapshot.SnapshotManager;
 import org.apache.cassandra.service.snapshot.TableSnapshot;
-import org.apache.cassandra.net.AsyncOneResponse;
-import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.streaming.*;
 import org.apache.cassandra.tracing.TraceKeyspace;
 import org.apache.cassandra.transport.ClientResourceLimits;
@@ -156,7 +157,6 @@ import org.apache.cassandra.utils.progress.jmx.JMXProgressSupport;
 
 import static com.google.common.collect.Iterables.transform;
 import static com.google.common.collect.Iterables.tryFind;
-import com.google.common.collect.Iterables;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -4417,18 +4417,43 @@ public class StorageService extends NotificationBroadcasterSupport
 
     }
 
-    public List<InetAddressAndPort> getReplicaNodesWithPortFromRawKeyForDegradeRead(String keyspaceName, String cf, String key) {
-        List<String> inetStringList = getNaturalEndpointsWithPort(keyspaceName, cf, key);
-        List<InetAddressAndPort> inetList = new ArrayList<>(inetStringList.size());
-        inetStringList.forEach(r -> {
-            try {
-                inetList.add(InetAddressAndPort.getByName(r));
-            } catch (UnknownHostException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+    public List<InetAddressAndPort> getReplicaNodesWithPortFromRawKeyForDegradeRead(String keyspaceName,Token token) {
+
+        Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(), Gossiper.instance.getUnreachableMembers());
+        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>();
+        allHostsIterable.forEach(allHosts::add);
+        InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
+        Collections.sort(allHosts, comparator);
+        List<InetAddressAndPort> replicaNodes = new ArrayList<>();
+
+        Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
+        BigInteger  targetToken = ((BigIntegerToken)token).getTokenValue();
+        int index = 0;
+        for(String tk : tokenRanges) {
+            BigInteger currentToken = new BigInteger(tk);
+            int result = currentToken.compareTo(targetToken);
+            if(result <= 0) {
+                break;
             }
-        });
-        return inetList;
+            index++;
+        }
+
+        if(index == tokenRanges.size())
+            index = 0;
+
+        
+        int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
+        int endIndex = index + rf;
+        
+        if(endIndex > allHosts.size()) {
+            replicaNodes.addAll(allHosts.subList(index, allHosts.size()));
+            replicaNodes.addAll(allHosts.subList(0,endIndex % allHosts.size()));
+        } else {
+            replicaNodes.addAll(allHosts.subList(index, endIndex));
+        }
+
+        return replicaNodes;
+
 
     }
 

@@ -26,6 +26,7 @@ import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.index.sasi.memory.KeyRangeIterator;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
@@ -68,15 +69,15 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             // .getToken()
             // : null);
             // Update read command to the correct table
-            List<InetAddress> sendRequestAddresses;
-            String rawKey = (command instanceof SinglePartitionReadCommand
-                    ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(((SinglePartitionReadCommand) command).metadata())
-                    : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getPartitioner().toString());
+            List<InetAddressAndPort> sendRequestAddresses;
+            Token tk = (command instanceof SinglePartitionReadCommand
+                    ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                    : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
             // sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command.metadata().keyspace, token);
             // String rawKey = command.partitionKey().getRawKey(command.metadata());
-            sendRequestAddresses = StorageService.instance.getNaturalEndpoints(command.metadata().keyspace, command.metadata().name, rawKey);
+            sendRequestAddresses = StorageService.instance.getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, tk);
 
-            switch (sendRequestAddresses.indexOf(FBUtilities.getJustBroadcastAddress())) {
+            switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                 case 0:
                     command.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore("usertable")

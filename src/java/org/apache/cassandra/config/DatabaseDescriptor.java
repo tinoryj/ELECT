@@ -1238,6 +1238,9 @@ public class DatabaseDescriptor
 
     static void applyTokensConfig(Config conf)
     {
+
+        Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
+        logger.debug("rymDebug: get the token ranges are: {}", tokenRanges);
         if (conf.initial_token != null)
         {
             Collection<String> tokens = tokensFromString(conf.initial_token);
@@ -1698,6 +1701,10 @@ public class DatabaseDescriptor
     public static Collection<String> getInitialTokens()
     {
         return tokensFromString(System.getProperty(Config.PROPERTY_PREFIX + "initial_token", conf.initial_token));
+    }
+
+    public static Collection<String> getTokenRanges() {
+        return tokensFromString(conf.token_ranges);
     }
 
     public static String getAllocateTokensForKeyspace()
