@@ -83,6 +83,7 @@ public abstract class AbstractReadExecutor {
     protected final long queryStartNanoTime;
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
+    List<InetAddressAndPort> sendRequestAddresses;
 
     public final String primaryLSMTreeName = "usertable";
     public final String secondaryLSMTreeName1 = "usertable1";
@@ -162,68 +163,89 @@ public abstract class AbstractReadExecutor {
         // We delay the local (potentially blocking) read till the end to avoid stalling
         // remote requests.
         if (hasLocalEndpoint) {
-            if (readCommand.metadata().keyspace.equals("ycsb")) {
-                List<InetAddressAndPort> sendRequestAddresses;
-                Token tk = (command instanceof SinglePartitionReadCommand
-                        ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
-                        : ((PartitionRangeReadCommand) command).dataRange().keyRange().left.getToken());
-                sendRequestAddresses = StorageService.instance
-                        .getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, tk);
-                switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
-                    case 0:
-                        // In case received request is not for primary LSM tree
-                        readCommand.updateTableMetadata(
-                                Keyspace.open("ycsb").getColumnFamilyStore("usertable")
-                                        .metadata());
-                        ColumnFilter newColumnFilter = ColumnFilter
-                                .allRegularColumnsBuilder(readCommand.metadata(), false)
-                                .build();
-                        readCommand.updateColumnFilter(newColumnFilter);
-                        if (readCommand.isDigestQuery() == true) {
-                            logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
-                        }
-                        break;
-                    case 1:
-                        readCommand.updateTableMetadata(
-                                Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
-                                        .metadata());
-                        ColumnFilter newColumnFilter1 = ColumnFilter
-                                .allRegularColumnsBuilder(readCommand.metadata(), false)
-                                .build();
-                        readCommand.updateColumnFilter(newColumnFilter1);
-                        this.command = readCommand;
-                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
-                        if (readCommand.isDigestQuery() == false) {
-                            logger.debug(
-                                    "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
-                            readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
-                        }
-                        break;
-                    case 2:
-                        readCommand.updateTableMetadata(
-                                Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
-                                        .metadata());
-                        ColumnFilter newColumnFilter2 = ColumnFilter
-                                .allRegularColumnsBuilder(readCommand.metadata(), false)
-                                .build();
-                        readCommand.updateColumnFilter(newColumnFilter2);
-                        this.command = readCommand;
-                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
-                        if (readCommand.isDigestQuery() == false) {
-                            logger.debug(
-                                    "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
-                            readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
-                        }
-                        break;
-                    default:
-                        logger.debug("[Tinoryj] Not support replication factor larger than 3");
-                        break;
-                }
-            }
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
         }
     }
 
+    private void makeRequestsForELECT(ReadCommand readCommand) {
+        boolean hasLocalEndpoint = false;
+        Message<ReadCommand> message = null;
+        int sendRequestNumber = 0;
+        for (InetAddressAndPort endpoint : sendRequestAddresses) {
+            sendRequestNumber++;
+            if (traceState != null)
+                traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest" : "data", endpoint);
+
+            if (endpoint.equals(FBUtilities.getBroadcastAddressAndPort())) {
+                hasLocalEndpoint = true;
+                continue;
+            }
+            if (sendRequestNumber > 0) {
+                readCommand.setIsDigestQuery(true);
+            }
+            if (null == message) {
+                message = readCommand.createMessage(false);
+            }
+            MessagingService.instance().sendWithCallback(message, endpoint, handler);
+        }
+
+        // We delay the local (potentially blocking) read till the end to avoid stalling
+        // remote requests.
+        if (hasLocalEndpoint) {
+            switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
+                case 0:
+                    // In case received request is not for primary LSM tree
+                    readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+                                    .metadata());
+                    ColumnFilter newColumnFilter = ColumnFilter
+                            .allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter);
+                    readCommand.setIsDigestQuery(false);
+                    if (readCommand.isDigestQuery() == true) {
+                        logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
+                    }
+                    break;
+                case 1:
+                    readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+                                    .metadata());
+                    ColumnFilter newColumnFilter1 = ColumnFilter
+                            .allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter1);
+                    this.command = readCommand;
+                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
+                    if (readCommand.isDigestQuery() == false) {
+                        logger.debug(
+                                "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
+                        readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
+                    }
+                    break;
+                case 2:
+                    readCommand.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+                                    .metadata());
+                    ColumnFilter newColumnFilter2 = ColumnFilter
+                            .allRegularColumnsBuilder(readCommand.metadata(), false)
+                            .build();
+                    readCommand.updateColumnFilter(newColumnFilter2);
+                    this.command = readCommand;
+                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
+                    if (readCommand.isDigestQuery() == false) {
+                        logger.debug(
+                                "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
+                        readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
+                    }
+                    break;
+                default:
+                    logger.debug("[Tinoryj] Not support replication factor larger than 3");
+                    break;
+            }
+            Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
+        }
+    }
 
     public static void printStackTace(String msg) {
         logger.debug("stack trace {}", new Exception(msg));
@@ -240,20 +262,17 @@ public abstract class AbstractReadExecutor {
      * send the initial set of requests
      */
     public void executeAsync() {
-        EndpointsForToken selected = replicaPlan().contacts();
-        if (selected.size() != 3) {
-            logger.debug("[Tinoryj] Send read request target node number =  {}", selected.size());
+        if (command.metadata().keyspace.equals("ycsb")) {
+            makeRequestsForELECT(command);
+        } else {
+            EndpointsForToken selected = replicaPlan().contacts();
+            // Normal read path for Cassandra system tables.
+            EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
+            makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+            makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+            // Tinoryj-> to read the possible secondary replica.
+            makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
         }
-        // Normal read path for Cassandra system tables.
-        EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-        makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
-        logger.debug("[Tinoryj] Try to read {} data on the primary replica, {}", fullDataRequests.size(),
-                fullDataRequests);
-        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-        // Tinoryj-> to read the possible secondary replica.
-        makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
-        logger.debug("[Tinoryj] Try to read digest on the secondary replica, {}",
-                selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
     }
 
     /**
