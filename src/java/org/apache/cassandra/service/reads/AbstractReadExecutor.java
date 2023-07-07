@@ -83,7 +83,7 @@ public abstract class AbstractReadExecutor {
     protected final long queryStartNanoTime;
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
-    List<InetAddressAndPort> sendRequestAddresses;
+    private static List<InetAddressAndPort> sendRequestAddresses;
 
     public final String primaryLSMTreeName = "usertable";
     public final String secondaryLSMTreeName1 = "usertable1";
@@ -289,7 +289,7 @@ public abstract class AbstractReadExecutor {
 
         if (keyspace.getName().equals("ycsb")) {
             // String rawKey = command.partitionKey().getRawKey(command.metadata());
-            List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
+            sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, targetReadToken);
             if (sendRequestAddresses.size() != 3) {
                 logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
