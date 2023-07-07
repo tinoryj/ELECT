@@ -4427,7 +4427,7 @@ public class StorageService extends NotificationBroadcasterSupport
         List<InetAddressAndPort> replicaNodes = new ArrayList<>();
 
         Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
-        BigInteger  targetToken = ((BigIntegerToken)token).getTokenValue();
+        BigInteger targetToken = (BigInteger) token.getTokenValue();
         int index = 0;
         for(String tk : tokenRanges) {
             BigInteger currentToken = new BigInteger(tk);
