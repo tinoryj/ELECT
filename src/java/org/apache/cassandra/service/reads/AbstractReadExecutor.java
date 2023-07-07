@@ -169,7 +169,7 @@ public abstract class AbstractReadExecutor {
 
     private void makeRequestsForELECT(ReadCommand readCommand) {
         boolean hasLocalEndpoint = false;
-        Message<ReadCommand> message = null;
+
         int sendRequestNumber = 0, localRequestID = 0;
         for (InetAddressAndPort endpoint : sendRequestAddresses) {
             sendRequestNumber++;
@@ -184,9 +184,7 @@ public abstract class AbstractReadExecutor {
             if (sendRequestNumber > 1) {
                 readCommand.setIsDigestQuery(true);
             }
-            if (null == message) {
-                message = readCommand.createMessage(false);
-            }
+            Message<ReadCommand> message =  readCommand.createMessage(false);
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
         }
 
