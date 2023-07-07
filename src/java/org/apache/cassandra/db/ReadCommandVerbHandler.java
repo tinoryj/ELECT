@@ -69,13 +69,15 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             // .getToken()
             // : null);
             // Update read command to the correct table
-            List<InetAddressAndPort> sendRequestAddresses;
             Token tk = (command instanceof SinglePartitionReadCommand
                     ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
                     : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
-            // sendRequestAddresses = StorageService.instance.getNaturalEndpointsForToken(command.metadata().keyspace, token);
+            // sendRequestAddresses =
+            // StorageService.instance.getNaturalEndpointsForToken(command.metadata().keyspace,
+            // token);
             // String rawKey = command.partitionKey().getRawKey(command.metadata());
-            sendRequestAddresses = StorageService.instance.getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, tk);
+            List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
+                    .getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, tk);
 
             switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                 case 0:

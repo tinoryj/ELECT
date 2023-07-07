@@ -83,8 +83,6 @@ public abstract class AbstractReadExecutor {
     protected final long queryStartNanoTime;
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
-    public static List<InetAddressAndPort> sendRequestAddresses;
-    public static Token targetReadToken;
 
     public final String primaryLSMTreeName = "usertable";
     public final String secondaryLSMTreeName1 = "usertable1";
@@ -167,9 +165,10 @@ public abstract class AbstractReadExecutor {
             if (readCommand.metadata().keyspace.equals("ycsb")) {
                 List<InetAddressAndPort> sendRequestAddresses;
                 Token tk = (command instanceof SinglePartitionReadCommand
-                    ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
-                    : ((PartitionRangeReadCommand) command).dataRange().keyRange().left.getToken());
-                sendRequestAddresses = StorageService.instance.getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, tk);
+                        ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                        : ((PartitionRangeReadCommand) command).dataRange().keyRange().left.getToken());
+                sendRequestAddresses = StorageService.instance
+                        .getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, tk);
                 switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                     case 0:
                         // In case received request is not for primary LSM tree
@@ -413,14 +412,14 @@ public abstract class AbstractReadExecutor {
         Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(command.metadata().id);
         SpeculativeRetryPolicy retry = cfs.metadata().params.speculativeRetry;
-
-        targetReadToken = command.partitionKey().getToken();
+        Token targetReadToken = command.partitionKey().getToken();
         ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, targetReadToken,
                 consistencyLevel, retry);
 
         if (keyspace.getName().equals("ycsb")) {
             // String rawKey = command.partitionKey().getRawKey(command.metadata());
-            sendRequestAddresses = StorageService.instance.getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, targetReadToken);
+            List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
+                    .getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, targetReadToken);
             if (sendRequestAddresses.size() != 3) {
                 logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
             }
