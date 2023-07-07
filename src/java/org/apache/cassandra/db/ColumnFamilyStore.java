@@ -566,7 +566,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                                     Token tk = sstable.first.getToken();
                                     ReplicaPlan.ForWrite replicaPlan = ReplicaPlans.forWrite(Keyspace.open(keyspaceName), ConsistencyLevel.ALL, tk, ReplicaPlans.writeNormal);
-                                    List<InetAddressAndPort> address = StorageService.instance.getReplicaNodesWithPortFromRawKeyForDegradeRead(keyspaceName, tk);
+                                    List<InetAddressAndPort> address = StorageService.instance.getReplicaNodesWithPortFromTokenForDegradeRead(keyspaceName, tk);
                                     ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(replicaPlan, address, tk);
 
                                     // AbstractReplicationStrategy rs = replicaPlan.replicationStrategy();

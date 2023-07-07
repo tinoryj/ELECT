@@ -77,7 +77,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             // token);
             // String rawKey = command.partitionKey().getRawKey(command.metadata());
             List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
-                    .getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, tk);
+                    .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, tk);
 
             switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                 case 0:

@@ -4417,7 +4417,7 @@ public class StorageService extends NotificationBroadcasterSupport
 
     }
 
-    public List<InetAddressAndPort> getReplicaNodesWithPortFromRawKeyForDegradeRead(String keyspaceName,Token token) {
+    public List<InetAddressAndPort> getReplicaNodesWithPortFromTokenForDegradeRead(String keyspaceName,Token token) {
 
         Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(), Gossiper.instance.getUnreachableMembers());
         List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>();

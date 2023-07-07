@@ -170,7 +170,7 @@ public abstract class AbstractReadExecutor {
     private void makeRequestsForELECT(ReadCommand readCommand) {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> message = null;
-        int sendRequestNumber = 0;
+        int sendRequestNumber = 0, localRequestID = 0;
         for (InetAddressAndPort endpoint : sendRequestAddresses) {
             sendRequestNumber++;
             if (traceState != null)
@@ -178,9 +178,10 @@ public abstract class AbstractReadExecutor {
 
             if (endpoint.equals(FBUtilities.getBroadcastAddressAndPort())) {
                 hasLocalEndpoint = true;
+                localRequestID = sendRequestNumber;
                 continue;
             }
-            if (sendRequestNumber > 0) {
+            if (sendRequestNumber > 1) {
                 readCommand.setIsDigestQuery(true);
             }
             if (null == message) {
@@ -192,8 +193,8 @@ public abstract class AbstractReadExecutor {
         // We delay the local (potentially blocking) read till the end to avoid stalling
         // remote requests.
         if (hasLocalEndpoint) {
-            switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
-                case 0:
+            switch (localRequestID) {
+                case 1:
                     // In case received request is not for primary LSM tree
                     readCommand.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore("usertable")
@@ -207,7 +208,7 @@ public abstract class AbstractReadExecutor {
                         logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
                     }
                     break;
-                case 1:
+                case 2:
                     readCommand.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
                                     .metadata());
@@ -215,15 +216,16 @@ public abstract class AbstractReadExecutor {
                             .allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter1);
-                    this.command = readCommand;
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
+                    readCommand.setIsDigestQuery(true);
+                    // this.command = readCommand;
+                    // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
                     if (readCommand.isDigestQuery() == false) {
                         logger.debug(
                                 "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
                         readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
                     break;
-                case 2:
+                case 3:
                     readCommand.updateTableMetadata(
                             Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
                                     .metadata());
@@ -231,8 +233,9 @@ public abstract class AbstractReadExecutor {
                             .allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter2);
-                    this.command = readCommand;
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
+                    readCommand.setIsDigestQuery(true);
+                    // this.command = readCommand;
+                    // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
                     if (readCommand.isDigestQuery() == false) {
                         logger.debug(
                                 "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
@@ -290,7 +293,7 @@ public abstract class AbstractReadExecutor {
         if (keyspace.getName().equals("ycsb")) {
             // String rawKey = command.partitionKey().getRawKey(command.metadata());
             sendRequestAddresses = StorageService.instance
-                    .getReplicaNodesWithPortFromRawKeyForDegradeRead(command.metadata().keyspace, targetReadToken);
+                    .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, targetReadToken);
             if (sendRequestAddresses.size() != 3) {
                 logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
             }
