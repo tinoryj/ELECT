@@ -316,15 +316,15 @@ public abstract class AbstractReadExecutor {
      */
     public void executeAsync() {
         // if (command.metadata().keyspace.equals("ycsb")) {
-        //     makeRequestsForELECT(command);
+        // makeRequestsForELECT(command);
         // } else {
-            EndpointsForToken selected = replicaPlan().contacts();
-            // Normal read path for Cassandra system tables.
-            EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-            makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
-            makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-            // Tinoryj-> to read the possible secondary replica.
-            makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+        EndpointsForToken selected = replicaPlan().contacts();
+        // Normal read path for Cassandra system tables.
+        EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
+        makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+        // Tinoryj-> to read the possible secondary replica.
+        makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
         // }
     }
 
@@ -344,8 +344,9 @@ public abstract class AbstractReadExecutor {
             // String rawKey = command.partitionKey().getRawKey(command.metadata());
             sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, targetReadToken);
-            if (sendRequestAddresses.size() != 3) {
-                logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() != 3");
+            if (sendRequestAddresses.size() != 3 || replicaPlan.contacts().endpointList().size() != 3) {
+                logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() = {}, replica plan size = {}",
+                        sendRequestAddresses.size(), replicaPlan.contacts().endpointList().size());
             }
             boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
             for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {

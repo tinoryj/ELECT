@@ -85,9 +85,12 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
 
             List<InetAddressAndPort> sendRequestAddresses;
             sendRequestAddresses = replicaPlan.contacts().endpointList();
-
+            if (sendRequestAddresses.size() != 3) {
+                logger.debug("[Tinoryj] The replica plan get only {} nodes", sendRequestAddresses.size());
+            }
             // sendRequestAddresses = StorageService.instance
-            //         .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, tk);
+            // .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace,
+            // tk);
 
             switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                 case 0:
@@ -112,7 +115,8 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     command.updateColumnFilter(newColumnFilter1);
                     if (command.isDigestQuery() == false) {
                         logger.debug("[Tinoryj] Should perform online recovery on the secondary lsm-tree usertable 1");
-                        command.setShouldPerformOnlineRecoveryDuringRead(true);
+                        command.setIsDigestQuery(true);
+                        // command.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
                     break;
                 case 2:
@@ -125,7 +129,8 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     command.updateColumnFilter(newColumnFilter2);
                     if (command.isDigestQuery() == false) {
                         logger.debug("[Tinoryj] Should perform online recovery on the secondary lsm-tree usertable 2");
-                        command.setShouldPerformOnlineRecoveryDuringRead(true);
+                        command.setIsDigestQuery(true);
+                        // command.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
                     break;
                 default:
@@ -149,17 +154,16 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         try (ReadExecutionController controller = command.executionController(message.trackRepairedData());
                 UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
             if (iterator == null) {
-                if (command.metadata().keyspace.equals("ycsb")) {
+                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
                     logger.error(
                             "[Tinoryj-ERROR] ReadCommandVerbHandler Could not get {} response from table {}",
                             command.isDigestQuery() ? "digest" : "data",
                             command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
                 }
-
                 response = command.createEmptyResponse();
             } else {
                 response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                if (command.metadata().keyspace.equals("ycsb")) {
+                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
                     ByteBuffer newDigest = response.digest(command);
                     String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                     if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
@@ -171,26 +175,6 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     }
                 }
             }
-            // if (command.metadata().keyspace.equals("ycsb")) {
-            // logger.debug(
-            // "[Tinoryj] ReadCommandVerbHandler from {}, Read Command target table is {},
-            // target key is {}, key token is {}, response is {}",
-            // message.from(),
-            // command.metadata().name,
-            // command instanceof SinglePartitionReadCommand
-            // ? ((SinglePartitionReadCommand) command).partitionKey()
-            // .getRawKey(command.metadata())
-            // : null,
-            // command instanceof SinglePartitionReadCommand
-            // ? ((SinglePartitionReadCommand) command).partitionKey()
-            // .getToken()
-            // : null,
-            // response.toDebugString(command,
-            // command instanceof SinglePartitionReadCommand
-            // ? ((SinglePartitionReadCommand) command)
-            // .partitionKey()
-            // : null));
-            // }
         } catch (RejectException e) {
             if (command.metadata().keyspace.equals("ycsb")) {
                 logger.error(
