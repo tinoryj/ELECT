@@ -28,10 +28,13 @@ import org.apache.cassandra.exceptions.InvalidRequestException;
 import org.apache.cassandra.index.sasi.memory.KeyRangeIterator;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.Replica;
+import org.apache.cassandra.locator.ReplicaPlan;
+import org.apache.cassandra.locator.ReplicaPlans;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.service.reads.SpeculativeRetryPolicy;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
@@ -72,12 +75,19 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             Token tk = (command instanceof SinglePartitionReadCommand
                     ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
                     : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
-            // sendRequestAddresses =
-            // StorageService.instance.getNaturalEndpointsForToken(command.metadata().keyspace,
-            // token);
-            // String rawKey = command.partitionKey().getRawKey(command.metadata());
-            List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
-                    .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, tk);
+
+            Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
+            ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(command.metadata().id);
+            SpeculativeRetryPolicy retry = cfs.metadata().params.speculativeRetry;
+
+            ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, tk,
+                    ConsistencyLevel.ALL, retry);
+
+            List<InetAddressAndPort> sendRequestAddresses;
+            sendRequestAddresses = replicaPlan.contacts().endpointList();
+
+            // sendRequestAddresses = StorageService.instance
+            //         .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, tk);
 
             switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                 case 0:
