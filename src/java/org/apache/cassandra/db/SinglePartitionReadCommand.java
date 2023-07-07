@@ -726,41 +726,35 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 Tracing.trace("Collecting data from sstables and tracking repaired status");
 
             for (SSTableReader sstable : view.sstables) {
-                if (!sstable.getColumnFamilyName().equals("usertable")) {
-                    if (!controller.shouldPerformOnlineRecoveryDuringRead()
-                            && sstable.isReplicationTransferredToErasureCoding()) {
+                if (!sstable.getColumnFamilyName().equals("usertable")
+                        && sstable.isReplicationTransferredToErasureCoding()) {
+                    if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                         logger.debug("[Tinoryj] Skip metadata sstable from read since no need to recovery: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
                         continue;
-                        // Tinoryj: skip read from metadata sstable since no need to recovery the raw
-                        // content from it.
-                    }
-                }
-
-                if (sstable.isReplicationTransferredToErasureCoding() &&
-                        !sstable.getColumnFamilyName().equals("usertable") &&
-                        controller.shouldPerformOnlineRecoveryDuringRead() == true) {
-                    if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
-                        logger.debug("[Tinoryj]  Target metadata sstable recovery is done before read: [{},{}]",
-                                sstable.getSSTableHashID(), sstable.getFilename());
                     } else {
-                        logger.warn("[Tinoryj] Recovery metadata sstable from read: [{},{}]",
-                                sstable.getSSTableHashID(), sstable.getFilename());
-                        // Tinoryj TODO: call recvoery on current sstable.
-                        CountDownLatch latch = new CountDownLatch(1);
-                        try {
-                            ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
-                            ECNetutils.setIsRecovered(sstable.getSSTableHashID());
+                        if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
+                            logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
+                                    sstable.getSSTableHashID(), sstable.getFilename());
+                        } else {
+                            logger.warn("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
+                                    sstable.getSSTableHashID(), sstable.getFilename());
+                            // Tinoryj TODO: call recvoery on current sstable.
+                            CountDownLatch latch = new CountDownLatch(1);
+                            try {
+                                ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
+                                ECNetutils.setIsRecovered(sstable.getSSTableHashID());
 
-                        } catch (Exception e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
-                        }
+                            } catch (Exception e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
 
-                        try {
-                            latch.await();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            try {
+                                latch.await();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
                 }
@@ -936,38 +930,35 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         view.sstables.sort(SSTableReader.maxTimestampDescending);
         // read sorted sstables
         for (SSTableReader sstable : view.sstables) {
-            if (!sstable.getColumnFamilyName().equals("usertable")) {
-                if (!controller.shouldPerformOnlineRecoveryDuringRead()
-                        && sstable.isReplicationTransferredToErasureCoding()) {
+            if (!sstable.getColumnFamilyName().equals("usertable")
+                    && sstable.isReplicationTransferredToErasureCoding()) {
+                if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
+                    logger.debug("[Tinoryj] Skip metadata sstable from read since no need to recovery: [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename());
                     continue;
-                    // Tinoryj: skip read from metadata sstable since no need to recovery the raw
-                    // content from it.
-                }
-            }
-            if (sstable.isReplicationTransferredToErasureCoding() &&
-                    !sstable.getColumnFamilyName().equals("usertable") &&
-                    controller.shouldPerformOnlineRecoveryDuringRead() == true) {
-                if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
-                    logger.debug("[Tinoryj]  Target metadata sstable recovery is done before read: [{},{}]",
-                            sstable.getSSTableHashID(), sstable.getFilename());
                 } else {
-                    logger.warn("[Tinoryj] Recovery metadata sstable from read: [{},{}]",
-                            sstable.getSSTableHashID(), sstable.getFilename());
-                    // Tinoryj TODO: call recvoery on current sstable.
-                    CountDownLatch latch = new CountDownLatch(1);
-                    try {
-                        ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
-                        ECNetutils.setIsRecovered(sstable.getSSTableHashID());
+                    if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
+                        logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
+                                sstable.getSSTableHashID(), sstable.getFilename());
+                    } else {
+                        logger.warn("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
+                                sstable.getSSTableHashID(), sstable.getFilename());
+                        // Tinoryj TODO: call recvoery on current sstable.
+                        CountDownLatch latch = new CountDownLatch(1);
+                        try {
+                            ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
+                            ECNetutils.setIsRecovered(sstable.getSSTableHashID());
 
-                    } catch (Exception e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
+                        } catch (Exception e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
 
-                    try {
-                        latch.await();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        try {
+                            latch.await();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             }
