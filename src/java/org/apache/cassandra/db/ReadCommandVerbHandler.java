@@ -154,7 +154,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         try (ReadExecutionController controller = command.executionController(message.trackRepairedData());
                 UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
             if (iterator == null) {
-                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
+                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() != false) {
                     logger.error(
                             "[Tinoryj-ERROR] ReadCommandVerbHandler Could not get {} response from table {}",
                             command.isDigestQuery() ? "digest" : "data",
@@ -163,7 +163,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                 response = command.createEmptyResponse();
             } else {
                 response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
+                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() != false) {
                     ByteBuffer newDigest = response.digest(command);
                     String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                     if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
