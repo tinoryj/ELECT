@@ -1499,10 +1499,12 @@ public class StorageProxy implements StorageProxyMBean {
 
         // logger.debug(BLUE+"rymDebug: get replica destinations: {}",
         // plan.contacts().endpointList()+RESET);
-        
+
         // List<InetAddressAndPort> replicas = plan.contacts().endpointList();
-        List<InetAddressAndPort> naturalEndpoints = StorageService.instance.getNaturalEndpointsForCassandraEC(mutation.getKeyspaceName(), mutation.key().getKey());
-        List<InetAddressAndPort> address = StorageService.instance.getReplicaNodesWithPortFromTokenForDegradeRead(mutation.getKeyspaceName(), mutation.key().getToken());
+        List<InetAddressAndPort> naturalEndpoints = StorageService.instance
+                .getNaturalEndpointsForCassandraEC(mutation.getKeyspaceName(), mutation.key().getKey());
+        List<InetAddressAndPort> address = StorageService.instance
+                .getReplicaNodesWithPortFromTokenForDegradeRead(mutation.getKeyspaceName(), mutation.key().getToken());
         ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(plan, address, mutation.key().getToken());
 
         for (Replica destination : plan.contacts()) {
@@ -2199,22 +2201,20 @@ public class StorageProxy implements StorageProxyMBean {
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     if (iterator == null) {
-                        if (command.metadata().keyspace.equals("ycsb")) {
+                        if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
                             logger.debug(
-                                    "[Tinoryj-ERROR] Could not get {} response from table {}",
-                                    command.isDigestQuery() ? "digest" : "data",
+                                    "[Tinoryj-ERROR] Local Could not get data response from table {}",
                                     command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
                         }
                         response = command.createEmptyResponse();
                     } else {
                         response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                        if (command.metadata().keyspace.equals("ycsb")) {
+                        if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
                             ByteBuffer newDigest = response.digest(command);
                             String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                             if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                                 logger.debug(
-                                        "[Tinoryj-ERROR] Could not get non-empty {} response from table {}, {}",
-                                        command.isDigestQuery() ? "digest" : "data",
+                                        "[Tinoryj-ERROR] Local Could not get non-empty data response from table {}, {}",
                                         command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
                                         "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
                             }
