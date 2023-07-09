@@ -266,6 +266,7 @@ public abstract class AbstractReadExecutor {
             logger.debug("[Tinoryj] makeRequestsForELECT, target node list size = {}, not equal to request number = 3",
                     sendRequestAddresses.size());
         }
+        Message<ReadCommand> message = null;
         for (InetAddressAndPort endpoint : sendRequestAddresses) {
             sendRequestNumber++;
             if (traceState != null)
@@ -279,7 +280,44 @@ public abstract class AbstractReadExecutor {
             if (sendRequestNumber > 1) {
                 readCommand.setIsDigestQuery(true);
             }
-            Message<ReadCommand> message = readCommand.createMessage(false);
+            if (readCommand.metadata().keyspace.equals("ycsb")) {
+                switch (sendRequestAddresses.indexOf(endpoint)) {
+                    case 0:
+                        // In case received request is not for primary LSM tree
+                        readCommand.updateTableMetadata(
+                                Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+                                        .metadata());
+                        ColumnFilter newColumnFilter = ColumnFilter
+                                .allRegularColumnsBuilder(readCommand.metadata(), false)
+                                .build();
+                        readCommand.updateColumnFilter(newColumnFilter);
+                        break;
+                    case 1:
+                        readCommand.updateTableMetadata(
+                                Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+                                        .metadata());
+                        ColumnFilter newColumnFilter1 = ColumnFilter
+                                .allRegularColumnsBuilder(readCommand.metadata(), false)
+                                .build();
+                        readCommand.updateColumnFilter(newColumnFilter1);
+                        break;
+                    case 2:
+                        readCommand.updateTableMetadata(
+                                Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+                                        .metadata());
+                        ColumnFilter newColumnFilter2 = ColumnFilter
+                                .allRegularColumnsBuilder(readCommand.metadata(), false)
+                                .build();
+                        readCommand.updateColumnFilter(newColumnFilter2);
+                        break;
+                    default:
+                        logger.debug(
+                                "[Tinoryj] Not support replication factor larger than 3, current index = {}, target address = {}, address list = {}",
+                                sendRequestAddresses.indexOf(endpoint), endpoint, sendRequestAddresses);
+                        break;
+                }
+            }
+            message = readCommand.createMessage(false);
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
         }
 
@@ -389,36 +427,36 @@ public abstract class AbstractReadExecutor {
         logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", targetReadToken,
                 sendRequestAddresses);
 
-        if (command.metadata().keyspace.equals("ycsb")) {
-            // String rawKey = command.partitionKey().getRawKey(command.metadata());
-            
-            // sendRequestAddresses = StorageService.instance
-            // .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace,
-            // targetReadToken);
-            // if (sendRequestAddresses.size() != 3 ||
-            // replicaPlan.contacts().endpointList().size() != 3) {
-            // logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() = {},
-            // replica plan size = {}",
-            // sendRequestAddresses.size(), replicaPlan.contacts().endpointList().size());
-            // }
-            // boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
-            // for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
-            // if
-            // (!replicaPlan.contacts().endpointList().get(i).equals(sendRequestAddresses.get(i)))
-            // {
-            // isReplicaPlanMatchToNaturalEndpointFlag = false;
-            // }
-            // }
-            // if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
-            // logger.debug(
-            // "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node
-            // in the natural storage node list. The replication plan for read is {},
-            // natural storage node list = {}",
-            // targetReadToken,
-            // replicaPlan.contacts().endpointList(),
-            // sendRequestAddresses);
-            // }
-        }
+        // if (command.metadata().keyspace.equals("ycsb")) {
+        // String rawKey = command.partitionKey().getRawKey(command.metadata());
+
+        // sendRequestAddresses = StorageService.instance
+        // .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace,
+        // targetReadToken);
+        // if (sendRequestAddresses.size() != 3 ||
+        // replicaPlan.contacts().endpointList().size() != 3) {
+        // logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() = {},
+        // replica plan size = {}",
+        // sendRequestAddresses.size(), replicaPlan.contacts().endpointList().size());
+        // }
+        // boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
+        // for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
+        // if
+        // (!replicaPlan.contacts().endpointList().get(i).equals(sendRequestAddresses.get(i)))
+        // {
+        // isReplicaPlanMatchToNaturalEndpointFlag = false;
+        // }
+        // }
+        // if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
+        // logger.debug(
+        // "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node
+        // in the natural storage node list. The replication plan for read is {},
+        // natural storage node list = {}",
+        // targetReadToken,
+        // replicaPlan.contacts().endpointList(),
+        // sendRequestAddresses);
+        // }
+        // }
 
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
