@@ -154,8 +154,43 @@ public abstract class AbstractReadExecutor {
                 hasLocalEndpoint = true;
                 continue;
             }
-            if (null == message)
-                message = readCommand.createMessage(false);
+            // if (null == message)
+            if (readCommand.metadata().keyspace.equals("ycsb")) {
+                switch (sendRequestAddresses.indexOf(endpoint)) {
+                    case 0:
+                        // In case received request is not for primary LSM tree
+                        readCommand.updateTableMetadata(
+                                Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+                                        .metadata());
+                        ColumnFilter newColumnFilter = ColumnFilter
+                                .allRegularColumnsBuilder(readCommand.metadata(), false)
+                                .build();
+                        readCommand.updateColumnFilter(newColumnFilter);
+                        break;
+                    case 1:
+                        readCommand.updateTableMetadata(
+                                Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+                                        .metadata());
+                        ColumnFilter newColumnFilter1 = ColumnFilter
+                                .allRegularColumnsBuilder(readCommand.metadata(), false)
+                                .build();
+                        readCommand.updateColumnFilter(newColumnFilter1);
+                        break;
+                    case 2:
+                        readCommand.updateTableMetadata(
+                                Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+                                        .metadata());
+                        ColumnFilter newColumnFilter2 = ColumnFilter
+                                .allRegularColumnsBuilder(readCommand.metadata(), false)
+                                .build();
+                        readCommand.updateColumnFilter(newColumnFilter2);
+                        break;
+                    default:
+                        logger.debug("[Tinoryj] Not support replication factor larger than 3");
+                        break;
+                }
+            }
+            message = readCommand.createMessage(false);
 
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
         }
@@ -186,8 +221,8 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter1);
-                        this.command = readCommand;
-                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
+                        // this.command = readCommand;
+                        // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
                         if (readCommand.isDigestQuery() == false) {
                             logger.debug(
                                     "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
@@ -202,8 +237,8 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter2);
-                        this.command = readCommand;
-                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
+                        // this.command = readCommand;
+                        // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
                         if (readCommand.isDigestQuery() == false) {
                             logger.debug(
                                     "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
@@ -320,17 +355,17 @@ public abstract class AbstractReadExecutor {
      * send the initial set of requests
      */
     public void executeAsync() {
-        if (command.metadata().keyspace.equals("ycsb")) {
-            makeRequestsForELECT(command);
-        } else {
-            EndpointsForToken selected = replicaPlan().contacts();
-            // Normal read path for Cassandra system tables.
-            EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-            makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
-            makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-            // Tinoryj-> to read the possible secondary replica.
-            makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
-        }
+        // if (command.metadata().keyspace.equals("ycsb")) {
+        // makeRequestsForELECT(command);
+        // } else {
+        EndpointsForToken selected = replicaPlan().contacts();
+        // Normal read path for Cassandra system tables.
+        EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
+        makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+        // Tinoryj-> to read the possible secondary replica.
+        makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+        // }
     }
 
     /**
