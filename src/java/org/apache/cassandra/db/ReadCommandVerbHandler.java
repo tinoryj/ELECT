@@ -102,7 +102,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             .build();
                     command.updateColumnFilter(newColumnFilter);
                     if (command.isDigestQuery() == true) {
-                        logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
+                        logger.error("[Tinoryj-ERROR] Remote Should not perform digest query on the primary lsm-tree");
                     }
                     break;
                 case 1:
@@ -114,7 +114,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             .build();
                     command.updateColumnFilter(newColumnFilter1);
                     if (command.isDigestQuery() == false) {
-                        logger.debug("[Tinoryj] Should perform online recovery on the secondary lsm-tree usertable 1");
+                        logger.debug("[Tinoryj] Remote Should perform online recovery on the secondary lsm-tree usertable 1");
                         command.setIsDigestQuery(true);
                         // command.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
@@ -128,7 +128,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             .build();
                     command.updateColumnFilter(newColumnFilter2);
                     if (command.isDigestQuery() == false) {
-                        logger.debug("[Tinoryj] Should perform online recovery on the secondary lsm-tree usertable 2");
+                        logger.debug("[Tinoryj] Remote Should perform online recovery on the secondary lsm-tree usertable 2");
                         command.setIsDigestQuery(true);
                         // command.setShouldPerformOnlineRecoveryDuringRead(true);
                     }

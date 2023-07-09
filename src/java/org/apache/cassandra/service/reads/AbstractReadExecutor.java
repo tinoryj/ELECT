@@ -254,8 +254,10 @@ public abstract class AbstractReadExecutor {
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter);
                     readCommand.setIsDigestQuery(false);
+                    // this.command = readCommand;
+                    // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable");
                     if (readCommand.isDigestQuery() == true) {
-                        logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
+                        logger.error("[Tinoryj-ERROR] Local Should not perform digest query on the primary lsm-tree");
                     }
                     break;
                 case 2:
@@ -315,17 +317,17 @@ public abstract class AbstractReadExecutor {
      * send the initial set of requests
      */
     public void executeAsync() {
-        // if (command.metadata().keyspace.equals("ycsb")) {
-        // makeRequestsForELECT(command);
-        // } else {
-        EndpointsForToken selected = replicaPlan().contacts();
-        // Normal read path for Cassandra system tables.
-        EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-        makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
-        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-        // Tinoryj-> to read the possible secondary replica.
-        makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
-        // }
+        if (command.metadata().keyspace.equals("ycsb")) {
+            makeRequestsForELECT(command);
+        } else {
+            EndpointsForToken selected = replicaPlan().contacts();
+            // Normal read path for Cassandra system tables.
+            EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
+            makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+            makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+            // Tinoryj-> to read the possible secondary replica.
+            makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+        }
     }
 
     /**
@@ -340,27 +342,28 @@ public abstract class AbstractReadExecutor {
         ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, targetReadToken,
                 consistencyLevel, retry);
 
-        if (keyspace.getName().equals("ycsb")) {
+        if (command.metadata().keyspace.equals("ycsb")) {
             // String rawKey = command.partitionKey().getRawKey(command.metadata());
-            sendRequestAddresses = StorageService.instance
-                    .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, targetReadToken);
-            if (sendRequestAddresses.size() != 3 || replicaPlan.contacts().endpointList().size() != 3) {
-                logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() = {}, replica plan size = {}",
-                        sendRequestAddresses.size(), replicaPlan.contacts().endpointList().size());
-            }
-            boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
-            for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
-                if (!replicaPlan.contacts().endpointList().get(i).equals(sendRequestAddresses.get(i))) {
-                    isReplicaPlanMatchToNaturalEndpointFlag = false;
-                }
-            }
-            if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
-                logger.debug(
-                        "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
-                        targetReadToken,
-                        replicaPlan.contacts().endpointList(),
-                        sendRequestAddresses);
-            }
+            sendRequestAddresses = replicaPlan.contacts().endpointList();
+            // sendRequestAddresses = StorageService.instance
+            //         .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, targetReadToken);
+            // if (sendRequestAddresses.size() != 3 || replicaPlan.contacts().endpointList().size() != 3) {
+            //     logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() = {}, replica plan size = {}",
+            //             sendRequestAddresses.size(), replicaPlan.contacts().endpointList().size());
+            // }
+            // boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
+            // for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
+            //     if (!replicaPlan.contacts().endpointList().get(i).equals(sendRequestAddresses.get(i))) {
+            //         isReplicaPlanMatchToNaturalEndpointFlag = false;
+            //     }
+            // }
+            // if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
+            //     logger.debug(
+            //             "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
+            //             targetReadToken,
+            //             replicaPlan.contacts().endpointList(),
+            //             sendRequestAddresses);
+            // }
         }
 
         // Speculative retry is disabled *OR*
