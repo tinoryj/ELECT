@@ -83,7 +83,7 @@ public abstract class AbstractReadExecutor {
     protected final long queryStartNanoTime;
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
-    private static List<InetAddressAndPort> sendRequestAddresses;
+    private final List<InetAddressAndPort> sendRequestAddresses;
 
     public final String primaryLSMTreeName = "usertable";
     public final String secondaryLSMTreeName1 = "usertable1";
@@ -93,6 +93,7 @@ public abstract class AbstractReadExecutor {
             int initialDataRequestCount, long queryStartNanoTime) {
         this.command = command;
         this.replicaPlan = ReplicaPlan.shared(replicaPlan);
+        this.sendRequestAddresses = replicaPlan.contacts().endpointList();
         this.initialDataRequestCount = initialDataRequestCount;
         // the ReadRepair and DigestResolver both need to see our updated
         this.readRepair = ReadRepair.create(command, this.replicaPlan, queryStartNanoTime);
@@ -102,6 +103,12 @@ public abstract class AbstractReadExecutor {
         this.traceState = Tracing.instance.get();
         this.queryStartNanoTime = queryStartNanoTime;
 
+
+        Token tokenForRead = (command instanceof SinglePartitionReadCommand
+        ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+        : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
+        logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", tokenForRead,
+                sendRequestAddresses);
         // Set the digest version (if we request some digests). This is the smallest
         // version amongst all our target replicas since new nodes
         // knows how to produce older digest but the reverse is not true.
@@ -422,10 +429,6 @@ public abstract class AbstractReadExecutor {
         Token targetReadToken = command.partitionKey().getToken();
         ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, targetReadToken,
                 consistencyLevel, retry);
-
-        sendRequestAddresses = replicaPlan.contacts().endpointList();
-        logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", targetReadToken,
-                sendRequestAddresses);
 
         // if (command.metadata().keyspace.equals("ycsb")) {
         // String rawKey = command.partitionKey().getRawKey(command.metadata());
