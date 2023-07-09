@@ -221,8 +221,11 @@ public abstract class AbstractReadExecutor {
 
     private void makeRequestsForELECT(ReadCommand readCommand) {
         boolean hasLocalEndpoint = false;
-
         int sendRequestNumber = 0, localRequestID = 0;
+        if (sendRequestAddresses.size() != 3) {
+            logger.debug("[Tinoryj] makeRequestsForELECT, target node list size = {}, not equal to request number = 3",
+                    sendRequestAddresses.size());
+        }
         for (InetAddressAndPort endpoint : sendRequestAddresses) {
             sendRequestNumber++;
             if (traceState != null)
@@ -345,24 +348,32 @@ public abstract class AbstractReadExecutor {
         if (command.metadata().keyspace.equals("ycsb")) {
             // String rawKey = command.partitionKey().getRawKey(command.metadata());
             sendRequestAddresses = replicaPlan.contacts().endpointList();
+            logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", targetReadToken, sendRequestAddresses);
             // sendRequestAddresses = StorageService.instance
-            //         .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, targetReadToken);
-            // if (sendRequestAddresses.size() != 3 || replicaPlan.contacts().endpointList().size() != 3) {
-            //     logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() = {}, replica plan size = {}",
-            //             sendRequestAddresses.size(), replicaPlan.contacts().endpointList().size());
+            // .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace,
+            // targetReadToken);
+            // if (sendRequestAddresses.size() != 3 ||
+            // replicaPlan.contacts().endpointList().size() != 3) {
+            // logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() = {},
+            // replica plan size = {}",
+            // sendRequestAddresses.size(), replicaPlan.contacts().endpointList().size());
             // }
             // boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
             // for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
-            //     if (!replicaPlan.contacts().endpointList().get(i).equals(sendRequestAddresses.get(i))) {
-            //         isReplicaPlanMatchToNaturalEndpointFlag = false;
-            //     }
+            // if
+            // (!replicaPlan.contacts().endpointList().get(i).equals(sendRequestAddresses.get(i)))
+            // {
+            // isReplicaPlanMatchToNaturalEndpointFlag = false;
+            // }
             // }
             // if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
-            //     logger.debug(
-            //             "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
-            //             targetReadToken,
-            //             replicaPlan.contacts().endpointList(),
-            //             sendRequestAddresses);
+            // logger.debug(
+            // "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node
+            // in the natural storage node list. The replication plan for read is {},
+            // natural storage node list = {}",
+            // targetReadToken,
+            // replicaPlan.contacts().endpointList(),
+            // sendRequestAddresses);
             // }
         }
 

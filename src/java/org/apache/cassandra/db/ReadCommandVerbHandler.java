@@ -87,6 +87,8 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             sendRequestAddresses = replicaPlan.contacts().endpointList();
             if (sendRequestAddresses.size() != 3) {
                 logger.debug("[Tinoryj] The replica plan get only {} nodes", sendRequestAddresses.size());
+            } else {
+                logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", tk, sendRequestAddresses);
             }
             // sendRequestAddresses = StorageService.instance
             // .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace,
@@ -156,20 +158,19 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             if (iterator == null) {
                 if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() != false) {
                     logger.error(
-                            "[Tinoryj-ERROR] ReadCommandVerbHandler Could not get {} response from table {}",
+                            "[Tinoryj-ERROR] ReadCommandVerbHandler Error to get {} response from table {}",
                             command.isDigestQuery() ? "digest" : "data",
                             command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
                 }
                 response = command.createEmptyResponse();
             } else {
                 response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() != false) {
+                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
                     ByteBuffer newDigest = response.digest(command);
                     String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                     if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                         logger.error(
-                                "[Tinoryj-ERROR] ReadCommandVerbHandler Could not get non-empty {} response from table {}, {}",
-                                command.isDigestQuery() ? "digest" : "data",
+                                "[Tinoryj-ERROR] ReadCommandVerbHandler Could not get non-empty data response from table {}, {}",
                                 command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
                                 "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
                     }
