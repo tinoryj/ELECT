@@ -186,7 +186,9 @@ public abstract class AbstractReadExecutor {
                         readCommand.updateColumnFilter(newColumnFilter2);
                         break;
                     default:
-                        logger.debug("[Tinoryj] Not support replication factor larger than 3, current index = {}", sendRequestAddresses.indexOf(endpoint));
+                        logger.debug(
+                                "[Tinoryj] Not support replication factor larger than 3, current index = {}, target address = {}, address list = {}",
+                                sendRequestAddresses.indexOf(endpoint), endpoint, sendRequestAddresses);
                         break;
                 }
             }
@@ -246,8 +248,9 @@ public abstract class AbstractReadExecutor {
                         }
                         break;
                     default:
-                        logger.debug("[Tinoryj] Not support replication factor larger than 3, the current index = {}",
-                                sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort()));
+                        logger.debug(
+                                "[Tinoryj] Not support replication factor larger than 3, current index = {}, target address = {}, address list = {}",
+                                sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort()), FBUtilities.getBroadcastAddressAndPort(), sendRequestAddresses);
                         break;
                 }
             }
