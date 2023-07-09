@@ -250,7 +250,8 @@ public abstract class AbstractReadExecutor {
                     default:
                         logger.debug(
                                 "[Tinoryj] Not support replication factor larger than 3, current index = {}, target address = {}, address list = {}",
-                                sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort()), FBUtilities.getBroadcastAddressAndPort(), sendRequestAddresses);
+                                sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort()),
+                                FBUtilities.getBroadcastAddressAndPort(), sendRequestAddresses);
                         break;
                 }
             }
@@ -384,10 +385,13 @@ public abstract class AbstractReadExecutor {
         ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, targetReadToken,
                 consistencyLevel, retry);
 
+        sendRequestAddresses = replicaPlan.contacts().endpointList();
+        logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", targetReadToken,
+                sendRequestAddresses);
+
         if (command.metadata().keyspace.equals("ycsb")) {
             // String rawKey = command.partitionKey().getRawKey(command.metadata());
-            sendRequestAddresses = replicaPlan.contacts().endpointList();
-            logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", targetReadToken, sendRequestAddresses);
+            
             // sendRequestAddresses = StorageService.instance
             // .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace,
             // targetReadToken);
