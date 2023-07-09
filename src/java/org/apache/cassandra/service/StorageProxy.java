@@ -2198,12 +2198,16 @@ public class StorageProxy implements StorageProxyMBean {
                         DatabaseDescriptor.getSlowQueryTimeout(NANOSECONDS));
 
                 ReadResponse response;
+                Token tokenForRead = (command instanceof SinglePartitionReadCommand
+                        ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                        : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     if (iterator == null) {
                         if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
                             logger.debug(
-                                    "[Tinoryj-ERROR] Local Could not get data response from table {}",
+                                    "[Tinoryj-ERROR] For key token = {}, Local Could not get data response from table {}",
+                                    tokenForRead,
                                     command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
                         }
                         response = command.createEmptyResponse();
@@ -2214,9 +2218,10 @@ public class StorageProxy implements StorageProxyMBean {
                             String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                             if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                                 logger.debug(
-                                        "[Tinoryj-ERROR] Local Could not get non-empty data response from table {}, {}",
+                                        "[Tinoryj-ERROR] For key token = {}, Local Could not get non-empty data response from table {}, address = {}, {}, response = {}",
+                                        tokenForRead,
                                         command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                                        "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
+                                        "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response);
                             }
                         }
                     }
@@ -2224,7 +2229,8 @@ public class StorageProxy implements StorageProxyMBean {
                     if (!command.isTrackingWarnings())
                         throw e;
                     logger.debug(
-                            "[Tinoryj-ERROR] In read run may throw in storage proxy, local read runnable, try to read from {} in keyspace {}, key not found, created empty response",
+                            "[Tinoryj-ERROR] For key token = {}, Local try to read from {} in keyspace {}, key not found, created empty response",
+                            tokenForRead,
                             command.metadata().name, command.metadata().keyspace);
                     response = command.createEmptyResponse();
                     readRejected = true;

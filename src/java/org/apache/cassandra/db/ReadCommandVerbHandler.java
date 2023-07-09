@@ -183,10 +183,10 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                     if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                         logger.error(
-                                "[Tinoryj-ERROR] For token = {}, ReadCommandVerbHandler Could not get non-empty data response from table {}, {}",
+                                "[Tinoryj-ERROR] For token = {}, ReadCommandVerbHandler Could not get non-empty data response from table {}, address = {}, {}, response = {}",
                                 tokenForRead,
                                 command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                                "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest));
+                                "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response);
                     }
                 }
             }
