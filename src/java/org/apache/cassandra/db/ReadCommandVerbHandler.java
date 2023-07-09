@@ -186,7 +186,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                                 "[Tinoryj-ERROR] For token = {}, ReadCommandVerbHandler Could not get non-empty data response from table {}, address = {}, {}, response = {}",
                                 tokenForRead,
                                 command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                                "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response);
+                                "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response.toString());
                     }
                 }
             }

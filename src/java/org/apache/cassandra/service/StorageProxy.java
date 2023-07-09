@@ -2221,7 +2221,7 @@ public class StorageProxy implements StorageProxyMBean {
                                         "[Tinoryj-ERROR] For key token = {}, Local Could not get non-empty data response from table {}, address = {}, {}, response = {}",
                                         tokenForRead,
                                         command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                                        "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response);
+                                        "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response.toString());
                             }
                         }
                     }
