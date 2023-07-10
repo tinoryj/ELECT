@@ -193,7 +193,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                                 tokenForRead,
                                 command.isDigestQuery() == true ? "digest" : "data",
                                 command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                                "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response.toString(), rawKey);
+                                "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response, rawKey);
                     }
                 }
             }

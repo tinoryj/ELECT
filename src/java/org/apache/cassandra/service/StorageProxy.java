@@ -2219,11 +2219,11 @@ public class StorageProxy implements StorageProxyMBean {
                             String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                             if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                                 logger.debug(
-                                        "[Tinoryj-ERROR] For key token = {}, with {} query, Local Could not get non-empty data response from table {}, address = {}, {}, response = {}",
+                                        "[Tinoryj-ERROR] For key token = {}, with {} query, Local Could not get non-empty response from table {}, address = {}, {}, response = {}",
                                         tokenForRead,
                                         command.isDigestQuery() ? "digest" : "data",
                                         command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                                        "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response.toString());
+                                        "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response);
                             }
                         }
                     }
