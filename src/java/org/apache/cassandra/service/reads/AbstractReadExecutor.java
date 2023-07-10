@@ -220,8 +220,8 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter);
-                        this.command = readCommand;
-                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable");
+                        // this.command = readCommand;
+                        // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable");
                         if (readCommand.isDigestQuery() == true) {
                             logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
                         }
@@ -234,8 +234,8 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter1);
-                        this.command = readCommand;
-                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
+                        // this.command = readCommand;
+                        // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
                         if (readCommand.isDigestQuery() == false) {
                             logger.debug(
                                     "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
@@ -250,8 +250,8 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter2);
-                        this.command = readCommand;
-                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
+                        // this.command = readCommand;
+                        // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
                         if (readCommand.isDigestQuery() == false) {
                             logger.debug(
                                     "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
@@ -419,7 +419,7 @@ public abstract class AbstractReadExecutor {
     /**
      * send the initial set of requests
      */
-    public void executeAsync() {
+    public synchronized void executeAsync() {
         // if (command.metadata().keyspace.equals("ycsb")) {
         // makeRequestsForELECT(command);
         // } else {
@@ -444,37 +444,6 @@ public abstract class AbstractReadExecutor {
         Token targetReadToken = command.partitionKey().getToken();
         ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, targetReadToken,
                 consistencyLevel, retry);
-
-        // if (command.metadata().keyspace.equals("ycsb")) {
-        // String rawKey = command.partitionKey().getRawKey(command.metadata());
-
-        // sendRequestAddresses = StorageService.instance
-        // .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace,
-        // targetReadToken);
-        // if (sendRequestAddresses.size() != 3 ||
-        // replicaPlan.contacts().endpointList().size() != 3) {
-        // logger.debug("[Tinoryj-ERROR] sendRequestAddressesAndPorts.size() = {},
-        // replica plan size = {}",
-        // sendRequestAddresses.size(), replicaPlan.contacts().endpointList().size());
-        // }
-        // boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
-        // for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
-        // if
-        // (!replicaPlan.contacts().endpointList().get(i).equals(sendRequestAddresses.get(i)))
-        // {
-        // isReplicaPlanMatchToNaturalEndpointFlag = false;
-        // }
-        // }
-        // if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
-        // logger.debug(
-        // "[Tinoryj-ERROR] for key token = {}, the primary node is not the first node
-        // in the natural storage node list. The replication plan for read is {},
-        // natural storage node list = {}",
-        // targetReadToken,
-        // replicaPlan.contacts().endpointList(),
-        // sendRequestAddresses);
-        // }
-        // }
 
         // Speculative retry is disabled *OR*
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
