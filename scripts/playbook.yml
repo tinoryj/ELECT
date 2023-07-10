@@ -84,8 +84,8 @@
     when: "'FAILED' in command_result.stderr"
 
   - name: Wait until insertion is done
-  pause:
-    seconds: 30
+    pause:
+      seconds: 30
 
 - name: Run
   hosts: cassandra_client
