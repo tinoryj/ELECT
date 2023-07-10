@@ -70,83 +70,75 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         SpeculativeRetryPolicy retry = cfs.metadata().params.speculativeRetry;
         ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, tokenForRead,
                 ConsistencyLevel.ALL, retry);
-        logger.debug("[Tinoryj] For token = {}, read {} recv side target table = {}, replication group = {}",
-                tokenForRead,
-                command.isDigestQuery() == true ? "digest" : "data",
-                command.metadata().name, replicaPlan.contacts().endpointList());
+        // Tinoryj TODO replace address list with natural nodes
+        List<InetAddressAndPort> sendRequestAddresses;
+        sendRequestAddresses = replicaPlan.contacts().endpointList();
 
-        // if (command.metadata().keyspace.equals("ycsb")) {
+        if (command.metadata().keyspace.equals("ycsb")) {
 
-        // Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
-        // ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(command.metadata().id);
-        // SpeculativeRetryPolicy retry = cfs.metadata().params.speculativeRetry;
-        // ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace,
-        // tokenForRead,
-        // ConsistencyLevel.ALL, retry);
+            String oldTableName = command.metadata().name;
 
-        // List<InetAddressAndPort> sendRequestAddresses;
-        // sendRequestAddresses = replicaPlan.contacts().endpointList();
-        // if (sendRequestAddresses.size() != 3) {
-        // logger.debug("[Tinoryj] The replica plan get only {} nodes",
-        // sendRequestAddresses.size());
-        // } else {
-        // logger.debug("[Tinoryj] For token = {}, recv side generate
-        // sendRequestAddresses = {}", tokenForRead,
-        // sendRequestAddresses);
-        // }
+            if (sendRequestAddresses.size() != 3) {
+                logger.debug("[Tinoryj] The replica plan get only {} nodes",
+                        sendRequestAddresses.size());
+            }
 
-        // switch
-        // (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
-        // case 0:
-        // command.updateTableMetadata(
-        // Keyspace.open("ycsb").getColumnFamilyStore("usertable")
-        // .metadata());
-        // ColumnFilter newColumnFilter = ColumnFilter
-        // .allRegularColumnsBuilder(command.metadata(), false)
-        // .build();
-        // command.updateColumnFilter(newColumnFilter);
-        // if (command.isDigestQuery() == true) {
-        // logger.error("[Tinoryj-ERROR] Remote Should not perform digest query on the
-        // primary lsm-tree");
-        // }
-        // break;
-        // case 1:
-        // command.updateTableMetadata(
-        // Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
-        // .metadata());
-        // ColumnFilter newColumnFilter1 = ColumnFilter
-        // .allRegularColumnsBuilder(command.metadata(), false)
-        // .build();
-        // command.updateColumnFilter(newColumnFilter1);
-        // if (command.isDigestQuery() == false) {
-        // logger.debug(
-        // "[Tinoryj] Remote Should perform online recovery on the secondary lsm-tree
-        // usertable 1");
-        // // command.setIsDigestQuery(true);
-        // command.setShouldPerformOnlineRecoveryDuringRead(true);
-        // }
-        // break;
-        // case 2:
-        // command.updateTableMetadata(
-        // Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
-        // .metadata());
-        // ColumnFilter newColumnFilter2 = ColumnFilter
-        // .allRegularColumnsBuilder(command.metadata(), false)
-        // .build();
-        // command.updateColumnFilter(newColumnFilter2);
-        // if (command.isDigestQuery() == false) {
-        // logger.debug(
-        // "[Tinoryj] Remote Should perform online recovery on the secondary lsm-tree
-        // usertable 2");
-        // // command.setIsDigestQuery(true);
-        // command.setShouldPerformOnlineRecoveryDuringRead(true);
-        // }
-        // break;
-        // default:
-        // logger.debug("[Tinoryj] Not support replication factor larger than 3");
-        // break;
-        // }
-        // }
+            switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
+                case 0:
+                    command.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+                                    .metadata());
+                    ColumnFilter newColumnFilter = ColumnFilter
+                            .allRegularColumnsBuilder(command.metadata(), false)
+                            .build();
+                    command.updateColumnFilter(newColumnFilter);
+                    if (command.isDigestQuery() == true) {
+                        logger.error("[Tinoryj-ERROR] Remote Should not perform digest query on the  primary lsm-tree");
+                    }
+                    break;
+                case 1:
+                    command.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+                                    .metadata());
+                    ColumnFilter newColumnFilter1 = ColumnFilter
+                            .allRegularColumnsBuilder(command.metadata(), false)
+                            .build();
+                    command.updateColumnFilter(newColumnFilter1);
+                    if (command.isDigestQuery() == false) {
+                        logger.debug(
+                                "[Tinoryj] Remote Should perform online recovery on the secondary lsm-tree usertable 1");
+                        // command.setIsDigestQuery(true);
+                        command.setShouldPerformOnlineRecoveryDuringRead(true);
+                    }
+                    break;
+                case 2:
+                    command.updateTableMetadata(
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+                                    .metadata());
+                    ColumnFilter newColumnFilter2 = ColumnFilter
+                            .allRegularColumnsBuilder(command.metadata(), false)
+                            .build();
+                    command.updateColumnFilter(newColumnFilter2);
+                    if (command.isDigestQuery() == false) {
+                        logger.debug(
+                                "[Tinoryj] Remote Should perform online recovery on the secondary lsm-tree usertable 2");
+                        // command.setIsDigestQuery(true);
+                        command.setShouldPerformOnlineRecoveryDuringRead(true);
+                    }
+                    break;
+                default:
+                    logger.debug("[Tinoryj] Not support replication factor larger than 3");
+                    break;
+            }
+            if (!oldTableName.equals(command.metadata().name)) {
+                logger.error("[Tinoryj-ERROR], recved table name = {}, but should be {}", oldTableName,
+                        command.metadata().name);
+            }
+            logger.debug("[Tinoryj] For token = {}, read {} target table = {}, replication group = {}",
+                    tokenForRead,
+                    command.isDigestQuery() == true ? "digest" : "data",
+                    command.metadata().name, sendRequestAddresses);
+        }
 
         validateTransientStatus(message);
         MessageParams.reset();
