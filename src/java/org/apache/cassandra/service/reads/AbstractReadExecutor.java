@@ -149,9 +149,9 @@ public abstract class AbstractReadExecutor {
 
     private synchronized void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
         boolean hasLocalEndpoint = false;
-        // Message<ReadCommand> message = null;
+        Message<ReadCommand> message = null;
+        
         for (Replica replica : replicas) {
-            Message<ReadCommand> message = null;
             assert replica.isFull() || readCommand.acceptsTransient();
             InetAddressAndPort endpoint = replica.endpoint();
 
@@ -200,7 +200,8 @@ public abstract class AbstractReadExecutor {
                         break;
                 }
             }
-            message = readCommand.createMessage(false);
+            if (null == message)
+                message = readCommand.createMessage(false);
             
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
             logger.debug("[Tinoryj] Send {} request for token = {} to {}, the message is ({}), at node {}",
