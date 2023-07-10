@@ -2204,22 +2204,24 @@ public class StorageProxy implements StorageProxyMBean {
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     if (iterator == null) {
-                        if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
+                        if (command.metadata().keyspace.equals("ycsb")) {
                             logger.debug(
-                                    "[Tinoryj-ERROR] For key token = {}, Local Could not get data response from table {}",
+                                    "[Tinoryj-ERROR] For key token = {}, with {} query, Local Could not get data response from table {}",
                                     tokenForRead,
+                                    command.isDigestQuery() ? "digest" : "data",
                                     command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
                         }
                         response = command.createEmptyResponse();
                     } else {
                         response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                        if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
+                        if (command.metadata().keyspace.equals("ycsb")) {
                             ByteBuffer newDigest = response.digest(command);
                             String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                             if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                                 logger.debug(
-                                        "[Tinoryj-ERROR] For key token = {}, Local Could not get non-empty data response from table {}, address = {}, {}, response = {}",
+                                        "[Tinoryj-ERROR] For key token = {}, with {} query, Local Could not get non-empty data response from table {}, address = {}, {}, response = {}",
                                         tokenForRead,
+                                        command.isDigestQuery() ? "digest" : "data",
                                         command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
                                         "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response.toString());
                             }
@@ -2229,8 +2231,9 @@ public class StorageProxy implements StorageProxyMBean {
                     if (!command.isTrackingWarnings())
                         throw e;
                     logger.debug(
-                            "[Tinoryj-ERROR] For key token = {}, Local try to read from {} in keyspace {}, key not found, created empty response",
+                            "[Tinoryj-ERROR] For key token = {}, with {} query, Local try to read from {} in keyspace {}, key not found, created empty response",
                             tokenForRead,
+                            command.isDigestQuery() ? "digest" : "data",
                             command.metadata().name, command.metadata().keyspace);
                     response = command.createEmptyResponse();
                     readRejected = true;

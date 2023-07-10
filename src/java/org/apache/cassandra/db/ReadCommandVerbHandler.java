@@ -174,32 +174,35 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         try (ReadExecutionController controller = command.executionController(message.trackRepairedData());
                 UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
             if (iterator == null) {
-                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
+                if (command.metadata().keyspace.equals("ycsb")) {
                     logger.error(
-                            "[Tinoryj-ERROR] For token = {}, ReadCommandVerbHandler Error to get data response from table {}",
+                            "[Tinoryj-ERROR] For token = {}, with {} query, ReadCommandVerbHandler Error to get data response from table {}",
                             tokenForRead,
+                            command.isDigestQuery() == true ? "digest" : "data",
                             command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
                 }
                 response = command.createEmptyResponse();
             } else {
                 response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
+                if (command.metadata().keyspace.equals("ycsb")) {
                     ByteBuffer newDigest = response.digest(command);
                     String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                     if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                         logger.error(
-                                "[Tinoryj-ERROR] For token = {}, ReadCommandVerbHandler Could not get non-empty data response from table {}, address = {}, {}, response = {}, raw key = {}",
+                                "[Tinoryj-ERROR] For token = {}, with {} query, ReadCommandVerbHandler Could not get non-empty data response from table {}, address = {}, {}, response = {}, raw key = {}",
                                 tokenForRead,
+                                command.isDigestQuery() == true ? "digest" : "data",
                                 command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
                                 "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response.toString(), rawKey);
                     }
                 }
             }
         } catch (RejectException e) {
-            if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
+            if (command.metadata().keyspace.equals("ycsb")) {
                 logger.error(
-                        "[Tinoryj-ERROR] For token = {}, ReadCommandVerbHandler from {}, Read Command target table is {}, target key is {}, meet errors",
+                        "[Tinoryj-ERROR] For token = {}, with {} query, ReadCommandVerbHandler from {}, Read Command target table is {}, target key is {}, meet errors",
                         tokenForRead,
+                        command.isDigestQuery() == true ? "digest" : "data",
                         message.from(),
                         command.metadata().name);
             }
