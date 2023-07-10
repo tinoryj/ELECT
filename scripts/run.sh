@@ -23,12 +23,14 @@ func() {
     coordinator=$1
     operationcount=$2
     threads=$3
+    mkdir -p logs/run-log/
+    file_name="$(date +%s)-${operationcount}-${threads}"
     cd ~/ycsb-0.17.0
     
     sed -i "s/operationcount=.*$/operationcount=${operationcount}/" workloads/workload_template
     
     
-    bin/ycsb run cassandra-cql -p hosts=$coordinator -p cassandra.readconsistencylevel="ALL" -threads $threads -s -P workloads/workload_template
+    bin/ycsb run cassandra-cql -p hosts=$coordinator -p cassandra.readconsistencylevel="ALL" -threads $threads -s -P workloads/workload_template > logs/insert-log/${file_name}.log 2>&1
 }
 
 func "$1" "$2" "$3"
