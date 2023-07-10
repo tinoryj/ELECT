@@ -419,7 +419,7 @@ public abstract class AbstractReadExecutor {
     /**
      * send the initial set of requests
      */
-    public synchronized void executeAsync() {
+    public void executeAsync() {
         // if (command.metadata().keyspace.equals("ycsb")) {
         // makeRequestsForELECT(command);
         // } else {
