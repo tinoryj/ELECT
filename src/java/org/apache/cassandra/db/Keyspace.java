@@ -17,6 +17,8 @@
  */
 package org.apache.cassandra.db;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -719,32 +721,32 @@ public class Keyspace {
         else
             throw new IllegalStateException(String.format("rymERROR: the local address (%s) is not belong to the replica nodes (%s)", localAddress, eps));
         
-        // String fileName = "usertable";
-        // if(index!=0) {
-        //     fileName+=index;
-        // }
+        String fileName = "usertable";
+        if(index!=0) {
+            fileName+=index;
+        }
 
-        // try {
-        //     FileWriter writer = new FileWriter("logs/usertableAll", true);
-        //     BufferedWriter buffer = new BufferedWriter(writer);
-        //     buffer.write(upd.partitionKey().getRawKey(upd.metadata())+"\n");
-        //     buffer.close();
-        // } catch (IOException e) {
-        //     // TODO Auto-generated catch block
-        //     e.printStackTrace();
-        // }
+        try {
+            FileWriter writer = new FileWriter("logs/usertableAll", true);
+            BufferedWriter buffer = new BufferedWriter(writer);
+            buffer.write("key="+upd.partitionKey().getRawKey(upd.metadata()) + ", token="+upd.partitionKey().getToken()+"\n");
+            buffer.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
 
 
-        // try {
-        //     FileWriter writer = new FileWriter("logs/"+fileName, true);
-        //     BufferedWriter buffer = new BufferedWriter(writer);
-        //     buffer.write(upd.partitionKey().getRawKey(upd.metadata())+"\n");
-        //     buffer.close();
-        // } catch (IOException e) {
-        //     // TODO Auto-generated catch block
-        //     e.printStackTrace();
-        // }
+        try {
+            FileWriter writer = new FileWriter("logs/"+fileName, true);
+            BufferedWriter buffer = new BufferedWriter(writer);
+            buffer.write("key="+upd.partitionKey().getRawKey(upd.metadata()) + ", token="+upd.partitionKey().getToken()+"\n");
+            buffer.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
         
         return columnFamilyStores.get(replicaUUID);
     }
