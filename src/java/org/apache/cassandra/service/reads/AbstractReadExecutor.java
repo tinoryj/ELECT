@@ -673,6 +673,8 @@ public abstract class AbstractReadExecutor {
                             replicaPlan().consistencyLevel(),
                             replicaPlan().contacts());
                 }
+            } else {
+                setResult(digestResolver.getData());
             }
         }
     }
