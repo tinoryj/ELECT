@@ -734,7 +734,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
     /**
      * Creates a message for this command.
      */
-    public Message<ReadCommand> createMessage(boolean trackRepairedData) {
+    public synchronized Message<ReadCommand> createMessage(boolean trackRepairedData) {
         Message<ReadCommand> msg = trackRepairedData
                 ? Message.outWithFlags(verb(), this, MessageFlag.CALL_BACK_ON_FAILURE, MessageFlag.TRACK_REPAIRED_DATA)
                 : Message.outWithFlag(verb(), this, MessageFlag.CALL_BACK_ON_FAILURE);
