@@ -71,8 +71,8 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, tokenForRead,
                 ConsistencyLevel.ALL, retry);
         // Tinoryj TODO replace address list with natural nodes
-        List<InetAddressAndPort> sendRequestAddresses;
-        sendRequestAddresses = replicaPlan.contacts().endpointList();
+        List<InetAddressAndPort> sendRequestAddresses = StorageService.instance.getReplicaNodesWithPortFromTokenForDegradeRead(keyspace.getName(), tokenForRead);
+        // sendRequestAddresses = replicaPlan.contacts().endpointList();
 
         if (command.metadata().keyspace.equals("ycsb")) {
 

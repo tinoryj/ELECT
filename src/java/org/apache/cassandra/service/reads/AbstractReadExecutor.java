@@ -108,7 +108,8 @@ public abstract class AbstractReadExecutor {
                 : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
 
         // Tinoryj TODO, change to use natural nodes
-        this.sendRequestAddresses = replicaPlan.contacts().endpointList();
+        this.sendRequestAddresses = StorageService.instance.getReplicaNodesWithPortFromTokenForDegradeRead(this.cfs.keyspace.getName(), tokenForRead);
+        // this.sendRequestAddresses = replicaPlan.contacts().endpointList();
 
         logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", tokenForRead,
                 sendRequestAddresses);
