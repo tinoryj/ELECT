@@ -199,8 +199,8 @@ public abstract class AbstractReadExecutor {
                         break;
                 }
             }
-            Message<ReadCommand> message = readCommand.createMessage(false);
-            MessagingService.instance().sendWithCallback(message, endpoint, handler);
+            // Message<ReadCommand> message = readCommand.createMessage(false);
+            MessagingService.instance().sendWithCallback(readCommand.createMessage(false), endpoint, handler);
             logger.debug("[Tinoryj] Send {} request for token = {} to {}, at node {}",
                     readCommand.isDigestQuery() ? "digest" : "data",
                     tokenForRead, readCommand.metadata().name, endpoint);
