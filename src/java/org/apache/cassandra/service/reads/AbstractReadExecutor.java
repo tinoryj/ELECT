@@ -220,8 +220,8 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter);
-                        // this.command = readCommand;
-                        // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable");
+                        this.command = readCommand;
+                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable");
                         if (readCommand.isDigestQuery() == true) {
                             logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
                         }
@@ -234,8 +234,8 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter1);
-                        // this.command = readCommand;
-                        // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
+                        this.command = readCommand;
+                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
                         if (readCommand.isDigestQuery() == false) {
                             logger.debug(
                                     "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
@@ -250,8 +250,8 @@ public abstract class AbstractReadExecutor {
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter2);
-                        // this.command = readCommand;
-                        // this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
+                        this.command = readCommand;
+                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
                         if (readCommand.isDigestQuery() == false) {
                             logger.debug(
                                     "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
