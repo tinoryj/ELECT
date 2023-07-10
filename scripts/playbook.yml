@@ -82,3 +82,24 @@
   - name: Fail the play if the previous command did not succeed
     fail: msg="the command failed"
     when: "'FAILED' in command_result.stderr"
+
+  - name: Wait until insertion is done
+  pause:
+    seconds: 30
+
+- name: Run
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute run.sh
+    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} {{ operation_count }} {{ threads }}
+    vars:
+      operation_count: 100000
+      threads: 8
+    register: command_result
+    ignore_errors: true
+  
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
