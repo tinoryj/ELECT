@@ -682,7 +682,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         InputCollector<UnfilteredRowIterator> inputCollector = iteratorsForPartition(view, controller);
         try {
             SSTableReadMetricsCollector metricsCollector = new SSTableReadMetricsCollector();
-
             for (Memtable memtable : view.memtables) {
                 @SuppressWarnings("resource") // 'iter' is added to iterators which is closed on exception, or through
                                               // the closing of the final merged iterator
@@ -724,7 +723,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
             if (controller.isTrackingRepairedStatus())
                 Tracing.trace("Collecting data from sstables and tracking repaired status");
-
+            logger.debug("[Tinoryj] Collecting data from sstables, target sstable number = {}", view.sstables.size());
             for (SSTableReader sstable : view.sstables) {
                 if (!sstable.getColumnFamilyName().equals("usertable")
                         && sstable.isReplicationTransferredToErasureCoding()) {
@@ -929,6 +928,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         /* add the SSTables on disk */
         view.sstables.sort(SSTableReader.maxTimestampDescending);
         // read sorted sstables
+        logger.debug("[Tinoryj] Collecting data from sstables, target sstable number = {}", view.sstables.size());
         for (SSTableReader sstable : view.sstables) {
             if (!sstable.getColumnFamilyName().equals("usertable")
                     && sstable.isReplicationTransferredToErasureCoding()) {
