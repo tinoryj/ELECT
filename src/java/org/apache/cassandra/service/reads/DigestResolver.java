@@ -110,6 +110,8 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         ByteBuffer digestSet[] = new ByteBuffer[snapshot.size()];
         ArrayList<InetAddressAndPort> endpoints = new ArrayList<>();
         int digestIndex = 0;
+        InetAddressAndPort dataResponseAddress = null;
+        int dataResponseIndex = 0;
         for (Message<ReadResponse> message : snapshot) {
             if (replicaPlan().lookup(message.from()).isTransient())
                 continue;
@@ -125,8 +127,13 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
             }
             endpoints.add(message.from());
             digestIndex++;
+            if (message.payload.isDigestResponse() == false) {
+                dataResponseAddress = message.from();
+                dataResponseIndex = digestIndex - 1;
+            }
         }
         int noDataCount = 0;
+        boolean noDataResponseFlag = false;
         for (int i = 0; i < digestIndex; i++) {
             // logger.debug(
             // "[Tinoryj] Read operation get digest from {}, digest = {}",
@@ -134,6 +141,9 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
             String digestStr = "0x" + ByteBufferUtil.bytesToHex(digestSet[i]);
             if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                 noDataCount++;
+                if (i == dataResponseIndex) {
+                    noDataResponseFlag = true;
+                }
             }
         }
         if (noDataCount != 0) {
@@ -141,10 +151,14 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                 // Skip digest failure with up to two empty data (since redundancy transition
                 // may remove the data in secondary nodes).
                 if (noDataCount != snapshot.size()) {
+                    if (noDataResponseFlag) {
+                        logger.error("[Tinoryj-ERROR] Read get empty data response from {}.",
+                                dataResponseAddress);
+                    }
                     return true;
                 } else {
                     logger.error(
-                            "[Tinoryj-ERROR] Read operation get only {} success data response.",
+                            "[Tinoryj-ERROR] Read operation get only {} success response.",
                             snapshot.size() - noDataCount);
                     return false;
                 }
