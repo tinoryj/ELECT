@@ -94,7 +94,6 @@ public abstract class AbstractReadExecutor {
             int initialDataRequestCount, long queryStartNanoTime) {
         this.command = command;
         this.replicaPlan = ReplicaPlan.shared(replicaPlan);
-        this.sendRequestAddresses = replicaPlan.contacts().endpointList();
         this.initialDataRequestCount = initialDataRequestCount;
         // the ReadRepair and DigestResolver both need to see our updated
         this.readRepair = ReadRepair.create(command, this.replicaPlan, queryStartNanoTime);
@@ -107,6 +106,10 @@ public abstract class AbstractReadExecutor {
         tokenForRead = (command instanceof SinglePartitionReadCommand
                 ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
                 : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
+
+        // Tinoryj TODO, change to use natural nodes
+        this.sendRequestAddresses = replicaPlan.contacts().endpointList();
+
         logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", tokenForRead,
                 sendRequestAddresses);
         // Set the digest version (if we request some digests). This is the smallest
@@ -149,8 +152,7 @@ public abstract class AbstractReadExecutor {
 
     private synchronized void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
         boolean hasLocalEndpoint = false;
-        
-        
+
         for (Replica replica : replicas) {
             assert replica.isFull() || readCommand.acceptsTransient();
             InetAddressAndPort endpoint = replica.endpoint();
@@ -202,7 +204,7 @@ public abstract class AbstractReadExecutor {
             }
             Message<ReadCommand> message = null;
             message = readCommand.createMessage(false);
-            
+
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
             logger.debug("[Tinoryj] Send {} request for token = {} to {}, the message is ({}), at node {}",
                     readCommand.isDigestQuery() ? "digest" : "data",
