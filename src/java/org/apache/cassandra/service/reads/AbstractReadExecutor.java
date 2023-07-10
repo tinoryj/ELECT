@@ -149,7 +149,7 @@ public abstract class AbstractReadExecutor {
 
     private synchronized void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
         boolean hasLocalEndpoint = false;
-        Message<ReadCommand> message = null;
+        
         
         for (Replica replica : replicas) {
             assert replica.isFull() || readCommand.acceptsTransient();
@@ -200,8 +200,8 @@ public abstract class AbstractReadExecutor {
                         break;
                 }
             }
-            if (null == message)
-                message = readCommand.createMessage(false);
+            Message<ReadCommand> message = null;
+            message = readCommand.createMessage(false);
             
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
             logger.debug("[Tinoryj] Send {} request for token = {} to {}, the message is ({}), at node {}",
