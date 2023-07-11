@@ -65,18 +65,21 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                 ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata())
                 : null);
 
-        Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
-        ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(command.metadata().id);
-        SpeculativeRetryPolicy retry = cfs.metadata().params.speculativeRetry;
-        ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace, tokenForRead,
-                ConsistencyLevel.ALL, retry);
+        // Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
+        // ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(command.metadata().id);
+        // SpeculativeRetryPolicy retry = cfs.metadata().params.speculativeRetry;
+        // ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace,
+        // tokenForRead,
+        // ConsistencyLevel.ALL, retry);
         // Tinoryj TODO replace address list with natural nodes
-        List<InetAddressAndPort> sendRequestAddresses = StorageService.instance.getReplicaNodesWithPortFromTokenForDegradeRead(keyspace.getName(), tokenForRead);
-        // sendRequestAddresses = replicaPlan.contacts().endpointList();
 
         if (command.metadata().keyspace.equals("ycsb")) {
 
-            String oldTableName = command.metadata().name;
+            List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
+                    .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, tokenForRead);
+            // sendRequestAddresses = replicaPlan.contacts().endpointList();
+
+            // String oldTableName = command.metadata().name;
 
             if (sendRequestAddresses.size() != 3) {
                 logger.debug("[Tinoryj] The replica plan get only {} nodes",
@@ -130,10 +133,11 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     logger.debug("[Tinoryj] Not support replication factor larger than 3");
                     break;
             }
-            if (!oldTableName.equals(command.metadata().name)) {
-                logger.error("[Tinoryj-ERROR], recved table name = {}, but should be {}", oldTableName,
-                        command.metadata().name);
-            }
+            // if (!oldTableName.equals(command.metadata().name)) {
+            // logger.error("[Tinoryj-ERROR], recved table name = {}, but should be {}",
+            // oldTableName,
+            // command.metadata().name);
+            // }
             logger.debug("[Tinoryj] For token = {}, read {} target table = {}, replication group = {}",
                     tokenForRead,
                     command.isDigestQuery() == true ? "digest" : "data",

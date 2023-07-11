@@ -108,8 +108,12 @@ public abstract class AbstractReadExecutor {
                 : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
 
         // Tinoryj TODO, change to use natural nodes
-        this.sendRequestAddresses = StorageService.instance.getReplicaNodesWithPortFromTokenForDegradeRead(this.cfs.keyspace.getName(), tokenForRead);
-        // this.sendRequestAddresses = replicaPlan.contacts().endpointList();
+        if (command.metadata().keyspace.equals("ycsb")) {
+            this.sendRequestAddresses = StorageService.instance
+                    .getReplicaNodesWithPortFromTokenForDegradeRead(this.cfs.keyspace.getName(), tokenForRead);
+        } else {
+            this.sendRequestAddresses = replicaPlan.contacts().endpointList();
+        }
 
         logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", tokenForRead,
                 sendRequestAddresses);
@@ -153,7 +157,7 @@ public abstract class AbstractReadExecutor {
 
     private synchronized void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
         boolean hasLocalEndpoint = false;
-
+        Message<ReadCommand> message = null;
         for (Replica replica : replicas) {
             assert replica.isFull() || readCommand.acceptsTransient();
             InetAddressAndPort endpoint = replica.endpoint();
@@ -165,46 +169,48 @@ public abstract class AbstractReadExecutor {
                 hasLocalEndpoint = true;
                 continue;
             }
-            // if (null == message)
-            if (readCommand.metadata().keyspace.equals("ycsb")) {
-                switch (sendRequestAddresses.indexOf(endpoint)) {
-                    case 0:
-                        // In case received request is not for primary LSM tree
-                        readCommand.updateTableMetadata(
-                                Keyspace.open("ycsb").getColumnFamilyStore("usertable")
-                                        .metadata());
-                        ColumnFilter newColumnFilter = ColumnFilter
-                                .allRegularColumnsBuilder(readCommand.metadata(), false)
-                                .build();
-                        readCommand.updateColumnFilter(newColumnFilter);
-                        break;
-                    case 1:
-                        readCommand.updateTableMetadata(
-                                Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
-                                        .metadata());
-                        ColumnFilter newColumnFilter1 = ColumnFilter
-                                .allRegularColumnsBuilder(readCommand.metadata(), false)
-                                .build();
-                        readCommand.updateColumnFilter(newColumnFilter1);
-                        break;
-                    case 2:
-                        readCommand.updateTableMetadata(
-                                Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
-                                        .metadata());
-                        ColumnFilter newColumnFilter2 = ColumnFilter
-                                .allRegularColumnsBuilder(readCommand.metadata(), false)
-                                .build();
-                        readCommand.updateColumnFilter(newColumnFilter2);
-                        break;
-                    default:
-                        logger.debug(
-                                "[Tinoryj] Not support replication factor larger than 3, current index = {}, target address = {}, address list = {}",
-                                sendRequestAddresses.indexOf(endpoint), endpoint, sendRequestAddresses);
-                        break;
-                }
+            // if (readCommand.metadata().keyspace.equals("ycsb")) {
+            // switch (sendRequestAddresses.indexOf(endpoint)) {
+            // case 0:
+            // // In case received request is not for primary LSM tree
+            // readCommand.updateTableMetadata(
+            // Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+            // .metadata());
+            // ColumnFilter newColumnFilter = ColumnFilter
+            // .allRegularColumnsBuilder(readCommand.metadata(), false)
+            // .build();
+            // readCommand.updateColumnFilter(newColumnFilter);
+            // break;
+            // case 1:
+            // readCommand.updateTableMetadata(
+            // Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+            // .metadata());
+            // ColumnFilter newColumnFilter1 = ColumnFilter
+            // .allRegularColumnsBuilder(readCommand.metadata(), false)
+            // .build();
+            // readCommand.updateColumnFilter(newColumnFilter1);
+            // break;
+            // case 2:
+            // readCommand.updateTableMetadata(
+            // Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+            // .metadata());
+            // ColumnFilter newColumnFilter2 = ColumnFilter
+            // .allRegularColumnsBuilder(readCommand.metadata(), false)
+            // .build();
+            // readCommand.updateColumnFilter(newColumnFilter2);
+            // break;
+            // default:
+            // logger.debug(
+            // "[Tinoryj] Not support replication factor larger than 3, current index = {},
+            // target address = {}, address list = {}",
+            // sendRequestAddresses.indexOf(endpoint), endpoint, sendRequestAddresses);
+            // break;
+            // }
+            // }
+
+            if (null == message) {
+                message = readCommand.createMessage(false);
             }
-            Message<ReadCommand> message = null;
-            message = readCommand.createMessage(false);
 
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
             logger.debug("[Tinoryj] Send {} request for token = {} to {}, the message is ({}), at node {}",
