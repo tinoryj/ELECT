@@ -615,6 +615,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
                             if(cfs1.getColumnFamilyName().equals("usertable") || cfs1.getColumnFamilyName().contains("usertable")) {
                                 List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
+                                if(sstables1.isEmpty())
+                                    continue;
                                 Collections.sort(sstables1, new SSTableReaderComparator());
 
                                 List<String> keyRanges = new ArrayList<>();
