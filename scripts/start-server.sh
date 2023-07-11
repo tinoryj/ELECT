@@ -16,6 +16,7 @@
 
 . /etc/profile
 
+kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
 func() {
 
     ec_data_nodes=$1
@@ -38,7 +39,6 @@ func() {
     git checkout yuanming
     git pull origin yuanming
     
-    kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
 
     rm -rf data logs
     mkdir -p data/receivedParityHashes/

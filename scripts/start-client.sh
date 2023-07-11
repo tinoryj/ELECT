@@ -15,6 +15,8 @@
 # limitations under the License.
 
 . /etc/profile
+
+kill -9 $(ps aux | grep ycsb| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
 func() {
     coordinator=$1
     sstable_size=$2
