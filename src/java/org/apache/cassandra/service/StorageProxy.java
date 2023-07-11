@@ -1501,11 +1501,12 @@ public class StorageProxy implements StorageProxyMBean {
         // plan.contacts().endpointList()+RESET);
 
         // List<InetAddressAndPort> replicas = plan.contacts().endpointList();
-        List<InetAddressAndPort> naturalEndpoints = StorageService.instance
-                .getNaturalEndpointsForCassandraEC(mutation.getKeyspaceName(), mutation.key().getKey());
-        List<InetAddressAndPort> address = StorageService.instance
-                .getReplicaNodesWithPortFromTokenForDegradeRead(mutation.getKeyspaceName(), mutation.key().getToken());
-        ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(plan, address, mutation.key().getToken());
+        
+        // List<InetAddressAndPort> naturalEndpoints = StorageService.instance
+        //         .getNaturalEndpointsForCassandraEC(mutation.getKeyspaceName(), mutation.key().getKey());
+        // List<InetAddressAndPort> address = StorageService.instance
+        //         .getReplicaNodesWithPortFromTokenForDegradeRead(mutation.getKeyspaceName(), mutation.key().getToken());
+        // ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(plan, address, mutation.key().getToken());
 
         for (Replica destination : plan.contacts()) {
             // logger.debug(YELLOW+"rymDebug: get replica destinations: {}",
