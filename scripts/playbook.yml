@@ -87,6 +87,21 @@
     pause:
       seconds: 30
 
+
+- name: Test recovery
+  hosts: server2
+
+  tasks:
+  - name: Offline a server node
+    command: sh /mnt/ssd/Debug/CassandraEC/scripts/recovery.sh
+    register: command_result
+    ignore_errors: true
+  
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+  
 - name: Run
   hosts: cassandra_client
 
