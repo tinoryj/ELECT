@@ -111,14 +111,8 @@ public abstract class AbstractReadExecutor {
         if (command.metadata().keyspace.equals("ycsb")) {
             this.sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(this.cfs.keyspace.getName(), tokenForRead);
-            if (sendRequestAddresses.size() != replicaPlan.contacts().size()) {
-                logger.debug("[Tinoryj-Fail] For token = {}, sendRequestAddresses = {}, replica plan = {}",
-                        tokenForRead,
-                        sendRequestAddresses, replicaPlan.contacts().endpoints());
-            } else {
-                logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", tokenForRead,
-                        sendRequestAddresses);
-            }
+            logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}, replica plan = {}", tokenForRead,
+                    sendRequestAddresses, replicaPlan.contacts().endpoints());
         } else {
             this.sendRequestAddresses = replicaPlan.contacts().endpointList();
         }
