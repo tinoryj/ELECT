@@ -96,7 +96,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             .build();
                     command.updateColumnFilter(newColumnFilter);
                     if (command.isDigestQuery() == true) {
-                        logger.error("[Tinoryj-ERROR] Remote Should not perform digest query on the  primary lsm-tree");
+                        logger.error("[Tinoryj-ERROR] Remote Should not perform digest query on the primary lsm-tree");
                     }
                     break;
                 case 1:

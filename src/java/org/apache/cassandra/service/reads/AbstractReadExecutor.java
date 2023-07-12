@@ -111,12 +111,18 @@ public abstract class AbstractReadExecutor {
         if (command.metadata().keyspace.equals("ycsb")) {
             this.sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(this.cfs.keyspace.getName(), tokenForRead);
+            if (sendRequestAddresses.size() != replicaPlan.contacts().size()) {
+                logger.debug("[Tinoryj-Fail] For token = {}, sendRequestAddresses = {}, replica plan = {}",
+                        tokenForRead,
+                        sendRequestAddresses, replicaPlan.contacts().endpoints());
+            } else {
+                logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", tokenForRead,
+                        sendRequestAddresses);
+            }
         } else {
             this.sendRequestAddresses = replicaPlan.contacts().endpointList();
         }
 
-        logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}", tokenForRead,
-                sendRequestAddresses);
         // Set the digest version (if we request some digests). This is the smallest
         // version amongst all our target replicas since new nodes
         // knows how to produce older digest but the reverse is not true.
