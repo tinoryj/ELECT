@@ -19,6 +19,7 @@ package org.apache.cassandra.io.sstable.format;
 
 import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.ref.WeakReference;
@@ -485,6 +486,18 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
              if (ecMetadataFile.exists())
                 FileUtils.deleteWithConfirm(ecMetadataFile);
         }
+
+        // Add data.db to TOC.txt
+        try {
+            String file = desc.filenameFor(Component.TOC);
+            FileOutputStream fos = new FileOutputStream(file,true ) ; 
+            String str = "Data.db\n"; 
+            fos.write(str.getBytes());
+            fos.close (); 
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }   
         // try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
 
         //     byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata.ecMetadataContent);

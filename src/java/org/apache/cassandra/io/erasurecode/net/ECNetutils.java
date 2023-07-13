@@ -415,25 +415,37 @@ public final class ECNetutils {
         // test();
 
 
-        try {
-            throwError("test throw interrupted error method");
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        // try {
+        //     throwError("test throw interrupted error method");
+        // } catch (InterruptedException e) {
+        //     // TODO Auto-generated catch block
+        //     e.printStackTrace();
+        // }
 
-        List<String> tt = new ArrayList<String>();
-        tt.add("11");
-        tt.add("22");
-        logger.debug("{}", tt);
+        // List<String> tt = new ArrayList<String>();
+        // tt.add("11");
+        // tt.add("22");
+        // logger.debug("{}", tt);
 
-        System.out.println("ok");
+        // System.out.println("ok");
 
 
         // String ss = "usertbale";
         // boolean a = false;
         // boolean b = false;
         // System.out.println(a&&b);
+
+
+        try {
+            String file = "/home/rym/test1";
+            FileOutputStream fos = new FileOutputStream(file,true ) ; 
+            String str = "Data.db\n"; 
+            fos.write(str.getBytes()) ;
+            fos.close (); 
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }  
 
     }
 }
