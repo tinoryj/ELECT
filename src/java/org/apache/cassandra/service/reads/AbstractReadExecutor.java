@@ -403,8 +403,9 @@ public abstract class AbstractReadExecutor {
      * send the initial set of requests
      */
     public void executeAsync() {
-        if (command.metadata().keyspace.equals("ycsb")) {
+        if (this.command.metadata().keyspace.equals("ycsb")) {
             makeRequestsForELECT(command);
+            logger.debug("[Tinoryj] makeRequestsForELECT in use");
         } else {
             EndpointsForToken selected = replicaPlan().contacts();
             // Normal read path for Cassandra system tables.
