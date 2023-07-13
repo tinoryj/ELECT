@@ -290,6 +290,9 @@ public abstract class AbstractReadExecutor {
     private synchronized void makeRequestsForELECT(ReadCommand readCommand) {
         boolean hasLocalEndpoint = false, shouldPerformDigestQuery = false;
         int sendRequestNumber = 0;
+        Message<ReadCommand> messageForDataRequest = readCommand.createMessage(false);
+        ReadCommand newReadCommandForDigest = readCommand.copyAsDigestQuery();
+        Message<ReadCommand> messageForDigestRequest = newReadCommandForDigest.createMessage(false);
         for (InetAddressAndPort endpoint : sendRequestAddresses) {
             if (!replicaPlan().contacts().contains(endpoint)) {
                 logger.debug("[Tinoryj] target node {} is not in the replica plan, may failed, skip", endpoint);
@@ -308,13 +311,19 @@ public abstract class AbstractReadExecutor {
                 continue;
             }
             if (sendRequestNumber > 1) {
-                readCommand.setIsDigestQuery(true);
+                MessagingService.instance().sendWithCallback(messageForDigestRequest, endpoint, handler);
+                logger.debug(
+                        "[Tinoryj] Send digest request for token = {} to {}, the message target table is ({}), at node {}",
+                        tokenForRead, readCommand.metadata().name, messageForDigestRequest.payload.metadata().name,
+                        endpoint);
             } else {
-                readCommand.setIsDigestQuery(false);
+                // Tinoryj: Send data request for only the first avaliable node
+                MessagingService.instance().sendWithCallback(messageForDataRequest, endpoint, handler);
+                logger.debug(
+                        "[Tinoryj] Send data request for token = {} to {}, the message target table is ({}), at node {}",
+                        tokenForRead, readCommand.metadata().name, messageForDataRequest.payload.metadata().name,
+                        endpoint);
             }
-            Message<ReadCommand> message = null;
-            message = readCommand.createMessage(false);
-            MessagingService.instance().sendWithCallback(message, endpoint, handler);
         }
 
         // We delay the local (potentially blocking) read till the end to avoid stalling

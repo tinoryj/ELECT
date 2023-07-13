@@ -328,7 +328,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
         return copyAsDigestQuery();
     }
 
-    protected abstract ReadCommand copyAsDigestQuery();
+    public abstract ReadCommand copyAsDigestQuery();
 
     protected abstract UnfilteredPartitionIterator queryStorage(ColumnFamilyStore cfs,
             ReadExecutionController executionController);
