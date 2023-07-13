@@ -352,7 +352,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
     }
 
     @Override
-    protected SinglePartitionReadCommand copyAsDigestQuery() {
+    public SinglePartitionReadCommand copyAsDigestQuery() {
         return create(true,
                 digestVersion(),
                 acceptsTransient(),

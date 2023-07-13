@@ -245,7 +245,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
     }
 
     @Override
-    protected PartitionRangeReadCommand copyAsDigestQuery() {
+    public PartitionRangeReadCommand copyAsDigestQuery() {
         return create(true,
                 digestVersion(),
                 false,
