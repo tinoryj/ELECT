@@ -383,7 +383,7 @@ public abstract class AbstractReadExecutor {
                 continue;
             }
             if (traceState != null)
-                traceState.trace("reading {} from {}", readCommand.isDigestQuery() ? "digest"
+                traceState.trace("reading {} from {}", newReadCommandForDigest.isDigestQuery() ? "digest"
                         : "data", endpoint);
 
             if (endpoint.equals(FBUtilities.getBroadcastAddressAndPort())) {
@@ -393,7 +393,7 @@ public abstract class AbstractReadExecutor {
             MessagingService.instance().sendWithCallback(messageForDigestRequest, endpoint, handler);
             logger.debug(
                     "[Tinoryj] Send digest request for token = {} to {}, the message target table is ({}), at node {}",
-                    tokenForRead, readCommand.metadata().name, messageForDigestRequest.payload.metadata().name,
+                    tokenForRead, newReadCommandForDigest.metadata().name, messageForDigestRequest.payload.metadata().name,
                     endpoint);
         }
 
@@ -429,7 +429,7 @@ public abstract class AbstractReadExecutor {
                     if (newReadCommandForDigest.isDigestQuery() == false) {
                         logger.debug(
                                 "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
-                        readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
+                        newReadCommandForDigest.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
                     break;
                 case 2:
