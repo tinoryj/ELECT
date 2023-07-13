@@ -2207,7 +2207,7 @@ public class StorageProxy implements StorageProxyMBean {
                     if (iterator == null) {
                         if (command.metadata().keyspace.equals("ycsb")) {
                             logger.debug(
-                                    "[Tinoryj-ERROR] For key token = {}, with {} query, Local Could not get data response from table {}",
+                                    "[Tinoryj-ERROR] For key token = {}, with {} query, Local Could not get response from table {}",
                                     tokenForRead,
                                     command.isDigestQuery() ? "digest" : "data",
                                     command.metadata().name, FBUtilities.getBroadcastAddressAndPort());

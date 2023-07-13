@@ -161,7 +161,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             if (iterator == null) {
                 if (command.metadata().keyspace.equals("ycsb")) {
                     logger.error(
-                            "[Tinoryj-ERROR] For token = {}, with {} query, ReadCommandVerbHandler Error to get data response from table {}",
+                            "[Tinoryj-ERROR] For token = {}, with {} query, ReadCommandVerbHandler Error to get response from table {}",
                             tokenForRead,
                             command.isDigestQuery() == true ? "digest" : "data",
                             command.metadata().name, FBUtilities.getBroadcastAddressAndPort());

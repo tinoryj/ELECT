@@ -86,10 +86,6 @@ public abstract class AbstractReadExecutor {
     private final List<InetAddressAndPort> sendRequestAddresses;
     private final Token tokenForRead;
 
-    public final String primaryLSMTreeName = "usertable";
-    public final String secondaryLSMTreeName1 = "usertable1";
-    public final String secondaryLSMTreeName2 = "usertable2";
-
     AbstractReadExecutor(ColumnFamilyStore cfs, ReadCommand command, ReplicaPlan.ForTokenRead replicaPlan,
             int initialDataRequestCount, long queryStartNanoTime) {
         this.command = command;
