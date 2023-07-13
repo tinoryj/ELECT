@@ -138,7 +138,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             // oldTableName,
             // command.metadata().name);
             // }
-            logger.debug("[Tinoryj] For token = {}, read {} target table = {}, replication group = {}",
+            logger.debug("[Tinoryj] For token = {}, read {} from target table = {}, replication group = {}",
                     tokenForRead,
                     command.isDigestQuery() == true ? "digest" : "data",
                     command.metadata().name, sendRequestAddresses);

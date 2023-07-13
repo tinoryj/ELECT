@@ -111,7 +111,10 @@ public abstract class AbstractReadExecutor {
         if (command.metadata().keyspace.equals("ycsb")) {
             this.sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(this.cfs.keyspace.getName(), tokenForRead);
-            logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}, replica plan = {}", tokenForRead,
+            logger.debug("[Tinoryj-{}] For token = {}, sendRequestAddresses = {}, replica plan = {}",
+                    sendRequestAddresses.size() == replicaPlan.contacts().endpoints().size() ? "NormalRead"
+                            : "DegradeRead",
+                    tokenForRead,
                     sendRequestAddresses, replicaPlan.contacts().endpoints());
         } else {
             this.sendRequestAddresses = replicaPlan.contacts().endpointList();
@@ -213,9 +216,12 @@ public abstract class AbstractReadExecutor {
             }
 
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
-            logger.debug("[Tinoryj] Send {} request for token = {} to {}, the message is ({}), at node {}",
-                    readCommand.isDigestQuery() ? "digest" : "data",
-                    tokenForRead, readCommand.metadata().name, message.payload.metadata().name, endpoint);
+            if (readCommand.metadata().keyspace.equals("ycsb")) {
+                logger.debug(
+                        "[Tinoryj] Send {} request for token = {} to {}, the message target table is ({}), at node {}",
+                        readCommand.isDigestQuery() ? "digest" : "data",
+                        tokenForRead, readCommand.metadata().name, message.payload.metadata().name, endpoint);
+            }
         }
 
         // We delay the local (potentially blocking) read till the end to avoid stalling
@@ -277,10 +283,10 @@ public abstract class AbstractReadExecutor {
                                 FBUtilities.getBroadcastAddressAndPort(), sendRequestAddresses);
                         break;
                 }
+                logger.debug("[Tinoryj] Perform {} request for token = {} to {}, at local node",
+                        readCommand.isDigestQuery() ? "digest" : "data",
+                        tokenForRead, readCommand.metadata().name);
             }
-            logger.debug("[Tinoryj] Perform {} request for token = {} to {}, at local node",
-                    readCommand.isDigestQuery() ? "digest" : "data",
-                    tokenForRead, readCommand.metadata().name);
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
         }
     }
