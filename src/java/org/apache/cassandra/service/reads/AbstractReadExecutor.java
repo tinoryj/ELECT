@@ -452,7 +452,7 @@ public abstract class AbstractReadExecutor {
                     logger.debug("[Tinoryj] Not support replication factor larger than 3");
                     break;
             }
-            Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
+            Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(newReadCommandForDigest, handler));
         } else {
             logger.debug("[Tinoryj] No local endpoint, skip local digest read");
         }
