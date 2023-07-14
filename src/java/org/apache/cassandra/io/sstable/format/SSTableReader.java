@@ -536,7 +536,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
             logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
         }
-        txn.update(newSSTable, false);
+        txn.update(newSSTable, true);
         txn.checkpoint();
         Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
         
