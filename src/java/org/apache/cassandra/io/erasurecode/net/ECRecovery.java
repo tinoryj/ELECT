@@ -118,7 +118,8 @@ public class ECRecovery {
         // Step 4: record the raw data locally
         byte[] sstContent = new byte[output[0].remaining()];
         output[0].get(sstContent);
-        SSTableReader.loadRawData(sstContent, sstable.descriptor);
+        SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
+
 
         // Step 5: send the raw data to the peer secondary nodes
         List<InetAddressAndPort> replicaNodes = ecMetadataContent.sstHashIdToReplicaMap.get(sstHash);

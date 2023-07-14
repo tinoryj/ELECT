@@ -486,18 +486,6 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
              if (ecMetadataFile.exists())
                 FileUtils.deleteWithConfirm(ecMetadataFile);
         }
-
-        // Add data.db to TOC.txt
-        try {
-            String file = desc.filenameFor(Component.TOC);
-            FileOutputStream fos = new FileOutputStream(file,true ) ; 
-            String str = "Data.db\n"; 
-            fos.write(str.getBytes());
-            fos.close (); 
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }   
         // try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
 
         //     byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata.ecMetadataContent);
@@ -513,7 +501,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRA]
-    public static void loadRawData(byte[] data, Descriptor desc) {
+    public static void loadRawData(byte[] data, Descriptor desc, SSTableReader oldSSTable) {
 
         File dataFile = new File(desc.filenameFor(Component.DATA));
         if (dataFile.exists())
@@ -529,17 +517,32 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                 FileUtils.deleteWithConfirm(dataFile);
         }
 
-        // try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(dataFile)) {
+        // add Data.db to TOC.txt
+        try {
+            String file = desc.filenameFor(Component.TOC);
+            FileOutputStream fos = new FileOutputStream(file,true ) ; 
+            String str = "Data.db\n"; 
+            fos.write(str.getBytes());
+            fos.close (); 
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
-        //     ByteBufferUtil.writeWithLength(data, oStream);
+        // replace the old sstable with a new one
+        SSTableReader newSSTable = SSTableReader.open(desc);
+        ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+        final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
+        if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
+            logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+        }
+        txn.update(newSSTable, false);
+        txn.checkpoint();
+        Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
+        
+        StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
 
-        // } catch (IOException e) {
-        //     logger.error("Cannot save SSTable ecMetadataFile: ", e);
 
-        //     // corrupted hence delete it and let it load it now.
-        //     if (dataFile.exists())
-        //         FileUtils.deleteWithConfirm(dataFile);
-        // }
     }
 
     public static SSTableReader open(Descriptor desc, TableMetadataRef metadata) {
