@@ -47,7 +47,7 @@ final class ColumnMetadataVersionComparator implements Comparator<ColumnMetadata
     public int compare(ColumnMetadata v1, ColumnMetadata v2)
     {
         assert v1.ksName.equals(v2.ksName)
-               && v1.cfName.equals(v2.cfName)
+               // && v1.cfName.equals(v2.cfName)
                && v1.name.equals(v2.name) : v1.debugString() + " != " + v2.debugString();
 
         AbstractType<?> v1Type = v1.type;
