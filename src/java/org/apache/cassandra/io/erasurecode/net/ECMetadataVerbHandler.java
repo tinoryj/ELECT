@@ -371,6 +371,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         if (updateTxn != null) {
 
+            logger.debug("rymDebug: Create a transaction ({}) for updating sstable.", updateTxn.opId());
             if (rewriteSStables.size() == 1) {
                 logger.debug("rymDebug: Anyway, we just replace the sstables");
                 List<String> expiredFiles = new ArrayList<String>();
@@ -437,10 +438,11 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 if (dataForRewrite != null) {
 
                     String fileNamePrefix = dataForRewrite.fileNamePrefix;
-                    final LifecycleTransaction updateTxn = cfs.getTracker()
-                            .tryModify(Collections.singletonList(oldECSSTable), OperationType.COMPACTION);
+                    final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(Collections.singletonList(oldECSSTable), OperationType.COMPACTION);
+
                     if (updateTxn != null) {
 
+                        logger.debug("rymDebug: Create a transaction ({}) for updating sstable ({}).", updateTxn.opId(), oldECSSTable.descriptor);
                         List<String> expiredFiles = new ArrayList<String>();
                         for(Component comp : SSTableReader.componentsFor(oldECSSTable.descriptor)) {
                             expiredFiles.add(oldECSSTable.descriptor.filenameFor(comp));
