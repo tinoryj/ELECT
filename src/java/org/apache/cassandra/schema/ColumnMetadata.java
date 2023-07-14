@@ -317,6 +317,8 @@ public final class ColumnMetadata extends ColumnSpecification implements Selecta
                           .add("type", type)
                           .add("kind", kind)
                           .add("position", position)
+                          .add("ksName", ksName)
+                          .add("cfName", cfName)
                           .toString();
     }
 
