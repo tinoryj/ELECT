@@ -761,6 +761,12 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     }
                 }
 
+                if(sstable.getColumnFamilyName().contains("usertable") && 
+                    sstable.isReplicationTransferredToErasureCoding() && 
+                    ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
+                    sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
+                }
+
                 // if we've already seen a partition tombstone with a timestamp greater
                 // than the most recent update to this sstable, we can skip it
                 // if we're tracking repaired status, we mark the repaired digest inconclusive
@@ -967,6 +973,13 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                     }
                 }
+            }
+
+            if(sstable.getColumnFamilyName().contains("usertable") && 
+               sstable.isReplicationTransferredToErasureCoding() && 
+               ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
+                sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
+
             }
 
             // if we've already seen a partition tombstone with a timestamp greater

@@ -247,6 +247,7 @@ public class StorageService extends NotificationBroadcasterSupport
 
     // [CASSANDRAEC] The following parameters are used to support recovery
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();
+    public ConcurrentHashMap<String, SSTableReader> globalRecoveredSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
 
 
     

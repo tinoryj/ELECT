@@ -380,6 +380,11 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         }
                     }
                 }
+                if(sstable.getColumnFamilyName().contains("usertable") && 
+                   sstable.isReplicationTransferredToErasureCoding() && 
+                   ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
+                    sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
+                }
                 @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
                                               // method
                 UnfilteredPartitionIterator iter = sstable.partitionIterator(columnFilter(), dataRange(),
