@@ -1600,17 +1600,17 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     {
         long start = nanoTime();
         try {
-            if (metadata.keyspace.equals("ycsb")) {
-                try {
-                    FileWriter writer = new FileWriter("logs/" + metadata.name, true);
-                    BufferedWriter buffer = new BufferedWriter(writer);
-                    buffer.write("key="+update.partitionKey().getRawKey(update.metadata()) + ", token="+update.partitionKey().getToken()+"\n");
-                    buffer.close();
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }
+            // if (metadata.keyspace.equals("ycsb")) {
+            //     try {
+            //         FileWriter writer = new FileWriter("logs/" + metadata.name, true);
+            //         BufferedWriter buffer = new BufferedWriter(writer);
+            //         buffer.write("key="+update.partitionKey().getRawKey(update.metadata()) + ", token="+update.partitionKey().getToken()+"\n");
+            //         buffer.close();
+            //     } catch (IOException e) {
+            //         // TODO Auto-generated catch block
+            //         e.printStackTrace();
+            //     }
+            // }
             
             Memtable mt = data.getMemtableFor(opGroup, commitLogPosition);
 

@@ -28,6 +28,7 @@ import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.io.sstable.IndexInfo;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.util.FileDataInput;
 import org.apache.cassandra.io.util.DataPosition;
@@ -98,7 +99,8 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                     // Not indexed (or is reading static), set to the beginning of the partition and read partition level deletion there
                     if (file == null) {
                         file = sstable.getFileDataInput(indexEntry.position);
-                        logger.debug("rymDebug: The file of sstable {} (hash: {}) is null, the position is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position);
+                        ECNetutils.printStackTace(String.format("rymDebug: The file of sstable {} (hash: {}) is null, the position is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position));
+                        // logger.debug("rymDebug: The file of sstable {} (hash: {}) is null, the position is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position);
                     }
                         
                     else{
