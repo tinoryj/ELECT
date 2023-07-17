@@ -33,6 +33,8 @@ import org.apache.cassandra.io.util.FileDataInput;
 import org.apache.cassandra.io.util.DataPosition;
 import org.apache.cassandra.io.util.FileHandle;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
 {
@@ -53,6 +55,8 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
     private boolean isClosed;
 
     protected final Slices slices;
+    private static final Logger logger = LoggerFactory.getLogger(AbstractSSTableIterator.class);
+
 
     @SuppressWarnings("resource") // We need this because the analysis is not able to determine that we do close
                                   // file on every path where we created it.
@@ -92,10 +96,15 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                 if (needSeekAtPartitionStart)
                 {
                     // Not indexed (or is reading static), set to the beginning of the partition and read partition level deletion there
-                    if (file == null)
+                    if (file == null) {
                         file = sstable.getFileDataInput(indexEntry.position);
+                        logger.debug("rymDebug: The file of sstable {} (hash: {}) is null.", sstable.descriptor, sstable.getSSTableHashID());
+                    }
+                        
                     else
                         file.seek(indexEntry.position);
+
+                    logger.debug("rymDebug: The position of sstable {} (hash: {}) is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position);
 
                     ByteBufferUtil.skipShortLength(file); // Skip partition key
                     this.partitionLevelDeletion = DeletionTime.serializer.deserialize(file);
