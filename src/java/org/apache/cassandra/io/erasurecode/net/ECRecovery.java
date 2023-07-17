@@ -120,6 +120,7 @@ public class ECRecovery {
         byte[] sstContent = new byte[dataFileSize];
         output[0].get(sstContent);
         SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
+        logger.debug("rymDebug: [Debug recovery] we load the raw sstable content of ({}), sstHash is ({}), the data file size is ({}) ", sstable.descriptor, sstable.getSSTableHashID(), dataFileSize);
 
 
         // Step 5: send the raw data to the peer secondary nodes
