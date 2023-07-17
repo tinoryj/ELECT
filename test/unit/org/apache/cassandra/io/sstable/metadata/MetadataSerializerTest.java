@@ -120,7 +120,7 @@ public class MetadataSerializerTest {
         String partitioner = RandomPartitioner.class.getCanonicalName();
         double bfFpChance = 0.1;
         return collector.finalizeMetadata(partitioner, bfFpChance, 0, null, false,
-                SerializationHeader.make(cfm, Collections.emptyList()), null);
+                SerializationHeader.make(cfm, Collections.emptyList()), null, 0);
     }
 
     private void testVersions(String... versions) throws Throwable {

@@ -69,6 +69,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
     protected TimeUUID pendingRepair;
     protected boolean isTransient;
     protected String hashID;
+    protected long dataFileSize;
     protected long maxDataAge = -1;
     protected final long keyCount;
     protected final MetadataCollector metadataCollector;
@@ -332,7 +333,8 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
                 pendingRepair,
                 isTransient,
                 header,
-                hashID);
+                hashID,
+                dataFileSize);
     }
 
     protected StatsMetadata statsMetadata() {

@@ -116,7 +116,8 @@ public class ECRecovery {
 
 
         // Step 4: record the raw data locally
-        byte[] sstContent = new byte[output[0].remaining()];
+        int dataFileSize = (int) sstable.getDataFileSize();
+        byte[] sstContent = new byte[dataFileSize];
         output[0].get(sstContent);
         SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
 

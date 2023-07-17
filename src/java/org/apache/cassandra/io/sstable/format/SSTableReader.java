@@ -878,6 +878,14 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return stringToHex(sstableMetadata.hashID());
     }
 
+    public long getDataFileSize() {
+        if (!readAndSetHashIDIfNotExists()) {
+            logger.error("[Tinoryj-ERROR] could not setup hash ID for current sstable = {}",
+                    descriptor.filenameFor(Component.DATA));
+        }
+        return sstableMetadata.dataFileSize;
+    }
+
     public static String stringToHex(String str) {
         byte[] bytes = str.getBytes();
         StringBuilder hex = new StringBuilder(bytes.length * 2);

@@ -95,7 +95,8 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 null,
                 null,
                 false,
-                null);
+                null,
+                0);
     }
 
     protected EstimatedHistogram estimatedPartitionSize = defaultPartitionSizeHistogram();
@@ -257,7 +258,8 @@ public class MetadataCollector implements PartitionStatisticsCollector {
     public Map<MetadataType, MetadataComponent> finalizeMetadata(String partitioner, double bloomFilterFPChance,
             long repairedAt, TimeUUID pendingRepair, boolean isTransient,
             SerializationHeader header,
-            String hashID) {
+            String hashID,
+            long dataFileSize) {
                 // logger.debug("[Tinoryj] new sstable level = {}", sstableLevel);
         Preconditions.checkState((minClustering == null && maxClustering == null)
                 || comparator.compare(maxClustering, minClustering) >= 0);
@@ -287,7 +289,8 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 originatingHostId,
                 pendingRepair,
                 isTransient,
-                hashID));
+                hashID,
+                dataFileSize));
         components.put(MetadataType.COMPACTION, new CompactionMetadata(cardinality));
         components.put(MetadataType.HEADER, header.toComponent());
         return components;

@@ -86,6 +86,7 @@ public class StatsMetadata extends MetadataComponent {
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
     public String hashID = null;
+    public long dataFileSize = 0;
     // just holds the current encoding stats to avoid allocating - it is not
     // serialized
     public final EncodingStats encodingStats;
@@ -112,7 +113,8 @@ public class StatsMetadata extends MetadataComponent {
             UUID originatingHostId,
             TimeUUID pendingRepair,
             boolean isTransient,
-            String hashID) {
+            String hashID,
+            long dataFileSize) {
         this.estimatedPartitionSize = estimatedPartitionSize;
         this.estimatedCellPerPartitionCount = estimatedCellPerPartitionCount;
         this.commitLogIntervals = commitLogIntervals;
@@ -136,6 +138,7 @@ public class StatsMetadata extends MetadataComponent {
         this.pendingRepair = pendingRepair;
         this.isTransient = isTransient;
         this.hashID = hashID;
+        this.dataFileSize = dataFileSize;
         this.encodingStats = new EncodingStats(minTimestamp, minLocalDeletionTime, minTTL);
     }
 
@@ -148,11 +151,12 @@ public class StatsMetadata extends MetadataComponent {
     }
 
     public Boolean setupHashIDIfMissed(String fileName) {
+
         if (this.hashID == null) {
             try (DataInputStream dataFileReadForHash = new DataInputStream(
                     new FileInputStream(fileName))) {
-                long fileLength = new File(fileName).length();
-                byte[] bytes = new byte[(int) fileLength];
+                this.dataFileSize = new File(fileName).length();
+                byte[] bytes = new byte[(int) this.dataFileSize];
                 dataFileReadForHash.readFully(bytes);
                 dataFileReadForHash.close();
                 // logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
@@ -238,7 +242,8 @@ public class StatsMetadata extends MetadataComponent {
                 originatingHostId,
                 pendingRepair,
                 isTransient,
-                hashID);
+                hashID,
+                dataFileSize);
     }
 
     public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient
@@ -265,7 +270,8 @@ public class StatsMetadata extends MetadataComponent {
                 originatingHostId,
                 newPendingRepair,
                 newIsTransient,
-                hashID);
+                hashID,
+                dataFileSize);
     }
 
     @Override
@@ -331,8 +337,9 @@ public class StatsMetadata extends MetadataComponent {
 
         public int serializedSize(Version version, StatsMetadata component) throws IOException {
             int size = 0;
-            // size of hashID.
-            size += 32;
+            
+            size += 32; // size of hashID.
+            size += 8; // dataFileSize
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedPartitionSize);
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedCellPerPartitionCount);
             size += CommitLogPosition.serializer
@@ -444,6 +451,8 @@ public class StatsMetadata extends MetadataComponent {
                 out.writeBytes(placeHolderStr);
                 // logger.debug("[Tinoryj] Write fake HashID place holder");
             }
+
+            out.writeLong(component.dataFileSize);
         }
 
         public StatsMetadata deserialize(Version version, DataInputPlus in) throws IOException {
@@ -535,6 +544,8 @@ public class StatsMetadata extends MetadataComponent {
             // logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
             // in.skipBytes(32);
 
+            long dataFileSize = in.readLong();
+
             return new StatsMetadata(partitionSizes,
                     columnCounts,
                     commitLogIntervals,
@@ -557,7 +568,8 @@ public class StatsMetadata extends MetadataComponent {
                     originatingHostId,
                     pendingRepair,
                     isTransient,
-                    hashIDRawStr);
+                    hashIDRawStr,
+                    dataFileSize);
         }
     }
 
