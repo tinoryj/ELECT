@@ -1930,61 +1930,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
 
-
-    // public void triggerForceCompactionForTheLastLevel() {
-    //     int maxCompactionThreshold = metadata().params.compaction.maxCompactionThreshold();
-    //     // ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
-    //     int level = LeveledGenerations.getMaxLevelCount() - 1;
-    //     List<SSTableReader> sstables = new ArrayList<>(getSSTableForLevel(level));
-    //     if(sstables.isEmpty())
-    //         return;
-        
-    //     Collections.sort(sstables, new SSTableReaderComparator());
-    //     int startIndex = 0;
-    //     while(startIndex < sstables.size()) {
-    //         List<SSTableReader> candidates;
-    //         if(startIndex + maxCompactionThreshold <= sstables.size()) {
-    //             candidates = sstables.subList(startIndex, startIndex + maxCompactionThreshold);
-    //         } else {
-    //             candidates = sstables.subList(startIndex, sstables.size());
-    //         }
-    //         startIndex += maxCompactionThreshold;
-
-    //         final LifecycleTransaction txn = getTracker().tryModify(candidates, OperationType.COMPACTION);
-    //         if(txn != null) {
-    //             Stage.ERASURECODE.maybeExecuteImmediately(new ForceCompactionForTheLastLevelRunnable(candidates, txn));
-    //         } else {
-    //             logger.debug("rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
-    //         }
-    //     }
-
-    // }
-
-
     public static Runnable getForceCompactionForTheLastLevelRunnable() {
-        // return () -> {
-        //     for (Keyspace keyspace : Keyspace.all())
-        //         for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
-        //             if(!cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable") && !cfs.isPerformForceCompactionLastLevel)
-        //                 cfs.isPerformForceCompactionLastLevel = true;
-        //                 new ForceCompactionForTheLastLevelRunnable(cfs);
-        //         }
-
-        // };
         return new ForceCompactionForTheLastLevelRunnable();
     }
 
     private static class ForceCompactionForTheLastLevelRunnable implements Runnable {
 
-
-        // private final List<SSTableReader> candidates;
-        // private final LifecycleTransaction txn;
-        // private final ColumnFamilyStore cfs;
-        // public ForceCompactionForTheLastLevelRunnable(ColumnFamilyStore cfs) {
-        //     // this.candidates = candidates;
-        //     // this.txn = txn;
-        //     this.cfs = cfs;
-        // }
 
         private static class ForceCompactionCandidates {
             List<SSTableReader> selectedSSTables;
