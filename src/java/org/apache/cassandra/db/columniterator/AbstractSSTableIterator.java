@@ -99,13 +99,13 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                     // Not indexed (or is reading static), set to the beginning of the partition and read partition level deletion there
                     if (file == null) {
                         file = sstable.getFileDataInput(indexEntry.position);
-                        ECNetutils.printStackTace(String.format("rymDebug: The file of sstable {} (hash: {}) is null, the position is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position));
+                        ECNetutils.printStackTace(String.format("rymDebug: The file of sstable %s (hash: %s) is null, the position is %s.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position));
                         // logger.debug("rymDebug: The file of sstable {} (hash: {}) is null, the position is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position);
                     }
                         
                     else{
                         file.seek(indexEntry.position);
-                        logger.debug("rymDebug: The position of sstable {} (hash: {}) is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position);
+                         ECNetutils.printStackTace(String.format("rymDebug: The position of sstable %s (hash: %s) is %s.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position));
                     }
 
 
