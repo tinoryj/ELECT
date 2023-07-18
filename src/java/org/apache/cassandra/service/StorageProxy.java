@@ -1501,12 +1501,15 @@ public class StorageProxy implements StorageProxyMBean {
         // plan.contacts().endpointList()+RESET);
 
         // List<InetAddressAndPort> replicas = plan.contacts().endpointList();
-        
+
         // List<InetAddressAndPort> naturalEndpoints = StorageService.instance
-        //         .getNaturalEndpointsForCassandraEC(mutation.getKeyspaceName(), mutation.key().getKey());
+        // .getNaturalEndpointsForCassandraEC(mutation.getKeyspaceName(),
+        // mutation.key().getKey());
         // List<InetAddressAndPort> address = StorageService.instance
-        //         .getReplicaNodesWithPortFromTokenForDegradeRead(mutation.getKeyspaceName(), mutation.key().getToken());
-        // ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(plan, address, mutation.key().getToken());
+        // .getReplicaNodesWithPortFromTokenForDegradeRead(mutation.getKeyspaceName(),
+        // mutation.key().getToken());
+        // ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(plan, address,
+        // mutation.key().getToken());
 
         for (Replica destination : plan.contacts()) {
             // logger.debug(YELLOW+"rymDebug: get replica destinations: {}",
@@ -2135,9 +2138,8 @@ public class StorageProxy implements StorageProxyMBean {
         // set of replicas we sent messages to, speculatively send an additional
         // messages to an un-contacted replica
         // for (int i = 0; i < cmdCount; i++) {
-        //     reads[i].maybeTryAdditionalReplicas();
+        // reads[i].maybeTryAdditionalReplicas();
         // }
-
         // wait for enough responses to meet the consistency level. If there's a digest
         // mismatch, begin the read
         // repair process by sending full data reads to all replicas we received

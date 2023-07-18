@@ -761,9 +761,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     }
                 }
 
-                if(sstable.getColumnFamilyName().contains("usertable") && 
-                    sstable.isReplicationTransferredToErasureCoding() && 
-                    ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
+                if (sstable.getColumnFamilyName().contains("usertable") &&
+                        sstable.isReplicationTransferredToErasureCoding() &&
+                        ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
                 }
 
@@ -975,9 +975,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 }
             }
 
-            if(sstable.getColumnFamilyName().contains("usertable") && 
-               sstable.isReplicationTransferredToErasureCoding() && 
-               ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
+            if (sstable.getColumnFamilyName().contains("usertable") &&
+                    sstable.isReplicationTransferredToErasureCoding() &&
+                    ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                 sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
 
             }
