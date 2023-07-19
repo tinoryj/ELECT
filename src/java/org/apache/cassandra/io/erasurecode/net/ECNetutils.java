@@ -412,12 +412,12 @@ public final class ECNetutils {
 
     public static void main(String[] args) {
         
-        try {
-            test();
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        // try {
+        //     test();
+        // } catch (Exception e) {
+        //     // TODO Auto-generated catch block
+        //     e.printStackTrace();
+        // }
 
 
         // try {
@@ -441,16 +441,21 @@ public final class ECNetutils {
         // System.out.println(a&&b);
 
 
-        try {
-            String file = "/home/rym/test1";
-            FileOutputStream fos = new FileOutputStream(file,true ) ; 
-            String str = "Data.db\n"; 
-            fos.write(str.getBytes()) ;
-            fos.close (); 
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }  
+        // try {
+        //     String file = "/home/rym/test1";
+        //     FileOutputStream fos = new FileOutputStream(file,true ) ; 
+        //     String str = "Data.db\n"; 
+        //     fos.write(str.getBytes()) ;
+        //     fos.close (); 
+        // } catch (IOException e) {
+        //     // TODO Auto-generated catch block
+        //     e.printStackTrace();
+        // }  
 
+
+        int p1 = 0x01;
+        int p2 = 0x02;
+        int flags = 52;
+        logger.debug("rymDebug: p1&p1 is ({}), p2 & p2 is ({}), p1 & p2 is ({}), p1 & flags is ({}), p2 & flags is ({})", p1 & p1, p2 & p2, p1 & p2, p1 & flags, p2 & flags);
     }
 }

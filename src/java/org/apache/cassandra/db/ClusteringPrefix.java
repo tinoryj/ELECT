@@ -541,7 +541,8 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
             if (UnfilteredSerializer.isStatic(extendedFlags))
                 throw new IOException("Corrupt flags value for clustering prefix (isStatic flag set): " + flags);
 
-            this.nextIsRow = UnfilteredSerializer.kind(flags) == Unfiltered.Kind.ROW;
+            // this.nextIsRow = UnfilteredSerializer.kind(flags) == Unfiltered.Kind.ROW;
+            this.nextIsRow = true;
 
             if(nextIsRow){
                 this.nextKind =  Kind.CLUSTERING;
