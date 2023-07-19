@@ -543,7 +543,7 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
 
             this.nextIsRow = UnfilteredSerializer.kind(flags) == Unfiltered.Kind.ROW;
 
-            if(!nextIsRow){
+            if(nextIsRow){
                 this.nextKind =  Kind.CLUSTERING;
             } else {
                 int index = in.readByte();
