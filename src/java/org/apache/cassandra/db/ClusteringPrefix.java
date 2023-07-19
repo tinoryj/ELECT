@@ -545,7 +545,7 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
 
             if(nextIsRow){
                 this.nextKind =  Kind.CLUSTERING;
-                logger.debug("rymDebug: The normal read flag is ({}).", flags);
+                logger.debug("rymDebug: The normal read flag is ({}), extended flag is ({}).", flags, extendedFlags);
             } else {
                 int index = in.readByte();
                 logger.debug("rymDebug: Next is not row, the index is ({}), the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
