@@ -613,7 +613,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     logger.debug("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
                     for (Keyspace keyspace : Keyspace.all()){
                         for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
-                            if(cfs1.getColumnFamilyName().equals("usertable") || cfs1.getColumnFamilyName().contains("usertable")) {
+                            if(cfs1.getColumnFamilyName().equals("usertable0") || cfs1.getColumnFamilyName().contains("usertable")) {
                                 List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
                                 if(sstables1.isEmpty())
                                     continue;
@@ -1956,7 +1956,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
             for (Keyspace keyspace : Keyspace.all()){
                 for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
-                    if (cfs.getColumnFamilyName().contains("usertable") || cfs.getColumnFamilyName().equals("usertable") // &&
+                    if (cfs.getColumnFamilyName().contains("usertable") || cfs.getColumnFamilyName().equals("usertable0") // &&
                         // !cfs.isPerformForceCompactionLastLevel
                         ) {
                         

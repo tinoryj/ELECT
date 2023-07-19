@@ -264,7 +264,7 @@ public class QueryProcessor implements QueryHandler
         if(CreateTableStatement.class.isInstance(statement)) {
             CreateTableStatement tableStatement = (CreateTableStatement) statement;
             String ks = tableStatement.keyspace();
-            String tn = tableStatement.tableName;
+            String tn = tableStatement.tableName.substring(0, tableStatement.tableName.length() - 1);
             if(ks.equals("ycsb")) {
                 // logger.debug("rymDebug: this CreateTableStatement is belong to ks ycsb");
                 if(options.getConsistency() == ConsistencyLevel.NODE_LOCAL) {

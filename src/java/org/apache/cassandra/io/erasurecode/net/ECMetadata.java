@@ -157,7 +157,7 @@ public class ECMetadata implements Serializable {
         
         this.ecMetadataContent.stripeId = String.valueOf(connectedSSTHash.hashCode());
         this.ecMetadataContent.keyspace = messages[0].ecMessageContent.keyspace;
-        this.ecMetadataContent.cfName = messages[0].ecMessageContent.cfName;
+        this.ecMetadataContent.cfName = messages[0].ecMessageContent.cfName.substring(0,  messages[0].ecMessageContent.cfName.length() - 1);
 
         // generate parity code hash
         this.ecMetadataContent.parityHashList = parityHashes;

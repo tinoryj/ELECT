@@ -211,7 +211,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         // [CASSANDRAEC]
         // Do not release the reference of transferred readers until parity update
         // Set<SSTableReader> filteredOriginals = originals.stream()
-        //                                                 .filter(sstable -> (!sstable.isReplicationTransferredToErasureCoding() || sstable.getColumnFamilyName().equals("usertable")))
+        //                                                 .filter(sstable -> (!sstable.isReplicationTransferredToErasureCoding() || sstable.getColumnFamilyName().equals("usertable0")))
         //                                                 .collect(Collectors.toSet());
 
         maybeFail(prepareForObsoletion(filterIn(logged.obsolete, originals), log, obsoletions = new ArrayList<>(), null));

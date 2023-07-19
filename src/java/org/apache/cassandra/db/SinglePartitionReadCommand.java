@@ -725,7 +725,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 Tracing.trace("Collecting data from sstables and tracking repaired status");
             logger.debug("[Tinoryj] Collecting data from sstables, target sstable number = {}", view.sstables.size());
             for (SSTableReader sstable : view.sstables) {
-                if (!sstable.getColumnFamilyName().equals("usertable")
+                if (!sstable.getColumnFamilyName().equals("usertable0")
                         && sstable.isReplicationTransferredToErasureCoding()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                         logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
@@ -761,7 +761,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     }
                 }
 
-                if(sstable.getColumnFamilyName().contains("usertable") && 
+                if(sstable.getColumnFamilyName().contains("usertable") && !sstable.getColumnFamilyName().equals("usertable0") && 
                     sstable.isReplicationTransferredToErasureCoding() && 
                     ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
@@ -939,7 +939,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         // read sorted sstables
         logger.debug("[Tinoryj] Collecting data from sstables, target sstable number = {}", view.sstables.size());
         for (SSTableReader sstable : view.sstables) {
-            if (!sstable.getColumnFamilyName().equals("usertable")
+            if (!sstable.getColumnFamilyName().equals("usertable0")
                     && sstable.isReplicationTransferredToErasureCoding()) {
                 if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                     logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",

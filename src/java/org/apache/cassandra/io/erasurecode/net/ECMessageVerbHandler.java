@@ -176,7 +176,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                             int zeroChunksNum = DatabaseDescriptor.getEcDataNodes() - count;
                             for(int j = 0; j < zeroChunksNum; j++) {
                                 byte[] newSSTContent = new byte[codeLength];
-                                ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable",
+                                ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable0",
                                                                                 new ArrayList<InetAddressAndPort>()));
                                 tmpArray[count] = zeroChunk;
                                 count++;

@@ -122,7 +122,7 @@ public class Keyspace {
 
     public final KeyspaceMetrics metric;
     public final InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
-    public final String primaryColumnNameStr = "usertable";
+    public final String primaryColumnNameStr = "usertable0";
     public final String secondaryColumn1NameStr = "usertable1";
     public final String secondaryColumn2NameStr = "usertable2";
 

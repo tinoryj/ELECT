@@ -173,7 +173,7 @@ public abstract class AbstractReadExecutor {
             // case 0:
             // // In case received request is not for primary LSM tree
             // readCommand.updateTableMetadata(
-            // Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+            // Keyspace.open("ycsb").getColumnFamilyStore("usertable0")
             // .metadata());
             // ColumnFilter newColumnFilter = ColumnFilter
             // .allRegularColumnsBuilder(readCommand.metadata(), false)
@@ -228,14 +228,14 @@ public abstract class AbstractReadExecutor {
                     case 0:
                         // In case received request is not for primary LSM tree
                         readCommand.updateTableMetadata(
-                                Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+                                Keyspace.open("ycsb").getColumnFamilyStore("usertable0")
                                         .metadata());
                         ColumnFilter newColumnFilter = ColumnFilter
                                 .allRegularColumnsBuilder(readCommand.metadata(), false)
                                 .build();
                         readCommand.updateColumnFilter(newColumnFilter);
                         this.command = readCommand;
-                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable");
+                        this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
                         if (readCommand.isDigestQuery() == true) {
                             logger.error("[Tinoryj-ERROR] Should not perform digest query on the primary lsm-tree");
                         }
@@ -320,14 +320,14 @@ public abstract class AbstractReadExecutor {
                 case 0:
                     // In case received request is not for primary LSM tree
                     readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable0")
                                     .metadata());
                     ColumnFilter newColumnFilter = ColumnFilter
                             .allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter);
                     this.command = readCommand;
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable");
+                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
                     if (readCommand.isDigestQuery() == true) {
                         logger.error("[Tinoryj-ERROR] Local Should not perform digest query on the primary lsm-tree");
                     }
@@ -403,14 +403,14 @@ public abstract class AbstractReadExecutor {
                 case 0:
                     // In case received request is not for primary LSM tree
                     readCommand.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable")
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable0")
                                     .metadata());
                     ColumnFilter newColumnFilter = ColumnFilter
                             .allRegularColumnsBuilder(readCommand.metadata(), false)
                             .build();
                     readCommand.updateColumnFilter(newColumnFilter);
                     this.command = readCommand;
-                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable");
+                    this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
                     if (readCommand.isDigestQuery() == true) {
                         logger.error("[Tinoryj-ERROR] Local Should not perform digest query on the primary lsm-tree");
                     }

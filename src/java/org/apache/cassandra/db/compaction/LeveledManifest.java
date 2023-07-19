@@ -313,14 +313,6 @@ public class LeveledManifest {
             return l0Compaction;
         }
 
-        // [CASSANDRAEC]
-        // TODO: Wrong place for remove sstables of transient sstables.
-        // for(SSTableReader sstable : candidates) {
-        // if(!sstable.getColumnFamilyName().equals("usertable") &&
-        // sstable.isReplicationTransferredToErasureCoding()) {
-        // candidates.remove(sstable);
-        // }
-        // }
 
         return new CompactionCandidate(candidates, getNextLevel(candidates), maxSSTableSizeInBytes);
     }
@@ -497,7 +489,7 @@ public class LeveledManifest {
             if (pair.getValue().intersects(promotedBounds)) {
 
                 // if((pair.getKey().isReplicationTransferredToErasureCoding() &&
-                //     pair.getKey().getColumnFamilyName().equals("usertable"))){
+                //     pair.getKey().getColumnFamilyName().equals("usertable0"))){
                 //     logger.debug("rymDebug: we cannot select sstable {}", pair.getKey().descriptor);
                 // } else {
                 //     overlapped.add(pair.getKey());
@@ -506,7 +498,7 @@ public class LeveledManifest {
                 //     }
                 // }
 
-                if(pair.getKey().getColumnFamilyName().equals("usertable") && pair.getKey().isReplicationTransferredToErasureCoding()) {
+                if(pair.getKey().getColumnFamilyName().equals("usertable0") && pair.getKey().isReplicationTransferredToErasureCoding()) {
                     if(!isSelectIssuedSSTableAsCompactionCandidates(pair.getKey()))
                         continue;
                 }
@@ -755,9 +747,9 @@ public class LeveledManifest {
         selectedSSTablesForStripeUpdate = 0;
         while (levelIterator.hasNext()) {
             SSTableReader sstable = levelIterator.next();
-            // if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding())
+            // if(cfs.getColumnFamilyName().equals("usertable0") && sstable.isReplicationTransferredToErasureCoding())
             //     continue;
-            if(cfs.getColumnFamilyName().equals("usertable") && sstable.isReplicationTransferredToErasureCoding()) {
+            if(cfs.getColumnFamilyName().equals("usertable0") && sstable.isReplicationTransferredToErasureCoding()) {
                 if(!isSelectIssuedSSTableAsCompactionCandidates(sstable))
                     continue;
             }

@@ -345,7 +345,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
             }
 
             for (SSTableReader sstable : view.sstables) {
-                if (!sstable.getColumnFamilyName().equals("usertable")
+                if (!sstable.getColumnFamilyName().equals("usertable0")
                         && sstable.isReplicationTransferredToErasureCoding()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                         logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
@@ -380,7 +380,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         }
                     }
                 }
-                if(sstable.getColumnFamilyName().contains("usertable") && 
+                if(sstable.getColumnFamilyName().contains("usertable") && !sstable.getColumnFamilyName().equals("usertable0") && 
                    sstable.isReplicationTransferredToErasureCoding() && 
                    ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());

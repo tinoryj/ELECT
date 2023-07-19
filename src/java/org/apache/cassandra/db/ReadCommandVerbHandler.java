@@ -89,8 +89,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                 case 0:
                     command.updateTableMetadata(
-                            Keyspace.open("ycsb").getColumnFamilyStore("usertable")
-                                    .metadata());
+                            Keyspace.open("ycsb").getColumnFamilyStore("usertable0").metadata());
                     ColumnFilter newColumnFilter = ColumnFilter
                             .allRegularColumnsBuilder(command.metadata(), false)
                             .build();

@@ -537,7 +537,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     CompactionIterator ci = new CompactionIterator(compactionType, scanners.scanners, controller,
                             nowInSec, taskId)) {
 
-                if (cfs.getColumnFamilyName().contains("usertable")) {
+                if (cfs.getColumnFamilyName().contains("usertable") && !cfs.getColumnFamilyName().equals("usertable0")) {
                     logger.debug("[Compaction for CassandraEC secondary nodes]: actually compact sstable count is {}, scanners count is {}, task id is {}",
                             actuallyCompact.size(), scanners.scanners.size(), taskId);
                 }
@@ -759,7 +759,7 @@ public class CompactionTask extends AbstractCompactionTask {
             // store old data before compaction
             int transferredSSTablesNum = 0;
             List<SSTableContentWithHashID> oldTransferredSSTables = new ArrayList<>();
-            if(cfs.getColumnFamilyName().equals("usertable")) {
+            if(cfs.getColumnFamilyName().equals("usertable0")) {
                 for(SSTableReader sstable : actuallyCompact) {
                     if(sstable.isReplicationTransferredToErasureCoding()) {
                         oldTransferredSSTables.add(new SSTableContentWithHashID(sstable.getSSTableHashID(), sstable.getSSTContent()));
@@ -785,10 +785,10 @@ public class CompactionTask extends AbstractCompactionTask {
                     CompactionIterator ci = new CompactionIterator(compactionType, scanners.scanners, controller,
                             nowInSec, taskId)) {
 
-                if (cfs.getColumnFamilyName().contains("usertable")) {
-                    logger.debug("rymDebug: actually compact sstable count is {}, scanners count is {}, task id is {}",
-                            actuallyCompact.size(), scanners.scanners.size(), taskId);
-                }
+                // if (cfs.getColumnFamilyName().contains("usertable")) {
+                //     logger.debug("rymDebug: actually compact sstable count is {}, scanners count is {}, task id is {}",
+                //             actuallyCompact.size(), scanners.scanners.size(), taskId);
+                // }
                 long lastCheckObsoletion = start;
                 inputSizeBytes = scanners.getTotalCompressedSize();
                 double compressionRatio = scanners.getCompressionRatio();
@@ -863,7 +863,7 @@ public class CompactionTask extends AbstractCompactionTask {
             
             // [CASSADNRAEC]
             // Compaction is done: match the old/new data, and send them to parity node
-            if(cfs.getColumnFamilyName().equals("usertable") && transferredSSTablesNum > 0) {
+            if(cfs.getColumnFamilyName().equals("usertable0") && transferredSSTablesNum > 0) {
                 // send parity update signal
                 // send old data 
                 // List<InetAddressAndPort> targets = new ArrayList<>();
