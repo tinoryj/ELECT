@@ -452,7 +452,8 @@ public final class ECNetutils {
         //     e.printStackTrace();
         // }  
 
-
+        boolean assertTest = false;
+        assert assertTest;
         int p1 = 0x01;
         int p2 = 0x02;
         int flags = 52;
