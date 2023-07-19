@@ -92,8 +92,8 @@ public class SizeEstimatesRecorder implements SchemaChangeListener, Runnable
             boolean rangesAreEqual = primaryRanges.equals(localPrimaryRanges);
             for (ColumnFamilyStore table : keyspace.getColumnFamilyStores())
             {
-                if(table.getColumnFamilyName().contains("usertable") && !table.getColumnFamilyName().equals("usertable0"))
-                    continue;
+                // if(table.getColumnFamilyName().contains("usertable") && !table.getColumnFamilyName().equals("usertable0"))
+                //     continue;
 
                 long start = nanoTime();
 

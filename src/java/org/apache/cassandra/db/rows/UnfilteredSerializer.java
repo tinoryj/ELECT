@@ -279,7 +279,7 @@ public class UnfilteredSerializer
     private void serialize(RangeTombstoneMarker marker, SerializationHelper helper, DataOutputPlus out, long previousUnfilteredSize, int version)
     throws IOException
     {
-        ECNetutils.printStackTace(String.format("rymDebug: Mark this row as RangeTombStoneMarker", version));
+        //ECNetutils.printStackTace(String.format("rymDebug: Mark this row as RangeTombStoneMarker", version));
         SerializationHeader header = helper.header;
         out.writeByte((byte)IS_MARKER);
         ClusteringBoundOrBoundary.serializer.serialize(marker.clustering(), out, version, header.clusteringTypes());

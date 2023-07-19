@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.filter.ColumnFilter;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.TableMetadata;
@@ -104,6 +105,7 @@ public class UnfilteredRowIteratorSerializer
     private void serialize(UnfilteredRowIterator iterator, SerializationHeader header, ColumnFilter selection, DataOutputPlus out, int version, int rowEstimate) throws IOException
     {
         assert !header.isForSSTable();
+        String tableName = iterator.metadata().name;
 
         ByteBufferUtil.writeWithVIntLength(iterator.partitionKey().getKey(), out);
 
@@ -142,8 +144,15 @@ public class UnfilteredRowIteratorSerializer
         if (rowEstimate >= 0)
             out.writeUnsignedVInt(rowEstimate);
 
-        while (iterator.hasNext())
+        while (iterator.hasNext()){
+            Unfiltered row = iterator.next();
+            if(row.kind() == Unfiltered.Kind.RANGE_TOMBSTONE_MARKER && tableName.contains("usertable")) {
+               ECNetutils.printStackTace(String.format("rymDebug: Mark this row as RangeTombStoneMarker", version));
+
+            }
             UnfilteredSerializer.serializer.serialize(iterator.next(), helper, out, version);
+
+        }
         UnfilteredSerializer.serializer.writeEndOfPartition(out);
     }
 
