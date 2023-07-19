@@ -412,7 +412,12 @@ public final class ECNetutils {
 
     public static void main(String[] args) {
         
-        // test();
+        try {
+            test();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
 
         // try {

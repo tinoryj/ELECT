@@ -35,6 +35,8 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A clustering prefix is the unit of what a {@link ClusteringComparator} can compare.
@@ -525,6 +527,8 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
         private byte[][] nextValues;
         private final ValueAccessor<byte[]> accessor = ByteArrayAccessor.instance;
 
+        private static final Logger logger = LoggerFactory.getLogger(Deserializer.class);
+
         public Deserializer(ClusteringComparator comparator, DataInputPlus in, SerializationHeader header)
         {
             this.comparator = comparator;
@@ -539,9 +543,11 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
 
             this.nextIsRow = UnfilteredSerializer.kind(flags) == Unfiltered.Kind.ROW;
 
-            int index = in.readByte();
+            byte index = in.readByte();
             if(index > 8) {
                 ECNetutils.printStackTace(String.format("rymERROR: The index (%s) is out of range, the flags is (%s), extendedFlags is (%s)", index, flags, extendedFlags));
+            } else {
+                logger.debug("rymDebug: The index ({}) is out of range, the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
             }
 
             this.nextKind = nextIsRow ? Kind.CLUSTERING : ClusteringPrefix.Kind.values()[index];
