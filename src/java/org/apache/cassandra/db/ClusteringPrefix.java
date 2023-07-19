@@ -543,14 +543,19 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
 
             this.nextIsRow = UnfilteredSerializer.kind(flags) == Unfiltered.Kind.ROW;
 
-            byte index = in.readByte();
-            if(index > 8) {
-                ECNetutils.printStackTace(String.format("rymERROR: The index (%s) is out of range, the flags is (%s), extendedFlags is (%s)", index, flags, extendedFlags));
+            if(!nextIsRow){
+                this.nextKind =  Kind.CLUSTERING;
             } else {
-                logger.debug("rymDebug: The index ({}) is out of range, the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
+                byte index = in.readByte();
+                if(index > 8) {
+                    ECNetutils.printStackTace(String.format("rymERROR: The index (%s) is out of range, the flags is (%s), extendedFlags is (%s)", index, flags, extendedFlags));
+                } else {
+                    logger.debug("rymDebug: The index ({}) is out of range, the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
+                }
+                this.nextKind = ClusteringPrefix.Kind.values()[index];
             }
 
-            this.nextKind = nextIsRow ? Kind.CLUSTERING : ClusteringPrefix.Kind.values()[index];
+            // this.nextKind = nextIsRow ? Kind.CLUSTERING : ClusteringPrefix.Kind.values()[index];
 
             this.nextSize = nextIsRow ? comparator.size() : in.readUnsignedShort();
             this.deserializedSize = 0;
