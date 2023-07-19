@@ -162,19 +162,19 @@ public class BigTableReader extends SSTableReader
         }
 
         // next, the key cache (only make sense for valid row key)
-        if ((op == Operator.EQ || op == Operator.GE) && (key instanceof DecoratedKey))
-        {
-            DecoratedKey decoratedKey = (DecoratedKey) key;
-            RowIndexEntry cachedPosition = getCachedPosition(decoratedKey, updateCacheAndStats);
-            if (cachedPosition != null)
-            {
-                // we do not need to track "true positive" for Bloom Filter here because it has been already tracked
-                // inside getCachedPosition method
-                listener.onSSTableSelected(this, cachedPosition, SelectionReason.KEY_CACHE_HIT);
-                Tracing.trace("Key cache hit for sstable {}", descriptor.id);
-                return cachedPosition;
-            }
-        }
+        // if ((op == Operator.EQ || op == Operator.GE) && (key instanceof DecoratedKey))
+        // {
+        //     DecoratedKey decoratedKey = (DecoratedKey) key;
+        //     RowIndexEntry cachedPosition = getCachedPosition(decoratedKey, updateCacheAndStats);
+        //     if (cachedPosition != null)
+        //     {
+        //         // we do not need to track "true positive" for Bloom Filter here because it has been already tracked
+        //         // inside getCachedPosition method
+        //         listener.onSSTableSelected(this, cachedPosition, SelectionReason.KEY_CACHE_HIT);
+        //         Tracing.trace("Key cache hit for sstable {}", descriptor.id);
+        //         return cachedPosition;
+        //     }
+        // }
 
         // check the smallest and greatest keys in the sstable to see if it can't be present
         boolean skip = false;
