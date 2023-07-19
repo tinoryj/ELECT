@@ -546,7 +546,7 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
             if(!nextIsRow){
                 this.nextKind =  Kind.CLUSTERING;
             } else {
-                byte index = in.readByte();
+                int index = in.readByte();
                 if(index > 8) {
                     ECNetutils.printStackTace(String.format("rymERROR: The index (%s) is out of range, the flags is (%s), extendedFlags is (%s)", index, flags, extendedFlags));
                 } else {
