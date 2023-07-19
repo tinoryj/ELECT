@@ -546,21 +546,24 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
 
             if(nextIsRow){
                 this.nextKind =  Kind.CLUSTERING;
-                logger.debug("rymDebug: The normal read flag is ({}), extended flag is ({}).", flags, extendedFlags);
+                logger.debug("rymDebug: The normal read flag is ({}), extended flag is ({}), comparator size is ({}).", flags, extendedFlags, comparator.size());
             } else {
                 int index = in.readByte();
-                logger.debug("rymDebug: Next is not row, the index is ({}), the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
+                logger.debug("rymDebug: Next is not row, the index is ({}), the flags is ({}), extendedFlags is ({}), comparator size is ({})", index, flags, extendedFlags, comparator.size());
                 // if(index > 8) {
                 //     ECNetutils.printStackTace(String.format("rymERROR: The index (%s) is out of range, the flags is (%s), extendedFlags is (%s)", index, flags, extendedFlags));
                 // } else {
                 //     logger.debug("rymDebug: The index ({}) is not out of range, the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
                 // }
-                this.nextKind = ClusteringPrefix.Kind.values()[index];
+
+                // this.nextKind = ClusteringPrefix.Kind.values()[index];
+                this.nextKind =  Kind.CLUSTERING;
             }
 
             // this.nextKind = nextIsRow ? Kind.CLUSTERING : ClusteringPrefix.Kind.values()[index];
 
-            this.nextSize = nextIsRow ? comparator.size() : in.readUnsignedShort();
+            // this.nextSize = nextIsRow ? comparator.size() : in.readUnsignedShort();
+            this.nextSize = comparator.size();
             this.deserializedSize = 0;
 
             // The point of the deserializer is that some of the clustering prefix won't actually be used (because they are not
