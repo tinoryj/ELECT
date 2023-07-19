@@ -150,7 +150,7 @@ public class UnfilteredRowIteratorSerializer
                ECNetutils.printStackTace(String.format("rymDebug: Mark this row as RangeTombStoneMarker", version));
 
             }
-            UnfilteredSerializer.serializer.serialize(iterator.next(), helper, out, version);
+            UnfilteredSerializer.serializer.serialize(row, helper, out, version);
 
         }
         UnfilteredSerializer.serializer.writeEndOfPartition(out);
