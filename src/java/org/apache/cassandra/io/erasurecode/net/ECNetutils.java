@@ -456,7 +456,8 @@ public final class ECNetutils {
         assert assertTest;
         int p1 = 0x01;
         int p2 = 0x02;
-        int flags = 52;
+        int flags = 54;
         logger.debug("rymDebug: p1&p1 is ({}), p2 & p2 is ({}), p1 & p2 is ({}), p1 & flags is ({}), p2 & flags is ({})", p1 & p1, p2 & p2, p1 & p2, p1 & flags, p2 & flags);
+        //110110
     }
 }
