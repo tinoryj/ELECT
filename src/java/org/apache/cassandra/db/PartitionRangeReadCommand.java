@@ -345,6 +345,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
             }
 
             for (SSTableReader sstable : view.sstables) {
+                boolean isCurrentSSTableRepaired = false;
                 if (!sstable.getColumnFamilyName().equals("usertable0")
                         && sstable.isReplicationTransferredToErasureCoding()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
@@ -353,6 +354,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                                 sstable.getSSTableHashID(), sstable.getFilename());
                         continue;
                     } else {
+                        isCurrentSSTableRepaired = true;
                         logger.debug("[Tinoryj] Start online recovery for metadata sstable: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
                         if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
@@ -380,10 +382,17 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         }
                     }
                 }
-                if(sstable.getColumnFamilyName().contains("usertable") && !sstable.getColumnFamilyName().equals("usertable0") && 
-                   sstable.isReplicationTransferredToErasureCoding() && 
-                   ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
+                if (sstable.getColumnFamilyName().contains("usertable")
+                        && !sstable.getColumnFamilyName().equals("usertable0") &&
+                        sstable.isReplicationTransferredToErasureCoding() &&
+                        ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
+                }
+                if (isCurrentSSTableRepaired) {
+                    logger.debug(
+                            "[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
+                            sstable.getSSTableHashID(),
+                            sstable.getFilename());
                 }
                 @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
                                               // method
