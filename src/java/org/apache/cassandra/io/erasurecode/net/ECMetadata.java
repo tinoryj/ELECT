@@ -110,6 +110,9 @@ public class ECMetadata implements Serializable {
         public int targetIndex;
         public String oldSSTHashForUpdate;
 
+        // Properties for recovery
+        public int zeroChunksNum;
+
         public ECMetadataContent(String stripeId, String ks, String cf, List<String> sstHashIdList, List<String> parityHashList,
         List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> secondaryNodes, List<InetAddressAndPort> parityNodes,
         Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap, String oldSSTHashForUpdate, boolean isParityUpdate, int targetIndex) {
