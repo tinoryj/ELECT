@@ -550,7 +550,7 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
                 if(index > 8) {
                     ECNetutils.printStackTace(String.format("rymERROR: The index (%s) is out of range, the flags is (%s), extendedFlags is (%s)", index, flags, extendedFlags));
                 } else {
-                    logger.debug("rymDebug: The index ({}) is out of range, the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
+                    logger.debug("rymDebug: The index ({}) is not out of range, the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
                 }
                 this.nextKind = ClusteringPrefix.Kind.values()[index];
             }
