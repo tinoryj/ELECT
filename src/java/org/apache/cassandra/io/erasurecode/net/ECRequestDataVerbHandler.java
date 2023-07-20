@@ -40,7 +40,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
 
     private static final Logger logger = LoggerFactory.getLogger(ECRequestDataVerbHandler.class);
     @Override
-    public void doVerb(Message<ECRequestData> message) {
+    public synchronized void doVerb(Message<ECRequestData> message) {
         
         String sstHash = message.payload.sstHash;
         int index = message.payload.index;

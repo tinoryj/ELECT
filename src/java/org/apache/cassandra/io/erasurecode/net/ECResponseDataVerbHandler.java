@@ -29,7 +29,7 @@ public class ECResponseDataVerbHandler implements IVerbHandler<ECResponseData>{
     public static final ECResponseDataVerbHandler instance = new ECResponseDataVerbHandler();
 
     @Override
-    public void doVerb(Message<ECResponseData> message) throws IOException {
+    public synchronized void doVerb(Message<ECResponseData> message) throws IOException {
         String sstHash = message.payload.sstHash;
         byte[] rawData = message.payload.rawData;
         int index = message.payload.index;
