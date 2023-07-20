@@ -392,6 +392,8 @@ public final class ECNetutils {
     }
 
     public synchronized static boolean getIsRecovered(String sstHash) {
+        if(sstHash == null)
+            return false;
         return StorageService.instance.recoveredSSTables.contains(sstHash);
     }
 
