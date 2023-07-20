@@ -115,7 +115,7 @@ public class ECMetadata implements Serializable {
 
         public ECMetadataContent(String stripeId, String ks, String cf, List<String> sstHashIdList, List<String> parityHashList,
         List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> secondaryNodes, List<InetAddressAndPort> parityNodes,
-        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap, String oldSSTHashForUpdate, boolean isParityUpdate, int targetIndex) {
+        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap, String oldSSTHashForUpdate, boolean isParityUpdate, int targetIndex, int zeroChunkNum) {
             this.stripeId = stripeId;
             this.keyspace = ks;
             this.cfName = cf;
@@ -128,6 +128,7 @@ public class ECMetadata implements Serializable {
             this.oldSSTHashForUpdate = oldSSTHashForUpdate;
             this.isParityUpdate = isParityUpdate;
             this.targetIndex = targetIndex;
+            this.zeroChunksNum = zeroChunkNum;
         }
     }
 

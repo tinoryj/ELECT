@@ -139,7 +139,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                                                                                          sstHashIdToReplicaMap,
                                                                                                          entry.getKey(),
                                                                                                          true,
-                                                                                                         ecMetadata.ecMetadataContent.targetIndex)),
+                                                                                                         ecMetadata.ecMetadataContent.targetIndex,
+                                                                                                         ecMetadata.ecMetadataContent.zeroChunksNum)),
                                                                     secondaryCfName);
 
                     } else {

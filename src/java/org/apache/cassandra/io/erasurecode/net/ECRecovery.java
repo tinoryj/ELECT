@@ -89,7 +89,7 @@ public class ECRecovery {
         }
 
         logger.debug("rymDebug: [Debug recovery] wait chunks for sstable ({})", sstHash);
-        int[] decodeIndexes = waitUntilRequestCodesReady(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash), sstHash, k);
+        int[] decodeIndexes = waitUntilRequestCodesReady(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash), sstHash, k, ecMetadataContent.zeroChunksNum, codeLength);
 
         int eraseIndex = ecMetadataContent.sstHashIdList.indexOf(sstHash);
         if(eraseIndex == -1)
@@ -223,11 +223,11 @@ public class ECRecovery {
 
 
     // [WARNING!] Make sure to avoid dead loops
-    public static int[] waitUntilRequestCodesReady(ByteBuffer[] buffers, String oldSSTHash, int k) {
+    public static int[] waitUntilRequestCodesReady(ByteBuffer[] buffers, String oldSSTHash, int k, int zeroChunkNum, int codeLength) {
         int retryCount = 0;
         int[] decodeIndexes = new int[k];
         if(buffers != null) {
-            while (!checkCodesAreReady(buffers, k)) {
+            while (!checkCodesAreReady(buffers, k - zeroChunkNum)) {
                 try {
                     if(retryCount < 5) {
                         Thread.sleep(1000);
@@ -258,16 +258,26 @@ public class ECRecovery {
             }
         }
 
+        // padding zero
+        if(j < k) {
+            for(int i = zeroChunkNum; i < buffers.length && j < k; i++) {
+                byte[] zeroChunk = new byte[codeLength];
+                buffers[i].put(zeroChunk);
+                buffers[i].rewind();
+                decodeIndexes[j++] = i;
+            }
+        }
+
         return decodeIndexes;
     }
 
-    private static boolean checkCodesAreReady(ByteBuffer[] checkBuffers, int k) {
+    private static boolean checkCodesAreReady(ByteBuffer[] checkBuffers, int chunkNum) {
         int readyBlocks = 0;
         for(ByteBuffer buf : checkBuffers) {
             if(buf.position() != 0) {
                 readyBlocks++;
             }
-            if(readyBlocks >= k){
+            if(readyBlocks >= chunkNum){
                 return true;
             }
         }
