@@ -162,7 +162,7 @@ public class ECRecovery {
      * @param stripID
      * @param codeLength
      */
-    private static synchronized void retrieveErasureCodesForRecovery(ECMetadataContent ecMetadataContent, String oldSSTHash, int codeLength, int k, int m) {
+    private static void retrieveErasureCodesForRecovery(ECMetadataContent ecMetadataContent, String oldSSTHash, int codeLength, int k, int m) {
         logger.debug("rymDebug: [Debug recovery] Initialize erasure codes for recovery, code length is ({}), k is ({}), m is ({}).", codeLength, k, m);
         // Step 0: Initialize the data and parity blocks
         ByteBuffer[] erasureCodes = new ByteBuffer[k + m];
@@ -175,15 +175,17 @@ public class ECRecovery {
         // Step 1: Retrieve the data blocks.
         StorageService.instance.globalSSTHashToErasureCodesMap.put(oldSSTHash, erasureCodes);
         if(ecMetadataContent.sstHashIdToReplicaMap != null) {
-            int index = 0;
+            // int index = 0;
             for (Map.Entry<String, List<InetAddressAndPort>> entry : ecMetadataContent.sstHashIdToReplicaMap.entrySet()) {
 
                 if(entry.getKey().equals(oldSSTHash))
                     continue;
-
-                ECRequestData request = new ECRequestData(oldSSTHash, entry.getKey(),index);
+                int index = ecMetadataContent.sstHashIdList.indexOf(entry.getKey());
+                if(index == -1)
+                    throw new NullPointerException(String.format("rymERROR: we cannot get index for sstable (%s) in ecMetadata, sstHash list is ({})", oldSSTHash, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdList));
+                ECRequestData request = new ECRequestData(oldSSTHash, entry.getKey(), index);
                 request.requestData(entry.getValue().get(0));
-                index++;
+                // index++;
             }
         } else {
             throw new IllegalArgumentException(String.format("rymERROR: sstHashIDToReplicaMap is null!"));
@@ -221,7 +223,7 @@ public class ECRecovery {
 
 
     // [WARNING!] Make sure to avoid dead loops
-    public static synchronized int[] waitUntilRequestCodesReady(ByteBuffer[] buffers, String oldSSTHash, int k) {
+    public static int[] waitUntilRequestCodesReady(ByteBuffer[] buffers, String oldSSTHash, int k) {
         int retryCount = 0;
         int[] decodeIndexes = new int[k];
         if(buffers != null) {

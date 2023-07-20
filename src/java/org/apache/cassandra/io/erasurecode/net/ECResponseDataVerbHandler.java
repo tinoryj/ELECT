@@ -33,7 +33,7 @@ public class ECResponseDataVerbHandler implements IVerbHandler<ECResponseData>{
     private static final Logger logger = LoggerFactory.getLogger(ECResponseDataVerbHandler.class);
 
     @Override
-    public synchronized void doVerb(Message<ECResponseData> message) throws IOException {
+    public void doVerb(Message<ECResponseData> message) throws IOException {
         String sstHash = message.payload.sstHash;
         byte[] rawData = message.payload.rawData;
         int index = message.payload.index;
