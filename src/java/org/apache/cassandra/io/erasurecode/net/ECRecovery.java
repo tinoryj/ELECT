@@ -126,8 +126,8 @@ public class ECRecovery {
         SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
 
         // debug
-        logger.debug("rymDebug: sstHashList is ({}), parity hash list is ({}), stripe id is ({}), sstHash to replica map is ({}), sstable hash is ({}), descriptor is ({}), decode indexes are ({}), erase index is ({})", 
-                     ecMetadataContent.sstHashIdList, ecMetadataContent.parityHashList, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdToReplicaMap, sstable.getSSTableHashID(), sstable.descriptor, decodeIndexes, eraseIndex);
+        logger.debug("rymDebug: Recovery sstHashList is ({}), parity hash list is ({}), stripe id is ({}), sstHash to replica map is ({}), sstable hash is ({}), descriptor is ({}), decode indexes are ({}), erase index is ({}), zero chunks are ({})", 
+                     ecMetadataContent.sstHashIdList, ecMetadataContent.parityHashList, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdToReplicaMap, sstable.getSSTableHashID(), sstable.descriptor, decodeIndexes, eraseIndex, ecMetadataContent.zeroChunksNum);
 
 
         // Step 5: send the raw data to the peer secondary nodes
@@ -259,13 +259,11 @@ public class ECRecovery {
         }
 
         // padding zero
-        if(j < k) {
-            for(int i = zeroChunkNum; i < buffers.length && j < k; i++) {
-                byte[] zeroChunk = new byte[codeLength];
-                buffers[i].put(zeroChunk);
-                buffers[i].rewind();
-                decodeIndexes[j++] = i;
-            }
+        for(int i = zeroChunkNum; i < buffers.length && j < k; i++) {
+            byte[] zeroChunk = new byte[codeLength];
+            buffers[i].put(zeroChunk);
+            buffers[i].rewind();
+            decodeIndexes[j++] = i;
         }
 
         return decodeIndexes;
