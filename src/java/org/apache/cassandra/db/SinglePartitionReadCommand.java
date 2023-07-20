@@ -1013,6 +1013,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // some seek in general however (unless the partition is indexed and is in the
                 // key cache), so we first check if the sstable
                 // has any tombstone at all as a shortcut.
+
+                if(ECNetutils.getIsRecovered(sstable.getSSTableHashID()))
+                    continue;
+
                 if (!sstable.mayHaveTombstones())
                     continue; // no tombstone at all, we can skip that sstable
 
