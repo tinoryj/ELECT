@@ -994,8 +994,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
             // if we've already seen a partition tombstone with a timestamp greater
             // than the most recent update to this sstable, we're done, since the rest of
-            // the sstables
-            // will also be older
+            // the sstables will also be older
             if (result != null && sstable.getMaxTimestamp() < result.partitionLevelDeletion().markedForDeleteAt())
                 break;
 

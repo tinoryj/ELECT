@@ -99,15 +99,15 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                     // Not indexed (or is reading static), set to the beginning of the partition and read partition level deletion there
                     if (file == null) {
                         file = sstable.getFileDataInput(indexEntry.position);
-                        ECNetutils.printStackTace(String.format("rymDebug: The file of sstable %s (hash: %s) is null, the position is %s, is recovered sstable? (%s).", 
-                                                                sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position, ECNetutils.getIsRecovered(sstable.getSSTableHashID())));
+                        // ECNetutils.printStackTace(String.format("rymDebug: The file of sstable %s (hash: %s) is null, the position is %s, is recovered sstable? (%s).", 
+                        //                                         sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position, ECNetutils.getIsRecovered(sstable.getSSTableHashID())));
                         // logger.debug("rymDebug: The file of sstable {} (hash: {}) is null, the position is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position);
                     }
                         
                     else{
                         file.seek(indexEntry.position);
-                        ECNetutils.printStackTace(String.format("rymDebug: The position of sstable %s (hash: %s) is %s, is recovered sstable? (%s).", 
-                                                                sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position, ECNetutils.getIsRecovered(sstable.getSSTableHashID())));
+                        // ECNetutils.printStackTace(String.format("rymDebug: The position of sstable %s (hash: %s) is %s, is recovered sstable? (%s).", 
+                        //                                         sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position, ECNetutils.getIsRecovered(sstable.getSSTableHashID())));
                     }
 
 
@@ -366,6 +366,8 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                     e.addSuppressed(suppressed);
                 }
                 sstable.markSuspect();
+                if(ECNetutils.getIsRecovered(sstable.getSSTableHashID()))
+                    logger.debug("rymDebug: Read recovered sstable failed, hash is ({})", sstable.getSSTableHashID());
                 throw new CorruptSSTableException(e, reader.file.getPath());
             }
         }
