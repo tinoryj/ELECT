@@ -438,36 +438,36 @@ public class CassandraDaemon {
                 ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(), 5, 1, TimeUnit.MINUTES);
 
         
-        // // schedule periodic send sstable content task submission
-        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
-        //     ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable0", LeveledGenerations.getMaxLevelCount() - 1, DatabaseDescriptor.getTaskDelay()),
-        //                                          DatabaseDescriptor.getInitialDelay(),
-        //                                          1,
-        //                                          TimeUnit.MINUTES);
+        // schedule periodic send sstable content task submission
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
+            ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable0", LeveledGenerations.getMaxLevelCount() - 1, DatabaseDescriptor.getTaskDelay()),
+                                                 DatabaseDescriptor.getInitialDelay(),
+                                                 1,
+                                                 TimeUnit.MINUTES);
 
-        // // schedule periodical tasks of erasure coding
-        // // We could set this task delay relatively low.
-        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMessageVerbHandler.getErasureCodingRunable(),
-        //                                                         DatabaseDescriptor.getInitialDelay(),
-        //                                                         1,
-        //                                                         // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
-        //                                                         TimeUnit.MINUTES);
+        // schedule periodical tasks of erasure coding
+        // We could set this task delay relatively low.
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMessageVerbHandler.getErasureCodingRunable(),
+                                                                DatabaseDescriptor.getInitialDelay(),
+                                                                1,
+                                                                // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
+                                                                TimeUnit.MINUTES);
 
-        // // schedule periodical tasks of consume blocked ecMetadata
-        // // We could set this task delay relatively low.
-        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.getConsumeBlockedECMetadataRunnable(),
-        //                                                         DatabaseDescriptor.getInitialDelay(),
-        //                                                         1,
-        //                                                         // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
-        //                                                         TimeUnit.MINUTES);
+        // schedule periodical tasks of consume blocked ecMetadata
+        // We could set this task delay relatively low.
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.getConsumeBlockedECMetadataRunnable(),
+                                                                DatabaseDescriptor.getInitialDelay(),
+                                                                1,
+                                                                // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
+                                                                TimeUnit.MINUTES);
 
-        // // schedule periodical tasks of ec strip update
-        // // We could set this task delay relatively low.
-        // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECParityUpdateVerbHandler.getParityUpdateRunnable(),
-        //                                                         DatabaseDescriptor.getInitialDelay(),
-        //                                                         1,
-        //                                                         // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
-        //                                                         TimeUnit.MINUTES);
+        // schedule periodical tasks of ec strip update
+        // We could set this task delay relatively low.
+        ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECParityUpdateVerbHandler.getParityUpdateRunnable(),
+                                                                DatabaseDescriptor.getInitialDelay(),
+                                                                1,
+                                                                // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
+                                                                TimeUnit.MINUTES);
 
         // schedule periodical tasks of force compaction the last level
         // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ColumnFamilyStore.getForceCompactionForTheLastLevelRunnable(),
