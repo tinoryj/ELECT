@@ -556,8 +556,8 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
                 //     logger.debug("rymDebug: The index ({}) is not out of range, the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
                 // }
 
-                // this.nextKind = ClusteringPrefix.Kind.values()[index];
-                this.nextKind =  Kind.CLUSTERING;
+                this.nextKind = ClusteringPrefix.Kind.values()[index];
+                // this.nextKind =  Kind.CLUSTERING;
             }
 
             // this.nextKind = nextIsRow ? Kind.CLUSTERING : ClusteringPrefix.Kind.values()[index];
