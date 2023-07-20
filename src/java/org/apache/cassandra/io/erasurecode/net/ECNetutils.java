@@ -179,6 +179,8 @@ public final class ECNetutils {
         String lastKey = sstable.last.getRawKey(cfs.metadata());
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
 
+        logger.debug("rymDebug: send sstable to secondary nodes, hash id is ({}), descriptor is ({})", sstable.getSSTableHashID(), sstable.descriptor);
+
         for (InetAddressAndPort rpn : replicaNodes) {
             if (!rpn.equals(locaIP)) {
                 String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
