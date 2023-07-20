@@ -75,6 +75,7 @@ public class ECRecovery {
 
         logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadataContent.stripeId, sstHash);
 
+
         // Step 2: Request the coding blocks from related nodes
         int codeLength = StorageService.getErasureCodeLength();
         logger.debug("rymDebug: [Debug recovery] retrieve chunks for sstable ({})", sstHash);
@@ -91,6 +92,8 @@ public class ECRecovery {
         int[] decodeIndexes = waitUntilRequestCodesReady(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash), sstHash, k);
 
         int eraseIndex = ecMetadataContent.sstHashIdList.indexOf(sstHash);
+        if(eraseIndex == -1)
+            throw new NullPointerException(String.format("rymERROR: we cannot get index for sstable (%s) in ecMetadata, sstHash list is ({})", sstHash, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdList));
         int[] eraseIndexes = { eraseIndex };
 
         logger.debug("rymDebug: [Debug recovery] When we recovery sstable ({}), the data blocks of strip id ({}) is ready.", sstHash, ecMetadataContent.stripeId);
@@ -121,6 +124,10 @@ public class ECRecovery {
         byte[] sstContent = new byte[dataFileSize];
         output[0].get(sstContent);
         SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
+
+        // debug
+        logger.debug("rymDebug: sstHashList is ({}), parity hash list is ({}), stripe id is ({}), sstHash to replica map is ({}), sstable hash is ({}), descriptor is ({}), decode indexes are ({}), erase index is ({})", 
+                     ecMetadataContent.sstHashIdList, ecMetadataContent.parityHashList, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdToReplicaMap, sstable.getSSTableHashID(), sstable.descriptor, decodeIndexes, eraseIndex);
 
 
         // Step 5: send the raw data to the peer secondary nodes
