@@ -156,8 +156,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                 } else {
                     blockedECMetadata = new BlockedECMetadata(newSSTableHash, sourceIP, ecMetadata, secondaryCfName);
-                    logger.debug("rymDebug: [ECMetadata for Erasure Coding, Save it for {}] ECMetadataVerbHandler get a needed update sstHash {} from parity node {}, we are going to record it directly, the replica nodes are {}, sstHashList is {}, strip id is {}",
-                                 secondaryCfName, newSSTableHash, sourceIP, entry.getValue(), ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.ecMetadataContent.stripeId);
+                    logger.debug("rymDebug: [ECMetadata for Erasure Coding, Save it for {}] ECMetadataVerbHandler get a needed update sstHash {} from parity node {}, we are going to record it directly, the replica nodes are {}, sstHashList is {}, strip id is {}, zero chunks number is {}",
+                                 secondaryCfName, newSSTableHash, sourceIP, entry.getValue(), ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.ecMetadataContent.stripeId, ecMetadata.ecMetadataContent.zeroChunksNum);
                     saveECMetadataToBlockList(blockedECMetadata, blockedECMetadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate,true);
                 }
 
