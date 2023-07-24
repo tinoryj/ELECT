@@ -366,7 +366,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         if (updateTxn != null) {
 
-            logger.debug("rymDebug: Create a erasure coding transaction ({}).", updateTxn.opId());
+            logger.debug("rymDebug: Create an erasure coding transaction ({}).", updateTxn.opId());
 
             if (rewriteSStables.isEmpty()) {
 

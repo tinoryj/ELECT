@@ -35,7 +35,8 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
         String targetCfName = message.payload.targetCfName;
         InetAddressAndPort sourceAddress = message.from();
 
-        // open a tcp connection
+        // send data through the tcp connection
+        
     }
 
     public void startClient() {
