@@ -457,7 +457,7 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
         synchronized (lock) {
             // logger.debug("rymDebug: doCommit ({})", txnFile.id());
 
-            ECNetutils.printStackTace(String.format("rymDebug: doCommit (%s)", txnFile.id()));
+            // ECNetutils.printStackTace(String.format("rymDebug: doCommit (%s)", txnFile.id()));
 
             return complete(Throwables.perform(accumulate, txnFile::commit));
         }
