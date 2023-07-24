@@ -421,13 +421,13 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix, TimeUUID txnId) throws IOException {
 
         
-        logger.debug("rymDebug: this is invoke openECSSTable method");
+        logger.debug("rymDebug: this is invoke openECSSTable method, transaction is ({})", txnId);
         // Get a correct generation id
         SSTableId ecSSTableId = cfs.sstableIdGenerator.get();
         String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
         String dataParentDir = ECNetutils.getDataDir() + "ycsb/";
         Optional<Path> directory = ECNetutils.findDirectoryByPrefix(Paths.get(dataParentDir), cfs.name);
-        // String dataDir = cfs.getDirectories().toString();
+        logger.debug("rymDebug: Get generation id ({}), transaction is ({})", ecSSTableId, txnId);
 
         String dataDir = directory.get().toString();
         // logger.debug("rymDebug: get data directory  {} (by prefix) for cf {}", dataDir, cfs.name);
@@ -446,12 +446,14 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             }
 
         }
+        logger.debug("rymDebug: Move the received files as components, transaction is ({})", ecSSTableId, txnId);
 
         // Write a TOC.txt file and rename other files
         String tocFileName = dataDir + "/nb-" + ecSSTableId + "-big-TOC.txt";
         List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt", "EC.db", "Summary.db");
         Path tocFile = Paths.get(tocFileName);
         Files.write(tocFile, lines);
+        logger.debug("rymDebug: Write down the toc files, transaction is ({})", ecSSTableId, txnId);
 
         // get descriptor from toc file name
         Descriptor desc = Descriptor.fromFilename(tocFileName);
