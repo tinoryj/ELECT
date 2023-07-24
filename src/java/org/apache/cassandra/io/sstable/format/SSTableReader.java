@@ -463,7 +463,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         logger.debug("rymDebug: open sstable ({}) for transaction ({})", sstHash, txnId);
         SSTableReader ecSSTable = open(desc);
-        if(ecSSTable.getSSTableHashID().equals(sstHash)) {
+        if(ecSSTable.getSSTableHashID().equals(sstHash) || sstHash == null) {
             StorageService.instance.globalSSTHashToECSSTableMap.put(ecSSTable.getSSTableHashID(), ecSSTable);
             logger.debug("rymDebug: [In secondary node] map sstHash ({}) to ecSSTable ({}) for ecMetadata ({})", ecSSTable.getSSTableHashID(), ecSSTable.descriptor, ecMetadata.ecMetadataContent.stripeId);
         } else {
