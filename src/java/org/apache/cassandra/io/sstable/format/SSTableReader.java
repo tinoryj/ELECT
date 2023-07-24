@@ -446,20 +446,20 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             }
 
         }
-        logger.debug("rymDebug: Move the received files as components, transaction is ({})", ecSSTableId, txnId);
+        logger.debug("rymDebug: Move the received files ({}) as components, transaction is ({})", ecSSTableId, txnId);
 
         // Write a TOC.txt file and rename other files
         String tocFileName = dataDir + "/nb-" + ecSSTableId + "-big-TOC.txt";
         List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt", "EC.db", "Summary.db");
         Path tocFile = Paths.get(tocFileName);
         Files.write(tocFile, lines);
-        logger.debug("rymDebug: Write down the toc files, transaction is ({})", ecSSTableId, txnId);
+        logger.debug("rymDebug: Write down the toc files, transaction is ({})", txnId);
 
         // get descriptor from toc file name
         Descriptor desc = Descriptor.fromFilename(tocFileName);
         // write ECMetadata
-        logger.debug("rymDebug: Load ec metadata for transaction ({})", sstHash, txnId);
-        loadECMetadata(ecMetadata, desc);
+        logger.debug("rymDebug: Load ec metadata ({}) for transaction ({})", sstHash, txnId);
+        loadECMetadata(ecMetadata, desc, txnId);
 
         logger.debug("rymDebug: open sstable ({}) for transaction ({})", sstHash, txnId);
         SSTableReader ecSSTable = open(desc);
@@ -474,7 +474,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRAEC]
-    public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc) throws FileNotFoundException {
+    public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc, TimeUUID txnId) throws FileNotFoundException {
 
         File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
         if (ecMetadataFile.exists())
@@ -484,8 +484,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
 
         try {
+            logger.debug("rymDebug: this is loadECMetadata for ({})", txnId);
             byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata.ecMetadataContent);
             ECNetutils.writeBytesToFile(ecMetadataFile.absolutePath(), buffer);
+            logger.debug("rymDebug: load ec metadata for transaction ({})", txnId);
         } catch (IOException e) {
             logger.error("rymERROR: Cannot save SSTable ecMetadataFile: ", e);
              if (ecMetadataFile.exists())

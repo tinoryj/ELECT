@@ -472,7 +472,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             } else {
                 // Just replace the files
                 try {
-                    SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor);
+                    SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor, null);
                 } catch (FileNotFoundException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
