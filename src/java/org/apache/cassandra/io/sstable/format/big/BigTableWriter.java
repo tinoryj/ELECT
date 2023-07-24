@@ -447,7 +447,7 @@ public class BigTableWriter extends SSTableWriter {
 
     class TransactionalProxy extends SSTableWriter.TransactionalProxy {
         // finalise our state on disk, including renaming
-        private static final int contentSizeForGeneratingHash = 64 * 1024;
+        private static final int contentSizeForGeneratingHash = 4 * 1024 * 1024;
         protected void doPrepare() {
             iwriter.prepareToCommit();
 

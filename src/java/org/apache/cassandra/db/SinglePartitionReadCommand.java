@@ -725,6 +725,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 Tracing.trace("Collecting data from sstables and tracking repaired status");
             logger.debug("[Tinoryj] Collecting data from sstables, target sstable number = {}", view.sstables.size());
             for (SSTableReader sstable : view.sstables) {
+                boolean isCurrentSSTableRepaired = false;
                 if (!sstable.getColumnFamilyName().equals("usertable0")
                         && sstable.isReplicationTransferredToErasureCoding()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
@@ -733,6 +734,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 sstable.getSSTableHashID(), sstable.getFilename());
                         continue;
                     } else {
+                        isCurrentSSTableRepaired = true;
                         logger.debug("[Tinoryj] Start online recovery for metadata sstable: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
                         if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
@@ -772,7 +774,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     continue;
                 }
 
-                if (sstable.getColumnFamilyName().contains("usertable") &&
+                if (sstable.getColumnFamilyName().contains("usertable")
+                        && !sstable.getColumnFamilyName().equals("usertable0") &&
                         sstable.isReplicationTransferredToErasureCoding() &&
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
@@ -801,6 +804,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     @SuppressWarnings("resource")
                     UnfilteredRowIteratorWithLowerBound iter = makeIterator(cfs, sstable, metricsCollector);
                     inputCollector.addSSTableIterator(sstable, iter);
+                    if (isCurrentSSTableRepaired) {
+                        logger.debug("[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
+                                sstable.getSSTableHashID(),
+                                sstable.getFilename());
+                    }
                     mostRecentPartitionTombstone = Math.max(mostRecentPartitionTombstone,
                             iter.partitionLevelDeletion().markedForDeleteAt());
                 } else {
@@ -953,7 +961,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         // read sorted sstables
         logger.debug("[Tinoryj] Collecting data from sstables, target sstable number = {}", view.sstables.size());
         for (SSTableReader sstable : view.sstables) {
-            if (!sstable.getColumnFamilyName().equals("usertable")
+            boolean isCurrentSSTableRepaired = false;
+            if (!sstable.getColumnFamilyName().equals("usertable0")
                     && sstable.isReplicationTransferredToErasureCoding()) {
                 if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                     logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
@@ -961,6 +970,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             sstable.getSSTableHashID(), sstable.getFilename());
                     continue;
                 } else {
+                    isCurrentSSTableRepaired = true;
                     logger.debug("[Tinoryj] Start online recovery for metadata sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
@@ -1011,8 +1021,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
             // if we've already seen a partition tombstone with a timestamp greater
             // than the most recent update to this sstable, we're done, since the rest of
-            // the sstables
-            // will also be older
+            // the sstables will also be older
             if (result != null && sstable.getMaxTimestamp() < result.partitionLevelDeletion().markedForDeleteAt())
                 break;
 
@@ -1030,6 +1039,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // some seek in general however (unless the partition is indexed and is in the
                 // key cache), so we first check if the sstable
                 // has any tombstone at all as a shortcut.
+
+                if(ECNetutils.getIsRecovered(sstable.getSSTableHashID()))
+                    continue;
+
                 if (!sstable.mayHaveTombstones())
                     continue; // no tombstone at all, we can skip that sstable
 
@@ -1062,6 +1075,12 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 }
 
                 continue;
+            }
+
+            if (isCurrentSSTableRepaired) {
+                logger.debug("[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
+                        sstable.getSSTableHashID(),
+                        sstable.getFilename());
             }
 
             try (UnfilteredRowIterator iter = StorageHook.instance.makeRowIterator(cfs,

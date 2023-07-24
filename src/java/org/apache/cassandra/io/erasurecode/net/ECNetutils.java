@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.io.erasurecode.net;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
@@ -29,11 +30,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -45,6 +49,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
@@ -178,6 +183,8 @@ public final class ECNetutils {
         String firstKey = sstable.first.getRawKey(cfs.metadata());
         String lastKey = sstable.last.getRawKey(cfs.metadata());
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
+
+        logger.debug("rymDebug: send sstable to secondary nodes, hash id is ({}), descriptor is ({})", sstable.getSSTableHashID(), sstable.descriptor);
 
         for (InetAddressAndPort rpn : replicaNodes) {
             if (!rpn.equals(locaIP)) {
@@ -392,6 +399,8 @@ public final class ECNetutils {
     }
 
     public synchronized static boolean getIsRecovered(String sstHash) {
+        if(sstHash == null)
+            return false;
         return StorageService.instance.recoveredSSTables.contains(sstHash);
     }
 
@@ -410,9 +419,90 @@ public final class ECNetutils {
         }
     }
 
+
+
+
+
+    public final static EnumSet<TCPService> TCPServices = EnumSet.allOf(TCPService.class);
+    public enum TCPService {
+        MIGRATION("migration"),
+        RECOVERYLSMTREE("recoveryLSMTree");
+        final String serviceName;
+        TCPService(String serviceName) {
+            this.serviceName = serviceName;
+        }
+
+        public static TCPService fromRepresentation(String serviceName) {
+            for (TCPService svc : TCPServices) {
+                if (svc.serviceName != null && Pattern.matches(svc.serviceName, serviceName))
+                    return svc;
+            }
+            return null;
+        }
+    }
+
+
+    public static void startTCPServer(int port) {
+        try {
+            
+            ServerSocket serverSocket = new ServerSocket(port);
+            // System.out.println("服务器已启动，等待客户端连接...");
+
+            while (true) {
+                
+                Socket clientSocket = serverSocket.accept();
+                Thread clientThread = new Thread(new TCPClientHandler(clientSocket));
+                clientThread.start();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public static class TCPClientHandler implements Runnable {
+
+        private Socket clientSocket;
+
+
+        public TCPClientHandler(Socket clientSocket) {
+            this.clientSocket = clientSocket;
+        }
+        
+        @Override
+        public void run() {
+            
+            BufferedReader in;
+            try {
+                in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                String svcName = in.readLine();
+
+                TCPService svc = TCPService.fromRepresentation(svcName);
+
+                // TODO finish the tcp services
+                if(svc.equals(TCPService.MIGRATION)) {
+    
+                } else if (svc.equals(TCPService.RECOVERYLSMTREE)) {
+
+                }
+
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+
+        
+    }
+
     public static void main(String[] args) {
         
-        // test();
+        // try {
+        //     test();
+        // } catch (Exception e) {
+        //     // TODO Auto-generated catch block
+        //     e.printStackTrace();
+        // }
 
 
         // try {
@@ -436,16 +526,23 @@ public final class ECNetutils {
         // System.out.println(a&&b);
 
 
-        try {
-            String file = "/home/rym/test1";
-            FileOutputStream fos = new FileOutputStream(file,true ) ; 
-            String str = "Data.db\n"; 
-            fos.write(str.getBytes()) ;
-            fos.close (); 
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }  
+        // try {
+        //     String file = "/home/rym/test1";
+        //     FileOutputStream fos = new FileOutputStream(file,true ) ; 
+        //     String str = "Data.db\n"; 
+        //     fos.write(str.getBytes()) ;
+        //     fos.close (); 
+        // } catch (IOException e) {
+        //     // TODO Auto-generated catch block
+        //     e.printStackTrace();
+        // }  
 
+        boolean assertTest = false;
+        assert assertTest;
+        int p1 = 0x01;
+        int p2 = 0x02;
+        int flags = 54;
+        logger.debug("rymDebug: p1&p1 is ({}), p2 & p2 is ({}), p1 & p2 is ({}), p1 & flags is ({}), p2 & flags is ({})", p1 & p1, p2 & p2, p1 & p2, p1 & flags, p2 & flags);
+        //110110
     }
 }

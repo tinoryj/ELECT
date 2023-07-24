@@ -75,6 +75,7 @@ public class ECRecovery {
 
         logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadataContent.stripeId, sstHash);
 
+
         // Step 2: Request the coding blocks from related nodes
         int codeLength = StorageService.getErasureCodeLength();
         logger.debug("rymDebug: [Debug recovery] retrieve chunks for sstable ({})", sstHash);
@@ -88,9 +89,11 @@ public class ECRecovery {
         }
 
         logger.debug("rymDebug: [Debug recovery] wait chunks for sstable ({})", sstHash);
-        int[] decodeIndexes = waitUntilRequestCodesReady(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash), sstHash, k);
+        int[] decodeIndexes = waitUntilRequestCodesReady(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash), sstHash, k, ecMetadataContent.zeroChunksNum, codeLength);
 
         int eraseIndex = ecMetadataContent.sstHashIdList.indexOf(sstHash);
+        if(eraseIndex == -1)
+            throw new NullPointerException(String.format("rymERROR: we cannot get index for sstable (%s) in ecMetadata, sstHash list is ({})", sstHash, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdList));
         int[] eraseIndexes = { eraseIndex };
 
         logger.debug("rymDebug: [Debug recovery] When we recovery sstable ({}), the data blocks of strip id ({}) is ready.", sstHash, ecMetadataContent.stripeId);
@@ -117,10 +120,14 @@ public class ECRecovery {
 
         // Step 4: record the raw data locally
         int dataFileSize = (int) sstable.getDataFileSize();
+        logger.debug("rymDebug: [Debug recovery] we load the raw sstable content of ({}), the length of decode data is ({}), sstHash is ({}), the data file size is ({}) ", sstable.descriptor, output[0].remaining(), sstable.getSSTableHashID(), dataFileSize);
         byte[] sstContent = new byte[dataFileSize];
         output[0].get(sstContent);
         SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
-        logger.debug("rymDebug: [Debug recovery] we load the raw sstable content of ({}), sstHash is ({}), the data file size is ({}) ", sstable.descriptor, sstable.getSSTableHashID(), dataFileSize);
+
+        // debug
+        logger.debug("rymDebug: Recovery sstHashList is ({}), parity hash list is ({}), stripe id is ({}), sstHash to replica map is ({}), sstable hash is ({}), descriptor is ({}), decode indexes are ({}), erase index is ({}), zero chunks are ({})", 
+                     ecMetadataContent.sstHashIdList, ecMetadataContent.parityHashList, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdToReplicaMap, sstable.getSSTableHashID(), sstable.descriptor, decodeIndexes, eraseIndex, ecMetadataContent.zeroChunksNum);
 
 
         // Step 5: send the raw data to the peer secondary nodes
@@ -168,15 +175,17 @@ public class ECRecovery {
         // Step 1: Retrieve the data blocks.
         StorageService.instance.globalSSTHashToErasureCodesMap.put(oldSSTHash, erasureCodes);
         if(ecMetadataContent.sstHashIdToReplicaMap != null) {
-            int index = 0;
+            // int index = 0;
             for (Map.Entry<String, List<InetAddressAndPort>> entry : ecMetadataContent.sstHashIdToReplicaMap.entrySet()) {
 
                 if(entry.getKey().equals(oldSSTHash))
                     continue;
-
-                ECRequestData request = new ECRequestData(oldSSTHash, entry.getKey(),index);
+                int index = ecMetadataContent.sstHashIdList.indexOf(entry.getKey());
+                if(index == -1)
+                    throw new NullPointerException(String.format("rymERROR: we cannot get index for sstable (%s) in ecMetadata, sstHash list is ({})", oldSSTHash, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdList));
+                ECRequestData request = new ECRequestData(oldSSTHash, entry.getKey(), index);
                 request.requestData(entry.getValue().get(0));
-                index++;
+                // index++;
             }
         } else {
             throw new IllegalArgumentException(String.format("rymERROR: sstHashIDToReplicaMap is null!"));
@@ -214,11 +223,11 @@ public class ECRecovery {
 
 
     // [WARNING!] Make sure to avoid dead loops
-    public static int[] waitUntilRequestCodesReady(ByteBuffer[] buffers, String oldSSTHash, int k) {
+    public static int[] waitUntilRequestCodesReady(ByteBuffer[] buffers, String oldSSTHash, int k, int zeroChunkNum, int codeLength) {
         int retryCount = 0;
         int[] decodeIndexes = new int[k];
         if(buffers != null) {
-            while (!checkCodesAreReady(buffers, k)) {
+            while (!checkCodesAreReady(buffers, k - zeroChunkNum)) {
                 try {
                     if(retryCount < 5) {
                         Thread.sleep(1000);
@@ -249,16 +258,24 @@ public class ECRecovery {
             }
         }
 
+        // padding zero
+        for(int i = zeroChunkNum; i < buffers.length && j < k; i++) {
+            byte[] zeroChunk = new byte[codeLength];
+            buffers[i].put(zeroChunk);
+            buffers[i].rewind();
+            decodeIndexes[j++] = i;
+        }
+
         return decodeIndexes;
     }
 
-    private static boolean checkCodesAreReady(ByteBuffer[] checkBuffers, int k) {
+    private static boolean checkCodesAreReady(ByteBuffer[] checkBuffers, int chunkNum) {
         int readyBlocks = 0;
         for(ByteBuffer buf : checkBuffers) {
             if(buf.position() != 0) {
                 readyBlocks++;
             }
-            if(readyBlocks >= k){
+            if(readyBlocks >= chunkNum){
                 return true;
             }
         }

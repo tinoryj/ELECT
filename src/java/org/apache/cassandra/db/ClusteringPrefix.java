@@ -29,11 +29,14 @@ import org.apache.cassandra.db.marshal.CompositeType;
 import org.apache.cassandra.db.marshal.ValueAccessor;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.db.marshal.AbstractType;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.utils.ByteArrayUtil;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A clustering prefix is the unit of what a {@link ClusteringComparator} can compare.
@@ -524,6 +527,8 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
         private byte[][] nextValues;
         private final ValueAccessor<byte[]> accessor = ByteArrayAccessor.instance;
 
+        private static final Logger logger = LoggerFactory.getLogger(Deserializer.class);
+
         public Deserializer(ClusteringComparator comparator, DataInputPlus in, SerializationHeader header)
         {
             this.comparator = comparator;
@@ -537,8 +542,28 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
                 throw new IOException("Corrupt flags value for clustering prefix (isStatic flag set): " + flags);
 
             this.nextIsRow = UnfilteredSerializer.kind(flags) == Unfiltered.Kind.ROW;
-            this.nextKind = nextIsRow ? Kind.CLUSTERING : ClusteringPrefix.Kind.values()[in.readByte()];
-            this.nextSize = nextIsRow ? comparator.size() : in.readUnsignedShort();
+            // this.nextIsRow = true;
+
+            if(nextIsRow){
+                this.nextKind =  Kind.CLUSTERING;
+                logger.debug("rymDebug: The normal read flag is ({}), extended flag is ({}), comparator size is ({}).", flags, extendedFlags, comparator.size());
+            } else {
+                int index = in.readByte();
+                logger.debug("rymDebug: Next is not row, the index is ({}), the flags is ({}), extendedFlags is ({}), comparator size is ({})", index, flags, extendedFlags, comparator.size());
+                // if(index > 8) {
+                //     ECNetutils.printStackTace(String.format("rymERROR: The index (%s) is out of range, the flags is (%s), extendedFlags is (%s)", index, flags, extendedFlags));
+                // } else {
+                //     logger.debug("rymDebug: The index ({}) is not out of range, the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
+                // }
+
+                this.nextKind = ClusteringPrefix.Kind.values()[index];
+                // this.nextKind =  Kind.CLUSTERING;
+            }
+
+            // this.nextKind = nextIsRow ? Kind.CLUSTERING : ClusteringPrefix.Kind.values()[index];
+
+            // this.nextSize = nextIsRow ? comparator.size() : in.readUnsignedShort();
+            this.nextSize = comparator.size();
             this.deserializedSize = 0;
 
             // The point of the deserializer is that some of the clustering prefix won't actually be used (because they are not

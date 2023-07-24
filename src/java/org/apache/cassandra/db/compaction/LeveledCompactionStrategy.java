@@ -83,7 +83,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                 configuredMaxSSTableSize = Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));
 
                 // [CASSANDRAEC]
-                if(cfs.getColumnFamilyName().equals("usertable")) {
+                if(cfs.getColumnFamilyName().equals("usertable0")) {
                     StorageService.setErasureCodeLength(configuredMaxSSTableSize);
                     logger.debug("rymDebug: set erasure code length based on sstable_size_in_mb ({}),", configuredMaxSSTableSize);
                 }
@@ -179,11 +179,11 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             boolean isContainRawSStable = false;
             List<TransferredSSTableKeyRange> transferredSSTableKeyRanges = new ArrayList<>();
 
-            if (!cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable")) {
+            if (!cfs.getColumnFamilyName().equals("usertable0") && cfs.getColumnFamilyName().contains("usertable")) {
 
                 //for secondary node 
                 for (SSTableReader sstable : candidate.sstables) {
-                    if (sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable")) {
+                    if (sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable0")) {
                         isContainReplicationTransferredToErasureCoding = true;
                         TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                         transferredSSTableKeyRanges.add(range);
@@ -249,7 +249,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int size = 0;
 
         for (SSTableReader sstable : sstables) {
-            if (sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable")) {
+            if (sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable0")) {
                 isContainReplicationTransferredToErasureCoding = true;
                 TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                 TransferredSSTableKeyRanges.add(range);
@@ -319,7 +319,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             if (level != sstable.getSSTableLevel())
                 level = 0;
 
-            if (sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable")) {
+            if (sstable.isReplicationTransferredToErasureCoding() && !sstable.getColumnFamilyName().equals("usertable0")) {
                 isContainReplicationTransferredToErasureCoding = true;
                 TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                 TransferredSSTableKeyRanges.add(range);

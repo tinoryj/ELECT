@@ -172,11 +172,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                                 break;
                         }
                         // compute erasure coding locally;
+                        int zeroChunkNum = 0;
                         if(count < DatabaseDescriptor.getEcDataNodes()) {
-                            int zeroChunksNum = DatabaseDescriptor.getEcDataNodes() - count;
-                            for(int j = 0; j < zeroChunksNum; j++) {
+                            zeroChunkNum = DatabaseDescriptor.getEcDataNodes() - count;
+                            for(int j = 0; j < zeroChunkNum; j++) {
                                 byte[] newSSTContent = new byte[codeLength];
-                                ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable",
+                                ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable0",
                                                                                 new ArrayList<InetAddressAndPort>()));
                                 tmpArray[count] = zeroChunk;
                                 count++;
@@ -185,7 +186,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
                         if (count == DatabaseDescriptor.getEcDataNodes()) {
                             StorageService.instance.generatedPaddingZeroECMetadata++;
-                            Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
+                            Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength, zeroChunkNum));
                         } else {
                             logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", count);
                         }
@@ -208,7 +209,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                     // compute erasure coding locally;
                     if (count == DatabaseDescriptor.getEcDataNodes()) {
                         StorageService.instance.generatedNormalECMetadata++;
-                        Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength));
+                        Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength, 0));
                     } else {
                         logger.debug("rymDebug: Can not get enough data for erasure coding, count is {}.", count);
                     }
@@ -251,12 +252,14 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         private final int ecParityNum;
         private final ECMessage[] messages;
         private final int codeLength;
+        private final int zeroChunkNum;
 
-        PerformErasureCodeRunnable(ECMessage[] message, int codeLength) {
+        PerformErasureCodeRunnable(ECMessage[] message, int codeLength, int zeroChunkNum) {
             this.ecDataNum = DatabaseDescriptor.getEcDataNodes();
             this.ecParityNum = DatabaseDescriptor.getParityNodes();
             this.messages = message;
             this.codeLength = codeLength;
+            this.zeroChunkNum = zeroChunkNum;
         }
 
         @Override
@@ -339,7 +342,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             //             new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
             ECMetadata ecMetadata = new ECMetadata(new ECMetadataContent("", "", "", new ArrayList<String>(),new ArrayList<String>(),
                                                    new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new ArrayList<InetAddressAndPort>(),
-                                                new HashMap<String, List<InetAddressAndPort>>(), "", false, 0));
+                                                new HashMap<String, List<InetAddressAndPort>>(), "", false, 0, zeroChunkNum));
             ecMetadata.generateAndDistributeMetadata(messages, parityHashList);
         }
 

@@ -264,7 +264,7 @@ public class View {
                 // Iterable<SSTableReader> markWithOutECSSTables = Iterables.filter(mark, new Predicate<SSTableReader>() {
                 //     @Override
                 //     public boolean apply(@Nullable SSTableReader input) {
-                //         return !input.isReplicationTransferredToErasureCoding() || input.getColumnFamilyName().equals("usertable");
+                //         return !input.isReplicationTransferredToErasureCoding() || input.getColumnFamilyName().equals("usertable0");
                 //     }
                 // });
 
@@ -286,7 +286,7 @@ public class View {
             {
                 for (SSTableReader reader : readers){
                     if (view.compacting.contains(reader) || view.sstablesMap.get(reader) != reader || reader.isMarkedCompacted()) {
-                        // if (reader.isReplicationTransferredToErasureCoding() && !reader.getColumnFamilyName().equals("usertable") && view.sstablesMap.get(reader) != reader) {
+                        // if (reader.isReplicationTransferredToErasureCoding() && !reader.getColumnFamilyName().equals("usertable0") && view.sstablesMap.get(reader) != reader) {
                         //     logger.debug("rymDebug: the transferred sstable {} is already marked as compaction! The reason is view.compacting.contains? ({}), view.sstablesMap.get(reader) != reader? ({}), view.sstablesMap.get(reader) ({}) reader.isMarkedCompacted? ({})",
                         //             reader.getSSTableHashID(), view.compacting.contains(reader),
                         //             view.sstablesMap.get(reader) != reader, view.sstablesMap.get(reader),

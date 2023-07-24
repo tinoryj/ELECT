@@ -836,12 +836,12 @@ public class CompactionManager implements CompactionManagerMBean {
         List<TransferredSSTableKeyRange> transferredSSTableKeyRanges = new ArrayList<>();
 
         AbstractCompactionTask newTask = null;
-        if (!cfs.getColumnFamilyName().equals("usertable") && cfs.getColumnFamilyName().contains("usertable")) {
+        if (!cfs.getColumnFamilyName().equals("usertable0") && cfs.getColumnFamilyName().contains("usertable")) {
 
             // for secondary node
             for (SSTableReader sstable : txn.originals()) {
                 if (sstable.isReplicationTransferredToErasureCoding()
-                        && !sstable.getColumnFamilyName().equals("usertable")) {
+                        && !sstable.getColumnFamilyName().equals("usertable0")) {
                     isContainECSSTable = true;
                     TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                     transferredSSTableKeyRanges.add(range);

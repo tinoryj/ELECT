@@ -536,8 +536,8 @@ public class Columns extends AbstractCollection<ColumnMetadata> implements Colle
                         encoded >>>= 1;
                     }
                     if (encoded != 0)
-                        throw new IOException(
-                                "Invalid Columns subset bytes; too many bits set:" + Long.toBinaryString(encoded));
+                        throw new IOException(String.format("Invalid Columns subset bytes; too many bits set: %s, the number of column is %s",
+                                                            Long.toBinaryString(encoded), superset.size()));
                     return new Columns(builder.build(), firstComplexIdx);
                 }
             }

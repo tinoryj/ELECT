@@ -110,9 +110,12 @@ public class ECMetadata implements Serializable {
         public int targetIndex;
         public String oldSSTHashForUpdate;
 
+        // Properties for recovery
+        public int zeroChunksNum;
+
         public ECMetadataContent(String stripeId, String ks, String cf, List<String> sstHashIdList, List<String> parityHashList,
         List<InetAddressAndPort> primaryNodes, Set<InetAddressAndPort> secondaryNodes, List<InetAddressAndPort> parityNodes,
-        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap, String oldSSTHashForUpdate, boolean isParityUpdate, int targetIndex) {
+        Map<String, List<InetAddressAndPort>> sstHashIdToReplicaMap, String oldSSTHashForUpdate, boolean isParityUpdate, int targetIndex, int zeroChunkNum) {
             this.stripeId = stripeId;
             this.keyspace = ks;
             this.cfName = cf;
@@ -125,6 +128,7 @@ public class ECMetadata implements Serializable {
             this.oldSSTHashForUpdate = oldSSTHashForUpdate;
             this.isParityUpdate = isParityUpdate;
             this.targetIndex = targetIndex;
+            this.zeroChunksNum = zeroChunkNum;
         }
     }
 
@@ -157,7 +161,7 @@ public class ECMetadata implements Serializable {
         
         this.ecMetadataContent.stripeId = String.valueOf(connectedSSTHash.hashCode());
         this.ecMetadataContent.keyspace = messages[0].ecMessageContent.keyspace;
-        this.ecMetadataContent.cfName = messages[0].ecMessageContent.cfName;
+        this.ecMetadataContent.cfName = messages[0].ecMessageContent.cfName.substring(0,  messages[0].ecMessageContent.cfName.length() - 1);
 
         // generate parity code hash
         this.ecMetadataContent.parityHashList = parityHashes;

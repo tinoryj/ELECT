@@ -47,7 +47,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         String requestSSTHash = message.payload.requestSSTHash;
 
         int level =  LeveledGenerations.getMaxLevelCount() - 1;
-        ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable");
+        ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
         Set<SSTableReader> sstables = cfs.getSSTableForLevel(level);
 
         boolean isFound = false;
@@ -74,7 +74,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         }
 
         if(!isFound)
-            throw new IllegalStateException(String.format("rymERROR: cannot find sstable (%s) in usertable", requestSSTHash));
+            throw new IllegalStateException(String.format("rymERROR: cannot find sstable (%s) in usertable0", requestSSTHash));
         
         
     }

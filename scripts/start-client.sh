@@ -24,12 +24,12 @@ func() {
     cd /home/yjren/cassandra
     bin/cqlsh $coordinator -e "create keyspace ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 3 };
     USE ycsb;
-    create table usertable (y_id varchar primary key, field0 varchar);
-    ALTER TABLE usertable WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
+    create table usertable0 (y_id varchar primary key, field0 varchar);
+    ALTER TABLE usertable0 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
     ALTER TABLE usertable1 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
     ALTER TABLE usertable2 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
 
-    ALTER TABLE ycsb.usertable WITH compression = {'enabled':'false'};
+    ALTER TABLE ycsb.usertable0 WITH compression = {'enabled':'false'};
     ALTER TABLE ycsb.usertable1 WITH compression = {'enabled':'false'};
     ALTER TABLE ycsb.usertable2 WITH compression = {'enabled':'false'};
 
