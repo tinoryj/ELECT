@@ -476,15 +476,15 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     // [CASSANDRAEC]
     public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc, TimeUUID txnId) throws FileNotFoundException {
 
+        logger.debug("rymDebug: this is loadECMetadata for ({})", txnId);
         File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
         if (ecMetadataFile.exists())
             FileUtils.deleteWithConfirm(ecMetadataFile);
-        else if(ecMetadata.ecMetadataContent.isParityUpdate)
-            throw new FileNotFoundException(String.format("rymERROR: Cannot found EC metadata file ({})", desc));
+        // else if(ecMetadata.ecMetadataContent.isParityUpdate)
+        //     throw new FileNotFoundException(String.format("rymERROR: Cannot found EC metadata file ({})", desc));
 
 
         try {
-            logger.debug("rymDebug: this is loadECMetadata for ({})", txnId);
             byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata.ecMetadataContent);
             ECNetutils.writeBytesToFile(ecMetadataFile.absolutePath(), buffer);
             logger.debug("rymDebug: load ec metadata for transaction ({})", txnId);
