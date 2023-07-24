@@ -767,11 +767,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
 
-                } else if (sstable.getColumnFamilyName().contains("usertable")) {
-                    logger.error("[Tinoryj] Unknow SSTable type: [{},{}], transition and migration flags are [{},{}]",
-                            sstable.getSSTableHashID(), sstable.getFilename(),
-                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
-                    continue;
                 }
 
                 if (sstable.getColumnFamilyName().contains("usertable")
@@ -1003,11 +998,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         sstable.getSSTableHashID(), sstable.getFilename());
                 // Tinoryj TODO: retrive SSTable from cloud.
 
-            } else if (sstable.getColumnFamilyName().contains("usertable")) {
-                logger.error("[Tinoryj] Unknow SSTable type: [{},{}], transition and migration flags are [{},{}]",
-                        sstable.getSSTableHashID(), sstable.getFilename(),
-                        sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
-                continue;
             }
 
             if (sstable.getColumnFamilyName().contains("usertable") &&
@@ -1040,7 +1030,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // key cache), so we first check if the sstable
                 // has any tombstone at all as a shortcut.
 
-                if(ECNetutils.getIsRecovered(sstable.getSSTableHashID()))
+                if (ECNetutils.getIsRecovered(sstable.getSSTableHashID()))
                     continue;
 
                 if (!sstable.mayHaveTombstones())
