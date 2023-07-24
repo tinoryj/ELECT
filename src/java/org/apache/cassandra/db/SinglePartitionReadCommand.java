@@ -765,7 +765,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
 
-                } else {
+                } else if (sstable.getColumnFamilyName().contains("usertable")) {
                     logger.error("[Tinoryj] Unknow SSTable type: [{},{}], transition and migration flags are [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename(),
                             sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
@@ -993,7 +993,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         sstable.getSSTableHashID(), sstable.getFilename());
                 // Tinoryj TODO: retrive SSTable from cloud.
 
-            } else {
+            } else if (sstable.getColumnFamilyName().contains("usertable")) {
                 logger.error("[Tinoryj] Unknow SSTable type: [{},{}], transition and migration flags are [{},{}]",
                         sstable.getSSTableHashID(), sstable.getFilename(),
                         sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());

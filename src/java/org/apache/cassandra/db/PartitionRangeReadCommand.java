@@ -385,7 +385,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
 
-                } else {
+                } else if (sstable.getColumnFamilyName().contains("usertable")){
                     logger.error("[Tinoryj] Unknow SSTable type: [{},{}], transition and migration flags are [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename(),
                             sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
