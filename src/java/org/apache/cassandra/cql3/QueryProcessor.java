@@ -265,6 +265,7 @@ public class QueryProcessor implements QueryHandler
             CreateTableStatement tableStatement = (CreateTableStatement) statement;
             String ks = tableStatement.keyspace();
             String tn = tableStatement.tableName.substring(0, tableStatement.tableName.length() - 1);
+            logger.debug("rymDebug: create table-> the table name is {}, the keyspace name is {}", tn, ks);
             if(ks.equals("ycsb")) {
                 // logger.debug("rymDebug: this CreateTableStatement is belong to ks ycsb");
                 if(options.getConsistency() == ConsistencyLevel.NODE_LOCAL) {
