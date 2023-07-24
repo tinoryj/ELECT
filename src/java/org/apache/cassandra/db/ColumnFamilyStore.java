@@ -2088,14 +2088,17 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         // notify sstable changes to view and leveled generation
         // unmark sstable compacting status
 
+        logger.debug("rymDebug: this update EC sstable method, the transaction id is ({})", txn.opId());
+
         try {
             SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, sstHash, cfs, fileNamePrefix);
+            logger.debug("rymDebug: Opened the new ec sstable successfully, the transaction id is ({})", ecSSTable.getSSTableHashID(), txn.opId());
             if(!txn.originals().isEmpty())
                 logger.debug("rymDebug: update old ecSSTable ({}) with new ecSSTable ({})", txn.originals().iterator().next().descriptor, ecSSTable.descriptor);
             if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
                 logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
             }
-            logger.debug("rymDebug: this is replace SSTable method, replacing SSTable {}", ecSSTable.descriptor);
+            logger.debug("rymDebug: this is replace SSTable method, replacing SSTable {}, before update the transaction is ({})", ecSSTable.descriptor, txn.opId());
             txn.update(ecSSTable, false);
             logger.debug("rymDebug: After update, transaction is ({})", txn.opId());
             txn.checkpoint();
