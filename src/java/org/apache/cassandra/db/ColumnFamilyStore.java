@@ -2097,7 +2097,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
             logger.debug("rymDebug: this is replace SSTable method, replacing SSTable {}", ecSSTable.descriptor);
             txn.update(ecSSTable, false);
+            logger.debug("rymDebug: After update, transaction is ({})", txn.opId());
             txn.checkpoint();
+            logger.debug("rymDebug: After checkpoint, transaction is ({})", txn.opId());
             maybeFail(txn.commitEC(null, ecSSTable, false));
             logger.debug("rymDebug: replaced SSTable {} successfully", ecSSTable.descriptor);
             // move BlockedUpdateECMetadata if necessary
