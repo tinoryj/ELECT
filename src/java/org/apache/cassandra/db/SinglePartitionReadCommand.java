@@ -725,7 +725,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 Tracing.trace("Collecting data from sstables and tracking repaired status");
             logger.debug("[Tinoryj] Collecting data from sstables, target sstable number = {}", view.sstables.size());
             for (SSTableReader sstable : view.sstables) {
-                if (!sstable.getColumnFamilyName().equals("usertable")
+                if (!sstable.getColumnFamilyName().equals("usertable0")
                         && sstable.isReplicationTransferredToErasureCoding()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                         logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
@@ -759,12 +759,26 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
                         }
                     }
+                } else if (sstable.getColumnFamilyName().equals("usertable0")
+                        && sstable.isDataMigrateToCloud()) {
+                    logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename());
+                    // Tinoryj TODO: retrive SSTable from cloud.
+
+                } else {
+                    logger.error("[Tinoryj] Unknow SSTable type: [{},{}], transition and migration flags are [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename(),
+                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
+                    continue;
                 }
 
                 if (sstable.getColumnFamilyName().contains("usertable") &&
                         sstable.isReplicationTransferredToErasureCoding() &&
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
+                } else if (sstable.getColumnFamilyName().equals("usertable0") &&
+                        sstable.isDataMigrateToCloud()) {
+                    // Tinoryj TODO: retrive SSTable from cloud.
                 }
 
                 // if we've already seen a partition tombstone with a timestamp greater
@@ -973,13 +987,26 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                     }
                 }
+            } else if (sstable.getColumnFamilyName().equals("usertable0")
+                    && sstable.isDataMigrateToCloud()) {
+                logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
+                        sstable.getSSTableHashID(), sstable.getFilename());
+                // Tinoryj TODO: retrive SSTable from cloud.
+
+            } else {
+                logger.error("[Tinoryj] Unknow SSTable type: [{},{}], transition and migration flags are [{},{}]",
+                        sstable.getSSTableHashID(), sstable.getFilename(),
+                        sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
+                continue;
             }
 
             if (sstable.getColumnFamilyName().contains("usertable") &&
                     sstable.isReplicationTransferredToErasureCoding() &&
                     ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                 sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
-
+            } else if (sstable.getColumnFamilyName().equals("usertable0") &&
+                    sstable.isDataMigrateToCloud()) {
+                // Tinoryj TODO: retrive SSTable from cloud.
             }
 
             // if we've already seen a partition tombstone with a timestamp greater

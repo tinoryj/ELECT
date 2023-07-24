@@ -345,7 +345,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
             }
 
             for (SSTableReader sstable : view.sstables) {
-                if (!sstable.getColumnFamilyName().equals("usertable")
+                if (!sstable.getColumnFamilyName().equals("usertable0")
                         && sstable.isReplicationTransferredToErasureCoding()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                         logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
@@ -379,12 +379,28 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             }
                         }
                     }
+                } else if (sstable.getColumnFamilyName().equals("usertable0")
+                        && sstable.isDataMigrateToCloud()) {
+                    logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename());
+                    // Tinoryj TODO: retrive SSTable from cloud.
+
+                } else {
+                    logger.error("[Tinoryj] Unknow SSTable type: [{},{}], transition and migration flags are [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename(),
+                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
+                    continue;
                 }
-                if(sstable.getColumnFamilyName().contains("usertable") && 
-                   sstable.isReplicationTransferredToErasureCoding() && 
-                   ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
+
+                if (sstable.getColumnFamilyName().contains("usertable") &&
+                        sstable.isReplicationTransferredToErasureCoding() &&
+                        ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
+                } else if (sstable.getColumnFamilyName().equals("usertable0") &&
+                        sstable.isDataMigrateToCloud()) {
+                    // Tinoryj TODO: retrive SSTable from cloud.
                 }
+                
                 @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
                                               // method
                 UnfilteredPartitionIterator iter = sstable.partitionIterator(columnFilter(), dataRange(),

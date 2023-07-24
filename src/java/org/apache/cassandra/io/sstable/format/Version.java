@@ -60,6 +60,8 @@ public abstract class Version {
 
     public abstract boolean hasIsReplicationTransferredToErasureCoding();
 
+    public abstract boolean hasIsDataMigrateToCloud();
+
     public abstract boolean hasMetadataChecksum();
 
     /**
