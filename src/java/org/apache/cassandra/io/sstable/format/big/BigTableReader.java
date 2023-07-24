@@ -157,8 +157,8 @@ public class BigTableReader extends SSTableReader
             {
                 listener.onSSTableSkipped(this, SkippingReason.BLOOM_FILTER);
                 Tracing.trace("Bloom filter allows skipping sstable {}", descriptor.id);
-                logger.debug("rymDebug: Bloom filter allows skipping sstable {}, Is recovered sstable? ({})", 
-                            descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
+                // logger.debug("rymDebug: Bloom filter allows skipping sstable {}, Is recovered sstable? ({})", 
+                //             descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
                 bloomFilterTracker.addTrueNegative();
                 return null;
             }
@@ -175,8 +175,8 @@ public class BigTableReader extends SSTableReader
                 // inside getCachedPosition method
                 listener.onSSTableSelected(this, cachedPosition, SelectionReason.KEY_CACHE_HIT);
                 Tracing.trace("Key cache hit for sstable {}", descriptor.id);
-                logger.debug("rymDebug: Key cache hit for sstable {}, Is recovered SSTable? ({})", 
-                                    descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
+                // logger.debug("rymDebug: Key cache hit for sstable {}, Is recovered SSTable? ({})", 
+                //                     descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
                 return cachedPosition;
             }
         }
@@ -256,8 +256,8 @@ public class BigTableReader extends SSTableReader
                         listener.onSSTableSkipped(this, SkippingReason.PARTITION_INDEX_LOOKUP);
                         // Tracing.trace("Partition index lookup allows skipping sstable {}", descriptor.id);
 
-                        logger.debug("rymDebug: Partition index lookup allows skipping sstable {}, Is recovered SSTable? ({})", 
-                                            descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
+                        // logger.debug("rymDebug: Partition index lookup allows skipping sstable {}, Is recovered SSTable? ({})", 
+                        //                     descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
                         return null;
                     }
                 }
@@ -279,9 +279,9 @@ public class BigTableReader extends SSTableReader
                                 DecoratedKey keyInDisk = decorateKey(ByteBufferUtil.readWithShortLength(fdi));
                                 if (!keyInDisk.equals(key))
                                     throw new AssertionError(String.format("%s != %s in %s", keyInDisk, key, fdi.getPath()));
-                                else
-                                    logger.debug("rymDebug: The key in disk is ({}), search key is ({}), sstable hash is ({}), is recovered ? ({})", 
-                                                 keyInDisk, key, sstableMetadata.hashID, ECNetutils.getIsRecovered(sstableMetadata.hashID));
+                                // else
+                                //     logger.debug("rymDebug: The key in disk is ({}), search key is ({}), sstable hash is ({}), is recovered ? ({})", 
+                                //                  keyInDisk, key, sstableMetadata.hashID, ECNetutils.getIsRecovered(sstableMetadata.hashID));
                             }
                         }
 
@@ -292,8 +292,8 @@ public class BigTableReader extends SSTableReader
                         bloomFilterTracker.addTruePositive();
                     listener.onSSTableSelected(this, indexEntry, SelectionReason.INDEX_ENTRY_FOUND);
                     // Tracing.trace("Partition index with {} entries found for sstable {}", indexEntry.columnsIndexCount(), descriptor.id);
-                    logger.debug("rymDebug: Partition index with {} entries found for sstable {} Is recovered SSTable? ({})", 
-                                 indexEntry.columnsIndexCount(), descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
+                    // logger.debug("rymDebug: Partition index with {} entries found for sstable {} Is recovered SSTable? ({})", 
+                    //              indexEntry.columnsIndexCount(), descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
                     return indexEntry;
                 }
 

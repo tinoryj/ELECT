@@ -443,7 +443,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                     if (updateTxn != null) {
 
-                        logger.debug("rymDebug: Create a transaction ({}) for updating sstable ({}).", updateTxn.opId(), oldECSSTable.descriptor);
+                        logger.debug("rymDebug: Create a transaction ({}) for stripe update, new sstable is ({}), old sstable is ({}).", updateTxn.opId(), newSSTHash, oldECSSTable.getSSTableHashID());
                         List<String> expiredFiles = new ArrayList<String>();
                         for(Component comp : SSTableReader.componentsFor(oldECSSTable.descriptor)) {
                             expiredFiles.add(oldECSSTable.descriptor.filenameFor(comp));
