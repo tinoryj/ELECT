@@ -2091,7 +2091,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         logger.debug("rymDebug: this update EC sstable method, the transaction id is ({})", txn.opId());
 
         try {
-            SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, sstHash, cfs, fileNamePrefix);
+
+            SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, sstHash, cfs, fileNamePrefix, txn.opId());
             logger.debug("rymDebug: Opened the new ec sstable successfully, the transaction id is ({})", ecSSTable.getSSTableHashID(), txn.opId());
             if(!txn.originals().isEmpty())
                 logger.debug("rymDebug: update old ecSSTable ({}) with new ecSSTable ({})", txn.originals().iterator().next().descriptor, ecSSTable.descriptor);

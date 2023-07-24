@@ -418,8 +418,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRAEC]
-    public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix) throws IOException {
+    public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix, TimeUUID txnId) throws IOException {
 
+        
         logger.debug("rymDebug: this is invoke openECSSTable method");
         // Get a correct generation id
         SSTableId ecSSTableId = cfs.sstableIdGenerator.get();
@@ -455,10 +456,12 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // get descriptor from toc file name
         Descriptor desc = Descriptor.fromFilename(tocFileName);
         // write ECMetadata
+        logger.debug("rymDebug: Load ec metadata for transaction ({})", sstHash, txnId);
         loadECMetadata(ecMetadata, desc);
 
+        logger.debug("rymDebug: open sstable ({}) for transaction ({})", sstHash, txnId);
         SSTableReader ecSSTable = open(desc);
-        if(ecSSTable.getSSTableHashID().equals(sstHash) || sstHash == null) {
+        if(ecSSTable.getSSTableHashID().equals(sstHash)) {
             StorageService.instance.globalSSTHashToECSSTableMap.put(ecSSTable.getSSTableHashID(), ecSSTable);
             logger.debug("rymDebug: [In secondary node] map sstHash ({}) to ecSSTable ({}) for ecMetadata ({})", ecSSTable.getSSTableHashID(), ecSSTable.descriptor, ecMetadata.ecMetadataContent.stripeId);
         } else {
@@ -700,7 +703,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                 logger.trace("key cache contains {}/{} keys", sstable.getKeyCache().size(),
                         sstable.getKeyCache().getCapacity());
             if (components.contains(Component.EC_METADATA)) {
-                logger.info(RESET + "Open EC SSTables successfully! {}", sstable.getFilename() + YELLOW);
+                logger.info(RESET + "Open EC SSTables successfully! {}", sstable.getSSTableHashID() + YELLOW);
             }
             return sstable;
         } catch (Throwable t) {
