@@ -363,17 +363,18 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         // M is the sstable from primary node, M` is the corresponding sstable of
         // secondary node
-        if (rewriteSStables.isEmpty()) {
-            logger.warn("rymWarn: rewriteSStables is empty, just record it!");
-            cfs.updateECSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
-            StorageService.instance.globalSSTHashToSyncedFileMap.remove(newSSTHash);
-            return false;
-        }
 
         if (updateTxn != null) {
 
-            logger.debug("rymDebug: Create a transaction ({}) for updating sstable.", updateTxn.opId());
-            if (rewriteSStables.size() == 1) {
+            logger.debug("rymDebug: Create a erasure coding transaction ({}).", updateTxn.opId());
+
+            if (rewriteSStables.isEmpty()) {
+
+                logger.debug("rymDebug: rewriteSStables is empty, just record it!");
+                cfs.updateECSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
+                StorageService.instance.globalSSTHashToSyncedFileMap.remove(newSSTHash);
+
+            } else if (rewriteSStables.size() == 1) {
                 logger.debug("rymDebug: Anyway, we just replace the sstables");
                 List<String> expiredFiles = new ArrayList<String>();
                 for(Component comp : SSTableReader.componentsFor(rewriteSStables.get(0).descriptor)) {
@@ -443,7 +444,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
                     if (updateTxn != null) {
 
-                        logger.debug("rymDebug: Create a transaction ({}) for stripe update, new sstable is ({}), old sstable is ({}).", updateTxn.opId(), newSSTHash, oldECSSTable.getSSTableHashID());
+                        logger.debug("rymDebug: Create a stripe update transaction ({}), new sstable is ({}), old sstable is ({}).", updateTxn.opId(), newSSTHash, oldECSSTable.getSSTableHashID());
                         List<String> expiredFiles = new ArrayList<String>();
                         for(Component comp : SSTableReader.componentsFor(oldECSSTable.descriptor)) {
                             expiredFiles.add(oldECSSTable.descriptor.filenameFor(comp));
