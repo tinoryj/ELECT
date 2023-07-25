@@ -347,6 +347,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
 
             int readRecoveryedSSTableCount = 0;
             ArrayList<String> readRecoveryedSSTableList = new ArrayList<String>();
+            ArrayList<String> readRecoveryedSSTableHashList = new ArrayList<String>();
             for (SSTableReader sstable : view.sstables) {
                 boolean isCurrentSSTableRepaired = false;
                 if (!sstable.getColumnFamilyName().equals("usertable0")
@@ -404,6 +405,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 }
                 if (isCurrentSSTableRepaired) {
                     readRecoveryedSSTableList.add(sstable.getFilename());
+                    readRecoveryedSSTableHashList.add(sstable.getSSTableHashID());
                     logger.debug(
                             "[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
                             sstable.getSSTableHashID(),
@@ -421,8 +423,8 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
             }
             if (readRecoveryedSSTableCount != 0 && inputCollector.isEmpty()) {
                 logger.error(
-                        "[Tinoryj-ERROR] Read recoveryed sstable count = {}, but get no data from them. The SSTables list = {}",
-                        readRecoveryedSSTableCount, readRecoveryedSSTableList);
+                        "[Tinoryj-ERROR] Read recoveryed sstable count = {}, but get no data from them. The SSTables list = {}, hash list = {}",
+                        readRecoveryedSSTableCount, readRecoveryedSSTableList, readRecoveryedSSTableHashList);
             }
             // iterators can be empty for offline tools
             if (inputCollector.isEmpty())

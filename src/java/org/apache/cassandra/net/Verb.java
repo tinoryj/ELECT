@@ -77,6 +77,8 @@ import org.apache.cassandra.io.erasurecode.net.ECResponseParity;
 import org.apache.cassandra.io.erasurecode.net.ECResponseParityVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.LSMTreeRecovery;
+import org.apache.cassandra.io.erasurecode.net.LSMTreeRecoveryVerbHandler;
 import org.apache.cassandra.repair.RepairMessageVerbHandler;
 import org.apache.cassandra.repair.messages.CleanupMessage;
 import org.apache.cassandra.repair.messages.FailSession;
@@ -166,6 +168,8 @@ public enum Verb {
     ECRESPONSEDATA_REQ(222, P3, writeTimeout, ERASURECODE, () -> ECResponseData.serializer, () -> ECResponseDataVerbHandler.instance, ECRESPONSEDATA_RSP),
     ECRECOVERYDATA_RSP(223, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
     ECRECOVERYDATA_REQ(224, P3, writeTimeout, ERASURECODE, () -> ECRecoveryForSecondary.serializer, () -> ECRecoveryForSecondaryVerbHandler.instance, ECRECOVERYDATA_RSP),
+    LSMTREERECOVERY_RSP(225, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    LSMTREERECOVERY_REQ(226, P3, writeTimeout, ERASURECODE, () -> LSMTreeRecovery.serializer, () -> LSMTreeRecoveryVerbHandler.instance, LSMTREERECOVERY_RSP),
 
     PAXOS_PREPARE_RSP(93, P2, writeTimeout, REQUEST_RESPONSE, () -> PrepareResponse.serializer,
             () -> ResponseVerbHandler.instance),

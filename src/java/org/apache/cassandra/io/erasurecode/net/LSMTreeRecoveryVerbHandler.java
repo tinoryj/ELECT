@@ -35,9 +35,10 @@ import org.slf4j.LoggerFactory;
 public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery> {
 
     private static final Logger logger = LoggerFactory.getLogger(LSMTreeRecoveryVerbHandler.class);
+    public static final LSMTreeRecoveryVerbHandler instance = new LSMTreeRecoveryVerbHandler();
     @Override
     public void doVerb(Message<LSMTreeRecovery> message) throws IOException {
-        String rawCfName = message.payload.rawCfName;
+        String rawCfPath = message.payload.rawCfPath;
         String targetCfName = message.payload.targetCfName;
         InetAddressAndPort sourceAddress = message.from();
         for (Keyspace keyspace : Keyspace.all()){
@@ -50,7 +51,7 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                         if(dir.contains(targetCfName)) {
                             String userName = "yjren";
                             String host = sourceAddress.getHostAddress(false);
-                            String targetDir = userName + "@" + host + rawCfName;
+                            String targetDir = userName + "@" + host + rawCfPath;
                             String script = "rsync -avz --progress -r " + dir + " " + targetDir;
                             ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
                             Process process = processBuilder.start();
@@ -59,6 +60,12 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                                 int exitCode = process.waitFor();
                                 if (exitCode == 0) {
                                     logger.debug("rymDebug: Performing rsync script successfully!");
+
+                                    // send response code back
+                                    
+
+
+
                                 } else {
                                     logger.debug("rymDebug: Failed to perform rsync script!");
                                 }
@@ -73,7 +80,6 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                 
             }
         }
-        // copy the folders to source address
         
         
     }
