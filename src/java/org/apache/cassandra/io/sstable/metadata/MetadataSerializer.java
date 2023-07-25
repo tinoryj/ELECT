@@ -240,7 +240,7 @@ public class MetadataSerializer implements IMetadataSerializer {
         int expectedChecksum = in.readInt();
         String filename = descriptor.filenameFor(Component.STATS);
         if (actualChecksum != expectedChecksum) {
-            logger.debug(
+            logger.error(
                     "[Tinoryj-ERROR] get original check sum [{}], the actual check sum is [{}], file name = {}, actual file size = {}",
                     expectedChecksum,
                     actualChecksum, filename, (new File(filename)).length());

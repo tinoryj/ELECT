@@ -154,12 +154,14 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                     if (noDataResponseFlag) {
                         logger.error("[Tinoryj-ERROR] Read get empty data response from {}.",
                                 dataResponseAddress);
+                        return false;
+                    } else {
+                        // Since no need to get data from all nodes, we can return true.
+                        return true;
                     }
-                    return true;
                 } else {
                     logger.error(
-                            "[Tinoryj-ERROR] Read operation get only {} success response.",
-                            snapshot.size() - noDataCount);
+                            "[Tinoryj-ERROR] Read operation get no success response.");
                     return false;
                 }
             } else {
