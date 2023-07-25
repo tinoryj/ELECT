@@ -481,6 +481,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             } else {
                 // Just replace the files
                 try {
+                    logger.debug("rymDebug: When we update sstable ({}), we just need to replace the old ec metadata files", newSSTHash);
                     SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor, null);
                 } catch (FileNotFoundException e) {
                     // TODO Auto-generated catch block

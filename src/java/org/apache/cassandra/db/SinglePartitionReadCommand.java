@@ -844,8 +844,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         nonIntersectingSSTables, view.sstables.size(), includedDueToTombstones);
             if (readRecoveryedSSTableCount != 0 && inputCollector.isEmpty()) {
                 logger.error(
-                        "[Tinoryj-ERROR] Read recoveryed sstable count = {}, but get no data from them. The SSTables list = {}, hash list = {}",
-                        readRecoveryedSSTableCount, readRecoveryedSSTableList, readRecoveryedSSTableHashList);
+                        "[Tinoryj-ERROR] Read recoveryed sstable count = {}, but get no data from them. The SSTables list = {}, hash list = {}, target read key token = {}, raw key = {}",
+                        readRecoveryedSSTableCount, readRecoveryedSSTableList, readRecoveryedSSTableHashList,
+                        ((SinglePartitionReadCommand) controller.command).partitionKey().getToken(),
+                        ((SinglePartitionReadCommand) controller.command).partitionKey()
+                                .getRawKey(((SinglePartitionReadCommand) controller.command).metadata()));
             }
 
             if (inputCollector.isEmpty())
@@ -1113,8 +1116,12 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
         if (readRecoveryedSSTableCount != 0 && (result == null || result.isEmpty())) {
             logger.error(
-                    "[Tinoryj-ERROR] Read recoveryed sstable count = {}, but get no data from them. The SSTables list = {}, hash List = {}",
-                    readRecoveryedSSTableCount, readRecoveryedSSTableList, readRecoveryedSSTableHashList);
+                    "[Tinoryj-ERROR] Read recoveryed sstable count = {}, but get no data from them. The SSTables list = {}, hash list = {}, target read key token = {}, raw key = {}",
+                    readRecoveryedSSTableCount, readRecoveryedSSTableList, readRecoveryedSSTableHashList,
+                    ((SinglePartitionReadCommand) controller.command).partitionKey().getToken(),
+                    ((SinglePartitionReadCommand) controller.command).partitionKey()
+                            .getRawKey(((SinglePartitionReadCommand) controller.command).metadata()));
+
         }
 
         if (result == null || result.isEmpty())

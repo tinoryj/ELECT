@@ -162,7 +162,7 @@ public class ECRecovery {
      * @param stripID
      * @param codeLength
      */
-    private static void retrieveErasureCodesForRecovery(ECMetadataContent ecMetadataContent, String oldSSTHash, int codeLength, int k, int m) {
+    public static void retrieveErasureCodesForRecovery(ECMetadataContent ecMetadataContent, String oldSSTHash, int codeLength, int k, int m) {
         logger.debug("rymDebug: [Debug recovery] Initialize erasure codes for recovery, code length is ({}), k is ({}), m is ({}).", codeLength, k, m);
         // Step 0: Initialize the data and parity blocks
         ByteBuffer[] erasureCodes = new ByteBuffer[k + m];

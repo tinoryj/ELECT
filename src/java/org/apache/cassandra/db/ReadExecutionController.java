@@ -40,7 +40,7 @@ public class ReadExecutionController implements AutoCloseable {
     // For index reads
     private final ReadExecutionController indexController;
     private final WriteContext writeContext;
-    private final ReadCommand command;
+    public final ReadCommand command;
     static MonotonicClock clock = preciseTime;
 
     private final long createdAtNanos; // Only used while sampling

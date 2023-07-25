@@ -62,9 +62,7 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                                     logger.debug("rymDebug: Performing rsync script successfully!");
 
                                     // send response code back
-                                    
-
-
+                                    ResponseLSMTreeRecovery.sendRecoveryIsReadySignal(sourceAddress, rawCfPath);
 
                                 } else {
                                     logger.debug("rymDebug: Failed to perform rsync script!");

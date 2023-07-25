@@ -46,7 +46,7 @@ import com.google.common.collect.Iterables;
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 
 public class LSMTreeRecovery {
-    private static final Logger logger = LoggerFactory.getLogger(ECRequestData.class);
+    private static final Logger logger = LoggerFactory.getLogger(LSMTreeRecovery.class);
     public static final Serializer serializer = new Serializer();
 
     public final String rawCfPath;
@@ -77,20 +77,20 @@ public class LSMTreeRecovery {
             // Recovery usertable0 from the next node's usertable1
             String dataDir0 = Keyspace.open("ycsb").getColumnFamilyStore("usertable0").getDataPaths().get(0);
             LSMTreeRecovery msg0 = new LSMTreeRecovery(dataDir0, "usertable1");
-            Message<LSMTreeRecovery> message0 = Message.outWithFlag(Verb.ECREQUESTDATA_REQ, msg0, MessageFlag.CALL_BACK_ON_FAILURE);
+            Message<LSMTreeRecovery> message0 = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg0, MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().send(message0, allHosts.get(nextIndex));
 
 
             // Recovery usertable1 from the next node's usertable2
             String dataDir1 = Keyspace.open("ycsb").getColumnFamilyStore("usertable1").getDataPaths().get(0);
             LSMTreeRecovery msg1 = new LSMTreeRecovery(dataDir1, "usertable2");
-            Message<LSMTreeRecovery> message1 = Message.outWithFlag(Verb.ECREQUESTDATA_REQ, msg1, MessageFlag.CALL_BACK_ON_FAILURE);
+            Message<LSMTreeRecovery> message1 = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg1, MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().send(message1, allHosts.get(nextIndex));
 
             // Recovery usertable2 from the former node's usertable1
             String dataDir2 = Keyspace.open("ycsb").getColumnFamilyStore("usertable2").getDataPaths().get(0);
             LSMTreeRecovery msg2 = new LSMTreeRecovery(dataDir2, "usertable1");
-            Message<LSMTreeRecovery> message2 = Message.outWithFlag(Verb.ECREQUESTDATA_REQ, msg2, MessageFlag.CALL_BACK_ON_FAILURE);
+            Message<LSMTreeRecovery> message2 = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg2, MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().send(message2, allHosts.get(formerIndex));
         } catch (IOException e) {
             // TODO Auto-generated catch block
