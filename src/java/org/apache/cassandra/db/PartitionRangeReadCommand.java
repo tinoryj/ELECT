@@ -18,6 +18,7 @@
 package org.apache.cassandra.db;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -344,6 +345,8 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                                 RTBoundValidator.validate(iter, RTBoundValidator.Stage.MEMTABLE, false));
             }
 
+            int readRecoveryedSSTableCount = 0;
+            ArrayList<String> readRecoveryedSSTableList = new ArrayList<String>();
             for (SSTableReader sstable : view.sstables) {
                 boolean isCurrentSSTableRepaired = false;
                 if (!sstable.getColumnFamilyName().equals("usertable0")
@@ -355,6 +358,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         continue;
                     } else {
                         isCurrentSSTableRepaired = true;
+                        readRecoveryedSSTableCount++;
                         logger.debug("[Tinoryj] Start online recovery for metadata sstable: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
                         if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
@@ -399,6 +403,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     // Tinoryj TODO: retrive SSTable from cloud.
                 }
                 if (isCurrentSSTableRepaired) {
+                    readRecoveryedSSTableList.add(sstable.getFilename());
                     logger.debug(
                             "[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
                             sstable.getSSTableHashID(),
@@ -413,6 +418,11 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
 
                 if (!sstable.isRepaired())
                     controller.updateMinOldestUnrepairedTombstone(sstable.getMinLocalDeletionTime());
+            }
+            if (readRecoveryedSSTableCount != 0 && inputCollector.isEmpty()) {
+                logger.error(
+                        "[Tinoryj-ERROR] Read recoveryed sstable count = {}, but get no data from them. The SSTables list = {}",
+                        readRecoveryedSSTableCount, readRecoveryedSSTableList);
             }
             // iterators can be empty for offline tools
             if (inputCollector.isEmpty())
