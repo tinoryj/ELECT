@@ -25,9 +25,6 @@ import java.util.*;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -40,8 +37,6 @@ import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.commitlog.IntervalSet;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.sstable.format.Version;
-import org.apache.cassandra.io.util.DataInputPlus;
-import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.EstimatedHistogram;
 import org.apache.cassandra.utils.TimeUUID;
@@ -85,6 +80,7 @@ public class StatsMetadata extends MetadataComponent {
     public final UUID originatingHostId;
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
+    public boolean isDataMigrateToCloud;
     public String hashID = null;
     public long dataFileSize = 0;
     // just holds the current encoding stats to avoid allocating - it is not
@@ -113,6 +109,7 @@ public class StatsMetadata extends MetadataComponent {
             UUID originatingHostId,
             TimeUUID pendingRepair,
             boolean isTransient,
+            boolean isDataMigrateToCloud,
             String hashID,
             long dataFileSize) {
         this.estimatedPartitionSize = estimatedPartitionSize;
@@ -137,6 +134,7 @@ public class StatsMetadata extends MetadataComponent {
         this.originatingHostId = originatingHostId;
         this.pendingRepair = pendingRepair;
         this.isTransient = isTransient;
+        this.isDataMigrateToCloud = isDataMigrateToCloud;
         this.hashID = hashID;
         this.dataFileSize = dataFileSize;
         this.encodingStats = new EncodingStats(minTimestamp, minLocalDeletionTime, minTTL);
@@ -184,7 +182,8 @@ public class StatsMetadata extends MetadataComponent {
                     // this.hashID, this.hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
-                    // logger.debug("[Tinoryj]: Could not generated hash value for current SSTable = {}", fileName);
+                    // logger.debug("[Tinoryj]: Could not generated hash value for current SSTable =
+                    // {}", fileName);
                     e.printStackTrace();
                 }
             } catch (IOException e) {
@@ -242,12 +241,12 @@ public class StatsMetadata extends MetadataComponent {
                 originatingHostId,
                 pendingRepair,
                 isTransient,
+                isDataMigrateToCloud,
                 hashID,
                 dataFileSize);
     }
 
-    public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient
-            ) {
+    public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient) {
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
@@ -270,6 +269,7 @@ public class StatsMetadata extends MetadataComponent {
                 originatingHostId,
                 newPendingRepair,
                 newIsTransient,
+                isDataMigrateToCloud,
                 hashID,
                 dataFileSize);
     }
@@ -337,7 +337,7 @@ public class StatsMetadata extends MetadataComponent {
 
         public int serializedSize(Version version, StatsMetadata component) throws IOException {
             int size = 0;
-            
+
             size += 32; // size of hashID.
             size += 8; // dataFileSize
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedPartitionSize);
@@ -374,6 +374,10 @@ public class StatsMetadata extends MetadataComponent {
 
             if (version.hasIsTransient()) {
                 size += TypeSizes.sizeof(component.isTransient);
+            }
+
+            if (version.hasIsDataMigrateToCloud()) {
+                size += TypeSizes.sizeof(component.isDataMigrateToCloud);
             }
 
             if (version.hasOriginatingHostId()) {
@@ -430,6 +434,11 @@ public class StatsMetadata extends MetadataComponent {
 
             if (version.hasIsTransient()) {
                 out.writeBoolean(component.isTransient);
+            }
+
+            if (version.hasIsDataMigrateToCloud()) {
+                out.writeBoolean(component.isDataMigrateToCloud);
+                logger.debug("[Tinoryj] Write isDataMigrateToCloud {}", component.isDataMigrateToCloud);
             }
 
             if (version.hasOriginatingHostId()) {
@@ -530,6 +539,12 @@ public class StatsMetadata extends MetadataComponent {
 
             boolean isTransient = version.hasIsTransient() && in.readBoolean();
 
+            boolean isDataMigrateToCloud = version.hasIsDataMigrateToCloud() && in.readBoolean();
+
+            if (version.hasIsDataMigrateToCloud()) {
+                logger.debug("[Tinoryj] Read isDataMigrateToCloud {}", isDataMigrateToCloud);
+            }
+
             UUID originatingHostId = null;
             if (version.hasOriginatingHostId() && in.readByte() != 0)
                 originatingHostId = UUIDSerializer.serializer.deserialize(in, 0);
@@ -541,7 +556,8 @@ public class StatsMetadata extends MetadataComponent {
                 buf[i] = in.readByte();
             }
             hashIDRawStr = new String(buf);
-            // logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =  {}!!!", hashIDRawStr);
+            // logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =
+            // {}!!!", hashIDRawStr);
             // in.skipBytes(32);
 
             long dataFileSize = in.readLong();
@@ -568,6 +584,7 @@ public class StatsMetadata extends MetadataComponent {
                     originatingHostId,
                     pendingRepair,
                     isTransient,
+                    isDataMigrateToCloud,
                     hashIDRawStr,
                     dataFileSize);
         }

@@ -203,24 +203,30 @@ public class StorageService extends NotificationBroadcasterSupport
     public volatile long generatedNormalECMetadata = 0;
     public volatile long generatedPaddingZeroECMetadata = 0;
     public volatile List<String> globalRecvSSTHashList = new ArrayList<String>();
-    
-    // [In secondary node] This map is used to read EC SSTables generate after perform ECSyncSSTable, use During erasure coding.
+
+    // [In secondary node] This map is used to read EC SSTables generate after
+    // perform ECSyncSSTable, use During erasure coding.
     public ConcurrentHashMap<String, DataForRewrite> globalSSTHashToSyncedFileMap = new ConcurrentHashMap<String, DataForRewrite>();
 
-    // The following concurrency parameters are used to support EC strip update operations
-    // [In parity node] This map is used to store <stripID, ECMetadataContent>, generate after erasure coding, use during parity update.
+    // The following concurrency parameters are used to support EC strip update
+    // operations
+    // [In parity node] This map is used to store <stripID, ECMetadataContent>,
+    // generate after erasure coding, use during parity update.
     public ConcurrentHashMap<String, ECMetadataContent> globalStripIdToECMetadataMap = new ConcurrentHashMap<String, ECMetadataContent>();
-    // [In parity node] Generate after ResponseParity, use during real parity update.
+    // [In parity node] Generate after ResponseParity, use during real parity
+    // update.
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToParityCodeMap = new ConcurrentHashMap<String, ByteBuffer[]>();
-    // [In primary node] Generate when sendSSTableToParity, use during send parity update signal.
+    // [In primary node] Generate when sendSSTableToParity, use during send parity
+    // update signal.
     public ConcurrentHashMap<String, List<InetAddressAndPort>> globalSSTHashToParityNodesMap = new ConcurrentHashMap<String, List<InetAddressAndPort>>();
-    // [In parity node] Generate after erasure coding, use during parity update. 
+    // [In parity node] Generate after erasure coding, use during parity update.
     public ConcurrentHashMap<String, String> globalSSTHashToStripIDMap = new ConcurrentHashMap<String, String>();
     // [In every node] Record the sstHash to SSTableReader map
     public ConcurrentHashMap<String, SSTableReader> globalSSTHashToECSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
     // [In secondary node] Record the ECMetadata data, <cfName, BlockedECMetadata>
     public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalReadyECMetadatas = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
-    // [In secondary node] Record the updated ECMetadata to avoid concurrent conflict <sstHash, BlockedECMetadata> 
+    // [In secondary node] Record the updated ECMetadata to avoid concurrent
+    // conflict <sstHash, BlockedECMetadata>
     public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalPendingECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
     public volatile long globalRecvECMetadatas = 0;
     public volatile long globalConsumedECMetadatas = 0;
@@ -229,12 +235,14 @@ public class StorageService extends NotificationBroadcasterSupport
 
     // [In parity node], <old sstable hash, parity update sstable>
     public ConcurrentHashMap<String, SSTableContentWithHashID> globalPendingOldSSTableForECStripUpdateMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
-    // [In parity node], this is the global map <primary node, old sstables for parity update>
+    // [In parity node], this is the global map <primary node, old sstables for
+    // parity update>
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalReadyOldSSTableForECStripUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
     public volatile long globalReadyOldSSTableForECStripUpdateCount = 0;
     // [In parity node], this is the global map <sstHash, old sstable>
     public ConcurrentHashMap<String, SSTableContentWithHashID> globalPendingNewOldSSTableForECStripUpdateMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
-    // [In parity node], this is the global map <primary node, new sstables for parity update>
+    // [In parity node], this is the global map <primary node, new sstables for
+    // parity update>
     public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalReadyNewSSTableForECStripUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
     // [In parity node] save the global update strip list
     public ConcurrentSkipListSet<String> globalUpdatingStripList = new ConcurrentSkipListSet<>();
@@ -249,14 +257,12 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();
     public ConcurrentHashMap<String, SSTableReader> globalRecoveredSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
 
-
-    
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 
     private final JMXProgressSupport progressSupport = new JMXProgressSupport(this);
 
     public static void setErasureCodeLength(int sstableSizeInMB) {
-        if(codeLength == 0) {
+        if (codeLength == 0) {
             codeLength = (int) Math.ceil(sstableSizeInMB * 1024 * 1024 * 1.05);
         }
     }
@@ -4064,10 +4070,21 @@ public class StorageService extends NotificationBroadcasterSupport
         return repair(keyspace, repairSpec, Collections.emptyList()).left;
     }
 
+    public int recoveryAsync(String keyspace, String cfsName) {
+        return recovery(keyspace, cfsName, Collections.emptyList()).left;
+    }
+
     public Pair<Integer, Future<?>> repair(String keyspace, Map<String, String> repairSpec,
             List<ProgressListener> listeners) {
         RepairOption option = RepairOption.parse(repairSpec, tokenMetadata.partitioner);
         return repair(keyspace, option, listeners);
+    }
+
+    public Pair<Integer, Future<?>> recovery(String keyspace, String cfsName,
+            List<ProgressListener> listeners) {
+
+        int cmd = nextRepairCommand.incrementAndGet();
+        return Pair.create(cmd, repairCommandExecutor().submit(createRecoveryTask(cmd, keyspace, cfsName, listeners)));
     }
 
     public Pair<Integer, Future<?>> repair(String keyspace, RepairOption option, List<ProgressListener> listeners) {
@@ -4154,6 +4171,15 @@ public class StorageService extends NotificationBroadcasterSupport
 
         if (options.isTraced())
             return new FutureTaskWithResources<>(() -> ExecutorLocals::clear, task);
+        return new FutureTask<>(task);
+    }
+
+    private FutureTask<Object> createRecoveryTask(final int cmd, final String keyspace, final String cfsName,
+            List<ProgressListener> listeners) {
+        RecoveryRunnable task = new RecoveryRunnable(this, cmd, keyspace, cfsName);
+        task.addProgressListener(progressSupport);
+        for (ProgressListener listener : listeners)
+            task.addProgressListener(listener);
         return new FutureTask<>(task);
     }
 
@@ -4418,9 +4444,10 @@ public class StorageService extends NotificationBroadcasterSupport
 
     }
 
-    public List<InetAddressAndPort> getReplicaNodesWithPortFromTokenForDegradeRead(String keyspaceName,Token token) {
+    public List<InetAddressAndPort> getReplicaNodesWithPortFromTokenForDegradeRead(String keyspaceName, Token token) {
 
-        Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(), Gossiper.instance.getUnreachableMembers());
+        Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(),
+                Gossiper.instance.getUnreachableMembers());
         List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>();
         allHostsIterable.forEach(allHosts::add);
         InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
@@ -4430,37 +4457,37 @@ public class StorageService extends NotificationBroadcasterSupport
         Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
         long targetToken = (long) token.getTokenValue();
         int index = 0;
-        for(String tk : tokenRanges) {
+        for (String tk : tokenRanges) {
             long currentToken = Long.parseLong(tk);
             // int result = currentToken.compareTo(targetToken);
-            if(currentToken >= targetToken) {
+            if (currentToken >= targetToken) {
                 break;
             }
             index++;
         }
 
-        if(index == tokenRanges.size())
+        if (index == tokenRanges.size())
             index = 0;
 
-        
         int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
         int endIndex = index + rf;
-        
-        if(endIndex > allHosts.size()) {
+
+        if (endIndex > allHosts.size()) {
             replicaNodes.addAll(allHosts.subList(index, allHosts.size()));
-            replicaNodes.addAll(allHosts.subList(0,endIndex % allHosts.size()));
+            replicaNodes.addAll(allHosts.subList(0, endIndex % allHosts.size()));
         } else {
             replicaNodes.addAll(allHosts.subList(index, endIndex));
         }
 
         return replicaNodes;
 
-
     }
 
     // [CASSANDRAEC]
-    public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode, String keyspaceName) {
-        Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(), Gossiper.instance.getUnreachableMembers());
+    public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode,
+            String keyspaceName) {
+        Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(),
+                Gossiper.instance.getUnreachableMembers());
         List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>();
         allHostsIterable.forEach(allHosts::add);
         InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
@@ -4470,15 +4497,15 @@ public class StorageService extends NotificationBroadcasterSupport
 
         int startIndex = allHosts.indexOf(primaryNode);
 
-        if(startIndex == -1) 
-            throw new IllegalStateException(String.format("rymERROR: primary node %s is not in the live member set %s.", primaryNode, allHosts));
-
+        if (startIndex == -1)
+            throw new IllegalStateException(String.format("rymERROR: primary node %s is not in the live member set %s.",
+                    primaryNode, allHosts));
 
         int endIndex = startIndex + rf;
-        
-        if(endIndex > allHosts.size()) {
+
+        if (endIndex > allHosts.size()) {
             replicaNodes.addAll(allHosts.subList(startIndex, allHosts.size()));
-            replicaNodes.addAll(allHosts.subList(0,endIndex % allHosts.size()));
+            replicaNodes.addAll(allHosts.subList(0, endIndex % allHosts.size()));
         } else {
             replicaNodes.addAll(allHosts.subList(startIndex, endIndex));
         }

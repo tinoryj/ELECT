@@ -95,6 +95,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 null,
                 null,
                 false,
+                false,
                 null,
                 0);
     }
@@ -256,7 +257,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
     }
 
     public Map<MetadataType, MetadataComponent> finalizeMetadata(String partitioner, double bloomFilterFPChance,
-            long repairedAt, TimeUUID pendingRepair, boolean isTransient,
+            long repairedAt, TimeUUID pendingRepair, boolean isTransient, boolean isDataMigrateToCloud,
             SerializationHeader header,
             String hashID,
             long dataFileSize) {
@@ -289,6 +290,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 originatingHostId,
                 pendingRepair,
                 isTransient,
+                isDataMigrateToCloud,
                 hashID,
                 dataFileSize));
         components.put(MetadataType.COMPACTION, new CompactionMetadata(cardinality));

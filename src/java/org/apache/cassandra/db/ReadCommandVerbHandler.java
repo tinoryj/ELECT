@@ -65,21 +65,12 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                 ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata())
                 : null);
 
-        // Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
-        // ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(command.metadata().id);
-        // SpeculativeRetryPolicy retry = cfs.metadata().params.speculativeRetry;
-        // ReplicaPlan.ForTokenRead replicaPlan = ReplicaPlans.forRead(keyspace,
-        // tokenForRead,
-        // ConsistencyLevel.ALL, retry);
         // Tinoryj TODO replace address list with natural nodes
 
         if (command.metadata().keyspace.equals("ycsb")) {
 
             List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, tokenForRead);
-            // sendRequestAddresses = replicaPlan.contacts().endpointList();
-
-            // String oldTableName = command.metadata().name;
 
             if (sendRequestAddresses.size() != 3) {
                 logger.debug("[Tinoryj] The replica plan get only {} nodes",
@@ -132,11 +123,6 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     logger.debug("[Tinoryj] Not support replication factor larger than 3");
                     break;
             }
-            // if (!oldTableName.equals(command.metadata().name)) {
-            // logger.error("[Tinoryj-ERROR], recved table name = {}, but should be {}",
-            // oldTableName,
-            // command.metadata().name);
-            // }
             logger.debug("[Tinoryj] For token = {}, read {} from target table = {}, replication group = {}",
                     tokenForRead,
                     command.isDigestQuery() == true ? "digest" : "data",
@@ -158,35 +144,32 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         try (ReadExecutionController controller = command.executionController(message.trackRepairedData());
                 UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
             if (iterator == null) {
-                if (command.metadata().keyspace.equals("ycsb")) {
+                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
                     logger.error(
-                            "[Tinoryj-ERROR] For token = {}, with {} query, ReadCommandVerbHandler Error to get response from table {}",
+                            "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler Error to get response from table {}",
                             tokenForRead,
-                            command.isDigestQuery() == true ? "digest" : "data",
                             command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
                 }
                 response = command.createEmptyResponse();
             } else {
                 response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                if (command.metadata().keyspace.equals("ycsb")) {
+                if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
                     ByteBuffer newDigest = response.digest(command);
                     String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                     if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                         logger.error(
-                                "[Tinoryj-ERROR] For token = {}, with {} query, ReadCommandVerbHandler Could not get non-empty response from table {}, address = {}, {}, response = {}, raw key = {}",
+                                "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler Could not get non-empty response from table {}, address = {}, {}, response = {}, raw key = {}",
                                 tokenForRead,
-                                command.isDigestQuery() == true ? "digest" : "data",
                                 command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
                                 "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response, rawKey);
                     }
                 }
             }
         } catch (RejectException e) {
-            if (command.metadata().keyspace.equals("ycsb")) {
+            if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
                 logger.error(
-                        "[Tinoryj-ERROR] For token = {}, with {} query, ReadCommandVerbHandler from {}, Read Command target table is {}, target key is {}, meet errors",
+                        "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler from {}, Read Command target table is {}, target key is {}, meet errors",
                         tokenForRead,
-                        command.isDigestQuery() == true ? "digest" : "data",
                         message.from(),
                         command.metadata().name);
             }
@@ -226,14 +209,8 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
 
         if (command instanceof SinglePartitionReadCommand) {
             token = ((SinglePartitionReadCommand) command).partitionKey().getToken();
-            // logger.debug("[Tinoryj] touch SinglePartitionReadCommand, token is {}, the
-            // partition key is {}",
-            // token, ((SinglePartitionReadCommand)
-            // command).partitionKey().getRawKey(command.metadata()));
         } else {
             token = ((PartitionRangeReadCommand) command).dataRange().keyRange().right.getToken();
-            // logger.debug("[Tinoryj] touch PartitionRangeReadCommand, token is {}",
-            // token);
         }
 
         Replica replica = Keyspace.open(command.metadata().keyspace)

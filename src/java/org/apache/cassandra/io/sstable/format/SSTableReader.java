@@ -285,6 +285,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     protected volatile StatsMetadata sstableMetadata;
 
     protected Boolean isReplicationTransferredToErasureCoding = false;
+    protected Boolean isDataMigrateToCloud = false;
     protected Boolean isParityUpdate = false;
     protected volatile Boolean isSelectedByCompactionOrErasureCoding = false;
     protected boolean isRecovered = false;
@@ -418,6 +419,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRAEC]
+
     public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix, TimeUUID txnId) throws IOException {
 
         
@@ -430,8 +432,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         logger.debug("rymDebug: Get generation id ({}), transaction is ({})", ecSSTableId, txnId);
 
         String dataDir = directory.get().toString();
-        // logger.debug("rymDebug: get data directory  {} (by prefix) for cf {}", dataDir, cfs.name);
-      
+        // logger.debug("rymDebug: get data directory {} (by prefix) for cf {}",
+        // dataDir, cfs.name);
+
         List<String> sstableComponents = List.of("Filter.db", "Index.db", "Statistics.db", "Summary.db");
         // logger.debug("rymDebug: get sstable id {} for ecMetadata!", ecSSTableId);
         for (String component : sstableComponents) {
@@ -463,13 +466,14 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         logger.debug("rymDebug: open sstable ({}) for transaction ({})", sstHash, txnId);
         SSTableReader ecSSTable = open(desc);
-        if(ecSSTable.getSSTableHashID().equals(sstHash) || sstHash == null) {
+        if (ecSSTable.getSSTableHashID().equals(sstHash) || sstHash == null) {
             StorageService.instance.globalSSTHashToECSSTableMap.put(ecSSTable.getSSTableHashID(), ecSSTable);
-            logger.debug("rymDebug: [In secondary node] map sstHash ({}) to ecSSTable ({}) for ecMetadata ({})", ecSSTable.getSSTableHashID(), ecSSTable.descriptor, ecMetadata.ecMetadataContent.stripeId);
+            logger.debug("rymDebug: [In secondary node] map sstHash ({}) to ecSSTable ({}) for ecMetadata ({})",
+                    ecSSTable.getSSTableHashID(), ecSSTable.descriptor, ecMetadata.ecMetadataContent.stripeId);
         } else {
             logger.warn("rymDebug: sstHash ({}) is not equal to ecSSTable ({})", sstHash, ecSSTable.getSSTableHashID());
         }
-        
+
         return ecSSTable;
     }
 
@@ -480,6 +484,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
         if (ecMetadataFile.exists())
             FileUtils.deleteWithConfirm(ecMetadataFile);
+
         // else if(ecMetadata.ecMetadataContent.isParityUpdate)
         //     throw new FileNotFoundException(String.format("rymERROR: Cannot found EC metadata file ({})", desc));
 
@@ -490,20 +495,22 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             logger.debug("rymDebug: load ec metadata for transaction ({})", txnId);
         } catch (IOException e) {
             logger.error("rymERROR: Cannot save SSTable ecMetadataFile: ", e);
-             if (ecMetadataFile.exists())
+            if (ecMetadataFile.exists())
                 FileUtils.deleteWithConfirm(ecMetadataFile);
         }
-        // try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
+        // try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile))
+        // {
 
-        //     byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata.ecMetadataContent);
-        //     ByteBufferUtil.writeWithLength(ByteBuffer.wrap(buffer), oStream);
+        // byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable)
+        // ecMetadata.ecMetadataContent);
+        // ByteBufferUtil.writeWithLength(ByteBuffer.wrap(buffer), oStream);
 
         // } catch (IOException e) {
-        //     logger.error("Cannot save SSTable ecMetadataFile: ", e);
+        // logger.error("Cannot save SSTable ecMetadataFile: ", e);
 
-        //     // corrupted hence delete it and let it load it now.
-        //     if (ecMetadataFile.exists())
-        //         FileUtils.deleteWithConfirm(ecMetadataFile);
+        // // corrupted hence delete it and let it load it now.
+        // if (ecMetadataFile.exists())
+        // FileUtils.deleteWithConfirm(ecMetadataFile);
         // }
     }
 
@@ -527,10 +534,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // add Data.db to TOC.txt
         try {
             String file = desc.filenameFor(Component.TOC);
-            FileOutputStream fos = new FileOutputStream(file,true ) ; 
-            String str = "Data.db\n"; 
+            FileOutputStream fos = new FileOutputStream(file, true);
+            String str = "Data.db\n";
             fos.write(str.getBytes());
-            fos.close (); 
+            fos.close();
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -547,10 +554,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         txn.update(newSSTable, true);
         txn.checkpoint();
         Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
-        
+
         StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
         StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
-
 
     }
 
@@ -935,16 +941,17 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         ECNetutils.writeBytesToFile(ecMetadataFile.absolutePath(), buffer);
 
-        // try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile)) {
+        // try (DataOutputStreamPlus oStream = new FileOutputStreamPlus(ecMetadataFile))
+        // {
 
-        //     // IndexSummary.serializer.serialize(summary, oStream);
-        //     ByteBufferUtil.writeWithLength(first.getKey(), oStream);
+        // // IndexSummary.serializer.serialize(summary, oStream);
+        // ByteBufferUtil.writeWithLength(first.getKey(), oStream);
         // } catch (IOException e) {
-        //     logger.error("Cannot save SSTable ecMetadataFile: ", e);
+        // logger.error("Cannot save SSTable ecMetadataFile: ", e);
 
-        //     // corrupted hence delete it and let it load it now.
-        //     if (ecMetadataFile.exists())
-        //         FileUtils.deleteWithConfirm(ecMetadataFile);
+        // // corrupted hence delete it and let it load it now.
+        // if (ecMetadataFile.exists())
+        // FileUtils.deleteWithConfirm(ecMetadataFile);
         // }
 
     }
@@ -1905,7 +1912,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public synchronized boolean isSelectedByCompactionOrErasureCoding() {
-        if(this.isSelectedByCompactionOrErasureCoding) {
+        if (this.isSelectedByCompactionOrErasureCoding) {
             return true;
         } else {
             this.isSelectedByCompactionOrErasureCoding = true;
@@ -1923,9 +1930,22 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return this.isReplicationTransferredToErasureCoding;
     }
 
+    public boolean isDataMigrateToCloud() {
+        return this.isDataMigrateToCloud;
+    }
+
     public boolean SetIsReplicationTransferredToErasureCoding() {
         this.isReplicationTransferredToErasureCoding = true;
         if (this.isReplicationTransferredToErasureCoding) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public boolean SetIsDataMigrateToCloud() {
+        this.isDataMigrateToCloud = true;
+        if (this.isDataMigrateToCloud) {
             return true;
         } else {
             return false;

@@ -761,6 +761,12 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
                         }
                     }
+                } else if (sstable.getColumnFamilyName().equals("usertable0")
+                        && sstable.isDataMigrateToCloud()) {
+                    logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename());
+                    // Tinoryj TODO: retrive SSTable from cloud.
+
                 }
 
                 if (sstable.getColumnFamilyName().contains("usertable")
@@ -768,6 +774,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         sstable.isReplicationTransferredToErasureCoding() &&
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
+                } else if (sstable.getColumnFamilyName().equals("usertable0") &&
+                        sstable.isDataMigrateToCloud()) {
+                    // Tinoryj TODO: retrive SSTable from cloud.
                 }
 
                 // if we've already seen a partition tombstone with a timestamp greater
@@ -983,13 +992,21 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                     }
                 }
+            } else if (sstable.getColumnFamilyName().equals("usertable0")
+                    && sstable.isDataMigrateToCloud()) {
+                logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
+                        sstable.getSSTableHashID(), sstable.getFilename());
+                // Tinoryj TODO: retrive SSTable from cloud.
+
             }
 
             if (sstable.getColumnFamilyName().contains("usertable") &&
                     sstable.isReplicationTransferredToErasureCoding() &&
                     ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                 sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
-
+            } else if (sstable.getColumnFamilyName().equals("usertable0") &&
+                    sstable.isDataMigrateToCloud()) {
+                // Tinoryj TODO: retrive SSTable from cloud.
             }
 
             // if we've already seen a partition tombstone with a timestamp greater
@@ -1013,7 +1030,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // key cache), so we first check if the sstable
                 // has any tombstone at all as a shortcut.
 
-                if(ECNetutils.getIsRecovered(sstable.getSSTableHashID()))
+                if (ECNetutils.getIsRecovered(sstable.getSSTableHashID()))
                     continue;
 
                 if (!sstable.mayHaveTombstones())
