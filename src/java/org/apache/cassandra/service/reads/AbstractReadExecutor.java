@@ -189,7 +189,7 @@ public abstract class AbstractReadExecutor {
         }
     }
 
-    private int makeDataRequestsForELECT(ReadCommand readCommand) {
+    private synchronized int makeDataRequestsForELECT(ReadCommand readCommand) {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> messageForDataRequest = readCommand.createMessage(false);
         int usedAddressNumber = 0;
@@ -273,7 +273,7 @@ public abstract class AbstractReadExecutor {
         return usedAddressNumber;
     }
 
-    private void makeDigestRequestsForELECT(ReadCommand readCommand, int usedAddressNumber) {
+    private synchronized void makeDigestRequestsForELECT(ReadCommand readCommand, int usedAddressNumber) {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> messageForDigestRequest = readCommand.createMessage(false);
 
@@ -393,7 +393,7 @@ public abstract class AbstractReadExecutor {
     /**
      * @return an executor appropriate for the configured speculative read policy
      */
-    public static AbstractReadExecutor getReadExecutor(SinglePartitionReadCommand command,
+    public static synchronized AbstractReadExecutor getReadExecutor(SinglePartitionReadCommand command,
             ConsistencyLevel consistencyLevel, long queryStartNanoTime) throws UnavailableException {
         Keyspace keyspace = Keyspace.open(command.metadata().keyspace);
         ColumnFamilyStore cfs = keyspace.getColumnFamilyStore(command.metadata().id);
