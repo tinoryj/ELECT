@@ -355,7 +355,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     // logger.debug("rymDebug: about writer, capacity is ");
                     // headNewSStables = writer1.finishFirstPhase();
                     // tailNewSStables = writer2.finish();
-                    SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, null, cfs, fileNamePrefix);
+                    SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, null, cfs, fileNamePrefix, transaction.opId());
                     if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
                     }

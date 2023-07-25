@@ -288,7 +288,16 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                  StorageService.instance.globalRecvECMetadatas, StorageService.instance.globalConsumedECMetadatas,
                                  StorageService.instance.globalReadyECMetadataCount, StorageService.instance.globalBolckedECMetadataCount,
                                   pendingECMetadata.size(), pendingECMetadata);
-                
+                if(StorageService.instance.globalConsumedECMetadatas == StorageService.instance.globalReadyECMetadataCount &&
+                   StorageService.instance.globalBolckedECMetadataCount > 0) {
+                    for(Map.Entry<String, ConcurrentLinkedQueue<BlockedECMetadata>> entry : StorageService.instance.globalPendingECMetadata.entrySet()) {
+                        if(!entry.getValue().isEmpty()) {
+                            logger.debug("rymDebug: the old sstHash is ({}), cfName is ({}), new sstHash is ({}), sourceIp is ({}), stripe id is ({})", entry.getKey(), entry.getValue().peek().cfName, 
+                                                                                       entry.getValue().peek().newSSTableHash, entry.getValue().peek().sourceIP, 
+                                                                                       entry.getValue().peek().ecMetadata.ecMetadataContent.stripeId);
+                        }
+                    }
+                }
             }
 
             // isConsumeBlockedECMetadataOccupied = false;
@@ -472,7 +481,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             } else {
                 // Just replace the files
                 try {
-                    SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor);
+                    SSTableReader.loadECMetadata(ecMetadata, oldECSSTable.descriptor, null);
                 } catch (FileNotFoundException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();

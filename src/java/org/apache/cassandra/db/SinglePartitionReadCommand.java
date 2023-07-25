@@ -954,7 +954,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         /* add the SSTables on disk */
         view.sstables.sort(SSTableReader.maxTimestampDescending);
         // read sorted sstables
-        logger.debug("[Tinoryj] Collecting data from sstables, target sstable number = {}", view.sstables.size());
+        // logger.debug("[Tinoryj] Collecting data from sstables, target sstable number = {}", view.sstables.size());
         for (SSTableReader sstable : view.sstables) {
             boolean isCurrentSSTableRepaired = false;
             if (!sstable.getColumnFamilyName().equals("usertable0")

@@ -783,8 +783,8 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         
         assert staged.isEmpty() : "must be no actions introduced between prepareToCommit and a commit";
 
-        if (logger.isTraceEnabled())
-            logger.trace("Committing transaction over {} staged: {}, logged: {}", originals, staged, logged);
+        // if (logger.isTraceEnabled())
+        logger.debug("Committing transaction ({}) over {} staged: {}, logged: {}", log.id(), originals, staged, logged);
 
         // accumulate must be null if we have been used correctly, so fail immediately if it is not
         maybeFail(accumulate);

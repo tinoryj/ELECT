@@ -419,16 +419,17 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRAEC]
-    public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs,
-            String fileNamePrefix) throws IOException {
 
-        logger.debug("rymDebug: this is invoke openECSSTable method");
+    public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix, TimeUUID txnId) throws IOException {
+
+        
+        logger.debug("rymDebug: this is invoke openECSSTable method, transaction is ({})", txnId);
         // Get a correct generation id
         SSTableId ecSSTableId = cfs.sstableIdGenerator.get();
         String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
         String dataParentDir = ECNetutils.getDataDir() + "ycsb/";
         Optional<Path> directory = ECNetutils.findDirectoryByPrefix(Paths.get(dataParentDir), cfs.name);
-        // String dataDir = cfs.getDirectories().toString();
+        logger.debug("rymDebug: Get generation id ({}), transaction is ({})", ecSSTableId, txnId);
 
         String dataDir = directory.get().toString();
         // logger.debug("rymDebug: get data directory {} (by prefix) for cf {}",
@@ -448,18 +449,22 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             }
 
         }
+        logger.debug("rymDebug: Move the received files ({}) as components, transaction is ({})", ecSSTableId, txnId);
 
         // Write a TOC.txt file and rename other files
         String tocFileName = dataDir + "/nb-" + ecSSTableId + "-big-TOC.txt";
         List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt", "EC.db", "Summary.db");
         Path tocFile = Paths.get(tocFileName);
         Files.write(tocFile, lines);
+        logger.debug("rymDebug: Write down the toc files, transaction is ({})", txnId);
 
         // get descriptor from toc file name
         Descriptor desc = Descriptor.fromFilename(tocFileName);
         // write ECMetadata
-        loadECMetadata(ecMetadata, desc);
+        logger.debug("rymDebug: Load ec metadata ({}) for transaction ({})", sstHash, txnId);
+        loadECMetadata(ecMetadata, desc, txnId);
 
+        logger.debug("rymDebug: open sstable ({}) for transaction ({})", sstHash, txnId);
         SSTableReader ecSSTable = open(desc);
         if (ecSSTable.getSSTableHashID().equals(sstHash) || sstHash == null) {
             StorageService.instance.globalSSTHashToECSSTableMap.put(ecSSTable.getSSTableHashID(), ecSSTable);
@@ -473,17 +478,21 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRAEC]
-    public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc) throws FileNotFoundException {
+    public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc, TimeUUID txnId) throws FileNotFoundException {
 
+        logger.debug("rymDebug: this is loadECMetadata for ({})", txnId);
         File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
         if (ecMetadataFile.exists())
             FileUtils.deleteWithConfirm(ecMetadataFile);
-        else if (ecMetadata.ecMetadataContent.isParityUpdate)
-            throw new FileNotFoundException(String.format("rymERROR: Cannot found EC metadata file ({})", desc));
+
+        // else if(ecMetadata.ecMetadataContent.isParityUpdate)
+        //     throw new FileNotFoundException(String.format("rymERROR: Cannot found EC metadata file ({})", desc));
+
 
         try {
             byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata.ecMetadataContent);
             ECNetutils.writeBytesToFile(ecMetadataFile.absolutePath(), buffer);
+            logger.debug("rymDebug: load ec metadata for transaction ({})", txnId);
         } catch (IOException e) {
             logger.error("rymERROR: Cannot save SSTable ecMetadataFile: ", e);
             if (ecMetadataFile.exists())
@@ -704,7 +713,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                 logger.trace("key cache contains {}/{} keys", sstable.getKeyCache().size(),
                         sstable.getKeyCache().getCapacity());
             if (components.contains(Component.EC_METADATA)) {
-                logger.info(RESET + "Open EC SSTables successfully! {}", sstable.getFilename() + YELLOW);
+                logger.info(RESET + "Open EC SSTables successfully! {}", sstable.getSSTableHashID() + YELLOW);
             }
             return sstable;
         } catch (Throwable t) {
