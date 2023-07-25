@@ -22,46 +22,60 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.List;
 
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery> {
 
+    private static final Logger logger = LoggerFactory.getLogger(LSMTreeRecoveryVerbHandler.class);
     @Override
     public void doVerb(Message<LSMTreeRecovery> message) throws IOException {
         String rawCfName = message.payload.rawCfName;
         String targetCfName = message.payload.targetCfName;
         InetAddressAndPort sourceAddress = message.from();
+        for (Keyspace keyspace : Keyspace.all()){
+            for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
 
-        // send data through the tcp connection
+                if(cfs.getColumnFamilyName().equals(targetCfName)) {
+
+                    List<String> dataDirs = cfs.getDataPaths();
+                    for(String dir : dataDirs) {
+                        if(dir.contains(targetCfName)) {
+                            String userName = "yjren";
+                            String host = sourceAddress.getHostAddress(false);
+                            String targetDir = userName + "@" + host + rawCfName;
+                            String script = "rsync -avz --progress -r " + dir + " " + targetDir;
+                            ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
+                            Process process = processBuilder.start();
+                            
+                            try {
+                                int exitCode = process.waitFor();
+                                if (exitCode == 0) {
+                                    logger.debug("rymDebug: Performing rsync script successfully!");
+                                } else {
+                                    logger.debug("rymDebug: Failed to perform rsync script!");
+                                }
+                            } catch (InterruptedException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+            }
+        }
+        // copy the folders to source address
+        
         
     }
 
-    public void startClient() {
-        try {
-            // 创建一个客户端套接字并连接到指定的服务器和端口
-            Socket clientSocket = new Socket("localhost", 9999);
-
-            // 获取输入流和输出流
-            BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-
-            // 发送消息给服务器
-            String message = "Hello, Server!";
-            System.out.println("发送消息给服务器：" + message);
-            out.println(message);
-
-            // 接收服务器的响应并打印
-            String response = in.readLine();
-            System.out.println("服务器响应：" + response);
-
-            // 关闭连接
-            clientSocket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    
 }

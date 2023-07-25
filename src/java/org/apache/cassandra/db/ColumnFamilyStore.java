@@ -519,6 +519,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         public void run() {
 
             ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
+            try {
+                logger.debug("rymDeug: get cfs path ({})", cfs.getDataPaths());
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
             Set<SSTableReader> sstables = cfs.getSSTableForLevel(level);
             if (!sstables.isEmpty()) {
                 logger.debug("rymDebug: get {} sstables from level {}", sstables.size(), level);

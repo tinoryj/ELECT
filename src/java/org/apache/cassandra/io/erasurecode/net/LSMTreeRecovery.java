@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -72,7 +73,12 @@ public class LSMTreeRecovery {
         formerIndex = formerIndex < 0 ? allHosts.size() - 1 : formerIndex;
         nextIndex = nextIndex >= allHosts.size() ? 0 : nextIndex;
 
-
+        try {
+            List<String> dataDirs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0").getDataPaths();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
         // Recovery usertable0 from the next node's usertable1
         LSMTreeRecovery msg0 = new LSMTreeRecovery("usertable0", "usertable1");

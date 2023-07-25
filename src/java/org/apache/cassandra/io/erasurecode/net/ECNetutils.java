@@ -84,6 +84,7 @@ public final class ECNetutils {
     private static final String receivedParityCodeDir = System.getProperty("user.dir")+"/data/receivedParityHashes/";
     private static final String dataDir = System.getProperty("user.dir")+"/data/data/";
     private static final String localParityCodeDir = System.getProperty("user.dir")+"/data/localParityHashes/";
+    private static final String scriptsDir = System.getProperty("user.dir")+"/scripts/";
 
     public static class ByteObjectConversion {
         public static byte[] objectToByteArray(Serializable obj) throws IOException {
@@ -439,6 +440,10 @@ public final class ECNetutils {
             }
             return null;
         }
+    }
+
+    public static String getScriptsDir(){
+        return scriptsDir;
     }
 
 
