@@ -154,7 +154,7 @@ public abstract class AbstractReadExecutor {
         makeRequests(command.copyAsDigestQuery(replicas), replicas);
     }
 
-    private void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
+    private synchronized void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> message = null;
         for (Replica replica : replicas) {
