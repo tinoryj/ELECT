@@ -154,7 +154,7 @@ public abstract class AbstractReadExecutor {
         makeRequests(command.copyAsDigestQuery(replicas), replicas);
     }
 
-    private synchronized void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
+    private void makeRequests(ReadCommand readCommand, Iterable<Replica> replicas) {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> message = null;
         for (Replica replica : replicas) {
@@ -189,7 +189,7 @@ public abstract class AbstractReadExecutor {
         }
     }
 
-    private synchronized int makeDataRequestsForELECT(ReadCommand readCommand) {
+    private int makeDataRequestsForELECT(ReadCommand readCommand) {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> messageForDataRequest = readCommand.createMessage(false);
         int usedAddressNumber = 0;
@@ -273,7 +273,7 @@ public abstract class AbstractReadExecutor {
         return usedAddressNumber;
     }
 
-    private synchronized void makeDigestRequestsForELECT(ReadCommand readCommand, int usedAddressNumber) {
+    private void makeDigestRequestsForELECT(ReadCommand readCommand, int usedAddressNumber) {
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> messageForDigestRequest = readCommand.createMessage(false);
 

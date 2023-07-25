@@ -724,9 +724,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             if (controller.isTrackingRepairedStatus())
                 Tracing.trace("Collecting data from sstables and tracking repaired status");
 
-            int readRecoveryedSSTableCount = 0;
+            int readRecoveryedSSTableCount = 0, targetSSTableSetSize = 0;
             ArrayList<String> readRecoveryedSSTableList = new ArrayList<String>();
             ArrayList<String> readRecoveryedSSTableHashList = new ArrayList<String>();
+            targetSSTableSetSize = view.sstables.size();
             for (SSTableReader sstable : view.sstables) {
                 boolean isCurrentSSTableRepaired = false;
                 if (!sstable.getColumnFamilyName().equals("usertable0")
@@ -844,8 +845,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         nonIntersectingSSTables, view.sstables.size(), includedDueToTombstones);
             if (readRecoveryedSSTableCount != 0 && inputCollector.isEmpty()) {
                 logger.error(
-                        "[Tinoryj-ERROR] Read recoveryed sstable count = {}, but get no data from them. The SSTables list = {}, hash list = {}, target read key token = {}, raw key = {}",
-                        readRecoveryedSSTableCount, readRecoveryedSSTableList, readRecoveryedSSTableHashList,
+                        "[Tinoryj-ERROR] Read recoveryed sstable count = {}, target sstable number in view = {}, but get no data from them. The SSTables list = {}, hash list = {}, target read key token = {}, raw key = {}",
+                        readRecoveryedSSTableCount,targetSSTableSetSize, readRecoveryedSSTableList, readRecoveryedSSTableHashList,
                         ((SinglePartitionReadCommand) controller.command).partitionKey().getToken(),
                         ((SinglePartitionReadCommand) controller.command).partitionKey()
                                 .getRawKey(((SinglePartitionReadCommand) controller.command).metadata()));
@@ -969,10 +970,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         view.sstables.sort(SSTableReader.maxTimestampDescending);
         // read sorted sstables
 
-        int readRecoveryedSSTableCount = 0;
+        int readRecoveryedSSTableCount = 0, targetSSTableSetSize = 0;
         ArrayList<String> readRecoveryedSSTableList = new ArrayList<String>();
         ArrayList<String> readRecoveryedSSTableHashList = new ArrayList<String>();
-
+        targetSSTableSetSize = view.sstables.size();
         for (SSTableReader sstable : view.sstables) {
             boolean isCurrentSSTableRepaired = false;
             if (!sstable.getColumnFamilyName().equals("usertable0")
@@ -1028,6 +1029,14 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // Tinoryj TODO: retrive SSTable from cloud.
             }
 
+            if (isCurrentSSTableRepaired) {
+                readRecoveryedSSTableList.add(sstable.getFilename());
+                readRecoveryedSSTableHashList.add(sstable.getSSTableHashID());
+                logger.debug("[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
+                        sstable.getSSTableHashID(),
+                        sstable.getFilename());
+            }
+
             // if we've already seen a partition tombstone with a timestamp greater
             // than the most recent update to this sstable, we're done, since the rest of
             // the sstables will also be older
@@ -1050,7 +1059,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // has any tombstone at all as a shortcut.
 
                 // if (ECNetutils.getIsRecovered(sstable.getSSTableHashID()))
-                //     continue;
+                // continue;
 
                 if (!sstable.mayHaveTombstones())
                     continue; // no tombstone at all, we can skip that sstable
@@ -1086,14 +1095,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 continue;
             }
 
-            if (isCurrentSSTableRepaired) {
-                readRecoveryedSSTableList.add(sstable.getFilename());
-                readRecoveryedSSTableHashList.add(sstable.getSSTableHashID());
-                logger.debug("[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
-                        sstable.getSSTableHashID(),
-                        sstable.getFilename());
-            }
-
             try (UnfilteredRowIterator iter = StorageHook.instance.makeRowIterator(cfs,
                     sstable,
                     partitionKey(),
@@ -1116,8 +1117,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
         if (readRecoveryedSSTableCount != 0 && (result == null || result.isEmpty())) {
             logger.error(
-                    "[Tinoryj-ERROR] Read recoveryed sstable count = {}, but get no data from them. The SSTables list = {}, hash list = {}, target read key token = {}, raw key = {}",
-                    readRecoveryedSSTableCount, readRecoveryedSSTableList, readRecoveryedSSTableHashList,
+                    "[Tinoryj-ERROR] Read recoveryed sstable count = {}, target sstable number in view = {}, but get no data from them. The SSTables list = {}, hash list = {}, target read key token = {}, raw key = {}",
+                    readRecoveryedSSTableCount, targetSSTableSetSize, readRecoveryedSSTableList,
+                    readRecoveryedSSTableHashList,
                     ((SinglePartitionReadCommand) controller.command).partitionKey().getToken(),
                     ((SinglePartitionReadCommand) controller.command).partitionKey()
                             .getRawKey(((SinglePartitionReadCommand) controller.command).metadata()));
