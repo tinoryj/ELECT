@@ -495,7 +495,7 @@ class PendingRepairManager {
 
         @Override
         protected int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last,
-                ECMetadata ecMetadata, String fileNamePrefix) {
+                ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) {
             // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'executeInternal'");
         }
@@ -507,7 +507,7 @@ class PendingRepairManager {
         }
 
         @Override
-        protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix)
+        protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys)
                 throws Exception {
             // TODO Auto-generated method stub
             throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");

@@ -19,6 +19,7 @@
 package org.apache.cassandra.db.memtable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -33,6 +34,7 @@ import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
+import org.apache.cassandra.db.memtable.Memtable.Owner;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.schema.TableMetadataRef;
@@ -221,7 +223,7 @@ public abstract class AbstractAllocatorMemtable extends AbstractMemtableWithComm
             
             @Override
             protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
-                    String fileNamePrefix) throws Exception {
+                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

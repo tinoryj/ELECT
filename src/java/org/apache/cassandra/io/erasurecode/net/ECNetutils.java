@@ -190,7 +190,7 @@ public final class ECNetutils {
         for (InetAddressAndPort rpn : replicaNodes) {
             if (!rpn.equals(locaIP)) {
                 String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, firstKey, lastKey, sstInBytes);
+                ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, firstKey, lastKey, sstInBytes, allKeys);
                 ecSync.sendSSTableToSecondary(rpn);
             }
         }

@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -570,7 +571,7 @@ public class RepairRunnable implements Runnable, ProgressEventNotifier, RepairNo
             
             @Override
             protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
-                    String fileNamePrefix) throws Exception {
+                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

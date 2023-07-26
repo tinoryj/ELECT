@@ -143,7 +143,7 @@ public class IndexSummaryManager implements IndexSummaryManagerMBean
 
             @Override
             protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
-                    String fileNamePrefix) throws Exception {
+                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

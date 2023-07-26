@@ -429,7 +429,9 @@ public class CompactionManager implements CompactionManagerMBean {
     }
 
     // [CASSANDRAEC]
-    private AllSSTableOpStatus rewriteSSTables(final ColumnFamilyStore cfs,
+    private AllSSTableOpStatus rewriteSSTables(
+            final Map<String, DecoratedKey> sourceKeys,
+            final ColumnFamilyStore cfs,
             final DecoratedKey first,
             final DecoratedKey last,
             List<SSTableReader> rewriteSSTables,
@@ -645,7 +647,9 @@ public class CompactionManager implements CompactionManagerMBean {
     }
 
     // [CASSANDRAEC] rewrite sstables based source decorated keys
-    public AllSSTableOpStatus performSSTableRewrite(final ColumnFamilyStore cfs,
+    public AllSSTableOpStatus performSSTableRewrite(
+            final Map<String, DecoratedKey> sourceKeys,
+            final ColumnFamilyStore cfs,
             final DecoratedKey first,
             final DecoratedKey last,
             List<SSTableReader> sstables,
@@ -656,7 +660,7 @@ public class CompactionManager implements CompactionManagerMBean {
             final long skipIfOlderThanTimestamp,
             final boolean skipIfCompressionMatches,
             int jobs) throws InterruptedException, ExecutionException {
-        return performSSTableRewrite(cfs, first, last, sstables, ecMetadata, fileNamePrefix, txn, (sstable) -> {
+        return performSSTableRewrite(sourceKeys, cfs, first, last, sstables, ecMetadata, fileNamePrefix, txn, (sstable) -> {
             // TODO: check this filter
 
             // Skip if descriptor version matches current version
@@ -687,7 +691,9 @@ public class CompactionManager implements CompactionManagerMBean {
     }
 
     // [CASSANDRAEC]
-    public AllSSTableOpStatus performSSTableRewrite(final ColumnFamilyStore cfs,
+    public AllSSTableOpStatus performSSTableRewrite(
+            final Map<String, DecoratedKey> sourceKeys,
+            final ColumnFamilyStore cfs,
             final DecoratedKey first,
             final DecoratedKey last,
             List<SSTableReader> sstables,
@@ -697,7 +703,7 @@ public class CompactionManager implements CompactionManagerMBean {
             Predicate<SSTableReader> sstableFilter,
             int jobs) throws InterruptedException, ExecutionException {
         // return rewriteSSTables(cfs, sourceKeys, sstables, OperationType.COMPACTION);
-        return rewriteSSTables(cfs, first, last, sstables, ecMetadata, fileNamePrefix, updateTxn,
+        return rewriteSSTables(sourceKeys, cfs, first, last, sstables, ecMetadata, fileNamePrefix, updateTxn,
                 new OneSSTableOperation() {
                     @Override
                     public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
@@ -734,7 +740,7 @@ public class CompactionManager implements CompactionManagerMBean {
                         // fileNamePrefix);
                         // logger.debug("rymDebug: open ec sstable {} successfully.",
                         // ecSSTable.descriptor);
-                        task.execute(active, first, last, ecMetadata, fileNamePrefix);
+                        task.execute(active, first, last, ecMetadata, fileNamePrefix, sourceKeys);
                     }
                 }, OperationType.COMPACTION);
     }
@@ -1110,7 +1116,7 @@ public class CompactionManager implements CompactionManagerMBean {
 
             @Override
             protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
-                    String fileNamePrefix) throws Exception {
+                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
@@ -1314,7 +1320,7 @@ public class CompactionManager implements CompactionManagerMBean {
 
                 @Override
                 protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
-                        String fileNamePrefix) throws Exception {
+                        String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1374,7 +1380,7 @@ public class CompactionManager implements CompactionManagerMBean {
 
                 @Override
                 protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
-                        String fileNamePrefix) throws Exception {
+                        String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1568,7 +1574,7 @@ public class CompactionManager implements CompactionManagerMBean {
 
             @Override
             protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
-                    String fileNamePrefix) throws Exception {
+                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

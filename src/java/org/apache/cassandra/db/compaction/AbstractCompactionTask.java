@@ -19,6 +19,7 @@ package org.apache.cassandra.db.compaction;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
@@ -132,13 +133,13 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
      * @param ecSSTable the new SSTable which has been replaced Data.db with EC.db
      * 
      */
-    public int execute(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix)
+    public int execute(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys)
     {
         try
         {
             // logger.debug("rymDebug: this is ActiveCompactionTask.execute");
 
-            return executeInternal(activeCompactions, first, last, ecMetadata, fileNamePrefix);
+            return executeInternal(activeCompactions, first, last, ecMetadata, fileNamePrefix, sourceKeys);
         }
         catch(FSDiskFullWriteError e)
         {
@@ -183,7 +184,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
 
     protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions);
     
-    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix);
+    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys);
 
     protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges);
 

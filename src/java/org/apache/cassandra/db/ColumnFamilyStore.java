@@ -1538,7 +1538,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                 @Override
                 protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
-                        String fileNamePrefix) throws Exception {
+                        String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1918,7 +1918,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     //[CASSANDRAEC] rewrite the sstables based on the source decorated keys
-    public CompactionManager.AllSSTableOpStatus sstablesRewrite(final DecoratedKey first,
+    public CompactionManager.AllSSTableOpStatus sstablesRewrite(
+            final Map<String, DecoratedKey> sourceKeys,
+            final DecoratedKey first,
             final DecoratedKey last,
             List<SSTableReader> sstables,
             ECMetadata metadata, String fileNamePrefix,
@@ -1929,7 +1931,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite");
 
-        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, first, last, sstables, metadata,
+        return CompactionManager.instance.performSSTableRewrite(sourceKeys, 
+                ColumnFamilyStore.this, first, last, sstables, metadata,
                 fileNamePrefix, txn,
                 skipIfCurrentVersion,
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
