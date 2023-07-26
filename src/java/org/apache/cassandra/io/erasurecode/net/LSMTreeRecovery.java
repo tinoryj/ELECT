@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.io.IVersionedSerializer;
 import org.apache.cassandra.io.util.DataInputPlus;
@@ -45,15 +46,15 @@ import com.google.common.collect.Iterables;
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 
 public class LSMTreeRecovery {
-    private static final Logger logger = LoggerFactory.getLogger(ECRequestData.class);
+    private static final Logger logger = LoggerFactory.getLogger(LSMTreeRecovery.class);
     public static final Serializer serializer = new Serializer();
 
-    public final String rawCfName;
+    public final String rawCfPath;
     public final String targetCfName;
 
 
-    public LSMTreeRecovery(String rawCfName, String targetCfName) {
-        this.rawCfName = rawCfName;
+    public LSMTreeRecovery(String rawCfPath, String targetCfName) {
+        this.rawCfPath = rawCfPath;
         this.targetCfName = targetCfName;
     }
 
@@ -72,23 +73,29 @@ public class LSMTreeRecovery {
         formerIndex = formerIndex < 0 ? allHosts.size() - 1 : formerIndex;
         nextIndex = nextIndex >= allHosts.size() ? 0 : nextIndex;
 
+        try {
+            // Recovery usertable0 from the next node's usertable1
+            String dataDir0 = Keyspace.open("ycsb").getColumnFamilyStore("usertable0").getDataPaths().get(0);
+            LSMTreeRecovery msg0 = new LSMTreeRecovery(dataDir0, "usertable1");
+            Message<LSMTreeRecovery> message0 = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg0, MessageFlag.CALL_BACK_ON_FAILURE);
+            MessagingService.instance().send(message0, allHosts.get(nextIndex));
 
 
-        // Recovery usertable0 from the next node's usertable1
-        LSMTreeRecovery msg0 = new LSMTreeRecovery("usertable0", "usertable1");
-        Message<LSMTreeRecovery> message0 = Message.outWithFlag(Verb.ECREQUESTDATA_REQ, msg0, MessageFlag.CALL_BACK_ON_FAILURE);
-        MessagingService.instance().send(message0, allHosts.get(nextIndex));
+            // Recovery usertable1 from the next node's usertable2
+            String dataDir1 = Keyspace.open("ycsb").getColumnFamilyStore("usertable1").getDataPaths().get(0);
+            LSMTreeRecovery msg1 = new LSMTreeRecovery(dataDir1, "usertable2");
+            Message<LSMTreeRecovery> message1 = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg1, MessageFlag.CALL_BACK_ON_FAILURE);
+            MessagingService.instance().send(message1, allHosts.get(nextIndex));
 
-
-        // Recovery usertable1 from the next node's usertable2
-        LSMTreeRecovery msg1 = new LSMTreeRecovery("usertable1", "usertable2");
-        Message<LSMTreeRecovery> message1 = Message.outWithFlag(Verb.ECREQUESTDATA_REQ, msg1, MessageFlag.CALL_BACK_ON_FAILURE);
-        MessagingService.instance().send(message1, allHosts.get(nextIndex));
-
-        // Recovery usertable2 from the former node's usertable1
-        LSMTreeRecovery msg2 = new LSMTreeRecovery("usertable2", "usertable1");
-        Message<LSMTreeRecovery> message2 = Message.outWithFlag(Verb.ECREQUESTDATA_REQ, msg2, MessageFlag.CALL_BACK_ON_FAILURE);
-        MessagingService.instance().send(message2, allHosts.get(formerIndex));
+            // Recovery usertable2 from the former node's usertable1
+            String dataDir2 = Keyspace.open("ycsb").getColumnFamilyStore("usertable2").getDataPaths().get(0);
+            LSMTreeRecovery msg2 = new LSMTreeRecovery(dataDir2, "usertable1");
+            Message<LSMTreeRecovery> message2 = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg2, MessageFlag.CALL_BACK_ON_FAILURE);
+            MessagingService.instance().send(message2, allHosts.get(formerIndex));
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
 
     }
 
@@ -98,20 +105,20 @@ public class LSMTreeRecovery {
 
         @Override
         public void serialize(LSMTreeRecovery t, DataOutputPlus out, int version) throws IOException {
-            out.writeUTF(t.rawCfName);
+            out.writeUTF(t.rawCfPath);
             out.writeUTF(t.targetCfName);
         }
 
         @Override
         public LSMTreeRecovery deserialize(DataInputPlus in, int version) throws IOException {
-            String rawCfName = in.readUTF();
+            String rawCfPath = in.readUTF();
             String targetCfName = in.readUTF();
-            return new LSMTreeRecovery(rawCfName, targetCfName);
+            return new LSMTreeRecovery(rawCfPath, targetCfName);
         }
 
         @Override
         public long serializedSize(LSMTreeRecovery t, int version) {
-            long size = sizeof(t.rawCfName) +
+            long size = sizeof(t.rawCfPath) +
                         sizeof(t.targetCfName);
 
             return size;
