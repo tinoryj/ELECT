@@ -38,7 +38,7 @@ func() {
     cd /mnt/ssd/Debug/CassandraEC
     # git checkout yuanming
     # git pull origin yuanming
-    git checkout 18d76aa5
+    git checkout 2f23462
 
     rm -rf data logs
     mkdir -p data/receivedParityHashes/
