@@ -36,9 +36,9 @@ func() {
     internode_application_receive_queue_reserve_global_capacity="1024MiB"
 
     cd /mnt/ssd/Debug/CassandraEC
-    git checkout yuanming
-    git pull origin yuanming
-    
+    # git checkout yuanming
+    # git pull origin yuanming
+    git checkout 18d76aa5
 
     rm -rf data logs
     mkdir -p data/receivedParityHashes/
