@@ -247,14 +247,14 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                                 metadata.sourceIP, dataForRewrite.firstKey, dataForRewrite.lastKey, dataForRewrite.sourceKeys);
                                         // entry.getValue().remove(metadata);
                                     } else {
-                                        logger.warn("rymERROR: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
+                                        logger.error("rymERROR: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
                                                     metadata.newSSTableHash);
                                     }
                                 } else {
                                     // TODO: Wait until the target ecSSTable is released
                                     // transformECMetadataToECSSTableForParityUpdate(metadata.ecMetadata, cfs, metadata.sstableHash);
                                     StorageService.instance.globalUpdatingSSTHashList.remove(metadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
-                                    logger.debug("rymERROR: wait until the target ecSSTable is released");
+                                    logger.error("rymERROR: wait until the target ecSSTable is released");
                                 }
                                 break;
 
@@ -480,7 +480,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         return true;
                     }
                 } else {
-                    logger.warn("rymERROR:[Parity Update] cannot get rewrite data of {} during parity update for old sstable {}",
+                    logger.error("rymERROR:[Parity Update] cannot get rewrite data of {} during parity update for old sstable {}",
                                 newSSTHash, oldECSSTable.getSSTableHashID());
                 }
 

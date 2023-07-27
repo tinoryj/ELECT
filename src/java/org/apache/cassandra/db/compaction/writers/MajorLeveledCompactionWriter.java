@@ -68,7 +68,7 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter {
     @SuppressWarnings("resource")
     public boolean realAppend(UnfilteredRowIterator partition) {
         if(sstableWriter.currentWriter().first != null && sstableWriter.currentWriter().first.compareTo(partition.partitionKey()) >= 0) {
-            logger.debug("rymERROR: MajorLeveledCompactionWriter first key {} is larger than right key {}",
+            logger.error("rymERROR: MajorLeveledCompactionWriter first key {} is larger than right key {}",
                          sstableWriter.currentWriter().first.getToken(),
                          sstableWriter.currentWriter().last.getToken());
         }

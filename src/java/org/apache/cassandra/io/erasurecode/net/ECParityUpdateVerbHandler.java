@@ -218,7 +218,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
 
                 // if( oldSSTableQueue.size() < newSSTableQueue.size()) {
-                //     logger.debug("rymERROR: new sstable count ({}) is more than the old count ({})!", newSSTableQueue.size(),
+                //     logger.error("rymERROR: new sstable count ({}) is more than the old count ({})!", newSSTableQueue.size(),
                 //                                                                                       oldSSTableQueue.size());
                 // }
                 
@@ -260,7 +260,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 }
 
                 // if (!newSSTableQueue.isEmpty()) {
-                //     logger.debug("rymERROR: The new sstables are not completely consumed!!!");
+                //     logger.error("rymERROR: The new sstables are not completely consumed!!!");
                 // }
 
                 // Case2: If old data is not completely consumed, we select sstables from globalRecvQueues
@@ -412,7 +412,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         try {
             parityHashList = StorageService.instance.globalStripIdToECMetadataMap.get(stripID).parityHashList;
         } catch (Exception e) {
-            logger.debug("rymERROR: When we are update old sstable ({}), we cannot to get ecMetadata for stripID {}", oldSSTHash, stripID);
+            logger.error("rymERROR: When we are update old sstable ({}), we cannot to get ecMetadata for stripID {}", oldSSTHash, stripID);
         }
 
         if(parityHashList == null) {

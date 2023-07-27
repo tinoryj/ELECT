@@ -370,7 +370,7 @@ public final class ECNetutils {
             StorageService.instance.compactingOrErasureCodingSSTables.remove(sstableHash);
         }
         // else {
-        //     logger.debug("rymERROR: we can not find the specified stable hash ({})", sstableHash);
+        //     logger.error("rymERROR: we can not find the specified stable hash ({})", sstableHash);
         // }
     }
 

@@ -776,7 +776,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     }
                 }
                 if(transferredSSTablesNum > DatabaseDescriptor.getMaxSendSSTables()) {
-                    logger.debug("rymERROR: The selected sstable count ({}) is exceed the limit ({})", transferredSSTablesNum, DatabaseDescriptor.getMaxSendSSTables());
+                    logger.error("rymERROR: The selected sstable count ({}) is exceed the limit ({})", transferredSSTablesNum, DatabaseDescriptor.getMaxSendSSTables());
                 }
             }
 
@@ -988,7 +988,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
 
                         if(newSSTableContentWithHashID.size() > entry.getValue().size()) {
-                            logger.debug("rymERROR: New sstables count ({}) is more than old sstables count ({}), check the code.", newSSTableContentWithHashID.size(), entry.getValue().size());
+                            logger.error("rymERROR: New sstables count ({}) is more than old sstables count ({}), check the code.", newSSTableContentWithHashID.size(), entry.getValue().size());
                         }
 
                     }

@@ -86,7 +86,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
                 ECNetutils.deleteFileByName(filePath);
         } catch (IOException e) {
             // TODO Auto-generated catch block
-            logger.debug("rymERROR: failed to find parity code file {} requested from {}", filePath, message.from());
+            logger.error("rymERROR: failed to find parity code file {} requested from {}", filePath, message.from());
             e.printStackTrace();
         }
         
