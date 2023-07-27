@@ -43,6 +43,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.LeveledGenerations;
+import org.apache.cassandra.db.compaction.LeveledManifest;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.CompactionManager.AllSSTableOpStatus;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -331,12 +332,14 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 List<SSTableReader> sstables = new ArrayList<>(
                         cfs.getSSTableForLevel(LeveledGenerations.getMaxLevelCount() - 1));
                 if (!sstables.isEmpty()) {
-                    Collections.sort(sstables, new SSTableReaderComparator());
-                    List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
+                    // Collections.sort(sstables, new SSTableReaderComparator());
                     DecoratedKey firstKeyForRewrite = dataForRewrite.firstKey;
                     DecoratedKey lastKeyForRewrite = dataForRewrite.lastKey;
+                    List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>(LeveledManifest.overlapping(firstKeyForRewrite.getToken(), 
+                                                                                                                   lastKeyForRewrite.getToken(), 
+                                                                                                                   sstables));
                     // use binary search to find related sstables
-                    rewriteSStables = getRewriteSSTables(sstables, firstKeyForRewrite, lastKeyForRewrite);
+                    // rewriteSStables = getRewriteSSTables(sstables, firstKeyForRewrite, lastKeyForRewrite);
                     // logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}", ecSSTable.getFilename());
     
                     return transformECMetadataToECSSTableForErasureCode(ecMetadata, rewriteSStables, cfs, fileNamePrefix,
