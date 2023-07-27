@@ -615,8 +615,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                 }
 
-                if(count == 0) {
-                    logger.debug("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
+                if (count == 0) {
+                    System.out.println("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
                     for (Keyspace keyspace : Keyspace.all()){
                         for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
                             if(cfs1.getColumnFamilyName().equals("usertable0") || cfs1.getColumnFamilyName().contains("usertable")) {
