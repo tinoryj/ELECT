@@ -117,10 +117,10 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     
 
 
-        logger.debug("rymDebug: message is from {}, globalSSTHashToSyncedFileMap size is {}, targetCfName is {}, sstHash is {}", 
+        logger.debug("rymDebug: message is from {}, globalSSTHashToSyncedFileMap size is {}, all keys number is ({}), targetCfName is {}, sstHash is {}", 
                      message.from(),
                      StorageService.instance.globalSSTHashToSyncedFileMap.size(), 
-                    //  message.payload.allKey.size(),
+                     message.payload.allKey.size(),
                      message.payload.targetCfName,
                      message.payload.sstHashID);
     }
