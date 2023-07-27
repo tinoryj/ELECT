@@ -31,6 +31,7 @@ import org.apache.cassandra.io.erasurecode.NativeRSDecoder;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
@@ -56,7 +57,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
             for(File file : files) {
                 if(file.isFile() && file.getName().contains("EC.db")) {
                     try {
-                        recoveryDataFromErasureCodesForLSMTree(file.getName());
+                        recoveryDataFromErasureCodesForLSMTree(file.getName(), rawCfPath);
                     } catch (Exception e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
@@ -73,7 +74,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
     }
 
 
-    private static void recoveryDataFromErasureCodesForLSMTree(String ecMetadataFile) throws Exception {
+    private static void recoveryDataFromErasureCodesForLSMTree(String ecMetadataFile, String cfPath) throws Exception {
         int k = DatabaseDescriptor.getEcDataNodes();
         int m = DatabaseDescriptor.getParityNodes();
         // Step 1: Get the ECSSTable from global map and get the ecmetadata
@@ -131,10 +132,18 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
 
 
         // Step 4: record the raw data locally
-        // int dataFileSize = (int) sstable.getDataFileSize();
+        String[] parts = ecMetadataFile.split("/");
+        String sstableId = parts[parts.length - 1].split(".")[0].split("-")[1];
+        String statsMetadataFileName = cfPath + "nb-" + sstableId + "-big-Statistics.db";
+        String dataFileName = cfPath + "nb-" + sstableId + "-big-Data.db";
+        byte[] statsMetadatInBytes = ECNetutils.readBytesFromFile(statsMetadataFileName);
+        StatsMetadata statsMetadata = (StatsMetadata) ByteObjectConversion.byteArrayToObject(statsMetadatInBytes);
+
+        int dataFileSize = (int) statsMetadata.dataFileSize;
         // logger.debug("rymDebug: [Debug recovery] we load the raw sstable content of ({}), the length of decode data is ({}), sstHash is ({}), the data file size is ({}) ", sstable.descriptor, output[0].remaining(), sstable.getSSTableHashID(), dataFileSize);
-        // byte[] sstContent = new byte[dataFileSize];
-        // output[0].get(sstContent);
+        byte[] sstContent = new byte[dataFileSize];
+        output[0].get(sstContent);
+        ECNetutils.writeBytesToFile(dataFileName, sstContent);
         // SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
 
         // debug

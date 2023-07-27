@@ -25,6 +25,7 @@ import java.util.*;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.io.IOException;
+import java.io.Serializable;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -52,7 +53,7 @@ import java.time.temporal.ChronoField;
 /**
  * SSTable metadata that always stay on heap.
  */
-public class StatsMetadata extends MetadataComponent {
+public class StatsMetadata extends MetadataComponent implements Serializable{
     private static final Logger logger = LoggerFactory.getLogger(StatsMetadata.class);
     public static final IMetadataComponentSerializer serializer = new StatsMetadataSerializer();
     public static final ISerializer<IntervalSet<CommitLogPosition>> commitLogPositionSetSerializer = IntervalSet

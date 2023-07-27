@@ -500,6 +500,26 @@ public final class ECNetutils {
         
     }
 
+    public static void scpCommand(String source, String target) throws IOException {
+
+        String script = "rsync -avz --progress -r " + source + " " + target;
+        ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
+        Process process = processBuilder.start();
+        
+        try {
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                logger.debug("rymDebug: Performing rsync script successfully!");
+
+            } else {
+                logger.debug("rymDebug: Failed to perform rsync script!");
+            }
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
     public static void main(String[] args) {
         
         // try {
