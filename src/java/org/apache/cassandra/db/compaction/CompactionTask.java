@@ -381,8 +381,8 @@ public class CompactionTask extends AbstractCompactionTask {
                     // TODO: re-create sstable reader from ecmetadata 
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
-                    logger.debug(YELLOW+"[Rewrite SSTables]: Rewrite is done!!!! task id is {},  cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, head keys num is {}, tail keys num is {}, total traversed keys nums is {}, saved keys is {}, keys num in range is {}",
-                        taskId, cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), headKeysNum, tailKeysNum, traversedKeys, totalKeysWritten, keysInRange);
+                    logger.debug(YELLOW+"[Rewrite SSTables]: Rewrite is done!!!! task id is {},  cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, head keys num is {}, tail keys num is {}, total traversed keys nums is {}, saved keys is {}, keys num in range is {}, source key num is ({})",
+                        taskId, cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), headKeysNum, tailKeysNum, traversedKeys, totalKeysWritten, keysInRange, sourceKeys.size());
                 }
                 finally
                 {

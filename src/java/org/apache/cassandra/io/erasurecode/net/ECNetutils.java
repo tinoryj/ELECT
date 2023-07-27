@@ -520,6 +520,21 @@ public final class ECNetutils {
         }
     }
 
+    
+    public static void migrateDataToCloud(String cloudIp, String currentIp, String cfName, String dataFileName) throws IOException {
+
+
+        // String userName = "yjren";
+        String targetDir = "yjren@" + cloudIp + ":~/" + currentIp + "/" + cfName;
+        scpCommand(dataFileName, targetDir);
+
+    }
+
+    public static void retrieveDataFromCloud(String cloudIp, String requestIp, String cfName, String dataFileName, String targetDir) throws IOException {
+        String sourceFileName = "yjren@" + cloudIp + ":~/" + requestIp + "/" + cfName + "/" + dataFileName;
+        scpCommand(sourceFileName, targetDir);
+    }
+
     public static void main(String[] args) {
         
         // try {

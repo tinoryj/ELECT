@@ -202,6 +202,18 @@ public class ECRecovery {
             // first get local parity codes
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(0);
+            File parityCodeFile = new File(parityCodeFileName);
+            
+            if(!parityCodeFile.exists()) {
+                // retrieve from cloud
+                try {
+                    ECNetutils.retrieveDataFromCloud("127.0.0.1", FBUtilities.getBroadcastAddressAndPort().getHostName(false), "usertable0", parityCodeFileName, ECNetutils.getLocalParityCodeDir());
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+
             try {
                 ByteBuffer localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
                 StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k].put(localParityCode);

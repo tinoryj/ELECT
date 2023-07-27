@@ -35,7 +35,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
 
     private static final Logger logger = LoggerFactory.getLogger(ECRequestParityVerbHandler.class);
     @Override
-    public void doVerb(Message<ECRequestParity> message) {
+    public void doVerb(Message<ECRequestParity> message) throws IOException {
         
         String parityHash = message.payload.parityHash;
         String sstHash = message.payload.sstHash;
@@ -64,6 +64,10 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
                     break;
                 }
             }
+        }
+
+        if(!Files.exists(path)) {
+            ECNetutils.retrieveDataFromCloud("127.0.0.1", message.from().getHostAddress(false), "cfName", parityHash, filePath);
         }
 
         if(!Files.exists(path)) {
