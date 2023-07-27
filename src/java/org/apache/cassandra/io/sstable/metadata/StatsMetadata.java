@@ -439,7 +439,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable{
 
             if (version.hasIsDataMigrateToCloud()) {
                 out.writeBoolean(component.isDataMigrateToCloud);
-                logger.debug("[Tinoryj] Write isDataMigrateToCloud {}", component.isDataMigrateToCloud);
+                // logger.debug("[Tinoryj] Write isDataMigrateToCloud {}", component.isDataMigrateToCloud);
             }
 
             if (version.hasOriginatingHostId()) {
