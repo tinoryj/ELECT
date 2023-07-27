@@ -28,12 +28,12 @@ func() {
     stripe_update_frequency=$7
     max_send_sstables=$8
     internode_max_message_size=$9
-    internode_application_send_queue_capacity=256MiB
-    internode_application_send_queue_reserve_endpoint_capacity=512MiB
-    internode_application_send_queue_reserve_global_capacity=2048MiB
-    internode_application_receive_queue_capacity=512MiB
-    internode_application_receive_queue_reserve_endpoint_capacity=512MiB
-    internode_application_receive_queue_reserve_global_capacity=2048MiB
+    internode_application_send_queue_capacity="256MiB"
+    internode_application_send_queue_reserve_endpoint_capacity="512MiB"
+    internode_application_send_queue_reserve_global_capacity="1024MiB"
+    internode_application_receive_queue_capacity="512MiB"
+    internode_application_receive_queue_reserve_endpoint_capacity="512MiB"
+    internode_application_receive_queue_reserve_global_capacity="1024MiB"
 
     cd /mnt/ssd/Test/CassandraEC
     git checkout yuanming

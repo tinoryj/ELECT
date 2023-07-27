@@ -33,10 +33,10 @@
       internode_max_message_size: 32MiB
       internode_application_send_queue_capacity: 256MiB
       internode_application_send_queue_reserve_endpoint_capacity: 512MiB
-      internode_application_send_queue_reserve_global_capacity: 2048MiB
+      internode_application_send_queue_reserve_global_capacity: 1024MiB
       internode_application_receive_queue_capacity: 512MiB
       internode_application_receive_queue_reserve_endpoint_capacity: 512MiB
-      internode_application_receive_queue_reserve_global_capacity: 2048MiB
+      internode_application_receive_queue_reserve_global_capacity: 1024MiB
 
     register: command_result
     ignore_errors: True
