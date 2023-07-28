@@ -271,7 +271,7 @@ public class ECRecovery {
         }
 
         // padding zero
-        for(int i = zeroChunkNum; i < buffers.length && j < k; i++) {
+        for(int i = k-zeroChunkNum; i < buffers.length && j < k; i++) {
             byte[] zeroChunk = new byte[codeLength];
             buffers[i].put(zeroChunk);
             buffers[i].rewind();
