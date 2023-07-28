@@ -130,7 +130,7 @@ public class LeveledManifest {
                     modificationTime = ssTableReader.getCreationTimeFor(Component.EC_METADATA);
                 } else {
                     modificationTime = 0;
-                    logger.debug("[Tinoryj] could not found both EC metadata and data, set modify time to 0");
+                    // logger.debug("[Tinoryj] could not found both EC metadata and data, set modify time to 0");
                 }
 
                 if (modificationTime >= maxModificationTime) {

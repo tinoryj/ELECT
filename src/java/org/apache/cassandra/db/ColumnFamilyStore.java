@@ -494,7 +494,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         private final String cfName;
         private final int level;
         private final int delay; // in minutes
-        private static final int MAX_EC_CANDIDATES = 32;
+        private static final int MAX_EC_CANDIDATES = 48;
 
         SendSSTRunnable(String keyspaceName, String cfName, int level, int delay) {
             this.keyspaceName = keyspaceName;
@@ -615,8 +615,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                 }
 
-                if(count == 0) {
-                    logger.debug("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
+                if (count == 0) {
+                    System.out.println("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
                     for (Keyspace keyspace : Keyspace.all()){
                         for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
                             if(cfs1.getColumnFamilyName().equals("usertable0") || cfs1.getColumnFamilyName().contains("usertable")) {
@@ -1538,7 +1538,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                 @Override
                 protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
-                        String fileNamePrefix) throws Exception {
+                        String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
                     // TODO Auto-generated method stub
                     throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
@@ -1918,7 +1918,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     //[CASSANDRAEC] rewrite the sstables based on the source decorated keys
-    public CompactionManager.AllSSTableOpStatus sstablesRewrite(final DecoratedKey first,
+    public CompactionManager.AllSSTableOpStatus sstablesRewrite(
+            final Map<String, DecoratedKey> sourceKeys,
+            final DecoratedKey first,
             final DecoratedKey last,
             List<SSTableReader> sstables,
             ECMetadata metadata, String fileNamePrefix,
@@ -1929,7 +1931,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite");
 
-        return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, first, last, sstables, metadata,
+        return CompactionManager.instance.performSSTableRewrite(sourceKeys, 
+                ColumnFamilyStore.this, first, last, sstables, metadata,
                 fileNamePrefix, txn,
                 skipIfCurrentVersion,
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);

@@ -174,12 +174,6 @@ public abstract class AbstractReadExecutor {
             }
 
             MessagingService.instance().sendWithCallback(message, endpoint, handler);
-            if (readCommand.metadata().keyspace.equals("ycsb")) {
-                logger.debug(
-                        "[Tinoryj] Send {} request for token = {} to {}, the message target table is ({}), at node {}",
-                        readCommand.isDigestQuery() ? "digest" : "data",
-                        tokenForRead, readCommand.metadata().name, message.payload.metadata().name, endpoint);
-            }
         }
 
         // We delay the local (potentially blocking) read till the end to avoid stalling
@@ -350,7 +344,7 @@ public abstract class AbstractReadExecutor {
                     }
                     break;
                 default:
-                    logger.debug("[Tinoryj] Not support replication factor larger than 3");
+                    logger.error("[Tinoryj-ERROR] Not support replication factor larger than 3");
                     break;
             }
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
@@ -375,9 +369,9 @@ public abstract class AbstractReadExecutor {
      */
     public void executeAsync() {
         if (this.command.metadata().keyspace.equals("ycsb")) {
-            logger.debug("[Tinoryj] makeRequestsForELECT in use");
+            // logger.debug("[Tinoryj] makeRequestsForELECT in use");
             int usedAddressNumber = makeDataRequestsForELECT(command);
-            logger.debug("[Tinoryj] After data request, used node number = {}", usedAddressNumber);
+            // logger.debug("[Tinoryj] After data request, used node number = {}", usedAddressNumber);
             makeDigestRequestsForELECT(command.copyAsDigestQuery(), usedAddressNumber);
         } else {
             EndpointsForToken selected = replicaPlan().contacts();

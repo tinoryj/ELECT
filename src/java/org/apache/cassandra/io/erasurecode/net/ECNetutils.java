@@ -190,7 +190,7 @@ public final class ECNetutils {
         for (InetAddressAndPort rpn : replicaNodes) {
             if (!rpn.equals(locaIP)) {
                 String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, firstKey, lastKey, sstInBytes);
+                ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, firstKey, lastKey, sstInBytes, allKeys);
                 ecSync.sendSSTableToSecondary(rpn);
             }
         }
@@ -370,7 +370,7 @@ public final class ECNetutils {
             StorageService.instance.compactingOrErasureCodingSSTables.remove(sstableHash);
         }
         // else {
-        //     logger.debug("rymERROR: we can not find the specified stable hash ({})", sstableHash);
+        //     logger.error("rymERROR: we can not find the specified stable hash ({})", sstableHash);
         // }
     }
 
@@ -498,6 +498,41 @@ public final class ECNetutils {
         }
 
         
+    }
+
+    public static void scpCommand(String source, String target) throws IOException {
+
+        String script = "rsync -avz --progress -r " + source + " " + target;
+        ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
+        Process process = processBuilder.start();
+        
+        try {
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                logger.debug("rymDebug: Performing rsync script successfully!");
+
+            } else {
+                logger.debug("rymDebug: Failed to perform rsync script!");
+            }
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
+    
+    public static void migrateDataToCloud(String cloudIp, String currentIp, String cfName, String dataFileName) throws IOException {
+
+
+        // String userName = "yjren";
+        String targetDir = "yjren@" + cloudIp + ":~/" + currentIp + "/" + cfName;
+        scpCommand(dataFileName, targetDir);
+
+    }
+
+    public static void retrieveDataFromCloud(String cloudIp, String requestIp, String cfName, String dataFileName, String targetDir) throws IOException {
+        String sourceFileName = "yjren@" + cloudIp + ":~/" + requestIp + "/" + cfName + "/" + dataFileName;
+        scpCommand(sourceFileName, targetDir);
     }
 
     public static void main(String[] args) {

@@ -122,7 +122,7 @@ public final class ECParityUpdate implements Serializable {
         }
 
         if(this.parityNodes.get(0).equals(FBUtilities.getBroadcastAddressAndPort())) {
-            logger.debug("rymERROR: parity node is equal to primary node, that's illegal!");
+            logger.error("rymERROR: parity node is equal to primary node, that's illegal!");
         }
 
         Message<ECParityUpdate> message = Message.outWithFlag(Verb.ECPARITYUPDATE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);

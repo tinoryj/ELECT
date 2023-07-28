@@ -353,9 +353,9 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 if (!sstable.getColumnFamilyName().equals("usertable0")
                         && sstable.isReplicationTransferredToErasureCoding()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
-                        logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
-                                sstable.getColumnFamilyName(),
-                                sstable.getSSTableHashID(), sstable.getFilename());
+                        // logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
+                        //         sstable.getColumnFamilyName(),
+                        //         sstable.getSSTableHashID(), sstable.getFilename());
                         continue;
                     } else {
                         isCurrentSSTableRepaired = true;

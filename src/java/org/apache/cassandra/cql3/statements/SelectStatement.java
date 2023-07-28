@@ -851,11 +851,11 @@ public class SelectStatement implements CQLStatement.SingleKeyspaceCqlStatement 
         }
 
         ResultSet cqlRows = result.build();
-        if (totalPartitionCount != cqlRows.size() && ksName.equals("ycsb")) {
-            logger.error(
-                    "[Tinoryj] Process read results size mismatch, total partition count = {}, result set size = {}",
-                    totalPartitionCount, cqlRows.size());
-        }
+        // if (totalPartitionCount != cqlRows.size() && ksName.equals("ycsb")) {
+        //     logger.error(
+        //             "[Tinoryj] Process read results size mismatch, total partition count = {}, result set size = {}",
+        //             totalPartitionCount, cqlRows.size());
+        // }
 
         maybeWarn(result, options);
 

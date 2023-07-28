@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.cassandra.db.DecoratedKey;
@@ -48,17 +50,20 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
 
     public static class DataForRewrite {
         // public final List<DecoratedKey> sourceKeys;
+        public final Map<String, DecoratedKey> sourceKeys;
         public final DecoratedKey firstKey;
         public final DecoratedKey lastKey;
         // public final SSTablesInBytes sstInBytes;
         public String fileNamePrefix;
 
-        public DataForRewrite(DecoratedKey firstKey, DecoratedKey lastKey, String fileNamePrefix) {
+        public DataForRewrite(DecoratedKey firstKey, DecoratedKey lastKey, String fileNamePrefix, 
+                              Map<String, DecoratedKey> sourceKeys) {
             this.firstKey = firstKey;
             this.lastKey = lastKey;
             // this.sourceKeys = sourceKeys;
             // this.sstInBytes = sstInBytes;
             this.fileNamePrefix = fileNamePrefix;
+            this.sourceKeys = sourceKeys;
         }
     }
 
@@ -76,15 +81,15 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
                         message.payload.sstHashID, message.from());
 
         // collect sstcontent
-        // List<String> allKey = message.payload.allKey;
+        List<String> allKey = message.payload.allKey;
         SSTablesInBytes sstInBytes = message.payload.sstInBytes;
         String cfName = message.payload.targetCfName;
 
         // Get all keys 
-        // List<DecoratedKey> sourceKeys = new ArrayList<DecoratedKey>();
-        // for(String key : allKey) {
-        //     sourceKeys.add(StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
-        // }
+        Map<String, DecoratedKey> sourceKeys = new HashMap<String, DecoratedKey>();
+        for(String key : allKey) {
+            sourceKeys.put(key, StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
+        }
         // Collections.sort(sourceKeys, new DecoratedKeyComparator());
         DecoratedKey firstKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, message.payload.firstKey);
         DecoratedKey lastKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, message.payload.lastKey);
@@ -97,7 +102,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         // the full name is user.dir/data/tmp/${HostName}-${COUNTER}-XXX.db
         String fileNamePrefix = hostName + "-" + String.valueOf(fileCount) + "-";
         StorageService.instance.globalSSTHashToSyncedFileMap.put(message.payload.sstHashID, 
-                                                         new DataForRewrite(firstKey, lastKey, fileNamePrefix));
+                                                         new DataForRewrite(firstKey, lastKey, fileNamePrefix, sourceKeys));
         
         String tmpFileName = dataForRewriteDir + fileNamePrefix;
         String filterFileName = tmpFileName + "Filter.db";
@@ -112,10 +117,10 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
     
 
 
-        logger.debug("rymDebug: message is from {}, globalSSTHashToSyncedFileMap size is {}, targetCfName is {}, sstHash is {}", 
+        logger.debug("rymDebug: message is from {}, globalSSTHashToSyncedFileMap size is {}, all keys number is ({}), targetCfName is {}, sstHash is {}", 
                      message.from(),
                      StorageService.instance.globalSSTHashToSyncedFileMap.size(), 
-                    //  message.payload.allKey.size(),
+                     message.payload.allKey.size(),
                      message.payload.targetCfName,
                      message.payload.sstHashID);
     }

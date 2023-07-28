@@ -156,7 +156,7 @@ public class ECMessage implements Serializable {
             message = Message.outWithFlag(Verb.ERASURECODE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().sendSSTContentWithoutCallback(message, this.ecMessageContent.parityNodes.get(0));
         } else {
-            logger.debug("rymERROR: targetEndpoints is null!");
+            logger.error("rymERROR: targetEndpoints is null!");
         }
     }
 

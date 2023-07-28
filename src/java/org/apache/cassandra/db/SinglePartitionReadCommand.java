@@ -718,6 +718,18 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
              * read a partition tombstone.
              */
             view.sstables.sort(SSTableReader.maxTimestampDescending);
+
+            String sstablesHashID = "", sstablesPath = "";
+            for (SSTableReader sstable : view.sstables) {
+                sstablesHashID += ("\t" + sstable.getSSTableHashID());
+                sstablesPath += ("\t" + sstable.getFilename());
+            }
+            logger.debug("[Tinoryj] the target sstables for key token = {}, raw key = {}, include: [{},{}] sstables",
+                    ((SinglePartitionReadCommand) controller.command).partitionKey().getToken(),
+                    ((SinglePartitionReadCommand) controller.command).partitionKey()
+                            .getRawKey(((SinglePartitionReadCommand) controller.command).metadata()),
+                    sstablesHashID, sstablesPath);
+
             int nonIntersectingSSTables = 0;
             int includedDueToTombstones = 0;
 
@@ -733,9 +745,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 if (!sstable.getColumnFamilyName().equals("usertable0")
                         && sstable.isReplicationTransferredToErasureCoding()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
-                        logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
-                                sstable.getColumnFamilyName(),
-                                sstable.getSSTableHashID(), sstable.getFilename());
+                        // logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
+                        //         sstable.getColumnFamilyName(),
+                        //         sstable.getSSTableHashID(), sstable.getFilename());
                         continue;
                     } else {
                         isCurrentSSTableRepaired = true;
@@ -807,9 +819,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     if (isCurrentSSTableRepaired) {
                         readRecoveryedSSTableList.add(sstable.getFilename());
                         readRecoveryedSSTableHashList.add(sstable.getSSTableHashID());
-                        logger.debug("[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
-                                sstable.getSSTableHashID(),
-                                sstable.getFilename());
+                        // logger.debug("[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
+                        //         sstable.getSSTableHashID(),
+                        //         sstable.getFilename());
                     }
                     mostRecentPartitionTombstone = Math.max(mostRecentPartitionTombstone,
                             iter.partitionLevelDeletion().markedForDeleteAt());
@@ -846,7 +858,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             if (readRecoveryedSSTableCount != 0 && inputCollector.isEmpty()) {
                 logger.error(
                         "[Tinoryj-ERROR] Read recoveryed sstable count = {}, target sstable number in view = {}, but get no data from them. The SSTables list = {}, hash list = {}, target read key token = {}, raw key = {}",
-                        readRecoveryedSSTableCount,targetSSTableSetSize, readRecoveryedSSTableList, readRecoveryedSSTableHashList,
+                        readRecoveryedSSTableCount, targetSSTableSetSize, readRecoveryedSSTableList,
+                        readRecoveryedSSTableHashList,
                         ((SinglePartitionReadCommand) controller.command).partitionKey().getToken(),
                         ((SinglePartitionReadCommand) controller.command).partitionKey()
                                 .getRawKey(((SinglePartitionReadCommand) controller.command).metadata()));
@@ -968,6 +981,16 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
         /* add the SSTables on disk */
         view.sstables.sort(SSTableReader.maxTimestampDescending);
+        String sstablesHashID = "", sstablesPath = "";
+        for (SSTableReader sstable : view.sstables) {
+            sstablesHashID += ("\t" + sstable.getSSTableHashID());
+            sstablesPath += ("\t" + sstable.getFilename());
+        }
+        // logger.debug("[Tinoryj] the target sstables for key token = {}, raw key = {}, include: [{},{}] sstables",
+        //         ((SinglePartitionReadCommand) controller.command).partitionKey().getToken(),
+        //         ((SinglePartitionReadCommand) controller.command).partitionKey()
+        //                 .getRawKey(((SinglePartitionReadCommand) controller.command).metadata()),
+        //         sstablesHashID, sstablesPath);
         // read sorted sstables
 
         int readRecoveryedSSTableCount = 0, targetSSTableSetSize = 0;
@@ -979,9 +1002,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             if (!sstable.getColumnFamilyName().equals("usertable0")
                     && sstable.isReplicationTransferredToErasureCoding()) {
                 if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
-                    logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
-                            sstable.getColumnFamilyName(),
-                            sstable.getSSTableHashID(), sstable.getFilename());
+                    // logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
+                    //         sstable.getColumnFamilyName(),
+                    //         sstable.getSSTableHashID(), sstable.getFilename());
                     continue;
                 } else {
                     isCurrentSSTableRepaired = true;
@@ -1032,9 +1055,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             if (isCurrentSSTableRepaired) {
                 readRecoveryedSSTableList.add(sstable.getFilename());
                 readRecoveryedSSTableHashList.add(sstable.getSSTableHashID());
-                logger.debug("[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
-                        sstable.getSSTableHashID(),
-                        sstable.getFilename());
+                // logger.debug("[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
+                //         sstable.getSSTableHashID(),
+                //         sstable.getFilename());
             }
 
             // if we've already seen a partition tombstone with a timestamp greater

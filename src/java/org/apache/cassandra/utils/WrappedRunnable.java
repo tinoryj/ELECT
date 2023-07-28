@@ -18,6 +18,7 @@
 package org.apache.cassandra.utils;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
@@ -66,11 +67,11 @@ public abstract class WrappedRunnable implements Runnable
         }
     }
 
-    public final void run(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix){
+    public final void run(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys){
         
         try
         {
-            runMayThrow(first, last, ecMetadata, fileNamePrefix);
+            runMayThrow(first, last, ecMetadata, fileNamePrefix, sourceKeys);
         }
         catch (Exception e)
         {
@@ -80,6 +81,6 @@ public abstract class WrappedRunnable implements Runnable
 
     abstract protected void runMayThrow() throws Exception;
     abstract protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception;
-    abstract protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix) throws Exception;
+    abstract protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception;
     abstract protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) throws Exception;
 }

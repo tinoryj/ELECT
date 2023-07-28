@@ -45,6 +45,10 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.Mutation;
 import org.apache.cassandra.db.SystemKeyspace;
+import org.apache.cassandra.db.commitlog.CommitLogReadHandler.CommitLogReadException;
+import org.apache.cassandra.db.commitlog.CommitLogReplayer.CommitLogReplayException;
+import org.apache.cassandra.db.commitlog.CommitLogReplayer.MutationInitiator;
+import org.apache.cassandra.db.commitlog.CommitLogReplayer.ReplayFilter;
 import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
@@ -332,7 +336,7 @@ public class CommitLogReplayer implements CommitLogReadHandler
                 
                 @Override
                 protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
-                    String fileNamePrefix) throws Exception {
+                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
                 // TODO Auto-generated method stub
                 throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }

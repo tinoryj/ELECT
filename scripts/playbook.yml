@@ -20,7 +20,7 @@
   become_user: yjren
   tasks:
   - name: Execute script start-server.sh
-    command: bash /mnt/ssd/Debug/CassandraEC/scripts/start-server.sh {{ ec_data_nodes }} {{ parity_nodes }} {{ max_level_count }} {{ concurrent_ec }} {{ initial_delay }} {{ task_delay }} {{ stripe_update_frequency }} {{ max_send_sstables }} {{ internode_max_message_size }} {{ internode_application_send_queue_capacity }} {{ internode_application_send_queue_reserve_endpoint_capacity }} {{ internode_application_send_queue_reserve_global_capacity }} {{ internode_application_receive_queue_capacity }} {{ internode_application_receive_queue_reserve_endpoint_capacity }} {{ internode_application_receive_queue_reserve_global_capacity }}
+    command: bash /mnt/ssd/Test/CassandraEC/scripts/start-server.sh {{ ec_data_nodes }} {{ parity_nodes }} {{ max_level_count }} {{ concurrent_ec }} {{ initial_delay }} {{ task_delay }} {{ stripe_update_frequency }} {{ max_send_sstables }} {{ internode_max_message_size }} {{ internode_application_send_queue_capacity }} {{ internode_application_send_queue_reserve_endpoint_capacity }} {{ internode_application_send_queue_reserve_global_capacity }} {{ internode_application_receive_queue_capacity }} {{ internode_application_receive_queue_reserve_endpoint_capacity }} {{ internode_application_receive_queue_reserve_global_capacity }}
     vars:
       ec_data_nodes: 4
       parity_nodes: 2
@@ -30,12 +30,12 @@
       task_delay: 2
       stripe_update_frequency: 2
       max_send_sstables: 8
-      internode_max_message_size: 16MiB
-      internode_application_send_queue_capacity: 128MiB
-      internode_application_send_queue_reserve_endpoint_capacity: 256MiB
+      internode_max_message_size: 32MiB
+      internode_application_send_queue_capacity: 256MiB
+      internode_application_send_queue_reserve_endpoint_capacity: 512MiB
       internode_application_send_queue_reserve_global_capacity: 1024MiB
-      internode_application_receive_queue_capacity: 128MiB
-      internode_application_receive_queue_reserve_endpoint_capacity: 256MiB
+      internode_application_receive_queue_capacity: 512MiB
+      internode_application_receive_queue_reserve_endpoint_capacity: 512MiB
       internode_application_receive_queue_reserve_global_capacity: 1024MiB
 
     register: command_result
@@ -54,10 +54,10 @@
 
   tasks:
   - name: Execute script start-client.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-client.sh {{ ansible_hostname }} {{ sstable_size_in_mb }} {{ fanout_size }}
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/start-client.sh {{ ansible_hostname }} {{ sstable_size_in_mb }} {{ fanout_size }}
     vars:
       sstable_size_in_mb: 4
-      fanout_size: 5
+      fanout_size: 4
     register: command_result
     ignore_errors: True
 
@@ -71,11 +71,11 @@
 
   tasks:
   - name: Execute script start-evaluation.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} {{ record_count }} {{ filed_length }} {{ threads }} {{ consistency }}
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} {{ record_count }} {{ filed_length }} {{ threads }} {{ consistency }}
     vars:
-      record_count: 60000000
+      record_count: 10000000
       filed_length: 1024
-      threads: 1
+      threads: 32
       consistency: TWO
     register: command_result
     ignore_errors: True
@@ -89,12 +89,29 @@
       seconds: 30
 
 
+- name: Run Normal Read
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute run.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} {{ operation_count }} {{ threads }}
+    vars:
+      operation_count: 10000000
+      threads: 32
+    register: command_result
+    ignore_errors: true
+  
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+
 - name: Test recovery
   hosts: server2
 
   tasks:
   - name: Offline a server node
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/recovery.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/recovery.sh
     register: command_result
     ignore_errors: true
   
@@ -103,15 +120,15 @@
     when: "'FAILED' in command_result.stderr"
 
   
-- name: Run
+- name: Run Degraded Read
   hosts: cassandra_client
 
   tasks:
   - name: Execute run.sh
-    command: sh /mnt/ssd/Debug/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} {{ operation_count }} {{ threads }}
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/start-evaluation.sh {{ ansible_hostname }} {{ operation_count }} {{ threads }}
     vars:
-      operation_count: 100000
-      threads: 8
+      operation_count: 10000000
+      threads: 32
     register: command_result
     ignore_errors: true
   

@@ -72,10 +72,10 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, tokenForRead);
 
-            if (sendRequestAddresses.size() != 3) {
-                logger.debug("[Tinoryj] The replica plan get only {} nodes",
-                        sendRequestAddresses.size());
-            }
+            // if (sendRequestAddresses.size() != 3) {
+            //     logger.debug("[Tinoryj] The replica plan get only {} nodes",
+            //             sendRequestAddresses.size());
+            // }
 
             switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                 case 0:
@@ -120,7 +120,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     }
                     break;
                 default:
-                    logger.debug("[Tinoryj] Not support replication factor larger than 3");
+                    logger.error("[Tinoryj-ERROR] Not support replication factor larger than 3");
                     break;
             }
             logger.debug("[Tinoryj] For token = {}, read {} from target table = {}, replication group = {}",

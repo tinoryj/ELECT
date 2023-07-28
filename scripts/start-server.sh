@@ -28,17 +28,17 @@ func() {
     stripe_update_frequency=$7
     max_send_sstables=$8
     internode_max_message_size=$9
-    internode_application_send_queue_capacity="128MiB"
-    internode_application_send_queue_reserve_endpoint_capacity="256MiB"
+    internode_application_send_queue_capacity="256MiB"
+    internode_application_send_queue_reserve_endpoint_capacity="512MiB"
     internode_application_send_queue_reserve_global_capacity="1024MiB"
-    internode_application_receive_queue_capacity="128MiB"
-    internode_application_receive_queue_reserve_endpoint_capacity="256MiB"
+    internode_application_receive_queue_capacity="512MiB"
+    internode_application_receive_queue_reserve_endpoint_capacity="512MiB"
     internode_application_receive_queue_reserve_global_capacity="1024MiB"
 
-    cd /mnt/ssd/Debug/CassandraEC
-    # git checkout yuanming
-    # git pull origin yuanming
-    git checkout 2f23462
+    cd /mnt/ssd/Test/CassandraEC
+    git checkout yuanming
+    git pull origin yuanming
+
 
     rm -rf data logs
     mkdir -p data/receivedParityHashes/
@@ -69,4 +69,5 @@ func() {
     nohup bin/cassandra &> logs/debug.log &
 }
 
-func "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "$10" "$11" "$12" "$13" "$14" "$15"
+func "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" 
+# "$10" "$11" "$12" "$13" "$14" "$15"

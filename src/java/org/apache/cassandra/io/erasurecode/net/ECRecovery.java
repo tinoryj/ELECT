@@ -148,6 +148,8 @@ public class ECRecovery {
 
         // TODO: Wait until all data is ready.
         // Thread.sleep(5000);
+        // remove the sstHash
+        StorageService.instance.globalSSTHashToErasureCodesMap.remove(sstHash);
         logger.debug("rymDebug: recovery for sstHash ({}) is done!", sstHash);
         latch.countDown();
 
@@ -202,6 +204,18 @@ public class ECRecovery {
             // first get local parity codes
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(0);
+            File parityCodeFile = new File(parityCodeFileName);
+            
+            if(!parityCodeFile.exists()) {
+                // retrieve from cloud
+                try {
+                    ECNetutils.retrieveDataFromCloud("127.0.0.1", FBUtilities.getBroadcastAddressAndPort().getHostName(false), "usertable0", parityCodeFileName, ECNetutils.getLocalParityCodeDir());
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+
             try {
                 ByteBuffer localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
                 StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k].put(localParityCode);
@@ -259,7 +273,7 @@ public class ECRecovery {
         }
 
         // padding zero
-        for(int i = zeroChunkNum; i < buffers.length && j < k; i++) {
+        for(int i = k-zeroChunkNum; i < buffers.length && j < k; i++) {
             byte[] zeroChunk = new byte[codeLength];
             buffers[i].put(zeroChunk);
             buffers[i].rewind();

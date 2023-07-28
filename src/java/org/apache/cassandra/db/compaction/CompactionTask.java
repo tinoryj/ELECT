@@ -138,9 +138,10 @@ public class CompactionTask extends AbstractCompactionTask {
     }
 
     // [CASSANDRAEC]
-    protected int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix) {
+    protected int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix,
+                                  Map<String, DecoratedKey> sourceKeys) {
         this.activeCompactions = activeCompactions == null ? ActiveCompactionsTracker.NOOP : activeCompactions;
-        run(first, last, ecMetadata, fileNamePrefix);
+        run(first, last, ecMetadata, fileNamePrefix, sourceKeys);
         return transaction.originals().size();
     }
 
@@ -182,7 +183,7 @@ public class CompactionTask extends AbstractCompactionTask {
     /** [CASSANDRAEC] rewrite the sstables
      *  only for secondary LSM-tree
      */
-    protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix) throws Exception {
+    protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
         // The collection of sstables passed may be empty (but not null); even if
         // it is not empty, it may compact down to nothing if all rows are deleted.
         assert transaction != null;
@@ -303,28 +304,36 @@ public class CompactionTask extends AbstractCompactionTask {
                                 row.partitionKey().getRawKey(cfs.metadata()), row.partitionKey().getRawKey(cfs.metadata()));
                         }
 
-                        if(row.partitionKey().compareTo(last) > 0) {
-                            if(!isSwitchWriter) {
-                                isSwitchWriter = true;
-                                if(writer.append(row, isSwitchWriter)) {
-                                    // totalKeysWritten++;
-                                    tailKeysNum++;
-                                }
-                                logger.debug("[Rewrite SSTables]: switched a new writer, task id is {}", taskId);
-                            } else {
-                                if(writer.append(row, false)) {
-                                    // totalKeysWritten++;
-                                    tailKeysNum++;
-                                }
-                            }
-                        } else if (row.partitionKey().compareTo(first) < 0) {
-                            if(writer.append(row, false)) {
-                                // totalKeysWritten++;
-                                headKeysNum++;
+                        if(sourceKeys.get(row.partitionKey().getRawKey(cfs.metadata())) == null) {
+                            if(writer.append(row)) {
+                                tailKeysNum++;
                             }
                         } else {
                             keysInRange++;
                         }
+
+                        // if(row.partitionKey().compareTo(last) > 0) {
+                        //     if(!isSwitchWriter) {
+                        //         isSwitchWriter = true;
+                        //         if(writer.append(row, isSwitchWriter)) {
+                        //             // totalKeysWritten++;
+                        //             tailKeysNum++;
+                        //         }
+                        //         logger.debug("[Rewrite SSTables]: switched a new writer, task id is {}", taskId);
+                        //     } else {
+                        //         if(writer.append(row, false)) {
+                        //             // totalKeysWritten++;
+                        //             tailKeysNum++;
+                        //         }
+                        //     }
+                        // } else if (row.partitionKey().compareTo(first) < 0) {
+                        //     if(writer.append(row, false)) {
+                        //         // totalKeysWritten++;
+                        //         headKeysNum++;
+                        //     }
+                        // } else {
+                        //     keysInRange++;
+                        // }
 
                         
 
@@ -372,8 +381,8 @@ public class CompactionTask extends AbstractCompactionTask {
                     // TODO: re-create sstable reader from ecmetadata 
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
-                    logger.debug(YELLOW+"[Rewrite SSTables]: Rewrite is done!!!! task id is {},  cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, head keys num is {}, tail keys num is {}, total traversed keys nums is {}, saved keys is {}, keys num in range is {}",
-                        taskId, cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), headKeysNum, tailKeysNum, traversedKeys, totalKeysWritten, keysInRange);
+                    logger.debug(YELLOW+"[Rewrite SSTables]: Rewrite is done!!!! task id is {},  cfName is {}, original sstable number is {}, checkedSSTableNum is {}, new sstables num is {}, head keys num is {}, tail keys num is {}, total traversed keys nums is {}, saved keys is {}, keys num in range is {}, source key num is ({})",
+                        taskId, cfName+RESET, originalSSTableNum, checkedSSTableNum, newSSTables.size(), headKeysNum, tailKeysNum, traversedKeys, totalKeysWritten, keysInRange, sourceKeys.size());
                 }
                 finally
                 {
@@ -767,7 +776,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     }
                 }
                 if(transferredSSTablesNum > DatabaseDescriptor.getMaxSendSSTables()) {
-                    logger.debug("rymERROR: The selected sstable count ({}) is exceed the limit ({})", transferredSSTablesNum, DatabaseDescriptor.getMaxSendSSTables());
+                    logger.error("rymERROR: The selected sstable count ({}) is exceed the limit ({})", transferredSSTablesNum, DatabaseDescriptor.getMaxSendSSTables());
                 }
             }
 
@@ -979,7 +988,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
 
                         if(newSSTableContentWithHashID.size() > entry.getValue().size()) {
-                            logger.debug("rymERROR: New sstables count ({}) is more than old sstables count ({}), check the code.", newSSTableContentWithHashID.size(), entry.getValue().size());
+                            logger.error("rymERROR: New sstables count ({}) is more than old sstables count ({}), check the code.", newSSTableContentWithHashID.size(), entry.getValue().size());
                         }
 
                     }

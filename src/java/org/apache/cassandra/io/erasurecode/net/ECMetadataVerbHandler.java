@@ -43,6 +43,7 @@ import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.LeveledGenerations;
+import org.apache.cassandra.db.compaction.LeveledManifest;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.CompactionManager.AllSSTableOpStatus;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -244,17 +245,17 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                                                 cfs,
                                                 fileNamePrefix,
                                                 metadata.newSSTableHash,
-                                                null, null, null);
+                                                metadata.sourceIP, dataForRewrite.firstKey, dataForRewrite.lastKey, dataForRewrite.sourceKeys);
                                         // entry.getValue().remove(metadata);
                                     } else {
-                                        logger.warn("rymERROR: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
+                                        logger.error("rymERROR: cannot get rewrite data of {} during redo transformECMetadataToECSSTable",
                                                     metadata.newSSTableHash);
                                     }
                                 } else {
                                     // TODO: Wait until the target ecSSTable is released
                                     // transformECMetadataToECSSTableForParityUpdate(metadata.ecMetadata, cfs, metadata.sstableHash);
                                     StorageService.instance.globalUpdatingSSTHashList.remove(metadata.ecMetadata.ecMetadataContent.oldSSTHashForUpdate);
-                                    logger.debug("rymERROR: wait until the target ecSSTable is released");
+                                    logger.error("rymERROR: wait until the target ecSSTable is released");
                                 }
                                 break;
 
@@ -331,16 +332,19 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 List<SSTableReader> sstables = new ArrayList<>(
                         cfs.getSSTableForLevel(LeveledGenerations.getMaxLevelCount() - 1));
                 if (!sstables.isEmpty()) {
-                    Collections.sort(sstables, new SSTableReaderComparator());
-                    List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>();
+                    // Collections.sort(sstables, new SSTableReaderComparator());
                     DecoratedKey firstKeyForRewrite = dataForRewrite.firstKey;
                     DecoratedKey lastKeyForRewrite = dataForRewrite.lastKey;
+                    List<SSTableReader> rewriteSStables = new ArrayList<SSTableReader>(LeveledManifest.overlapping(firstKeyForRewrite.getToken(), 
+                                                                                                                   lastKeyForRewrite.getToken(), 
+                                                                                                                   sstables));
                     // use binary search to find related sstables
-                    rewriteSStables = getRewriteSSTables(sstables, firstKeyForRewrite, lastKeyForRewrite);
+                    // rewriteSStables = getRewriteSSTables(sstables, firstKeyForRewrite, lastKeyForRewrite);
                     // logger.debug("rymDebug: read sstable from ECMetadata, sstable name is {}", ecSSTable.getFilename());
     
                     return transformECMetadataToECSSTableForErasureCode(ecMetadata, rewriteSStables, cfs, fileNamePrefix,
-                                                                        newSSTHash, sourceIP, firstKeyForRewrite, lastKeyForRewrite);
+                                                                        newSSTHash, sourceIP, firstKeyForRewrite, lastKeyForRewrite,
+                                                                        dataForRewrite.sourceKeys);
                 } else {
                     logger.info("rymDebug: cannot replace the existing sstables yet, as {} is lower than {}",
                                 cfs.getColumnFamilyName(), LeveledGenerations.getMaxLevelCount() - 1);
@@ -366,7 +370,8 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
     private static boolean transformECMetadataToECSSTableForErasureCode(ECMetadata ecMetadata, List<SSTableReader> rewriteSStables,
                                                                         ColumnFamilyStore cfs, String fileNamePrefix,
                                                                         String newSSTHash, InetAddressAndPort sourceIP,
-                                                                        DecoratedKey firstKeyForRewrite, DecoratedKey lastKeyForRewrite) {
+                                                                        DecoratedKey firstKeyForRewrite, DecoratedKey lastKeyForRewrite,
+                                                                        Map<String, DecoratedKey> sourceKeys) {
 
         final LifecycleTransaction updateTxn = cfs.getTracker().tryModify(rewriteSStables, OperationType.COMPACTION);
 
@@ -383,25 +388,29 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                 cfs.updateECSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
                 StorageService.instance.globalSSTHashToSyncedFileMap.remove(newSSTHash);
 
-            } else if (rewriteSStables.size() == 1) {
-                logger.debug("rymDebug: Anyway, we just replace the sstables");
-                List<String> expiredFiles = new ArrayList<String>();
-                for(Component comp : SSTableReader.componentsFor(rewriteSStables.get(0).descriptor)) {
-                    expiredFiles.add(rewriteSStables.get(0).descriptor.filenameFor(comp));
-                }
+            } 
+            // else if (rewriteSStables.size() == 1) {
+            //     logger.debug("rymDebug: Anyway, we just replace the sstables");
+            //     List<String> expiredFiles = new ArrayList<String>();
+            //     for(Component comp : SSTableReader.componentsFor(rewriteSStables.get(0).descriptor)) {
+            //         expiredFiles.add(rewriteSStables.get(0).descriptor.filenameFor(comp));
+            //     }
 
-                cfs.updateECSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
-                // delete the old sstables after we update the new one
-                for(String fileName : expiredFiles) {
-                    ECNetutils.deleteFileByName(fileName);
-                }
+            //     cfs.updateECSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
+            //     // delete the old sstables after we update the new one
+            //     for(String fileName : expiredFiles) {
+            //         ECNetutils.deleteFileByName(fileName);
+            //     }
 
-            } else if (rewriteSStables.size() > 1) {
+            // } 
+            else if (rewriteSStables.size() >= 1) {
                 logger.debug("rymDebug: many sstables are involved, {} sstables need to rewrite!", rewriteSStables.size());
                 // logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db",
                 // ecSSTable.descriptor);
                 try {
-                    AllSSTableOpStatus status = cfs.sstablesRewrite(firstKeyForRewrite,
+                    AllSSTableOpStatus status = cfs.sstablesRewrite(
+                            sourceKeys,
+                            firstKeyForRewrite,
                             lastKeyForRewrite,
                             rewriteSStables, ecMetadata, fileNamePrefix, updateTxn, false,
                             Long.MAX_VALUE, false, 1);
@@ -474,7 +483,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
                         return true;
                     }
                 } else {
-                    logger.warn("rymERROR:[Parity Update] cannot get rewrite data of {} during parity update for old sstable {}",
+                    logger.error("rymERROR:[Parity Update] cannot get rewrite data of {} during parity update for old sstable {}",
                                 newSSTHash, oldECSSTable.getSSTableHashID());
                 }
 

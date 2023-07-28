@@ -35,7 +35,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
 
     private static final Logger logger = LoggerFactory.getLogger(ECRequestParityVerbHandler.class);
     @Override
-    public void doVerb(Message<ECRequestParity> message) {
+    public void doVerb(Message<ECRequestParity> message) throws IOException {
         
         String parityHash = message.payload.parityHash;
         String sstHash = message.payload.sstHash;
@@ -67,6 +67,10 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         }
 
         if(!Files.exists(path)) {
+            ECNetutils.retrieveDataFromCloud("127.0.0.1", message.from().getHostAddress(false), "cfName", parityHash, filePath);
+        }
+
+        if(!Files.exists(path)) {
             throw new IllegalStateException(String.format("rymERROR: we cannot find parity code file %s requested from %s", filePath, message.from()));
         }
 
@@ -86,7 +90,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
                 ECNetutils.deleteFileByName(filePath);
         } catch (IOException e) {
             // TODO Auto-generated catch block
-            logger.debug("rymERROR: failed to find parity code file {} requested from {}", filePath, message.from());
+            logger.error("rymERROR: failed to find parity code file {} requested from {}", filePath, message.from());
             e.printStackTrace();
         }
         

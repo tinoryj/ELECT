@@ -19,6 +19,7 @@
 package org.apache.cassandra.db.compaction;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.io.File;
 
@@ -115,13 +116,13 @@ public class SingleSSTableLCSTask extends AbstractCompactionTask {
 
     @Override
     protected int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last,
-            ECMetadata ecMetadata, String fileNamePrefix) {
+            ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'executeInternal'");
     }
 
     @Override
-    protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix)
+    protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys)
             throws Exception {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
