@@ -379,7 +379,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
                     }
-                    logger.debug("rymDebug: this is rewrite SSTable method, replacing SSTable {}", ecSSTable.descriptor);
+                    logger.debug("rymDebug: this is rewrite SSTable method, replacing SSTable {}", ecSSTable.getSSTableHashID());
                     
                     transaction.update(ecSSTable, false);
                     // writer.getSSTableWriter().moveStarts(ecSSTable, ecSSTable.last);
@@ -389,7 +389,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     newSSTables = writer.finish(ecSSTable);
                     ECMetadataVerbHandler.checkTheBlockedUpdateECMetadata(ecSSTable);
                     // newSSTables = writer.finish();
-                    logger.debug("[Rewrite SSTables]: rewrite SSTable is FINISHED, ecSSTable is {},", ecSSTable.descriptor);
+                    logger.debug("[Rewrite SSTables]: rewrite SSTable is FINISHED, ecSSTable is {},", ecSSTable.getSSTableHashID());
                     // TODO: re-create sstable reader from ecmetadata 
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
