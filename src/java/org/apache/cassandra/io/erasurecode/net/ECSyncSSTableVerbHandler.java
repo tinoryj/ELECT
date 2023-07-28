@@ -88,7 +88,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         // Get all keys 
         Map<String, DecoratedKey> sourceKeys = new HashMap<String, DecoratedKey>();
         for(String key : allKey) {
-            sourceKeys.put(key, StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
+            // sourceKeys.put(key, StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
             StorageService.instance.globalCachedKeys.put(key, 0);
         }
         // Collections.sort(sourceKeys, new DecoratedKeyComparator());
