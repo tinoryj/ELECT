@@ -22,8 +22,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -53,12 +55,17 @@ import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.model.PutObjectResult;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.model.BucketInfo;
+import com.aliyun.oss.model.DeleteObjectsRequest;
+import com.aliyun.oss.model.DeleteObjectsResult;
+import com.aliyun.oss.model.GetObjectRequest;
 import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.OSSObjectSummary;
 import com.aliyun.oss.model.ObjectListing;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 
 public class OSSAccess {
     private static final Logger logger = LoggerFactory.getLogger(OSSAccess.class);
@@ -86,67 +93,143 @@ public class OSSAccess {
         try {
             InputStream inputStream = new FileInputStream(targetFilePath);
             // 创建PutObjectRequest对象。
-            String objectName = targetFilePath.substring(targetFilePath.lastIndexOf("/") + 1);
+            String objectName = targetFilePath.replace('/', '_');
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName, inputStream);
             // 创建PutObject请求。
             PutObjectResult result = ossClient.putObject(putObjectRequest);
         } catch (OSSException oe) {
-            System.out.println("Caught an OSSException, which means your request made it to OSS, "
-                    + "but was rejected with an error response for some reason.");
-            System.out.println("Error Message:" + oe.getErrorMessage());
-            System.out.println("Error Code:" + oe.getErrorCode());
-            System.out.println("Request ID:" + oe.getRequestId());
-            System.out.println("Host ID:" + oe.getHostId());
+            logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+                    + "\nRequest ID:" + oe.getRequestId());
+            return false;
         } catch (ClientException ce) {
-            System.out.println("Caught an ClientException, which means the client encountered "
-                    + "a serious internal problem while trying to communicate with OSS, "
-                    + "such as not being able to access the network.");
-            System.out.println("Error Message:" + ce.getMessage());
-        } finally {
-            if (ossClient != null) {
-                ossClient.shutdown();
-            }
+            logger.error("OSS Internet Error Message:" + ce.getMessage());
+            return false;
+        } catch (Throwable e) {
+            logger.error("Get file input stream error:");
+            e.printStackTrace();
+            return false;
         }
         return true;
     }
 
+    public boolean downloadFileFromOSS(String originalFilePath, String targetStorePath) {
+        try {
+            ossClient.getObject(new GetObjectRequest(bucketName, originalFilePath.replace('/', '_')),
+                    new File(targetStorePath));
+        } catch (OSSException oe) {
+            logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+                    + "\nRequest ID:" + oe.getRequestId());
+            return false;
+        } catch (ClientException ce) {
+            logger.error("OSS Internet Error Message:" + ce.getMessage());
+            return false;
+        }
+        return true;
+    }
+
+    public boolean deleteSingleFileInOSS(String targetFilePath) {
+        try {
+            boolean found = ossClient.doesObjectExist(bucketName, targetFilePath.replace('/', '_'));
+            if (found) {
+                logger.debug("Found target file " + targetFilePath + " in bucket, delete it now");
+                ossClient.deleteObject(bucketName, targetFilePath.replace('/', '_'));
+                return true;
+            } else {
+                logger.error("Could not found target file " + targetFilePath + " in bucket");
+                return false;
+            }
+        } catch (OSSException oe) {
+            logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+                    + "\nRequest ID:" + oe.getRequestId());
+            return false;
+        } catch (ClientException ce) {
+            logger.error("OSS Internet Error Message:" + ce.getMessage());
+            return false;
+        }
+    }
+
+    public void listingFilesInOSS() {
+        // Listing all files from OSS bucket
+        try {
+            ObjectListing objectListing = ossClient.listObjects(bucketName);
+            List<OSSObjectSummary> sums = objectListing.getObjectSummaries();
+            List<String> keys = new ArrayList<String>();
+            for (OSSObjectSummary s : sums) {
+                logger.debug("Existing file on OSS: {}", s.getKey());
+                keys.add(s.getKey());
+            }
+        } catch (OSSException oe) {
+            logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+                    + "\nRequest ID:" + oe.getRequestId());
+        } catch (ClientException ce) {
+            logger.error("OSS Internet Error Message:" + ce.getMessage());
+        }
+    }
+
     public void cleanUpOSS() {
+        // Delete all files from OSS bucket
+        try {
+            ObjectListing objectListing = ossClient.listObjects(bucketName);
+            List<OSSObjectSummary> sums = objectListing.getObjectSummaries();
+            List<String> keys = new ArrayList<String>();
+            for (OSSObjectSummary s : sums) {
+                logger.debug("Existing file on OSS: {}", s.getKey());
+                keys.add(s.getKey());
+            }
+            DeleteObjectsResult deleteObjectsResult = ossClient
+                    .deleteObjects(new DeleteObjectsRequest(bucketName).withKeys(keys).withEncodingType("url"));
+            List<String> deletedObjects = deleteObjectsResult.getDeletedObjects();
+            try {
+                for (String obj : deletedObjects) {
+                    String deleteObj = URLDecoder.decode(obj, "UTF-8");
+                    logger.debug("Delete file: {}", deleteObj);
+                }
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+        } catch (OSSException oe) {
+            logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+                    + "\nRequest ID:" + oe.getRequestId());
+        } catch (ClientException ce) {
+            logger.error("OSS Internet Error Message:" + ce.getMessage());
+        }
+    }
+
+    public void closeOSS() {
         ossClient.shutdown();
     }
 
     public static void main(String[] args) throws Exception {
         OSSAccess ossAccess = new OSSAccess();
         try {
-            // Check if the bucket exists.
+            // Check if the bucket exists then update/download/delete.
             if (ossAccess.ossClient.doesBucketExist(bucketName)) {
                 System.out.println("Target Bucket is created：" + bucketName);
                 BucketInfo info = ossAccess.ossClient.getBucketInfo(bucketName);
-                System.out.println("Bucket " + bucketName + "的信息如下：");
-                System.out.println("\t数据中心：" + info.getBucket().getLocation());
-                System.out.println("\t创建时间：" + info.getBucket().getCreationDate());
-                System.out.println("\t用户标志：" + info.getBucket().getOwner());
+                System.out.println("Bucket " + bucketName + " Info：");
+                System.out.println("\tData Center: " + info.getBucket().getLocation());
+                System.out.println("\tCreate Time: " + info.getBucket().getCreationDate());
+                System.out.println("\tUser Info: " + info.getBucket().getOwner());
+
+                ossAccess.uploadFileToOSS("/home/tinoryj/Projects/CassandraEC/README.md");
+                ossAccess.downloadFileFromOSS("/home/tinoryj/Projects/CassandraEC/README.md",
+                        "/home/tinoryj/Projects/CassandraEC/README.md.d");
+                ossAccess.downloadFileFromOSS("/home/tinoryj/Projects/CassandraEC/README.md",
+                        "/home/tinoryj/Projects/CassandraEC/README.md.d");
+                ossAccess.cleanUpOSS();
             } else {
-                System.out.println("您的Bucket不存在，创建Bucket：" + bucketName + "。");
-                // 创建Bucket。详细请参看“SDK手册 > Java-SDK > 管理Bucket”。
-                // 链接地址是：https://help.aliyun.com/document_detail/oss/sdk/java-sdk/manage_bucket.html?spm=5176.docoss/sdk/java-sdk/init
+                System.out.println("Bucket not exist, creating：" + bucketName);
                 ossAccess.ossClient.createBucket(bucketName);
             }
-
         } catch (OSSException oe) {
-            System.out.println("Caught an OSSException, which means your request made it to OSS, "
-                    + "but was rejected with an error response for some reason.");
-            System.out.println("Error Message:" + oe.getErrorMessage());
-            System.out.println("Error Code:" + oe.getErrorCode());
-            System.out.println("Request ID:" + oe.getRequestId());
-            System.out.println("Host ID:" + oe.getHostId());
+            logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+                    + "\nRequest ID:" + oe.getRequestId());
         } catch (ClientException ce) {
-            System.out.println("Caught an ClientException, which means the client encountered "
-                    + "a serious internal problem while trying to communicate with OSS, "
-                    + "such as not being able to access the network.");
-            System.out.println("Error Message:" + ce.getMessage());
+            logger.error("OSS Internet Error Message:" + ce.getMessage());
         } finally {
             if (ossAccess.ossClient != null) {
-                ossAccess.ossClient.shutdown();
+                ossAccess.closeOSS();
+                System.out.println("OSS closed.");
             }
         }
     }
