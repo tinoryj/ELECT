@@ -144,6 +144,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         byte[] sstContent = new byte[dataFileSize];
         output[0].get(sstContent);
         ECNetutils.writeBytesToFile(dataFileName, sstContent);
+        StorageService.instance.globalSSTHashToErasureCodesMap.remove(sstHash);
         // SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
 
         // debug
