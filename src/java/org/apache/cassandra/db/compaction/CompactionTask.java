@@ -193,7 +193,7 @@ public class CompactionTask extends AbstractCompactionTask {
         
         int originalSSTableNum = sstables.size();
 
-        logger.debug("[Rewrite SSTables]: {} sstables, original sstbales number is {}", sstables.size(), transaction.originals().size());
+        logger.debug("[Rewrite SSTables]: {} sstables, original sstbales number is {}, transaction id is ", sstables.size(), transaction.originals().size(), transaction.opId());
 
         if (sstables.isEmpty())
             return;

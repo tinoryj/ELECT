@@ -20,6 +20,8 @@ package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -380,11 +382,12 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         if (updateTxn != null) {
 
-            logger.debug("rymDebug: Create an erasure coding transaction ({})", updateTxn.opId());
+            logger.debug("rymDebug: Create an erasure coding transaction ({}), sstHash is ({})", updateTxn.opId(), newSSTHash);
 
-            if (rewriteSStables.isEmpty()) {
+            if (rewriteSStables.isEmpty() || 
+                isOnlyContainerECSSTable(rewriteSStables)) {
 
-                logger.debug("rymDebug: rewriteSStables is empty, sstHash ({}), just record it!", newSSTHash);
+                logger.debug("rymDebug: rewriteSStables is empty or only, sstHash ({}), just record it!", newSSTHash);
                 cfs.updateECSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
                 StorageService.instance.globalSSTHashToSyncedFileMap.remove(newSSTHash);
 
@@ -435,6 +438,15 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
         return false;
 
+    }
+
+    private static boolean isOnlyContainerECSSTable(Iterable<SSTableReader> sstables) {
+        for(SSTableReader sstable : sstables) {
+            if(Files.exists(Paths.get(sstable.descriptor.filenameFor(Component.DATA)))) {
+                return false;
+            }
+        }
+        return true;
     }
 
 

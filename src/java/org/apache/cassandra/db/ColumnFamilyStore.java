@@ -1929,7 +1929,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final long skipIfNewerThanTimestamp,
             final boolean skipIfCompressionMatches,
             final int jobs) throws ExecutionException, InterruptedException {
-        logger.debug("rymDebug: this is sstablesRewrite");
+        logger.debug("rymDebug: this is sstablesRewrite, task id is ({})", txn.opId());
 
         return CompactionManager.instance.performSSTableRewrite(sourceKeys, 
                 ColumnFamilyStore.this, first, last, sstables, metadata,

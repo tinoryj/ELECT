@@ -715,7 +715,7 @@ public class CompactionManager implements CompactionManagerMBean {
                             SSTableReader sstable = iter.next();
                             if (!sstableFilter.test(sstable)) {
                                 logger.warn(BLUE + "rymWarning: sstable {} is not qualified, cannot be rewritten!!!",
-                                        sstable.getFilename() + RESET);
+                                        sstable.getSSTableHashID() + RESET);
                                 transaction.cancel(sstable);
                                 iter.remove();
                             }

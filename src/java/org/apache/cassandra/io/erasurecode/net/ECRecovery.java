@@ -53,7 +53,7 @@ public class ECRecovery {
     public static final ECRecovery instance = new ECRecovery();
 
 
-    public synchronized static void recoveryDataFromErasureCodes(final String sstHash, CountDownLatch latch) throws Exception {
+    public static void recoveryDataFromErasureCodes(final String sstHash, CountDownLatch latch) throws Exception {
 
         logger.debug("rymDebug: [Debug recovery] This is recovery for sstHash ({})", sstHash);
         
