@@ -65,6 +65,7 @@ import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECParityNode;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate;
@@ -365,6 +366,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     // headNewSStables = writer1.finishFirstPhase();
                     // tailNewSStables = writer2.finish();
                     SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, null, cfs, fileNamePrefix, transaction.opId());
+
                     if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
                         logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
                     }
@@ -376,6 +378,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     // transaction.tracker.addSSTables(Collections.singleton(ecSSTable));
                     // transaction.tracker.apply(View.updateLiveSet(Collections.emptySet(), Collections.singleton(ecSSTable)));
                     newSSTables = writer.finish(ecSSTable);
+                    ECMetadataVerbHandler.checkTheBlockedUpdateECMetadata(ecSSTable);
                     // newSSTables = writer.finish();
                     logger.debug("[Rewrite SSTables]: rewrite SSTable is FINISHED, ecSSTable is {},", ecSSTable.descriptor);
                     // TODO: re-create sstable reader from ecmetadata 
