@@ -211,11 +211,11 @@ public class OSSAccess {
                 System.out.println("\tCreate Time: " + info.getBucket().getCreationDate());
                 System.out.println("\tUser Info: " + info.getBucket().getOwner());
 
-                ossAccess.uploadFileToOSS("/home/tinoryj/Projects/CassandraEC/README.md");
-                ossAccess.downloadFileFromOSS("/home/tinoryj/Projects/CassandraEC/README.md",
-                        "/home/tinoryj/Projects/CassandraEC/README.md.d");
-                ossAccess.downloadFileFromOSS("/home/tinoryj/Projects/CassandraEC/README.md",
-                        "/home/tinoryj/Projects/CassandraEC/README.md.d");
+                // ossAccess.uploadFileToOSS("/home/tinoryj/Projects/CassandraEC/README.md");
+                // ossAccess.downloadFileFromOSS("/home/tinoryj/Projects/CassandraEC/README.md",
+                // "/home/tinoryj/Projects/CassandraEC/README.md.d");
+                // ossAccess.downloadFileFromOSS("/home/tinoryj/Projects/CassandraEC/README.md",
+                // "/home/tinoryj/Projects/CassandraEC/README.md.d");
                 ossAccess.cleanUpOSS();
             } else {
                 System.out.println("Bucket not exist, creating：" + bucketName);
