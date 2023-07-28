@@ -305,11 +305,20 @@ public class CompactionTask extends AbstractCompactionTask {
                                 row.partitionKey().getRawKey(cfs.metadata()), row.partitionKey().getRawKey(cfs.metadata()));
                         }
 
-                        if(sourceKeys.get(row.partitionKey().getRawKey(cfs.metadata())) == null) {
+                        // if(sourceKeys.get(row.partitionKey().getRawKey(cfs.metadata())) == null) {
+                        //     if(writer.append(row)) {
+                        //         tailKeysNum++;
+                        //     }
+                        // } else {
+                        //     keysInRange++;
+                        // }
+
+                        if(StorageService.instance.globalCachedKeys.get(row.partitionKey().getRawKey(cfs.metadata())) == null) {
                             if(writer.append(row)) {
                                 tailKeysNum++;
                             }
                         } else {
+                            StorageService.instance.globalCachedKeys.remove(row.partitionKey().getRawKey(cfs.metadata()));
                             keysInRange++;
                         }
 

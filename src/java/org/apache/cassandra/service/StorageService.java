@@ -208,6 +208,9 @@ public class StorageService extends NotificationBroadcasterSupport
     // perform ECSyncSSTable, use During erasure coding.
     public ConcurrentHashMap<String, DataForRewrite> globalSSTHashToSyncedFileMap = new ConcurrentHashMap<String, DataForRewrite>();
 
+    // caches the key for the global rewrite sstable
+    public ConcurrentHashMap<String, Integer> globalCachedKeys = new ConcurrentHashMap<>();
+
     // The following concurrency parameters are used to support EC strip update
     // operations
     // [In parity node] This map is used to store <stripID, ECMetadataContent>,
