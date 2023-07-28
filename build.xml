@@ -952,6 +952,10 @@
       <dependency groupId="io.netty" artifactId="netty-tcnative-boringssl-static" />
       <dependency groupId="javax.inject" artifactId="javax.inject" />
       <dependency groupId="com.google.j2objc" artifactId="j2objc-annotations" />
+      <dependency groupId="javax.xml.bind" artifactId="jaxb-api" version="2.3.1" />
+      <dependency groupId="javax.activation" artifactId="activation" version="1.1.1" />
+      <dependency groupId="org.glassfish.jaxb" artifactId="jaxb-runtime" version="2.3.3" />
+      <dependency groupId="com.aliyun.oss" artifactId="aliyun-sdk-oss" version="3.17.1" />
       <dependency groupId="org.hdrhistogram" artifactId="HdrHistogram" />
 
       <!-- sasi deps -->

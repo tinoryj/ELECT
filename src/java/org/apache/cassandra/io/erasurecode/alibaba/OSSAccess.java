@@ -38,102 +38,116 @@ import org.apache.cassandra.net.MessageFlag;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.Verb;
 import org.apache.cassandra.utils.FBUtilities;
+import static org.apache.cassandra.db.TypeSizes.sizeof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.aliyun.oss.ClientBuilderConfiguration;
 import com.aliyun.oss.ClientException;
 import com.aliyun.oss.OSS;
+import com.aliyun.oss.common.auth.*;
+import com.aliyun.oss.common.comm.Protocol;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.OSSException;
-import com.aliyun.oss.model.Bucket;
-import com.aliyun.oss.model.CannedAccessControlList;
-import com.aliyun.oss.model.CreateBucketRequest;
-import com.aliyun.oss.model.ListBucketsRequest;
+import com.aliyun.oss.model.PutObjectRequest;
+import com.aliyun.oss.model.PutObjectResult;
+import com.aliyun.oss.OSSClient;
+import com.aliyun.oss.model.BucketInfo;
 import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.OSSObjectSummary;
-import com.aliyun.oss.model.ObjectAcl;
 import com.aliyun.oss.model.ObjectListing;
-import com.aliyun.oss.model.PutObjectRequest;
 
-import static org.apache.cassandra.db.TypeSizes.sizeof;
+import java.io.FileInputStream;
+import java.io.InputStream;
 
 public class OSSAccess {
-    String sstHash;
-    String ksName;
-    String cfName;
-    String key;
-    String startToken;
-    String endToken;
-    public static final Serializer serializer = new Serializer();
+    private static final Logger logger = LoggerFactory.getLogger(OSSAccess.class);
 
-    private static final Logger logger = LoggerFactory.getLogger(ECMetadata.class);
-    String accessKeyId = "yourAccessKeyId";
-    String accessKeySecret = "yourAccessKeySecret";
-    // STS安全令牌SecurityToken。
-    String securityToken = "yourSecurityToken";
-    CredentialsProvider credentialsProvider;
+    private static String endpoint = "http://oss-cn-chengdu.aliyuncs.com";
+    private static String bucketName = "elect-cloud";
+    public static OSS ossClient;
 
-    public OSSAccess(String sstHash, String ksName, String cfName, String key,
-            String startToken, String endToken) {
+    public OSSAccess() throws com.aliyuncs.exceptions.ClientException {
+        EnvironmentVariableCredentialsProvider credentialsProvider = CredentialsProviderFactory
+                .newEnvironmentVariableCredentialsProvider();
 
-        // STS临时访问密钥AccessKey ID和AccessKey Secret。
+        ClientBuilderConfiguration conf = new ClientBuilderConfiguration();
+        conf.setMaxConnections(200);
+        conf.setSocketTimeout(10000);
+        conf.setConnectionTimeout(10000);
+        conf.setMaxErrorRetry(5);
+        conf.setProtocol(Protocol.HTTP);
+        conf.setUserAgent("aliyun-sdk-java");
 
-        // 使用代码嵌入的STS临时访问密钥和安全令牌配置访问凭证。
-        CredentialsProvider credentialsProvider = new DefaultCredentialProvider(accessKeyId, accessKeySecret,
-                securityToken);
-        this.sstHash = sstHash;
-        this.ksName = ksName;
-        this.cfName = cfName;
-        this.key = key;
-        this.startToken = startToken;
-        this.endToken = endToken;
+        this.ossClient = new OSSClientBuilder().build(endpoint, credentialsProvider, conf);
     }
 
-    public void synchronizeCompaction(List<InetAddressAndPort> replicaNodes) {
-        logger.debug("rymDebug: this synchronizeCompaction method, replicaNodes: {}, local node is {} ",
-                replicaNodes, FBUtilities.getBroadcastAddressAndPort());
-        Message<OSSAccess> message = Message.outWithFlag(Verb.ECCOMPACTION_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
-        // send compaction request to all secondary nodes
-        for (int i = 1; i < replicaNodes.size(); i++) {
-            if (!replicaNodes.get(i).equals(FBUtilities.getBroadcastAddressAndPort()))
-                MessagingService.instance().send(message, replicaNodes.get(i));
+    public boolean uploadFileToOSS(String targetFilePath) {
+        try {
+            InputStream inputStream = new FileInputStream(targetFilePath);
+            // 创建PutObjectRequest对象。
+            String objectName = targetFilePath.substring(targetFilePath.lastIndexOf("/") + 1);
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName, inputStream);
+            // 创建PutObject请求。
+            PutObjectResult result = ossClient.putObject(putObjectRequest);
+        } catch (OSSException oe) {
+            System.out.println("Caught an OSSException, which means your request made it to OSS, "
+                    + "but was rejected with an error response for some reason.");
+            System.out.println("Error Message:" + oe.getErrorMessage());
+            System.out.println("Error Code:" + oe.getErrorCode());
+            System.out.println("Request ID:" + oe.getRequestId());
+            System.out.println("Host ID:" + oe.getHostId());
+        } catch (ClientException ce) {
+            System.out.println("Caught an ClientException, which means the client encountered "
+                    + "a serious internal problem while trying to communicate with OSS, "
+                    + "such as not being able to access the network.");
+            System.out.println("Error Message:" + ce.getMessage());
+        } finally {
+            if (ossClient != null) {
+                ossClient.shutdown();
+            }
         }
+        return true;
     }
 
-    public static final class Serializer implements IVersionedSerializer<OSSAccess> {
-
-        @Override
-        public void serialize(OSSAccess t, DataOutputPlus out, int version) throws IOException {
-            out.writeUTF(t.sstHash);
-            out.writeUTF(t.ksName);
-            out.writeUTF(t.cfName);
-            out.writeUTF(t.key);
-            out.writeUTF(t.startToken);
-            out.writeUTF(t.endToken);
-        }
-
-        @Override
-        public OSSAccess deserialize(DataInputPlus in, int version) throws IOException {
-            String sstHash = in.readUTF();
-            String ksName = in.readUTF();
-            String cfName = in.readUTF();
-            String key = in.readUTF();
-            String startToken = in.readUTF();
-            String endToken = in.readUTF();
-            return new OSSAccess(sstHash, ksName, cfName, key, startToken, endToken);
-        }
-
-        @Override
-        public long serializedSize(OSSAccess t, int version) {
-            long size = sizeof(t.sstHash) +
-                    sizeof(t.ksName) +
-                    sizeof(t.cfName) +
-                    sizeof(t.key) +
-                    sizeof(t.startToken) +
-                    sizeof(t.endToken);
-            return size;
-        }
-
+    public void cleanUpOSS() {
+        ossClient.shutdown();
     }
 
+    public static void main(String[] args) throws Exception {
+        OSSAccess ossAccess = new OSSAccess();
+        try {
+            // Check if the bucket exists.
+            if (ossAccess.ossClient.doesBucketExist(bucketName)) {
+                System.out.println("Target Bucket is created：" + bucketName);
+                BucketInfo info = ossAccess.ossClient.getBucketInfo(bucketName);
+                System.out.println("Bucket " + bucketName + "的信息如下：");
+                System.out.println("\t数据中心：" + info.getBucket().getLocation());
+                System.out.println("\t创建时间：" + info.getBucket().getCreationDate());
+                System.out.println("\t用户标志：" + info.getBucket().getOwner());
+            } else {
+                System.out.println("您的Bucket不存在，创建Bucket：" + bucketName + "。");
+                // 创建Bucket。详细请参看“SDK手册 > Java-SDK > 管理Bucket”。
+                // 链接地址是：https://help.aliyun.com/document_detail/oss/sdk/java-sdk/manage_bucket.html?spm=5176.docoss/sdk/java-sdk/init
+                ossAccess.ossClient.createBucket(bucketName);
+            }
+
+        } catch (OSSException oe) {
+            System.out.println("Caught an OSSException, which means your request made it to OSS, "
+                    + "but was rejected with an error response for some reason.");
+            System.out.println("Error Message:" + oe.getErrorMessage());
+            System.out.println("Error Code:" + oe.getErrorCode());
+            System.out.println("Request ID:" + oe.getRequestId());
+            System.out.println("Host ID:" + oe.getHostId());
+        } catch (ClientException ce) {
+            System.out.println("Caught an ClientException, which means the client encountered "
+                    + "a serious internal problem while trying to communicate with OSS, "
+                    + "such as not being able to access the network.");
+            System.out.println("Error Message:" + ce.getMessage());
+        } finally {
+            if (ossAccess.ossClient != null) {
+                ossAccess.ossClient.shutdown();
+            }
+        }
+    }
 }
