@@ -72,6 +72,7 @@ public class OSSAccess {
 
     private static String endpoint = "http://oss-cn-chengdu.aliyuncs.com";
     private static String bucketName = "elect-cloud";
+    private static String localIP = FBUtilities.getBroadcastAddressAndPort().toString(false);
     public static OSS ossClient;
 
     public OSSAccess() throws com.aliyuncs.exceptions.ClientException {
@@ -93,7 +94,7 @@ public class OSSAccess {
         try {
             InputStream inputStream = new FileInputStream(targetFilePath);
             // 创建PutObjectRequest对象。
-            String objectName = targetFilePath.replace('/', '_');
+            String objectName = targetFilePath.replace('/', '_') + localIP;
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName, inputStream);
             // 创建PutObject请求。
             PutObjectResult result = ossClient.putObject(putObjectRequest);
@@ -114,7 +115,10 @@ public class OSSAccess {
 
     public boolean downloadFileFromOSS(String originalFilePath, String targetStorePath) {
         try {
-            ossClient.getObject(new GetObjectRequest(bucketName, originalFilePath.replace('/', '_')),
+            ossClient.getObject(
+                    new GetObjectRequest(bucketName,
+                            originalFilePath.replace('/', '_')
+                                    + localIP),
                     new File(targetStorePath));
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
@@ -129,10 +133,12 @@ public class OSSAccess {
 
     public boolean deleteSingleFileInOSS(String targetFilePath) {
         try {
-            boolean found = ossClient.doesObjectExist(bucketName, targetFilePath.replace('/', '_'));
+            boolean found = ossClient.doesObjectExist(bucketName,
+                    targetFilePath.replace('/', '_') + localIP);
             if (found) {
                 logger.debug("Found target file " + targetFilePath + " in bucket, delete it now");
-                ossClient.deleteObject(bucketName, targetFilePath.replace('/', '_'));
+                ossClient.deleteObject(bucketName,
+                        targetFilePath.replace('/', '_') + localIP);
                 return true;
             } else {
                 logger.error("Could not found target file " + targetFilePath + " in bucket");
