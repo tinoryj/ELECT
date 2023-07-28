@@ -236,7 +236,8 @@ public class TableStatsHolder implements StatsHolder
                         int count = leveledSStables[level];
                         long maxCount = 4L; // for L0
                         if (level > 0)
-                            maxCount = (long) Math.pow(table.getLevelFanoutSize(), level);
+                            maxCount = (long) (5 * Math.pow(table.getLevelFanoutSize(), level-1));
+                            // maxCount = (long) Math.pow(table.getLevelFanoutSize(), level);
                         // show max threshold for level when exceeded
                         statsTable.sstablesInEachLevel.add(count + ((count > maxCount) ? "/" + maxCount : ""));
                     }

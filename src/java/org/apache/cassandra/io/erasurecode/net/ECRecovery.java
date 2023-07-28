@@ -137,14 +137,14 @@ public class ECRecovery {
         }
 
         // Step 6: send the raw data to the peer secondary nodes
-        InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();
-        for (int i = 1; i< replicaNodes.size(); i++) {
-            if(!replicaNodes.get(i).equals(localIP)){
-                String cfName = "usertable" + i;
-                ECRecoveryForSecondary recoverySignal = new ECRecoveryForSecondary(sstHash, sstContent, cfName);
-                recoverySignal.sendDataToSecondaryNode(replicaNodes.get(i));
-            }
-        }
+        // InetAddressAndPort localIP = FBUtilities.getBroadcastAddressAndPort();
+        // for (int i = 1; i< replicaNodes.size(); i++) {
+        //     if(!replicaNodes.get(i).equals(localIP)){
+        //         String cfName = "usertable" + i;
+        //         ECRecoveryForSecondary recoverySignal = new ECRecoveryForSecondary(sstHash, sstContent, cfName);
+        //         recoverySignal.sendDataToSecondaryNode(replicaNodes.get(i));
+        //     }
+        // }
 
         // TODO: Wait until all data is ready.
         // Thread.sleep(5000);
