@@ -126,10 +126,6 @@ public class OSSAccess {
         } catch (ClientException ce) {
             logger.error("OSS Internet Error Message:" + ce.getMessage());
             return false;
-        } catch (Throwable e) {
-            logger.error("Get file input stream error:");
-            e.printStackTrace();
-            return false;
         }
         return true;
     }
@@ -146,10 +142,6 @@ public class OSSAccess {
             return false;
         } catch (ClientException ce) {
             logger.error("OSS Internet Error Message:" + ce.getMessage());
-            return false;
-        } catch (Throwable e) {
-            logger.error("Get file input stream error:");
-            e.printStackTrace();
             return false;
         }
         return true;
