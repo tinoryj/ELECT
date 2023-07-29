@@ -29,6 +29,7 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.net.ParamType;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 
 import java.io.File;
@@ -59,23 +60,29 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
         
         logger.debug("rymDebug: Received message: {}", message.payload.parityHash);
         String receivedParityCodeDir = ECNetutils.getReceivedParityCodeDir();
-        try {
-                FileChannel fileChannel = FileChannel.open(Paths.get(receivedParityCodeDir, message.payload.parityHash),
-                                                            StandardOpenOption.WRITE,
-                                                             StandardOpenOption.CREATE);
-                fileChannel.write(message.payload.parityCode);
-                fileChannel.close();
-                logger.debug("rymDebug: write the parity code {} successfully!", message.payload.parityHash);
-        } 
-        catch (IOException e) {
-                logger.error("rymERROR: Failed to write erasure code ({})", message.payload.parityHash);
-        } 
-        finally {
-            if(DatabaseDescriptor.getEnableMigration()) {
-                OSSAccess.uploadFileToOSS(receivedParityCodeDir+message.payload.parityHash);
-                ECNetutils.deleteFileByName(receivedParityCodeDir+message.payload.parityHash);
+
+        if(DatabaseDescriptor.getEnableMigration()) {
+
+            byte[] parityInBytes = new byte[StorageService.getErasureCodeLength()];
+            message.payload.parityCode.get(parityInBytes);
+            OSSAccess.uploadFileToOSS(receivedParityCodeDir+message.payload.parityHash, parityInBytes);
+            
+        } else {
+
+            try {
+                    FileChannel fileChannel = FileChannel.open(Paths.get(receivedParityCodeDir, message.payload.parityHash),
+                                                                StandardOpenOption.WRITE,
+                                                                StandardOpenOption.CREATE);
+                    fileChannel.write(message.payload.parityCode);
+                    fileChannel.close();
+                    logger.debug("rymDebug: write the parity code {} successfully!", message.payload.parityHash);
+            } 
+            catch (IOException e) {
+                    logger.error("rymERROR: Failed to write erasure code ({})", message.payload.parityHash);
             }
+            
         }
+
     }
 
     

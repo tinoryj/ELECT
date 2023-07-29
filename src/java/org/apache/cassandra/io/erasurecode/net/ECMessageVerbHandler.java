@@ -322,24 +322,27 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // record first parity code to current node
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
-            try {
-                FileChannel fileChannel = FileChannel.open(Paths.get(localParityCodeDir, parityHashList.get(0)),
-                                                            StandardOpenOption.WRITE,
-                                                             StandardOpenOption.CREATE);
-                fileChannel.write(parity[0]);
-                fileChannel.close();
-                // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
-            } catch (IOException e) {
-                logger.error("rymERROR: Perform erasure code error", e);
-            } finally {
-                // migrate parity code to the cloud
-                if(DatabaseDescriptor.getEnableMigration()) {
-                    OSSAccess.uploadFileToOSS(localParityCodeDir+parityHashList.get(0));
-                    ECNetutils.deleteFileByName(localParityCodeDir+parityHashList.get(0));
-                }
+            if(DatabaseDescriptor.getEnableMigration()) {
+
+                byte[] parityInBytes = new byte[codeLength];
+                parity[0].get(parityInBytes);
+                OSSAccess.uploadFileToOSS(localParityCodeDir+parityHashList.get(0), parityInBytes);
+                
+            } else {
+
+                try {
+                    FileChannel fileChannel = FileChannel.open(Paths.get(localParityCodeDir, parityHashList.get(0)),
+                                                                StandardOpenOption.WRITE,
+                                                                StandardOpenOption.CREATE);
+                    fileChannel.write(parity[0]);
+                    fileChannel.close();
+                    // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
+                } catch (IOException e) {
+                    logger.error("rymERROR: Perform erasure code error", e);
+                } 
+
 
             }
-
 
 
             // sync encoded data to parity nodes
