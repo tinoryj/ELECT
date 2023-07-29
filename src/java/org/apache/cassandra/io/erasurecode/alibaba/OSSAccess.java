@@ -113,6 +113,48 @@ public class OSSAccess {
         return true;
     }
 
+    public static boolean uploadFileToOSS(String targetFilePath, byte[] content) {
+        try {
+            String objectName = targetFilePath.replace('/', '_') + localIP;
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName,
+                    new ByteArrayInputStream(content));
+            PutObjectResult result = ossClient.putObject(putObjectRequest);
+        } catch (OSSException oe) {
+            logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+                    + "\nRequest ID:" + oe.getRequestId());
+            return false;
+        } catch (ClientException ce) {
+            logger.error("OSS Internet Error Message:" + ce.getMessage());
+            return false;
+        } catch (Throwable e) {
+            logger.error("Get file input stream error:");
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean uploadFileToOSS(String targetFilePath, String content) {
+        try {
+            String objectName = targetFilePath.replace('/', '_') + localIP;
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName,
+                    new ByteArrayInputStream(content.getBytes()));
+            PutObjectResult result = ossClient.putObject(putObjectRequest);
+        } catch (OSSException oe) {
+            logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+                    + "\nRequest ID:" + oe.getRequestId());
+            return false;
+        } catch (ClientException ce) {
+            logger.error("OSS Internet Error Message:" + ce.getMessage());
+            return false;
+        } catch (Throwable e) {
+            logger.error("Get file input stream error:");
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
     public static boolean downloadFileFromOSS(String originalFilePath, String targetStorePath) {
         try {
             ossClient.getObject(
