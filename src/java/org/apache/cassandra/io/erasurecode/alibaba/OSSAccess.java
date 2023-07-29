@@ -115,6 +115,7 @@ public class OSSAccess {
 
     public static boolean uploadFileToOSS(String targetFilePath, byte[] content) {
         try {
+            logger.debug("rymDebug: target file path is ({}), content size is ({})", targetFilePath, content.length);
             String objectName = targetFilePath.replace('/', '_') + localIP;
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName,
                     new ByteArrayInputStream(content));
