@@ -31,6 +31,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureDecoder;
 import org.apache.cassandra.io.erasurecode.NativeRSDecoder;
+import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
 import org.apache.cassandra.io.sstable.Component;
@@ -204,17 +205,26 @@ public class ECRecovery {
             // first get local parity codes
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(0);
-            File parityCodeFile = new File(parityCodeFileName);
-            
-            if(!parityCodeFile.exists()) {
-                // retrieve from cloud
-                try {
-                    ECNetutils.retrieveDataFromCloud("127.0.0.1", FBUtilities.getBroadcastAddressAndPort().getHostName(false), "usertable0", parityCodeFileName, ECNetutils.getLocalParityCodeDir());
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
+
+            if(DatabaseDescriptor.getEnableMigration()) {
+                OSSAccess.downloadFileFromOSS(parityCodeFileName, parityCodeFileName);
             }
+
+
+            // File parityCodeFile = new File(parityCodeFileName);
+            
+            // if(!parityCodeFile.exists()) {
+            //     // retrieve from cloud
+            //     try {
+            //         ECNetutils.retrieveDataFromCloud("127.0.0.1", FBUtilities.getBroadcastAddressAndPort().getHostName(false), "usertable0", parityCodeFileName, ECNetutils.getLocalParityCodeDir());
+            //     } catch (IOException e) {
+            //         // TODO Auto-generated catch block
+            //         e.printStackTrace();
+            //     }
+            // }
+
+
+
 
             try {
                 ByteBuffer localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));

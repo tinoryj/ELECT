@@ -39,6 +39,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureEncoder;
 import org.apache.cassandra.io.erasurecode.NativeRSEncoder;
+import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
 import org.apache.cassandra.io.erasurecode.net.ECMessage.ECMessageContent;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -320,8 +321,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             }
 
             // record first parity code to current node
+            String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             try {
-                String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
                 FileChannel fileChannel = FileChannel.open(Paths.get(localParityCodeDir, parityHashList.get(0)),
                                                             StandardOpenOption.WRITE,
                                                              StandardOpenOption.CREATE);
@@ -330,7 +331,15 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
             } catch (IOException e) {
                 logger.error("rymERROR: Perform erasure code error", e);
+            } finally {
+                // migrate parity code to the cloud
+                if(DatabaseDescriptor.getEnableMigration()) {
+                    OSSAccess.uploadFileToOSS(localParityCodeDir+parityHashList.get(0));
+                    ECNetutils.deleteFileByName(localParityCodeDir+parityHashList.get(0));
+                }
+
             }
+
 
 
             // sync encoded data to parity nodes

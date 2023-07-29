@@ -46,6 +46,7 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureEncoder;
 import org.apache.cassandra.io.erasurecode.NativeRSEncoder;
+import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.io.sstable.SSTable;
@@ -423,6 +424,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             String parityCodeFileName = localParityCodeDir + parityHashList.get(0);
             ByteBuffer localParityCode;
             try {
+
+                if(DatabaseDescriptor.getEnableMigration()) {
+                    OSSAccess.downloadFileFromOSS(parityCodeFileName, parityCodeFileName);
+                }
+                
+
                 localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
 
                 if (codeLength == 0)
@@ -623,8 +630,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             }
 
             // record first parity code to current node
+            String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             try {
-                String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
                 FileChannel fileChannel = FileChannel.open(Paths.get(localParityCodeDir, parityHashList.get(0)),
                                                             StandardOpenOption.WRITE,
                                                              StandardOpenOption.CREATE);
@@ -633,6 +640,13 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
             } catch (IOException e) {
                 logger.error("rymERROR: Perform erasure code error", e);
+            } finally {
+                // migrate parity code to the cloud
+                if(DatabaseDescriptor.getEnableMigration()) {
+                    OSSAccess.uploadFileToOSS(localParityCodeDir+parityHashList.get(0));
+                    ECNetutils.deleteFileByName(localParityCodeDir+parityHashList.get(0));
+                }
+
             }
 
 

@@ -90,7 +90,7 @@ public class OSSAccess {
         this.ossClient = new OSSClientBuilder().build(endpoint, credentialsProvider, conf);
     }
 
-    public boolean uploadFileToOSS(String targetFilePath) {
+    public static boolean uploadFileToOSS(String targetFilePath) {
         try {
             InputStream inputStream = new FileInputStream(targetFilePath);
             // 创建PutObjectRequest对象。
@@ -113,12 +113,10 @@ public class OSSAccess {
         return true;
     }
 
-    public boolean downloadFileFromOSS(String originalFilePath, String targetStorePath) {
+    public static boolean downloadFileFromOSS(String originalFilePath, String targetStorePath) {
         try {
             ossClient.getObject(
-                    new GetObjectRequest(bucketName,
-                            originalFilePath.replace('/', '_')
-                                    + localIP),
+                    new GetObjectRequest(bucketName, originalFilePath.replace('/', '_') + localIP),
                     new File(targetStorePath));
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()

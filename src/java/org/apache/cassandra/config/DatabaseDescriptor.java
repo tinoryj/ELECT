@@ -1980,6 +1980,20 @@ public class DatabaseDescriptor
         conf.task_delay = task_delay;
     }
 
+    public static boolean getEnableMigration() 
+    {
+        return conf.enable_migration;
+    }
+
+    public static void setEnableMigration(boolean enable_migration)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.enable_migration = enable_migration;
+    }
+
     public static int getEcDataNodes() 
     {
         return conf.ec_data_nodes;

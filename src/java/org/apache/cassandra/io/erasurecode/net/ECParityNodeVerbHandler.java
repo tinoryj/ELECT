@@ -22,6 +22,8 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
 import org.apache.cassandra.net.ForwardingInfo;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
@@ -64,9 +66,15 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
                 fileChannel.write(message.payload.parityCode);
                 fileChannel.close();
                 logger.debug("rymDebug: write the parity code {} successfully!", message.payload.parityHash);
-            } 
+        } 
         catch (IOException e) {
                 logger.error("rymERROR: Failed to write erasure code ({})", message.payload.parityHash);
+        } 
+        finally {
+            if(DatabaseDescriptor.getEnableMigration()) {
+                OSSAccess.uploadFileToOSS(receivedParityCodeDir+message.payload.parityHash);
+                ECNetutils.deleteFileByName(receivedParityCodeDir+message.payload.parityHash);
+            }
         }
     }
 

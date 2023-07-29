@@ -23,6 +23,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.utils.FBUtilities;
@@ -66,8 +68,11 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
             }
         }
 
-        if(!Files.exists(path)) {
-            ECNetutils.retrieveDataFromCloud("127.0.0.1", message.from().getHostAddress(false), "cfName", parityHash, filePath);
+        // if(!Files.exists(path)) {
+        //     ECNetutils.retrieveDataFromCloud("127.0.0.1", message.from().getHostAddress(false), "cfName", parityHash, filePath);
+        // }
+        if(DatabaseDescriptor.getEnableMigration()) {
+            OSSAccess.downloadFileFromOSS(filePath, filePath);
         }
 
         if(!Files.exists(path)) {
