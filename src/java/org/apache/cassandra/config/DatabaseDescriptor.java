@@ -1980,6 +1980,20 @@ public class DatabaseDescriptor
         conf.task_delay = task_delay;
     }
 
+    public static boolean getEnableErasureCoding() 
+    {
+        return conf.enable_erasure_coding;
+    }
+
+    public static void setEnableErasureCoding(boolean enable_erasure_coding)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.enable_erasure_coding = enable_erasure_coding;
+    }
+
     public static boolean getEnableMigration() 
     {
         return conf.enable_migration;
