@@ -231,8 +231,8 @@ public interface Transactional extends AutoCloseable
         // [CASSANDRAEC]
         public Object finish(SSTableReader ecSSTable)
         {
-            // prepareToCommit(ecSSTable);
-            prepareToCommit();
+            prepareToCommit(ecSSTable);
+            // prepareToCommit();
             commitEC(ecSSTable);
             return this;
         }
