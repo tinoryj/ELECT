@@ -1935,9 +1935,13 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return this.isDataMigrateToCloud;
     }
 
-    public boolean SetIsReplicationTransferredToErasureCoding() {
+    public boolean SetIsReplicationTransferredToErasureCoding() throws IOException {
         this.isReplicationTransferredToErasureCoding = true;
-        this.sstableMetadata.setIsReplicationTransferredToErasureCodingFlag(true);
+        // this.sstableMetadata.setIsReplicationTransferredToErasureCodingFlag(true);
+        synchronized (tidy.global) {
+            descriptor.getMetadataSerializer().setIsTransferredToErasureCoding(descriptor, true);
+            reloadSSTableMetadata();
+        }
         if (this.isReplicationTransferredToErasureCoding) {
             return true;
         } else {

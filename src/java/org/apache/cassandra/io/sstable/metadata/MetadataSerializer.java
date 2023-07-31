@@ -290,6 +290,13 @@ public class MetadataSerializer implements IMetadataSerializer {
         mutate(descriptor, stats -> stats.mutateLevel(newLevel));
     }
 
+    public void setIsTransferredToErasureCoding(Descriptor descriptor,boolean isTransferredToErasureCoding) throws IOException {
+        if (logger.isTraceEnabled())
+            logger.trace("Set {} to isTransferredToErasureCoding as {}", descriptor.filenameFor(Component.STATS), isTransferredToErasureCoding);
+
+        mutate(descriptor, stats -> stats.setIsTransferredToErasureCoding(isTransferredToErasureCoding));
+    }
+
     @Override
     public void mutateRepairMetadata(Descriptor descriptor, long newRepairedAt, TimeUUID newPendingRepair,
             boolean isTransient) throws IOException {

@@ -560,8 +560,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     continue;
                                 
                                 count++;
-                                if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
-                                    logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+                                try {
+                                    if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
+                                        logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+                                    }
+                                } catch (IOException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
                                 }
                                 String key = sstable.first.getRawKey(sstable.metadata());
                                 try {

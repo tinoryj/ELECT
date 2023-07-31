@@ -94,6 +94,14 @@ public interface IMetadataSerializer {
     void mutateLevel(Descriptor descriptor, int newLevel) throws IOException;
 
     /**
+     * Set the transferred flag
+     * @param descriptor
+     * @param flag
+     * @throws IOException
+     */
+    void setIsTransferredToErasureCoding(Descriptor descriptor, boolean flag) throws IOException;
+
+    /**
      * Mutate the repairedAt time, pendingRepair ID, and transient status.
      *
      * NOTE: mutating stats metadata of a live sstable will race with
