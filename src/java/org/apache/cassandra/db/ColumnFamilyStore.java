@@ -636,8 +636,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                                 // logger.debug("rymDebug: Let's check the key ranges of the sstables in the ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
                                 
-                                logger.debug("rymDebug: We insight the last level of the ({}), total number is ({}),the first token is ({}), the last token is ({})",
-                                            cfs1.getColumnFamilyName(), sstables1.size(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
+                                logger.debug("rymDebug: We insight the sstable count in the last level of ({}) is ({}), total number is ({}),the first token is ({}), the last token is ({})",
+                                            cfs1.getColumnFamilyName(), sstables1.size(), cfs1.getTracker().getView().liveSSTables().size(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
                             }
 
                         }
