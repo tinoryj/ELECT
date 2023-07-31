@@ -68,7 +68,6 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
     protected long repairedAt;
     protected TimeUUID pendingRepair;
     protected boolean isTransient;
-    protected boolean isDataMigrateToCloud;
     protected String hashID;
     protected long dataFileSize;
     protected long maxDataAge = -1;
@@ -334,6 +333,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
                 pendingRepair,
                 isTransient,
                 isDataMigrateToCloud,
+                isDataRemovedByRedundancyTransionFlag,
                 header,
                 hashID,
                 dataFileSize);
