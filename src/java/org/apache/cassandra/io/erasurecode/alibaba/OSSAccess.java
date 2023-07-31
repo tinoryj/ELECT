@@ -80,6 +80,7 @@ public class OSSAccess {
                 .newEnvironmentVariableCredentialsProvider();
 
         ClientBuilderConfiguration conf = new ClientBuilderConfiguration();
+        conf.setProxyHost("http://proxy.cse.cuhk.edu.hk:8000");
         conf.setMaxConnections(200);
         conf.setSocketTimeout(10000);
         conf.setConnectionTimeout(10000);
