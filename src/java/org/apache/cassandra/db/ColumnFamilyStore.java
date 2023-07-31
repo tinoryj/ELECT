@@ -541,7 +541,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             logger.debug(
                                     "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
-                                    sstable.getFilename(), sstable.getSSTableLevel(),
+                                    sstable.getSSTableHashID(), sstable.getSSTableLevel(),
                                     LeveledGenerations.getMaxLevelCount() - 1,
                                     sstable.descriptor.ksname,
                                     sstable.descriptor.cfname,
