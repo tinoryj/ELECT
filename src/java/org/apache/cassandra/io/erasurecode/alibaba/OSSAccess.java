@@ -80,7 +80,8 @@ public class OSSAccess {
                 .newEnvironmentVariableCredentialsProvider();
 
         ClientBuilderConfiguration conf = new ClientBuilderConfiguration();
-        conf.setProxyHost("http://proxy.cse.cuhk.edu.hk:8000");
+        conf.setProxyHost("proxy.cse.cuhk.edu.hk");
+        conf.setProxyPort(8000);
         conf.setMaxConnections(200);
         conf.setSocketTimeout(10000);
         conf.setConnectionTimeout(10000);
@@ -251,11 +252,11 @@ public class OSSAccess {
                 System.out.println("\tCreate Time: " + info.getBucket().getCreationDate());
                 System.out.println("\tUser Info: " + info.getBucket().getOwner());
 
-                // ossAccess.uploadFileToOSS("/home/tinoryj/Projects/CassandraEC/README.md");
-                // ossAccess.downloadFileFromOSS("/home/tinoryj/Projects/CassandraEC/README.md",
-                // "/home/tinoryj/Projects/CassandraEC/README.md.d");
-                // ossAccess.downloadFileFromOSS("/home/tinoryj/Projects/CassandraEC/README.md",
-                // "/home/tinoryj/Projects/CassandraEC/README.md.d");
+                ossAccess.uploadFileToOSS("/home/tinoryj/Projects/CassandraEC/README.md");
+                ossAccess.downloadFileFromOSS("/home/tinoryj/Projects/CassandraEC/README.md",
+                "/home/tinoryj/Projects/CassandraEC/README.md.d");
+                ossAccess.downloadFileFromOSS("/home/tinoryj/Projects/CassandraEC/README.md",
+                "/home/tinoryj/Projects/CassandraEC/README.md.d");
                 ossAccess.cleanUpOSS();
             } else {
                 System.out.println("Bucket not exist, creating：" + bucketName);
