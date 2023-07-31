@@ -1928,7 +1928,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public boolean isReplicationTransferredToErasureCoding() {
-        return this.isReplicationTransferredToErasureCoding;
+        return this.sstableMetadata.isReplicationTransferToErasureCoding;
     }
 
     public boolean isDataMigrateToCloud() {
