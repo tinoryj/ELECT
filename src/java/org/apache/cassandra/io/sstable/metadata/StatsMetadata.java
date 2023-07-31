@@ -53,7 +53,7 @@ import java.time.temporal.ChronoField;
 /**
  * SSTable metadata that always stay on heap.
  */
-public class StatsMetadata extends MetadataComponent implements Serializable{
+public class StatsMetadata extends MetadataComponent implements Serializable {
     private static final Logger logger = LoggerFactory.getLogger(StatsMetadata.class);
     public static final IMetadataComponentSerializer serializer = new StatsMetadataSerializer();
     public static final ISerializer<IntervalSet<CommitLogPosition>> commitLogPositionSetSerializer = IntervalSet
@@ -82,6 +82,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable{
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
     public boolean isDataMigrateToCloud;
+    public boolean isReplicationTransferToErasureCoding;
     public String hashID = null;
     public long dataFileSize = 0;
     // just holds the current encoding stats to avoid allocating - it is not
@@ -111,6 +112,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable{
             TimeUUID pendingRepair,
             boolean isTransient,
             boolean isDataMigrateToCloud,
+            boolean isReplicationTransferredToErasureCoding,
             String hashID,
             long dataFileSize) {
         this.estimatedPartitionSize = estimatedPartitionSize;
@@ -197,6 +199,16 @@ public class StatsMetadata extends MetadataComponent implements Serializable{
         return true;
     }
 
+    public Boolean setIsReplicationTransferredToErasureCodingFlag(boolean isReplicationTransferToErasureCoding) {
+        this.isReplicationTransferToErasureCoding = isReplicationTransferToErasureCoding;
+        return true;
+    }
+
+    public Boolean setIsDataMigrateToCloudFlag(boolean isDataMigrateToCloud) {
+        this.isDataMigrateToCloud = isDataMigrateToCloud;
+        return true;
+    }
+
     /**
      * @param gcBefore gc time in seconds
      * @return estimated droppable tombstone ratio at given gcBefore time.
@@ -243,6 +255,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable{
                 pendingRepair,
                 isTransient,
                 isDataMigrateToCloud,
+                isReplicationTransferToErasureCoding,
                 hashID,
                 dataFileSize);
     }
@@ -271,6 +284,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable{
                 newPendingRepair,
                 newIsTransient,
                 isDataMigrateToCloud,
+                isReplicationTransferToErasureCoding,
                 hashID,
                 dataFileSize);
     }
@@ -381,6 +395,10 @@ public class StatsMetadata extends MetadataComponent implements Serializable{
                 size += TypeSizes.sizeof(component.isDataMigrateToCloud);
             }
 
+            if (version.hasIsReplicationTransferredToErasureCoding()) {
+                size += TypeSizes.sizeof(component.isReplicationTransferToErasureCoding);
+            }
+
             if (version.hasOriginatingHostId()) {
                 size += 1; // boolean: is originatingHostId present
                 if (component.originatingHostId != null)
@@ -439,7 +457,14 @@ public class StatsMetadata extends MetadataComponent implements Serializable{
 
             if (version.hasIsDataMigrateToCloud()) {
                 out.writeBoolean(component.isDataMigrateToCloud);
-                // logger.debug("[Tinoryj] Write isDataMigrateToCloud {}", component.isDataMigrateToCloud);
+                // logger.debug("[Tinoryj] Write isDataMigrateToCloud {}",
+                // component.isDataMigrateToCloud);
+            }
+
+            if (version.hasIsReplicationTransferredToErasureCoding()) {
+                out.writeBoolean(component.isReplicationTransferToErasureCoding);
+                // logger.debug("[Tinoryj] Write isDataMigrateToCloud {}",
+                // component.isDataMigrateToCloud);
             }
 
             if (version.hasOriginatingHostId()) {
@@ -542,8 +567,16 @@ public class StatsMetadata extends MetadataComponent implements Serializable{
 
             boolean isDataMigrateToCloud = version.hasIsDataMigrateToCloud() && in.readBoolean();
 
-            if (version.hasIsDataMigrateToCloud()) {
-                logger.debug("[Tinoryj] Read isDataMigrateToCloud {}", isDataMigrateToCloud);
+            if (version.hasIsDataMigrateToCloud() && isDataMigrateToCloud == true) {
+                logger.debug("[Tinoryj] Read isDataMigrateToCloud which has been set to true");
+            }
+
+            boolean isReplicationTransferredToErasureCoding = version.hasIsReplicationTransferredToErasureCoding()
+                    && in.readBoolean();
+
+            if (version.hasIsReplicationTransferredToErasureCoding()
+                    && isReplicationTransferredToErasureCoding == true) {
+                logger.debug("[Tinoryj] Read isReplicationTransferredToErasureCoding which has been set to true");
             }
 
             UUID originatingHostId = null;
@@ -586,9 +619,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable{
                     pendingRepair,
                     isTransient,
                     isDataMigrateToCloud,
+                    isReplicationTransferredToErasureCoding,
                     hashIDRawStr,
                     dataFileSize);
         }
     }
-
 }

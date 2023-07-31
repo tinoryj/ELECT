@@ -420,9 +420,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     // [CASSANDRAEC]
 
-    public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix, TimeUUID txnId) throws IOException {
+    public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs,
+            String fileNamePrefix, TimeUUID txnId) throws IOException {
 
-        
         logger.debug("rymDebug: this is invoke openECSSTable method, transaction is ({})", txnId);
         // Get a correct generation id
         SSTableId ecSSTableId = cfs.sstableIdGenerator.get();
@@ -478,7 +478,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     // [CASSANDRAEC]
-    public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc, TimeUUID txnId) throws FileNotFoundException {
+    public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc, TimeUUID txnId)
+            throws FileNotFoundException {
 
         logger.debug("rymDebug: this is loadECMetadata for ({})", txnId);
         File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
@@ -486,8 +487,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             FileUtils.deleteWithConfirm(ecMetadataFile);
 
         // else if(ecMetadata.ecMetadataContent.isParityUpdate)
-        //     throw new FileNotFoundException(String.format("rymERROR: Cannot found EC metadata file ({})", desc));
-
+        // throw new FileNotFoundException(String.format("rymERROR: Cannot found EC
+        // metadata file ({})", desc));
 
         try {
             byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata.ecMetadataContent);
@@ -1936,6 +1937,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     public boolean SetIsReplicationTransferredToErasureCoding() {
         this.isReplicationTransferredToErasureCoding = true;
+        this.sstableMetadata.setIsReplicationTransferredToErasureCodingFlag(true);
         if (this.isReplicationTransferredToErasureCoding) {
             return true;
         } else {
@@ -1945,6 +1947,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     public boolean SetIsDataMigrateToCloud() {
         this.isDataMigrateToCloud = true;
+        this.sstableMetadata.setIsDataMigrateToCloudFlag(true);
         if (this.isDataMigrateToCloud) {
             return true;
         } else {
