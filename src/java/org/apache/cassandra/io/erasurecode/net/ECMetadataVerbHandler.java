@@ -387,7 +387,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
             if (rewriteSStables.isEmpty() || 
                 isOnlyContainerECSSTable(rewriteSStables)) {
 
-                logger.debug("rymDebug: rewriteSStables is empty or only, sstHash ({}), just record it!", newSSTHash);
+                logger.debug("rymDebug: rewriteSStables is empty or only, table name is {}, sstHash ({}), just record it!", cfs.getColumnFamilyName(), newSSTHash);
                 cfs.updateECSSTable(ecMetadata, newSSTHash, cfs, fileNamePrefix, updateTxn);
                 StorageService.instance.globalSSTHashToSyncedFileMap.remove(newSSTHash);
 
@@ -407,7 +407,7 @@ public class ECMetadataVerbHandler implements IVerbHandler<ECMetadata> {
 
             // } 
             else if (rewriteSStables.size() >= 1) {
-                logger.debug("rymDebug: for sstHash ({}), many sstables are involved, {} sstables need to rewrite!", newSSTHash,rewriteSStables.size());
+                logger.debug("rymDebug: for sstHash ({}), many sstables are involved, table name is {}, {} sstables need to rewrite!", newSSTHash, cfs.getColumnFamilyName(), rewriteSStables.size());
                 // logger.debug("rymDebug: rewrite sstable {} Data.db with EC.db",
                 // ecSSTable.descriptor);
                 try {
