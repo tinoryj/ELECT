@@ -395,9 +395,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 size += TypeSizes.sizeof(component.isDataMigrateToCloud);
             }
 
-            if (version.hasIsReplicationTransferredToErasureCoding()) {
-                size += TypeSizes.sizeof(component.isReplicationTransferToErasureCoding);
-            }
+            size += TypeSizes.sizeof(component.isReplicationTransferToErasureCoding);
 
             if (version.hasOriginatingHostId()) {
                 size += 1; // boolean: is originatingHostId present
@@ -461,11 +459,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 // component.isDataMigrateToCloud);
             }
 
-            if (version.hasIsReplicationTransferredToErasureCoding()) {
-                out.writeBoolean(component.isReplicationTransferToErasureCoding);
-                // logger.debug("[Tinoryj] Write isDataMigrateToCloud {}",
-                // component.isDataMigrateToCloud);
-            }
+            out.writeBoolean(component.isReplicationTransferToErasureCoding);
+            // logger.debug("[Tinoryj] Write isDataMigrateToCloud {}",
+            // component.isDataMigrateToCloud);
 
             if (version.hasOriginatingHostId()) {
                 if (component.originatingHostId != null) {
@@ -571,11 +567,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 logger.debug("[Tinoryj] Read isDataMigrateToCloud which has been set to true");
             }
 
-            boolean isReplicationTransferredToErasureCoding = version.hasIsReplicationTransferredToErasureCoding()
-                    && in.readBoolean();
+            boolean isReplicationTransferredToErasureCoding = in.readBoolean();
 
-            if (version.hasIsReplicationTransferredToErasureCoding()
-                    && isReplicationTransferredToErasureCoding == true) {
+            if (isReplicationTransferredToErasureCoding == true) {
                 logger.debug("[Tinoryj] Read isReplicationTransferredToErasureCoding which has been set to true");
             }
 

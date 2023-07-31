@@ -156,6 +156,7 @@ public abstract class SSTable {
     /**
      * @return true if the file was deleted
      */
+    @Deprecated
     public static boolean deleteComponentOnlyData(Descriptor desc, String sstableHash) {
         logger.info("Deleting sstable: {}, hash is {}", desc, sstableHash);
         // remove the DATA component first if it exists
