@@ -623,21 +623,24 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
                                 if(sstables1.isEmpty())
                                     continue;
-                                Collections.sort(sstables1, new SSTableReaderComparator());
+                                // Collections.sort(sstables1, new SSTableReaderComparator());
 
                                 // List<String> keyRanges = new ArrayList<>();
-                                // for(SSTableReader sst : sstables1) {
-
-                                //     String range = String.format("SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s), isECSSTable (%s) \n",
-                                //                                  sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
-                                //                                  SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
-                                //     keyRanges.add(range);
-                                // }
+                                int ecSSTableCnt = 0;
+                                for(SSTableReader sst : sstables1) {
+                                    if(SSTableReader.componentsFor(sst.descriptor).contains(Component.EC_METADATA)) {
+                                        ecSSTableCnt++;
+                                    }
+                                    // String range = String.format("SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s), isECSSTable (%s) \n",
+                                    //                              sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
+                                    //                              SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
+                                    // keyRanges.add(range);
+                                }
 
                                 // logger.debug("rymDebug: Let's check the key ranges of the sstables in the ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
                                 
-                                logger.debug("rymDebug: We insight the sstable count in the last level of ({}) is ({}), total number is ({}),the first token is ({}), the last token is ({})",
-                                            cfs1.getColumnFamilyName(), sstables1.size(), cfs1.getTracker().getView().liveSSTables().size(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
+                                logger.debug("rymDebug: We insight the sstable count in the last level of ({}) is ({}), ecSSTable count is ({}),total number is ({}),the first token is ({}), the last token is ({})",
+                                            cfs1.getColumnFamilyName(), sstables1.size(), ecSSTableCnt, cfs1.getTracker().getView().liveSSTables().size(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
                             }
 
                         }
