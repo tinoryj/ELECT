@@ -453,15 +453,17 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 out.writeBoolean(component.isTransient);
             }
 
-            if (version.hasIsDataMigrateToCloud()) {
-                out.writeBoolean(component.isDataMigrateToCloud);
-                // logger.debug("[Tinoryj] Write isDataMigrateToCloud {}",
-                // component.isDataMigrateToCloud);
+            out.writeBoolean(component.isDataMigrateToCloud);
+            if (component.isDataMigrateToCloud == true) {
+                logger.debug("[Tinoryj] Write isDataMigrateToCloud {}",
+                        component.isDataMigrateToCloud ? "true" : "false");
             }
 
             out.writeBoolean(component.isReplicationTransferToErasureCoding);
-            // logger.debug("[Tinoryj] Write isDataMigrateToCloud {}",
-            // component.isDataMigrateToCloud);
+            if (component.isReplicationTransferToErasureCoding == true) {
+                logger.debug("[Tinoryj] Write isReplicationTransferToErasureCoding {}",
+                        component.isReplicationTransferToErasureCoding ? "true" : "false");
+            }
 
             if (version.hasOriginatingHostId()) {
                 if (component.originatingHostId != null) {
@@ -561,9 +563,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
 
             boolean isTransient = version.hasIsTransient() && in.readBoolean();
 
-            boolean isDataMigrateToCloud = version.hasIsDataMigrateToCloud() && in.readBoolean();
+            boolean isDataMigrateToCloud = in.readBoolean();
 
-            if (version.hasIsDataMigrateToCloud() && isDataMigrateToCloud == true) {
+            if (isDataMigrateToCloud == true) {
                 logger.debug("[Tinoryj] Read isDataMigrateToCloud which has been set to true");
             }
 
