@@ -82,16 +82,16 @@ public class OSSAccess implements AutoCloseable {
     }
 
     public boolean uploadFileToOSS(String targetFilePath) {
+        String objectName = targetFilePath.replace('/', '_') + localIP;
         try {
             InputStream inputStream = new FileInputStream(targetFilePath);
             // 创建PutObjectRequest对象。
-            String objectName = targetFilePath.replace('/', '_') + localIP;
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName, inputStream);
             // 创建PutObject请求。
             PutObjectResult result = ossClient.putObject(putObjectRequest);
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
-                    + "\nRequest ID:" + oe.getRequestId());
+                    + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
             return false;
         } catch (ClientException ce) {
             logger.error("OSS Internet Error Message:" + ce.getMessage());
@@ -105,15 +105,15 @@ public class OSSAccess implements AutoCloseable {
     }
 
     public boolean uploadFileToOSS(String targetFilePath, byte[] content) {
+        String objectName = targetFilePath.replace('/', '_') + localIP;
         try {
             logger.debug("rymDebug: target file path is ({}), content size is ({})", targetFilePath, content.length);
-            String objectName = targetFilePath.replace('/', '_') + localIP;
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName,
                     new ByteArrayInputStream(content));
             PutObjectResult result = ossClient.putObject(putObjectRequest);
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
-                    + "\nRequest ID:" + oe.getRequestId());
+                    + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
             return false;
         } catch (ClientException ce) {
             logger.error("OSS Internet Error Message:" + ce.getMessage());
@@ -123,14 +123,14 @@ public class OSSAccess implements AutoCloseable {
     }
 
     public boolean uploadFileToOSS(String targetFilePath, String content) {
+        String objectName = targetFilePath.replace('/', '_') + localIP;
         try {
-            String objectName = targetFilePath.replace('/', '_') + localIP;
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName,
                     new ByteArrayInputStream(content.getBytes()));
             PutObjectResult result = ossClient.putObject(putObjectRequest);
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
-                    + "\nRequest ID:" + oe.getRequestId());
+                    + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
             return false;
         } catch (ClientException ce) {
             logger.error("OSS Internet Error Message:" + ce.getMessage());
@@ -140,13 +140,14 @@ public class OSSAccess implements AutoCloseable {
     }
 
     public boolean downloadFileFromOSS(String originalFilePath, String targetStorePath) {
+        String objectName = originalFilePath.replace('/', '_') + localIP;
         try {
             ossClient.getObject(
-                    new GetObjectRequest(bucketName, originalFilePath.replace('/', '_') + localIP),
+                    new GetObjectRequest(bucketName, objectName),
                     new File(targetStorePath));
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
-                    + "\nRequest ID:" + oe.getRequestId());
+                    + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
             return false;
         } catch (ClientException ce) {
             logger.error("OSS Internet Error Message:" + ce.getMessage());
@@ -156,9 +157,9 @@ public class OSSAccess implements AutoCloseable {
     }
 
     public boolean deleteSingleFileInOSS(String targetFilePath) {
+        String objectName = targetFilePath.replace('/', '_') + localIP;
         try {
-            boolean found = ossClient.doesObjectExist(bucketName,
-                    targetFilePath.replace('/', '_') + localIP);
+            boolean found = ossClient.doesObjectExist(bucketName, objectName);
             if (found) {
                 logger.debug("Found target file " + targetFilePath + " in bucket, delete it now");
                 ossClient.deleteObject(bucketName,
@@ -170,7 +171,7 @@ public class OSSAccess implements AutoCloseable {
             }
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
-                    + "\nRequest ID:" + oe.getRequestId());
+                    + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
             return false;
         } catch (ClientException ce) {
             logger.error("OSS Internet Error Message:" + ce.getMessage());
