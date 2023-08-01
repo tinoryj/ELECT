@@ -39,7 +39,6 @@ import org.slf4j.LoggerFactory;
 
 public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
 
-
     public static final ECParityNodeVerbHandler instance = new ECParityNodeVerbHandler();
 
     private static final Logger logger = LoggerFactory.getLogger(ECParityNodeVerbHandler.class);
@@ -50,42 +49,45 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
      */
     @Override
     public synchronized void doVerb(Message<ECParityNode> message) throws IOException {
-        
+
         // Check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
             forwardToLocalNodes(message, forwardTo);
             // logger.debug("rymDebug: this is a forwarding header");
         }
-        
+
         logger.debug("rymDebug: Received message: {}", message.payload.parityHash);
         String receivedParityCodeDir = ECNetutils.getReceivedParityCodeDir();
 
-        if(DatabaseDescriptor.getEnableMigration()) {
+        if (DatabaseDescriptor.getEnableMigration()) {
 
             byte[] parityInBytes = new byte[StorageService.getErasureCodeLength()];
             message.payload.parityCode.get(parityInBytes);
-            OSSAccess.uploadFileToOSS(receivedParityCodeDir+message.payload.parityHash, parityInBytes);
-            
+
+            if (!StorageService.ossAccessObj.uploadFileToOSS(receivedParityCodeDir + message.payload.parityHash,
+                    parityInBytes)) {
+                logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
+                        receivedParityCodeDir + message.payload.parityHash);
+            }
+
         } else {
 
             try {
-                    FileChannel fileChannel = FileChannel.open(Paths.get(receivedParityCodeDir, message.payload.parityHash),
-                                                                StandardOpenOption.WRITE,
-                                                                StandardOpenOption.CREATE);
-                    fileChannel.write(message.payload.parityCode);
-                    fileChannel.close();
-                    logger.debug("rymDebug: write the parity code {} successfully!", message.payload.parityHash);
-            } 
-            catch (IOException e) {
-                    logger.error("rymERROR: Failed to write erasure code ({})", message.payload.parityHash);
+                FileChannel fileChannel = FileChannel.open(Paths.get(receivedParityCodeDir, message.payload.parityHash),
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.CREATE);
+                fileChannel.write(message.payload.parityCode);
+                fileChannel.close();
+                logger.debug("rymDebug: write the parity code {} successfully!", message.payload.parityHash);
+            } catch (IOException e) {
+                logger.error("rymERROR: Failed to write erasure code ({})", message.payload.parityHash);
             }
-            
+
         }
 
     }
 
-    
     private static void forwardToLocalNodes(Message<ECParityNode> originalMessage, ForwardingInfo forwardTo) {
         Message.Builder<ECParityNode> builder = Message.builder(originalMessage)
                 .withParam(ParamType.RESPOND_TO, originalMessage.from())
@@ -102,19 +104,20 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
         });
     }
 
-
     // public static void main(String[] args) {
-    //     File parityCodeFile = new File(parityCodeDir + String.valueOf("parityCodeTest"));
-        
-    //     if (!parityCodeFile.exists()) {
-    //         try {
-    //             parityCodeFile.createNewFile();
-    //         } catch (IOException e) {
-    //             // TODO Auto-generated catch block
-    //             e.printStackTrace();
-    //         }
-    //     }
-    //     logger.debug("rymDebug: parityCodeFile.getName is {}", parityCodeFile.getAbsolutePath());
+    // File parityCodeFile = new File(parityCodeDir +
+    // String.valueOf("parityCodeTest"));
+
+    // if (!parityCodeFile.exists()) {
+    // try {
+    // parityCodeFile.createNewFile();
+    // } catch (IOException e) {
+    // // TODO Auto-generated catch block
+    // e.printStackTrace();
+    // }
+    // }
+    // logger.debug("rymDebug: parityCodeFile.getName is {}",
+    // parityCodeFile.getAbsolutePath());
     // }
 
 }
