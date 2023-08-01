@@ -113,6 +113,7 @@ import org.apache.cassandra.dht.Token.TokenFactory;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.gms.*;
 import org.apache.cassandra.hints.HintsService;
+import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
@@ -251,6 +252,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentSkipListSet<String> globalUpdatingStripList = new ConcurrentSkipListSet<>();
     // [In secondary node] maintain a global view for the updating sstHash.
     public ConcurrentSkipListSet<String> globalUpdatingSSTHashList = new ConcurrentSkipListSet<>();
+    // [In data migration]
+    public static OSSAccess ossAccessObj = new OSSAccess();
     // [In parity node]
     private static int codeLength = 0;
 

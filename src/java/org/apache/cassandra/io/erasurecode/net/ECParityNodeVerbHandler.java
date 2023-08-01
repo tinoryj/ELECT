@@ -65,12 +65,10 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
             byte[] parityInBytes = new byte[StorageService.getErasureCodeLength()];
             message.payload.parityCode.get(parityInBytes);
 
-            try (OSSAccess ossAccess = new OSSAccess()) {
-                ossAccess.uploadFileToOSS(receivedParityCodeDir + message.payload.parityHash, parityInBytes);
-            } catch (Exception e) {
-                // Exception handling
-                logger.error("[Tinoryj]: Could not upload parity SSTable: {}\n\tError: {}",
-                        receivedParityCodeDir + message.payload.parityHash, e);
+            if (!StorageService.ossAccessObj.uploadFileToOSS(receivedParityCodeDir + message.payload.parityHash,
+                    parityInBytes)) {
+                logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
+                        receivedParityCodeDir + message.payload.parityHash);
             }
 
         } else {

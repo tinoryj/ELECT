@@ -227,13 +227,9 @@ public class ECRecovery {
             String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(0);
 
             if (DatabaseDescriptor.getEnableMigration()) {
-
-                try (OSSAccess ossAccess = new OSSAccess()) {
-                    ossAccess.downloadFileFromOSS(parityCodeFileName, parityCodeFileName);
-                } catch (Exception e) {
-                    // Exception handling
-                    logger.error("[Tinoryj]: Could not download parity SSTable: {}\n\tError: {}",
-                            parityCodeFileName, e);
+                if (!StorageService.ossAccessObj.downloadFileFromOSS(parityCodeFileName, parityCodeFileName)) {
+                    logger.error("[Tinoryj]: Could not download parity SSTable: {}",
+                            parityCodeFileName);
                 }
             }
 

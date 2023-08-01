@@ -330,13 +330,11 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
                 byte[] parityInBytes = new byte[codeLength];
                 parity[0].get(parityInBytes);
-                
-                try (OSSAccess ossAccess = new OSSAccess()) {
-                    ossAccess.uploadFileToOSS(localParityCodeDir + parityHashList.get(0), parityInBytes);
-                } catch (Exception e) {
-                    // Exception handling
-                    logger.error("[Tinoryj]: Could not upload parity SSTable: {}\n\tError: {}",
-                            localParityCodeDir + parityHashList.get(0), e);
+
+                if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(0),
+                        parityInBytes)) {
+                    logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
+                            localParityCodeDir + parityHashList.get(0));
                 }
 
             } else {

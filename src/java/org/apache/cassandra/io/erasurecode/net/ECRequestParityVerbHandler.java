@@ -27,6 +27,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,13 +74,9 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         // message.from().getHostAddress(false), "cfName", parityHash, filePath);
         // }
         if (DatabaseDescriptor.getEnableMigration()) {
-
-            try (OSSAccess ossAccess = new OSSAccess()) {
-                ossAccess.downloadFileFromOSS(filePath, filePath);
-            } catch (Exception e) {
-                // Exception handling
-                logger.error("[Tinoryj]: Could not download parity SSTable: {}\n\tError: {}",
-                        filePath, e);
+            if (!StorageService.ossAccessObj.downloadFileFromOSS(filePath, filePath)) {
+                logger.error("[Tinoryj]: Could not download parity SSTable: {}",
+                        filePath);
             }
         }
 

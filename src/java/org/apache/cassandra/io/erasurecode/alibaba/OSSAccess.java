@@ -59,13 +59,11 @@ public class OSSAccess implements AutoCloseable {
 
     private static String endpoint = "http://oss-cn-chengdu.aliyuncs.com";
     private static String bucketName = "elect-cloud";
-    private static String localIP = FBUtilities.getBroadcastAddressAndPort().toString(false);
+    private static String localIP = FBUtilities.getBroadcastAddressAndPort().toString(false).replace('/', '_');
     private static OSS ossClient;
 
-    public OSSAccess() throws com.aliyuncs.exceptions.ClientException {
-        EnvironmentVariableCredentialsProvider credentialsProvider = CredentialsProviderFactory
-                .newEnvironmentVariableCredentialsProvider();
-
+    public OSSAccess() {
+        EnvironmentVariableCredentialsProvider credentialsProvider = new EnvironmentVariableCredentialsProvider();
         ClientBuilderConfiguration conf = new ClientBuilderConfiguration();
         conf.setProxyHost("proxy.cse.cuhk.edu.hk");
         conf.setProxyPort(8000);
@@ -201,38 +199,38 @@ public class OSSAccess implements AutoCloseable {
     public void cleanUpOSS() {
         // Delete all files from OSS bucket
         try {
-            ObjectListing objectListing = ossClient.listObjects(bucketName);
-            List<OSSObjectSummary> sums = objectListing.getObjectSummaries();
-            List<String> keys = new ArrayList<String>();
-            for (OSSObjectSummary s : sums) {
-                logger.debug("Existing file on OSS: {}", s.getKey());
-                keys.add(s.getKey());
-            }
-            if (keys.isEmpty()) {
-                logger.debug("No file on OSS, nothing to delete");
-            } else {
-                DeleteObjectsResult deleteObjectsResult = ossClient
-                        .deleteObjects(new DeleteObjectsRequest(bucketName).withKeys(keys).withEncodingType("url"));
-                List<String> deletedObjects = deleteObjectsResult.getDeletedObjects();
-                try {
-                    for (String obj : deletedObjects) {
-                        String deleteObj = URLDecoder.decode(obj, "UTF-8");
-                        logger.debug("Delete file: {}", deleteObj);
+            while (true) {
+                ObjectListing objectListing = ossClient.listObjects(bucketName);
+                List<OSSObjectSummary> sums = objectListing.getObjectSummaries();
+                List<String> keys = new ArrayList<String>();
+                for (OSSObjectSummary s : sums) {
+                    logger.debug("Existing file on OSS: {}", s.getKey());
+                    keys.add(s.getKey());
+                }
+                if (keys.isEmpty()) {
+                    logger.debug("No file on OSS, nothing to delete");
+                    break;
+                } else {
+                    DeleteObjectsResult deleteObjectsResult = ossClient
+                            .deleteObjects(new DeleteObjectsRequest(bucketName).withKeys(keys).withEncodingType("url"));
+                    List<String> deletedObjects = deleteObjectsResult.getDeletedObjects();
+                    try {
+                        for (String obj : deletedObjects) {
+                            String deleteObj = URLDecoder.decode(obj, "UTF-8");
+                            logger.debug("Delete file: {}", deleteObj);
+                        }
+                    } catch (UnsupportedEncodingException e) {
+                        e.printStackTrace();
                     }
-                } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
                 }
             }
+
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
                     + "\nRequest ID:" + oe.getRequestId());
         } catch (ClientException ce) {
             logger.error("OSS Internet Error Message:" + ce.getMessage());
         }
-    }
-
-    public void closeOSS() {
-        ossClient.shutdown();
     }
 
     public void checkBucketStatusAndCreateBucketIfNotExist() {
@@ -262,11 +260,12 @@ public class OSSAccess implements AutoCloseable {
     public static void main(String[] args) throws Exception {
         OSSAccess ossAccess = new OSSAccess();
         try {
-            byte[] content = "Hello OSS".getBytes();
-            ossAccess.uploadFileToOSS("test.md",
-                    content);
-            ossAccess.downloadFileFromOSS("test.md",
-                    "test.md.d");
+            ossAccess.cleanUpOSS();
+            // byte[] content = "Hello OSS".getBytes();
+            // ossAccess.uploadFileToOSS("test.md",
+            // content);
+            // ossAccess.downloadFileFromOSS("test.md",
+            // "test.md.d");
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
                     + "\nRequest ID:" + oe.getRequestId());
@@ -275,7 +274,6 @@ public class OSSAccess implements AutoCloseable {
         } finally {
             if (ossAccess != null) {
                 ossAccess.cleanUpOSS();
-                ossAccess.closeOSS();
                 System.out.println("OSS cleanup and closed.");
             }
         }
