@@ -53,14 +53,14 @@ import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-
 public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
     public static final ECMessageVerbHandler instance = new ECMessageVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
-    // private static ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>recvQueues = new ConcurrentHashMap<InetAddressAndPort, Queue<ECMessage>>();
+    // private static ConcurrentHashMap<InetAddressAndPort,
+    // Queue<ECMessage>>recvQueues = new ConcurrentHashMap<InetAddressAndPort,
+    // Queue<ECMessage>>();
 
     private void respond(Message<?> respondTo, InetAddressAndPort respondToAddress) {
         Tracing.trace("Enqueuing response to {}", respondToAddress);
@@ -86,37 +86,38 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             logger.debug("rymDebug: this is a forwarding header");
         }
 
-        if(StorageService.instance.globalRecvSSTHashList.contains(message.payload.ecMessageContent.sstHashID)) {
+        if (StorageService.instance.globalRecvSSTHashList.contains(message.payload.ecMessageContent.sstHashID)) {
             return;
         } else {
             StorageService.instance.globalRecvSSTHashList.add(message.payload.ecMessageContent.sstHashID);
         }
-        
+
         byte[] sstContent = message.payload.sstContent;
         int ec_data_num = message.payload.ecMessageContent.ecDataNum;
 
-        
         // for (String ep : message.payload.parityNodesString.split(",")) {
-        //     message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
+        // message.payload.parityNodes.add(InetAddressAndPort.getByName(ep.substring(1)));
         // }
 
-        logger.debug("rymDebug: get a new sstable ({}) for erasure coding!!! message is from: {}, primaryNode is {}, parityNodes is {}, sstable content size is {}",
-                     message.payload.ecMessageContent.sstHashID,
-                     message.from(), message.payload.ecMessageContent.replicaNodes.get(0), message.payload.ecMessageContent.parityNodes,
-                     message.payload.sstContent.length);
-
+        logger.debug(
+                "rymDebug: get a new sstable ({}) for erasure coding!!! message is from: {}, primaryNode is {}, parityNodes is {}, sstable content size is {}",
+                message.payload.ecMessageContent.sstHashID,
+                message.from(), message.payload.ecMessageContent.replicaNodes.get(0),
+                message.payload.ecMessageContent.parityNodes,
+                message.payload.sstContent.length);
 
         InetAddressAndPort primaryNode = message.payload.ecMessageContent.replicaNodes.get(0);
 
         // save the received data to recvQueue
         ECNetutils.saveECMessageToGlobalRecvQueue(primaryNode, message.payload);
-        
+
         // logger.debug("rymDebug: recvQueues is {}", recvQueues);
 
-
-        // StorageService.instance.globalRecvQueues.forEach((address, queue) -> System.out.print("Queue length of " + address + " is " + queue.size()));
+        // StorageService.instance.globalRecvQueues.forEach((address, queue) ->
+        // System.out.print("Queue length of " + address + " is " + queue.size()));
         String logString = "rymDebug: Insight the globalRecvQueues";
-        for(Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> entry : StorageService.instance.globalRecvQueues.entrySet()) {
+        for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> entry : StorageService.instance.globalRecvQueues
+                .entrySet()) {
             String str = entry.getKey().toString() + " has " + entry.getValue().size() + " elements, ";
             logString += str;
         }
@@ -124,21 +125,16 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
         // check whether we should update the parity code
 
-
         Tracing.trace("recieved sstContent is: {}, ec_data_num is: {}, sourceEdpoint is: {}, header is: {}",
                 sstContent, ec_data_num, message.from(), message.header);
     }
-
-
 
     public static Runnable getErasureCodingRunable() {
         return new ErasureCodingRunable();
     }
 
-
     // Once we have k different sstContent, do erasure coding locally
     private static class ErasureCodingRunable implements Runnable {
-
 
         private static int THRESHOLD_OF_PADDING_ZERO_CHUNKS = 5;
         private static int cnt = 0;
@@ -146,23 +142,24 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         @Override
         public synchronized void run() {
 
-            if(StorageService.instance.globalRecvQueues.size() == 0) 
+            if (StorageService.instance.globalRecvQueues.size() == 0)
                 return;
 
-
             int codeLength = StorageService.getErasureCodeLength();
-            if(StorageService.instance.globalRecvQueues.size() > 0 &&
-               StorageService.instance.globalRecvQueues.size() < DatabaseDescriptor.getEcDataNodes()) {
-                if(cnt < THRESHOLD_OF_PADDING_ZERO_CHUNKS &&
-                   StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size() < 50 ||
-                   StorageService.instance.globalReadyOldSSTableForECStripUpdateCount > 0){
+            if (StorageService.instance.globalRecvQueues.size() > 0 &&
+                    StorageService.instance.globalRecvQueues.size() < DatabaseDescriptor.getEcDataNodes()) {
+                if (cnt < THRESHOLD_OF_PADDING_ZERO_CHUNKS &&
+                        StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size() < 50 ||
+                        StorageService.instance.globalReadyOldSSTableForECStripUpdateCount > 0) {
                     cnt++;
                     logger.debug("rymDebug: retry to perform erasure coding count is {}", cnt);
                 } else {
                     // Padding zero chunk to consume the blocked sstables
                     cnt = 0;
-                    logger.debug("rymDebug: sstContents is not enough to do erasure coding, we need to padding zero: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
-                    while(StorageService.instance.globalRecvQueues.size() > 0) {
+                    logger.debug(
+                            "rymDebug: sstContents is not enough to do erasure coding, we need to padding zero: recvQueues size is {}",
+                            StorageService.instance.globalRecvQueues.size());
+                    while (StorageService.instance.globalRecvQueues.size() > 0) {
                         ECMessage tmpArray[] = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
                         // traverse the recvQueues
                         int count = 0;
@@ -174,12 +171,15 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                         }
                         // compute erasure coding locally;
                         int zeroChunkNum = 0;
-                        if(count < DatabaseDescriptor.getEcDataNodes()) {
+                        if (count < DatabaseDescriptor.getEcDataNodes()) {
                             zeroChunkNum = DatabaseDescriptor.getEcDataNodes() - count;
-                            for(int j = 0; j < zeroChunkNum; j++) {
+                            for (int j = 0; j < zeroChunkNum; j++) {
                                 byte[] newSSTContent = new byte[codeLength];
-                                ECMessage zeroChunk = new ECMessage(newSSTContent, new ECMessageContent(ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())), "ycsb", "usertable0",
-                                                                                new ArrayList<InetAddressAndPort>()));
+                                ECMessage zeroChunk = new ECMessage(newSSTContent,
+                                        new ECMessageContent(
+                                                ECNetutils.stringToHex(String.valueOf(newSSTContent.hashCode())),
+                                                "ycsb", "usertable0",
+                                                new ArrayList<InetAddressAndPort>()));
                                 tmpArray[count] = zeroChunk;
                                 count++;
                             }
@@ -187,17 +187,20 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
                         if (count == DatabaseDescriptor.getEcDataNodes()) {
                             StorageService.instance.generatedPaddingZeroECMetadata++;
-                            Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength, zeroChunkNum));
+                            Stage.ERASURECODE.maybeExecuteImmediately(
+                                    new PerformErasureCodeRunnable(tmpArray, codeLength, zeroChunkNum));
                         } else {
-                            logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.", count);
+                            logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.",
+                                    count);
                         }
                     }
                 }
-                
+
             } else {
 
                 while (StorageService.instance.globalRecvQueues.size() >= DatabaseDescriptor.getEcDataNodes()) {
-                    logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}", StorageService.instance.globalRecvQueues.size());
+                    logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}",
+                            StorageService.instance.globalRecvQueues.size());
                     ECMessage[] tmpArray = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
                     // traverse the recvQueues
                     int count = 0;
@@ -210,7 +213,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                     // compute erasure coding locally;
                     if (count == DatabaseDescriptor.getEcDataNodes()) {
                         StorageService.instance.generatedNormalECMetadata++;
-                        Stage.ERASURECODE.maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength, 0));
+                        Stage.ERASURECODE
+                                .maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength, 0));
                     } else {
                         logger.debug("rymDebug: Can not get enough data for erasure coding, count is {}.", count);
                     }
@@ -239,14 +243,14 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         });
     }
 
-    
-
-
-    /** [CASSANDRAEC]
-     * To support perform erasure coding with multiple threads, we implement the following Runnable class
+    /**
+     * [CASSANDRAEC]
+     * To support perform erasure coding with multiple threads, we implement the
+     * following Runnable class
+     * 
      * @param ecDataNum the value of k
-     * @param ecParity the value of m
-     * @param messages the input data to be processed, length equal to ecDataNum
+     * @param ecParity  the value of m
+     * @param messages  the input data to be processed, length equal to ecDataNum
      */
     private static class PerformErasureCodeRunnable implements Runnable {
         private final int ecDataNum;
@@ -265,13 +269,13 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
         @Override
         public synchronized void run() {
-            if(messages.length != ecDataNum) {
+            if (messages.length != ecDataNum) {
                 logger.error("rymERROR: message length is not equal to ecDataNum");
             }
             // int codeLength = messages[0].sstSize;
             // for (ECMessage msg : messages) {
-            //     codeLength = codeLength < msg.sstSize? msg.sstSize : codeLength;
-            //  }
+            // codeLength = codeLength < msg.sstSize? msg.sstSize : codeLength;
+            // }
             ErasureCoderOptions ecOptions = new ErasureCoderOptions(ecDataNum, ecParityNum);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 
@@ -283,21 +287,22 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // Prepare input data
             for (int i = 0; i < messages.length; i++) {
-                if(messages[i].sstContent == null || codeLength < messages[i].sstContent.length) {
-                    throw new IllegalStateException(String.format("rymERROR: sstable (%s) content is illegal, code length is (%s), content length is (%s)",
-                                                                  messages[i].ecMessageContent.sstHashID, codeLength, messages[i].sstContent.length));
+                if (messages[i].sstContent == null || codeLength < messages[i].sstContent.length) {
+                    throw new IllegalStateException(String.format(
+                            "rymERROR: sstable (%s) content is illegal, code length is (%s), content length is (%s)",
+                            messages[i].ecMessageContent.sstHashID, codeLength, messages[i].sstContent.length));
                 }
                 data[i] = ByteBuffer.allocateDirect(codeLength);
                 data[i].put(messages[i].sstContent);
                 logger.debug("rymDebug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
                 int remaining = data[i].remaining();
-                if(remaining>0) {
+                if (remaining > 0) {
                     byte[] zeros = new byte[remaining];
                     data[i].put(zeros);
                 }
                 // data[i].put(new byte[data[i].remaining()]);
                 // logger.debug("rymDebug: message[{}].sstconetent {}, data[{}] is: {}",
-                //  i, messages[i].sstContent,i, data[i]);
+                // i, messages[i].sstContent,i, data[i]);
                 data[i].rewind();
             }
 
@@ -313,48 +318,58 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 logger.error("rymERROR: Perform erasure code error", e);
             }
 
-            
             // generate parity hash code
             List<String> parityHashList = new ArrayList<String>();
-            for(ByteBuffer parityCode : parity) {
+            for (ByteBuffer parityCode : parity) {
                 parityHashList.add(ECNetutils.stringToHex(String.valueOf(parityCode.hashCode())));
             }
 
             // record first parity code to current node
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
-            if(DatabaseDescriptor.getEnableMigration()) {
+            if (DatabaseDescriptor.getEnableMigration()) {
 
                 byte[] parityInBytes = new byte[codeLength];
                 parity[0].get(parityInBytes);
-                OSSAccess.uploadFileToOSS(localParityCodeDir+parityHashList.get(0), parityInBytes);
                 
+                try (OSSAccess ossAccess = new OSSAccess()) {
+                    ossAccess.uploadFileToOSS(localParityCodeDir + parityHashList.get(0), parityInBytes);
+                } catch (Exception e) {
+                    // Exception handling
+                    logger.error("[Tinoryj]: Could not upload parity SSTable: {}\n\tError: {}",
+                            localParityCodeDir + parityHashList.get(0), e);
+                }
+
             } else {
 
                 try {
                     FileChannel fileChannel = FileChannel.open(Paths.get(localParityCodeDir, parityHashList.get(0)),
-                                                                StandardOpenOption.WRITE,
-                                                                StandardOpenOption.CREATE);
+                            StandardOpenOption.WRITE,
+                            StandardOpenOption.CREATE);
                     fileChannel.write(parity[0]);
                     fileChannel.close();
-                    // logger.debug("rymDebug: parity code file created: {}", parityCodeFile.getName());
+                    // logger.debug("rymDebug: parity code file created: {}",
+                    // parityCodeFile.getName());
                 } catch (IOException e) {
                     logger.error("rymERROR: Perform erasure code error", e);
-                } 
-
+                }
 
             }
 
-
             // sync encoded data to parity nodes
             ECParityNode ecParityNode = new ECParityNode(null, null, 0);
-            ecParityNode.distributeCodedDataToParityNodes(parity, messages[0].ecMessageContent.parityNodes, parityHashList);
+            ecParityNode.distributeCodedDataToParityNodes(parity, messages[0].ecMessageContent.parityNodes,
+                    parityHashList);
 
             // Transform to ECMetadata and dispatch to related nodes
-            // ECMetadata ecMetadata = new ECMetadata("", "", "", new ArrayList<String>(),new ArrayList<String>(),
-            //             new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new HashMap<String, List<InetAddressAndPort>>());
-            ECMetadata ecMetadata = new ECMetadata(new ECMetadataContent("", "", "", new ArrayList<String>(),new ArrayList<String>(),
-                                                   new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new ArrayList<InetAddressAndPort>(),
-                                                new HashMap<String, List<InetAddressAndPort>>(), "", false, 0, zeroChunkNum));
+            // ECMetadata ecMetadata = new ECMetadata("", "", "", new
+            // ArrayList<String>(),new ArrayList<String>(),
+            // new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(), new
+            // HashMap<String, List<InetAddressAndPort>>());
+            ECMetadata ecMetadata = new ECMetadata(
+                    new ECMetadataContent("", "", "", new ArrayList<String>(), new ArrayList<String>(),
+                            new ArrayList<InetAddressAndPort>(), new HashSet<InetAddressAndPort>(),
+                            new ArrayList<InetAddressAndPort>(),
+                            new HashMap<String, List<InetAddressAndPort>>(), "", false, 0, zeroChunkNum));
             ecMetadata.generateAndDistributeMetadata(messages, parityHashList);
         }
 

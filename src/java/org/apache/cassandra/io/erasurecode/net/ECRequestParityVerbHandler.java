@@ -36,9 +36,10 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
     private static final int MAX_RETRY_COUNT = 5;
 
     private static final Logger logger = LoggerFactory.getLogger(ECRequestParityVerbHandler.class);
+
     @Override
     public void doVerb(Message<ECRequestParity> message) throws IOException {
-        
+
         String parityHash = message.payload.parityHash;
         String sstHash = message.payload.sstHash;
         int parityIndex = message.payload.parityIndex;
@@ -48,13 +49,12 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
 
         byte[] parityCode;
 
-
         logger.debug("rymDebug: get a request parity code ({}) message from node ({})", parityHash, message.from());
         // String filePath = "/path/to/file.txt";
         Path path = Paths.get(filePath);
         int retryCount = 0;
-        while(retryCount < MAX_RETRY_COUNT) {
-            if(Files.exists(path)) {
+        while (retryCount < MAX_RETRY_COUNT) {
+            if (Files.exists(path)) {
                 break;
             } else {
                 try {
@@ -69,37 +69,40 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         }
 
         // if(!Files.exists(path)) {
-        //     ECNetutils.retrieveDataFromCloud("127.0.0.1", message.from().getHostAddress(false), "cfName", parityHash, filePath);
+        // ECNetutils.retrieveDataFromCloud("127.0.0.1",
+        // message.from().getHostAddress(false), "cfName", parityHash, filePath);
         // }
-        if(DatabaseDescriptor.getEnableMigration()) {
-            OSSAccess.downloadFileFromOSS(filePath, filePath);
+        if (DatabaseDescriptor.getEnableMigration()) {
+
+            try (OSSAccess ossAccess = new OSSAccess()) {
+                ossAccess.downloadFileFromOSS(filePath, filePath);
+            } catch (Exception e) {
+                // Exception handling
+                logger.error("[Tinoryj]: Could not download parity SSTable: {}\n\tError: {}",
+                        filePath, e);
+            }
         }
 
-        if(!Files.exists(path)) {
-            throw new IllegalStateException(String.format("rymERROR: we cannot find parity code file %s requested from %s", filePath, message.from()));
+        if (!Files.exists(path)) {
+            throw new IllegalStateException(String.format(
+                    "rymERROR: we cannot find parity code file %s requested from %s", filePath, message.from()));
         }
-
-
-
-
 
         try {
             parityCode = ECNetutils.readBytesFromFile(filePath);
             // response this parityCode to to source node
             ECResponseParity response = new ECResponseParity(parityHash, sstHash, parityCode, parityIndex, isRecovery);
             response.responseParity(message.from());
-            
-            
+
             // delete parity code file locally if it is parity update
-            if(!isRecovery)
+            if (!isRecovery)
                 ECNetutils.deleteFileByName(filePath);
         } catch (IOException e) {
             // TODO Auto-generated catch block
             logger.error("rymERROR: failed to find parity code file {} requested from {}", filePath, message.from());
             e.printStackTrace();
         }
-        
-        
+
     }
 
 }

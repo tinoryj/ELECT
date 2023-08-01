@@ -54,13 +54,13 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 
-public class OSSAccess {
+public class OSSAccess implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(OSSAccess.class);
 
     private static String endpoint = "http://oss-cn-chengdu.aliyuncs.com";
     private static String bucketName = "elect-cloud";
     private static String localIP = FBUtilities.getBroadcastAddressAndPort().toString(false);
-    public static OSS ossClient;
+    private static OSS ossClient;
 
     public OSSAccess() throws com.aliyuncs.exceptions.ClientException {
         EnvironmentVariableCredentialsProvider credentialsProvider = CredentialsProviderFactory
@@ -77,6 +77,10 @@ public class OSSAccess {
         conf.setUserAgent("aliyun-sdk-java");
         OSSAccess.ossClient = new OSSClientBuilder().build(endpoint, credentialsProvider, conf);
         checkBucketStatusAndCreateBucketIfNotExist();
+    }
+
+    public void close() throws Exception {
+        ossClient.shutdown();
     }
 
     public boolean uploadFileToOSS(String targetFilePath) {
