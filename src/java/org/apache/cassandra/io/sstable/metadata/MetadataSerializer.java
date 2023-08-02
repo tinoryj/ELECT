@@ -290,11 +290,11 @@ public class MetadataSerializer implements IMetadataSerializer {
         mutate(descriptor, stats -> stats.mutateLevel(newLevel));
     }
 
-    public void setIsTransferredToErasureCoding(Descriptor descriptor,boolean isTransferredToErasureCoding) throws IOException {
+    public void setIsTransferredToErasureCoding(Descriptor descriptor, String sstHash,boolean isTransferredToErasureCoding) throws IOException {
         // if (logger.isTraceEnabled())
-        logger.debug("Set {} to isTransferredToErasureCoding as {}", descriptor.filenameFor(Component.STATS), isTransferredToErasureCoding);
+        logger.debug("Set {}, {} to isTransferredToErasureCoding as {}", descriptor.filenameFor(Component.STATS), sstHash, isTransferredToErasureCoding);
 
-        mutate(descriptor, stats -> stats.setIsTransferredToErasureCoding(isTransferredToErasureCoding));
+        mutateTransferredFlag(descriptor, sstHash, stats -> stats.setIsTransferredToErasureCoding(isTransferredToErasureCoding));
     }
 
     @Override
@@ -305,6 +305,17 @@ public class MetadataSerializer implements IMetadataSerializer {
                     descriptor.filenameFor(Component.STATS), newRepairedAt, newPendingRepair);
 
         mutate(descriptor, stats -> stats.mutateRepairedMetadata(newRepairedAt, newPendingRepair, isTransient));
+    }
+
+
+    private void mutateTransferredFlag(Descriptor descriptor, String sstHash, UnaryOperator<StatsMetadata> transform) throws IOException {
+        Map<MetadataType, MetadataComponent> currentComponents = deserialize(descriptor,
+                EnumSet.allOf(MetadataType.class));
+        StatsMetadata stats = (StatsMetadata) currentComponents.remove(MetadataType.STATS);
+
+        currentComponents.put(MetadataType.STATS, transform.apply(stats));
+        rewriteSSTableMetadata(descriptor, currentComponents);
+        logger.debug("rymDebug: after rewriteSSTableMetadata method, the transferred flag of sstable ({}) is ({})", sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isReplicationTransferToErasureCoding);
     }
 
     private void mutate(Descriptor descriptor, UnaryOperator<StatsMetadata> transform) throws IOException {

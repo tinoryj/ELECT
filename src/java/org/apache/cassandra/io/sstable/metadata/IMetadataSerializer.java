@@ -99,7 +99,7 @@ public interface IMetadataSerializer {
      * @param flag
      * @throws IOException
      */
-    void setIsTransferredToErasureCoding(Descriptor descriptor, boolean flag) throws IOException;
+    void setIsTransferredToErasureCoding(Descriptor descriptor, String sstHash,boolean flag) throws IOException;
 
     /**
      * Mutate the repairedAt time, pendingRepair ID, and transient status.
