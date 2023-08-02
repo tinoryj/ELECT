@@ -261,6 +261,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
     }
 
     public StatsMetadata setIsTransferredToErasureCoding(boolean isReplicationTransferToErasureCoding) {
+
+        logger.debug("rymDebug: setIsTransferredToErasureCoding is StatsMetadata ({})", isReplicationTransferToErasureCoding);
+
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
