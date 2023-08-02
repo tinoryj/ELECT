@@ -141,6 +141,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
         this.hashID = hashID;
         this.dataFileSize = dataFileSize;
         this.encodingStats = new EncodingStats(minTimestamp, minLocalDeletionTime, minTTL);
+        this.isReplicationTransferToErasureCoding = isReplicationTransferredToErasureCoding;
     }
 
     public MetadataType getType() {

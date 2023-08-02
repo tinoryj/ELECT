@@ -341,6 +341,8 @@ public class MetadataSerializer implements IMetadataSerializer {
                                                                     isTransferredToErasureCoding,
                                                                     stats.hashID,
                                                                     stats.dataFileSize));
+        logger.debug("rymDebug: before rewriteSSTableMetadata method, the transferred flag of sstable ({}) is ({}), isTransferredToErasureCoding ({})", 
+                            sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isReplicationTransferToErasureCoding, isTransferredToErasureCoding);
         rewriteSSTableMetadata(descriptor, currentComponents);
         logger.debug("rymDebug: after rewriteSSTableMetadata method, the transferred flag of sstable ({}) is ({})", sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isReplicationTransferToErasureCoding);
     }
