@@ -464,7 +464,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                     for(int i = 0; i < parityCodes.length; i++) {
                         String parityCodeFileName = localParityCodeDir + parityHashList.get(i);
-                        byte[] parityCode = StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName);
+                        byte[] parityCode = StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, parityNodes.get(0).getHostAddress(false));
                         parityCodes[i].put(parityCode);
                         StorageService.ossAccessObj.deleteSingleFileInOSS(parityCodeFileName);
                     }

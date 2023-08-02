@@ -110,9 +110,8 @@ public class OSSAccess implements AutoCloseable {
     public boolean uploadFileToOSS(String targetFilePath, byte[] content) {
         String objectName = targetFilePath.replace('/', '_') + localIP;
         try {
-            logger.debug("rymDebug: target file path is ({}), content size is ({})", targetFilePath, content.length);
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName,
-                    new ByteArrayInputStream(content));
+            logger.debug("rymDebug: target file path is ({}), content size is ({}), object name is ({})", targetFilePath, content.length, objectName);
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName, new ByteArrayInputStream(content));
             PutObjectResult result = ossClient.putObject(putObjectRequest);
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
@@ -159,8 +158,8 @@ public class OSSAccess implements AutoCloseable {
         return true;
     }
 
-    public byte[] downloadFileAsByteArrayFromOSS(String originalFilePath) {
-        String objectName = originalFilePath.replace('/', '_') + localIP;
+    public byte[] downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
+        String objectName = originalFilePath.replace('/', '_') + targetIp;
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
             // ossObject包含文件所在的存储空间名称、文件名称、文件元信息以及一个输入流。
