@@ -21,6 +21,7 @@ import org.apache.cassandra.io.util.*;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.time.temporal.ChronoField;
 import java.util.*;
 import java.util.function.UnaryOperator;
 import java.util.zip.CRC32;
@@ -38,6 +39,7 @@ import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.format.Version;
 import org.apache.cassandra.utils.TimeUUID;
 
+import static org.apache.cassandra.utils.FBUtilities.now;
 import static org.apache.cassandra.utils.FBUtilities.updateChecksumInt;
 
 /**
@@ -290,11 +292,11 @@ public class MetadataSerializer implements IMetadataSerializer {
         mutate(descriptor, stats -> stats.mutateLevel(newLevel));
     }
 
-    public void setIsTransferredToErasureCoding(Descriptor descriptor, String sstHash,boolean isTransferredToErasureCoding) throws IOException {
+    public void setIsTransferredToErasureCoding(Descriptor descriptor, String sstHash, boolean isTransferredToErasureCoding) throws IOException {
         // if (logger.isTraceEnabled())
         logger.debug("Set {}, {} to isTransferredToErasureCoding as {}", descriptor.filenameFor(Component.STATS), sstHash, isTransferredToErasureCoding);
 
-        mutateTransferredFlag(descriptor, sstHash, stats -> stats.setIsTransferredToErasureCoding(isTransferredToErasureCoding));
+        mutateTransferredFlag(descriptor, sstHash, isTransferredToErasureCoding);
     }
 
     @Override
@@ -308,12 +310,37 @@ public class MetadataSerializer implements IMetadataSerializer {
     }
 
 
-    private void mutateTransferredFlag(Descriptor descriptor, String sstHash, UnaryOperator<StatsMetadata> transform) throws IOException {
+    private void mutateTransferredFlag(Descriptor descriptor, String sstHash, boolean isTransferredToErasureCoding) throws IOException {
         Map<MetadataType, MetadataComponent> currentComponents = deserialize(descriptor,
                 EnumSet.allOf(MetadataType.class));
         StatsMetadata stats = (StatsMetadata) currentComponents.remove(MetadataType.STATS);
 
-        currentComponents.put(MetadataType.STATS, transform.apply(stats));
+        currentComponents.put(MetadataType.STATS, new StatsMetadata(stats.estimatedPartitionSize, 
+                                                                    stats.estimatedCellPerPartitionCount,
+                                                                    stats.commitLogIntervals,
+                                                                    now().getLong(ChronoField.MILLI_OF_SECOND),
+                                                                    stats.minTimestamp,
+                                                                    stats.maxTimestamp,
+                                                                    stats.minLocalDeletionTime,
+                                                                    stats.maxLocalDeletionTime,
+                                                                    stats.minTTL,
+                                                                    stats.maxTTL,
+                                                                    stats.compressionRatio,
+                                                                    stats.estimatedTombstoneDropTime,
+                                                                    stats.sstableLevel,
+                                                                    stats.minClusteringValues,
+                                                                    stats.maxClusteringValues,
+                                                                    stats.hasLegacyCounterShards,
+                                                                    stats.repairedAt,
+                                                                    stats.totalColumnsSet,
+                                                                    stats.totalRows,
+                                                                    stats.originatingHostId,
+                                                                    stats.pendingRepair,
+                                                                    stats.isTransient,
+                                                                    stats.isDataMigrateToCloud,
+                                                                    isTransferredToErasureCoding,
+                                                                    stats.hashID,
+                                                                    stats.dataFileSize));
         rewriteSSTableMetadata(descriptor, currentComponents);
         logger.debug("rymDebug: after rewriteSSTableMetadata method, the transferred flag of sstable ({}) is ({})", sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isReplicationTransferToErasureCoding);
     }
