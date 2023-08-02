@@ -159,7 +159,7 @@ public class OSSAccess implements AutoCloseable {
     }
 
     public byte[] downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
-        String objectName = originalFilePath.replace('/', '_') + targetIp;
+        String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
             // ossObject包含文件所在的存储空间名称、文件名称、文件元信息以及一个输入流。
