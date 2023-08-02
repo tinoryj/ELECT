@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,39 +161,10 @@ public class OSSAccess implements AutoCloseable {
 
     public synchronized byte[] downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try {
-            // ossObject包含文件所在的存储空间名称、文件名称、文件元信息以及一个输入流。
-            OSSObject ossObject = ossClient.getObject(bucketName, objectName);              
-
-            // 读取文件内容。
-            System.out.println("Object content:");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(ossObject.getObjectContent()));
-            while (true) {
-                String line;
-                try {
-                    line = reader.readLine();
-                    if (line == null) 
-                        break;
-                    else {
-                        outputStream.write(line.getBytes());
-                    }
-
-                    // System.out.println("\n" + line);
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }          
-            try {
-                // 数据读取完成后，获取的流必须关闭，否则会造成连接泄漏，导致请求无连接可用，程序无法正常工作。
-                reader.close();
-                // ossObject对象使用完毕后必须关闭，否则会造成连接泄漏，导致请求无连接可用，程序无法正常工作。  
-                ossObject.close();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+            ossClient.getObject(
+                    new GetObjectRequest(bucketName, objectName),
+                    new File(originalFilePath));
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
                     + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
@@ -201,7 +173,56 @@ public class OSSAccess implements AutoCloseable {
             logger.error("OSS Internet Error Message:" + ce.getMessage());
             // return false;
         }
-        return outputStream.toByteArray();
+        byte[] data = null;
+        try {
+            data = ECNetutils.readBytesFromFile(originalFilePath);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return data;
+        // ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        // try {
+        //     // ossObject包含文件所在的存储空间名称、文件名称、文件元信息以及一个输入流。
+        //     OSSObject ossObject = ossClient.getObject(bucketName, objectName);              
+
+        //     // 读取文件内容。
+        //     System.out.println("Object content:");
+        //     BufferedReader reader = new BufferedReader(new InputStreamReader(ossObject.getObjectContent()));
+        //     while (true) {
+        //         String line;
+        //         try {
+        //             line = reader.readLine();
+        //             if (line == null) 
+        //                 break;
+        //             else {
+        //                 outputStream.write(line.getBytes());
+        //             }
+
+        //             // System.out.println("\n" + line);
+        //         } catch (IOException e) {
+        //             // TODO Auto-generated catch block
+        //             e.printStackTrace();
+        //         }
+        //     }          
+        //     try {
+        //         // 数据读取完成后，获取的流必须关闭，否则会造成连接泄漏，导致请求无连接可用，程序无法正常工作。
+        //         reader.close();
+        //         // ossObject对象使用完毕后必须关闭，否则会造成连接泄漏，导致请求无连接可用，程序无法正常工作。  
+        //         ossObject.close();
+        //     } catch (IOException e) {
+        //         // TODO Auto-generated catch block
+        //         e.printStackTrace();
+        //     }
+        // } catch (OSSException oe) {
+        //     logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+        //             + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
+        //     // return false;
+        // } catch (ClientException ce) {
+        //     logger.error("OSS Internet Error Message:" + ce.getMessage());
+        //     // return false;
+        // }
+        // return outputStream.toByteArray();
     }
 
     public boolean deleteSingleFileInOSS(String targetFilePath) {
