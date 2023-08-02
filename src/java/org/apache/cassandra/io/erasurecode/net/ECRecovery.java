@@ -233,6 +233,8 @@ public class ECRecovery {
                     //     logger.error("[Tinoryj]: Could not download parity SSTable: {}", parityCodeFileName);
                     // }
                     byte[] parityCode = StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, ecMetadataContent.parityNodes.get(0).getHostAddress(false));
+                    logger.debug("rymDebug: Download parity code ({}) for sstable ({}), the file size is ({})", 
+                                 ecMetadataContent.parityHashList.get(i), oldSSTHash, parityCode.length);
                     StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k + i].put(ByteBuffer.wrap(parityCode));
                 }
 
