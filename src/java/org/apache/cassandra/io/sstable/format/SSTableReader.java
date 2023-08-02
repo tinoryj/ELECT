@@ -549,8 +549,13 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
         final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
         logger.debug("rymDebug: Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
-        if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
-            logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+        try {
+            if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
+                logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         txn.update(newSSTable, true);
         txn.checkpoint();
