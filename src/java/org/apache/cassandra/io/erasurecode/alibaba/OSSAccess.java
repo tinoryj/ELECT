@@ -18,6 +18,7 @@
 
 package org.apache.cassandra.io.erasurecode.alibaba;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -46,11 +47,13 @@ import com.aliyun.oss.model.BucketInfo;
 import com.aliyun.oss.model.DeleteObjectsRequest;
 import com.aliyun.oss.model.DeleteObjectsResult;
 import com.aliyun.oss.model.GetObjectRequest;
+import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.OSSObjectSummary;
 import com.aliyun.oss.model.ObjectListing;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 
@@ -154,6 +157,52 @@ public class OSSAccess implements AutoCloseable {
             return false;
         }
         return true;
+    }
+
+    public byte[] downloadFileAsByteArrayFromOSS(String originalFilePath) {
+        String objectName = originalFilePath.replace('/', '_') + localIP;
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        try {
+            // ossObject包含文件所在的存储空间名称、文件名称、文件元信息以及一个输入流。
+            OSSObject ossObject = ossClient.getObject(bucketName, objectName);              
+
+            // 读取文件内容。
+            System.out.println("Object content:");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(ossObject.getObjectContent()));
+            while (true) {
+                String line;
+                try {
+                    line = reader.readLine();
+                    if (line == null) 
+                        break;
+                    else {
+                        outputStream.write(line.getBytes());
+                    }
+
+                    // System.out.println("\n" + line);
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }          
+            try {
+                // 数据读取完成后，获取的流必须关闭，否则会造成连接泄漏，导致请求无连接可用，程序无法正常工作。
+                reader.close();
+                // ossObject对象使用完毕后必须关闭，否则会造成连接泄漏，导致请求无连接可用，程序无法正常工作。  
+                ossObject.close();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        } catch (OSSException oe) {
+            logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+                    + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
+            // return false;
+        } catch (ClientException ce) {
+            logger.error("OSS Internet Error Message:" + ce.getMessage());
+            // return false;
+        }
+        return outputStream.toByteArray();
     }
 
     public boolean deleteSingleFileInOSS(String targetFilePath) {

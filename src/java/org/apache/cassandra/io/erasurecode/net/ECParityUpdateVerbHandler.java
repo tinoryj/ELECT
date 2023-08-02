@@ -452,46 +452,54 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     oldSSTHash, stripID));
         } else {
             ByteBuffer[] parityCodes = new ByteBuffer[parityHashList.size()];
-            // get the needed parity code locally
-            String parityCodeFileName = localParityCodeDir + parityHashList.get(0);
-            ByteBuffer localParityCode;
+            if (codeLength == 0)
+                codeLength = StorageService.getErasureCodeLength();
+
+            for (int i = 0; i < parityHashList.size(); i++) {
+                parityCodes[i] = ByteBuffer.allocateDirect(StorageService.getErasureCodeLength());
+            }
             try {
 
                 if (DatabaseDescriptor.getEnableMigration()) {
-                    if (!StorageService.ossAccessObj.downloadFileFromOSS(parityCodeFileName, parityCodeFileName)) {
-                        logger.error("[Tinoryj]: Could not download parity SSTable: {}",
-                                parityCodeFileName);
+
+                    for(int i = 0; i < parityCodes.length; i++) {
+                        String parityCodeFileName = localParityCodeDir + parityHashList.get(i);
+                        byte[] parityCode = StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName);
+                        parityCodes[i].put(parityCode);
+                        StorageService.ossAccessObj.deleteSingleFileInOSS(parityCodeFileName);
                     }
+                    StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
+
+                } else {
+                    // get the needed parity code locally
+                    String parityCodeFileName = localParityCodeDir + parityHashList.get(0);
+                    ByteBuffer localParityCode;
+                    localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
+
+
+                    parityCodes[0].put(localParityCode);
+                    // parityCodes[0].rewind();
+
+                    // get old parity codes from old sstable hash
+                    StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
+                    logger.debug(
+                            "rymDebug: Perform parity update for old sstable ({}), we are retrieving parity codes for strip id {}, we had read local parity code {}",
+                            oldSSTHash, stripID, parityCodeFileName);
+
+                    // get the needed parity code remotely, send a parity code request
+                    for (int i = 1; i < parityHashList.size(); i++) {
+                        ECRequestParity request = new ECRequestParity(parityHashList.get(i), oldSSTHash, i, false);
+                        request.requestParityCode(parityNodes.get(i));
+                    }
+                    // delete local parity code file
+                    ECNetutils.deleteFileByName(parityCodeFileName);
                 }
-                localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
-
-                if (codeLength == 0)
-                    codeLength = localParityCode.capacity();
-
-                for (int i = 0; i < parityHashList.size(); i++) {
-                    parityCodes[i] = ByteBuffer.allocateDirect(localParityCode.capacity());
-                }
-                parityCodes[0].put(localParityCode);
-                // parityCodes[0].rewind();
-
-                // get old parity codes from old sstable hash
-                StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
-                logger.debug(
-                        "rymDebug: Perform parity update for old sstable ({}), we are retrieving parity codes for strip id {}, we had read local parity code {}",
-                        oldSSTHash, stripID, parityCodeFileName);
-
-                // get the needed parity code remotely, send a parity code request
-                for (int i = 1; i < parityHashList.size(); i++) {
-                    ECRequestParity request = new ECRequestParity(parityHashList.get(i), oldSSTHash, i, false);
-                    request.requestParityCode(parityNodes.get(i));
-                }
-                // delete local parity code file
-                ECNetutils.deleteFileByName(parityCodeFileName);
             } catch (IOException e) {
                 // TODO Auto-generated catch block
-                throw new IllegalAccessError(String.format(
-                        "rymERROR: When we are retrieving parity codes for strip id %s to perform parity update old sstable (%s), cannot read parity code from %s",
-                        stripID, oldSSTHash, parityCodeFileName));
+                e.printStackTrace();
+                // throw new IllegalAccessError(String.format(
+                //         "rymERROR: When we are retrieving parity codes for strip id %s to perform parity update old sstable (%s), cannot read parity code from %s",
+                //         stripID, oldSSTHash, parityCodeFileName));
             }
 
         }

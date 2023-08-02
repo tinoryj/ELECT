@@ -222,15 +222,40 @@ public class ECRecovery {
                     oldSSTHash, ecMetadataContent.stripeId));
         } else {
 
-            // first get local parity codes
-            String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
-            String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(0);
 
+            String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             if (DatabaseDescriptor.getEnableMigration()) {
-                if (!StorageService.ossAccessObj.downloadFileFromOSS(parityCodeFileName, parityCodeFileName)) {
-                    logger.error("[Tinoryj]: Could not download parity SSTable: {}",
-                            parityCodeFileName);
+
+                for(int i = 0; i < ecMetadataContent.parityHashList.size(); i++) {
+                    String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(i);
+                    // retrieve parity codes from cloud
+                    // if (!StorageService.ossAccessObj.downloadFileFromOSS(parityCodeFileName, parityCodeFileName)) {
+                    //     logger.error("[Tinoryj]: Could not download parity SSTable: {}", parityCodeFileName);
+                    // }
+                    byte[] parityCode = StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName);
+                    StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k + i].put(ByteBuffer.wrap(parityCode));
                 }
+
+
+            } else {
+
+                // first get local parity codes
+                String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(0);
+                try {
+                    ByteBuffer localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
+                    StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k].put(localParityCode);
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+
+                // get the needed parity code remotely, send a parity code request
+                for (int i = 1; i < ecMetadataContent.parityHashList.size(); i++) {
+                    ECRequestParity request = new ECRequestParity(ecMetadataContent.parityHashList.get(i), oldSSTHash,
+                            i + k, true);
+                    request.requestParityCode(ecMetadataContent.parityNodes.get(i));
+                }
+
             }
 
             // File parityCodeFile = new File(parityCodeFileName);
@@ -247,20 +272,6 @@ public class ECRecovery {
             // }
             // }
 
-            try {
-                ByteBuffer localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
-                StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k].put(localParityCode);
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-
-            // get the needed parity code remotely, send a parity code request
-            for (int i = 1; i < ecMetadataContent.parityHashList.size(); i++) {
-                ECRequestParity request = new ECRequestParity(ecMetadataContent.parityHashList.get(i), oldSSTHash,
-                        i + k, true);
-                request.requestParityCode(ecMetadataContent.parityNodes.get(i));
-            }
 
         }
 
