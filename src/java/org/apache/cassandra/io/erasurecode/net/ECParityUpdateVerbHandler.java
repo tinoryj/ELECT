@@ -671,13 +671,17 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
             if (DatabaseDescriptor.getEnableMigration()) {
 
-                byte[] parityInBytes = new byte[StorageService.getErasureCodeLength()];
-                newParityCodes[0].get(parityInBytes);
+                for(int i = 0; i < newParityCodes.length; i++) {
 
-                if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(0),
-                        parityInBytes)) {
-                    logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
-                            localParityCodeDir + parityHashList.get(0));
+                    byte[] parityInBytes = new byte[StorageService.getErasureCodeLength()];
+                    newParityCodes[i].get(parityInBytes);
+
+                    if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(i),
+                            parityInBytes)) {
+                        logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
+                                localParityCodeDir + parityHashList.get(i));
+                    }
+                    
                 }
 
             } else {
@@ -693,12 +697,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 } catch (IOException e) {
                     logger.error("rymERROR: Perform erasure code error", e);
                 }
+                // sync encoded data to parity nodes
+                ECParityNode ecParityNode = new ECParityNode(null, null, 0);
+                ecParityNode.distributeCodedDataToParityNodes(newParityCodes, parityNodes, parityHashList);
 
             }
 
-            // sync encoded data to parity nodes
-            ECParityNode ecParityNode = new ECParityNode(null, null, 0);
-            ecParityNode.distributeCodedDataToParityNodes(newParityCodes, parityNodes, parityHashList);
 
             // update ECMetadata and distribute it
             // get old ECMetadata content

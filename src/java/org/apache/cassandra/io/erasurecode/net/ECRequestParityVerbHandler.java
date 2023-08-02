@@ -73,12 +73,12 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         // ECNetutils.retrieveDataFromCloud("127.0.0.1",
         // message.from().getHostAddress(false), "cfName", parityHash, filePath);
         // }
-        if (DatabaseDescriptor.getEnableMigration()) {
-            if (!StorageService.ossAccessObj.downloadFileFromOSS(filePath, filePath)) {
-                logger.error("[Tinoryj]: Could not download parity SSTable: {}",
-                        filePath);
-            }
-        }
+        // if (DatabaseDescriptor.getEnableMigration()) {
+        //     if (!StorageService.ossAccessObj.downloadFileFromOSS(filePath, filePath)) {
+        //         logger.error("[Tinoryj]: Could not download parity SSTable: {}",
+        //                 filePath);
+        //     }
+        // }
 
         if (!Files.exists(path)) {
             throw new IllegalStateException(String.format(

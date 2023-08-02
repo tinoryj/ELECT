@@ -328,13 +328,17 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             if (DatabaseDescriptor.getEnableMigration()) {
 
-                byte[] parityInBytes = new byte[codeLength];
-                parity[0].get(parityInBytes);
+                for(int i = 0; i < parity.length; i++) {
 
-                if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(0),
-                        parityInBytes)) {
-                    logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
-                            localParityCodeDir + parityHashList.get(0));
+                    byte[] parityInBytes = new byte[codeLength];
+                    parity[i].get(parityInBytes);
+
+                    if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(i),
+                            parityInBytes)) {
+                        logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
+                                localParityCodeDir + parityHashList.get(i));
+                    }
+
                 }
 
             } else {
@@ -350,13 +354,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 } catch (IOException e) {
                     logger.error("rymERROR: Perform erasure code error", e);
                 }
+                // sync encoded data to parity nodes
+                ECParityNode ecParityNode = new ECParityNode(null, null, 0);
+                ecParityNode.distributeCodedDataToParityNodes(parity, messages[0].ecMessageContent.parityNodes, parityHashList);
 
             }
 
-            // sync encoded data to parity nodes
-            ECParityNode ecParityNode = new ECParityNode(null, null, 0);
-            ecParityNode.distributeCodedDataToParityNodes(parity, messages[0].ecMessageContent.parityNodes,
-                    parityHashList);
 
             // Transform to ECMetadata and dispatch to related nodes
             // ECMetadata ecMetadata = new ECMetadata("", "", "", new
