@@ -232,6 +232,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
     }
 
     public StatsMetadata mutateLevel(int newLevel) {
+        logger.debug("rymDebug: set the new level is ({})", newLevel);
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
@@ -260,9 +261,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 dataFileSize);
     }
 
-    public StatsMetadata setIsTransferredToErasureCoding(boolean isReplicationTransferToErasureCoding) {
+    public StatsMetadata setIsTransferredToErasureCoding(boolean newIsReplicationTransferToErasureCoding) {
 
-        logger.debug("rymDebug: setIsTransferredToErasureCoding is StatsMetadata ({})", isReplicationTransferToErasureCoding);
+        logger.debug("rymDebug: setIsTransferredToErasureCoding is StatsMetadata ({})", newIsReplicationTransferToErasureCoding);
 
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
@@ -287,7 +288,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 pendingRepair,
                 isTransient,
                 isDataMigrateToCloud,
-                isReplicationTransferToErasureCoding,
+                newIsReplicationTransferToErasureCoding,
                 hashID,
                 dataFileSize);
     }
