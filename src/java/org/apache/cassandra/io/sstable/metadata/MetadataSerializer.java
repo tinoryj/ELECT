@@ -291,8 +291,8 @@ public class MetadataSerializer implements IMetadataSerializer {
     }
 
     public void setIsTransferredToErasureCoding(Descriptor descriptor,boolean isTransferredToErasureCoding) throws IOException {
-        if (logger.isTraceEnabled())
-            logger.trace("Set {} to isTransferredToErasureCoding as {}", descriptor.filenameFor(Component.STATS), isTransferredToErasureCoding);
+        // if (logger.isTraceEnabled())
+        logger.debug("Set {} to isTransferredToErasureCoding as {}", descriptor.filenameFor(Component.STATS), isTransferredToErasureCoding);
 
         mutate(descriptor, stats -> stats.setIsTransferredToErasureCoding(isTransferredToErasureCoding));
     }

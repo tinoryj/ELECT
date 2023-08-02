@@ -1941,13 +1941,14 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public boolean SetIsReplicationTransferredToErasureCoding() throws IOException {
-        this.isReplicationTransferredToErasureCoding = true;
+        // this.isReplicationTransferredToErasureCoding = true;
         // this.sstableMetadata.setIsReplicationTransferredToErasureCodingFlag(true);
         synchronized (tidy.global) {
             descriptor.getMetadataSerializer().setIsTransferredToErasureCoding(descriptor, true);
             reloadSSTableMetadata();
         }
-        if (this.isReplicationTransferredToErasureCoding) {
+        if (this.sstableMetadata.isReplicationTransferToErasureCoding) {
+            logger.debug("rymDebug: set sstable ({}) as transferred successfully!", this.getSSTableHashID());
             return true;
         } else {
             return false;
