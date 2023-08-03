@@ -496,10 +496,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 }
             } catch (IOException e) {
                 // TODO Auto-generated catch block
-                e.printStackTrace();
-                // throw new IllegalAccessError(String.format(
-                //         "rymERROR: When we are retrieving parity codes for strip id %s to perform parity update old sstable (%s), cannot read parity code from %s",
-                //         stripID, oldSSTHash, parityCodeFileName));
+                // e.printStackTrace();
+                throw new IllegalAccessError(String.format(
+                        "rymERROR: When we are retrieving parity codes for strip id %s to perform parity update old sstable (%s), cannot read parity code from %s",
+                        stripID, oldSSTHash));
             }
 
         }
