@@ -20,6 +20,7 @@ package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.StorageService;
@@ -40,8 +41,12 @@ public class ECResponseDataVerbHandler implements IVerbHandler<ECResponseData>{
 
         // save it to the map
         if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
-            StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].put(rawData);
-            logger.debug("rymDebug: get raw data from ({}) for sstable hash ({}), index is ({})", message.from(), sstHash, index);
+            if(index > -1 && index < DatabaseDescriptor.getEcDataNodes()){
+                StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].put(rawData);
+                logger.debug("rymDebug: get raw data from ({}) for sstable hash ({}), index is ({})", message.from(), sstHash, index);
+            } else {
+                throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s)", index, sstHash));
+            }
         } else {
             throw new NullPointerException(String.format("rymERROR: We cannot find data blocks for sstable (%s)", message.from(), sstHash));
         }

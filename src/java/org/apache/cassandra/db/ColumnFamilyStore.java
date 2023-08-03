@@ -597,7 +597,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     logger.debug("rymDebug: we map sstHash ({}) to parity Nodes ({})", ecMessage.ecMessageContent.sstHashID,
                                                                                                               ecMessage.ecMessageContent.parityNodes);
 
-
+                                    // send the raw data to the cloud (if any)
+                                    // if(DatabaseDescriptor.getEnableMigration()) {
+                                    //     StorageService.ossAccessObj.uploadFileToOSS(FileUtils.getCanonicalPath(SSTableReader.componentsFor(sstable.descriptor).));
+                                    // }
 
                                 } catch (IOException e) {
                                     logger.error("rymERROR: {}", e);

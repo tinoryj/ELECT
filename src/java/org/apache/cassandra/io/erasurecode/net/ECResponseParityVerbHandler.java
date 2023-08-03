@@ -20,6 +20,7 @@ package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.StorageService;
@@ -53,8 +54,12 @@ public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParit
             }
         } else {
             if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
-                StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].put(parityCode);
-                logger.debug("rymDebug: Get parity code ({}) from ({}) for recovery sstable ({})", parityHash, message.from(), sstHash);
+                if(parityIndex >= DatabaseDescriptor.getEcDataNodes() && parityIndex < DatabaseDescriptor.getEcDataNodes() + DatabaseDescriptor.getParityNodes()) {
+                    StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].put(parityCode);
+                    logger.debug("rymDebug: Get parity code ({}) from ({}) for recovery sstable ({})", parityHash, message.from(), sstHash);
+                } else {
+                    throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s)", parityIndex, sstHash));
+                }
                 // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
             } else {
                 throw new NullPointerException(String.format("rymERROR: We receive parity code (%s) from (%s), but cannot find erasure codes for sstable (%s)", parityHash, message.from(), sstHash));
