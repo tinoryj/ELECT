@@ -536,6 +536,11 @@ public final class ECNetutils {
     }
 
     public static void main(String[] args) {
+
+        ByteBuffer erasureCodes = ByteBuffer.allocateDirect(100);
+        byte[] data = new byte[10];
+        erasureCodes.put(data);
+        logger.debug("rymDebug: remaining is ({}), position is ({})", erasureCodes.remaining(), erasureCodes.position());
         
         // try {
         //     test();
@@ -577,12 +582,12 @@ public final class ECNetutils {
         //     e.printStackTrace();
         // }  
 
-        boolean assertTest = false;
-        assert assertTest;
-        int p1 = 0x01;
-        int p2 = 0x02;
-        int flags = 54;
-        logger.debug("rymDebug: p1&p1 is ({}), p2 & p2 is ({}), p1 & p2 is ({}), p1 & flags is ({}), p2 & flags is ({})", p1 & p1, p2 & p2, p1 & p2, p1 & flags, p2 & flags);
+        // boolean assertTest = false;
+        // assert assertTest;
+        // int p1 = 0x01;
+        // int p2 = 0x02;
+        // int flags = 54;
+        // logger.debug("rymDebug: p1&p1 is ({}), p2 & p2 is ({}), p1 & p2 is ({}), p1 & flags is ({}), p2 & flags is ({})", p1 & p1, p2 & p2, p1 & p2, p1 & flags, p2 & flags);
         //110110
     }
 }

@@ -42,12 +42,13 @@ public class ECResponseDataVerbHandler implements IVerbHandler<ECResponseData>{
         // save it to the map
         if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
             if(index > -1 && index < DatabaseDescriptor.getEcDataNodes()){
-                if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index] != null) {
+                if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index] != null &&
+                   StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].remaining() >= rawData.length) {
                     StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].put(rawData);
                     logger.debug("rymDebug: get raw data from ({}) for sstable hash ({}), index is ({})", message.from(), sstHash, index);
                 } else {
-                    throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s), the size of erasure codes (%s)", 
-                                                                    index, sstHash, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash).length));
+                    throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s), the size of erasure codes (%s), the size of the buffer (%s), raw data length is (%s)", 
+                                                                    index, sstHash, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash).length, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].position(), rawData.length));
                 }
             } else {
                 throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s)", index, sstHash));

@@ -55,12 +55,13 @@ public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParit
         } else {
             if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
                 if(parityIndex >= DatabaseDescriptor.getEcDataNodes() && parityIndex < DatabaseDescriptor.getEcDataNodes() + DatabaseDescriptor.getParityNodes()) {
-                    if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex] != null) {
+                    if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex] != null &&
+                       StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].remaining() >= parityCode.length) {
                         StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].put(parityCode);
                         logger.debug("rymDebug: Get parity code ({}) from ({}) for recovery sstable ({})", parityHash, message.from(), sstHash);
                     } else {
-                        throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s), the size of erasure codes (%s)", 
-                                                                      parityIndex, sstHash, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash).length));
+                        throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s), the size of erasure codes (%s), buffer size is (%s), parity code size is (%s)", 
+                                                                      parityIndex, sstHash, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash).length, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].position(), parityCode.length));
                     }
                 } else {
                     throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s)", parityIndex, sstHash));
