@@ -53,7 +53,7 @@ public class ECRecovery {
     private static final Logger logger = LoggerFactory.getLogger(ECRecovery.class);
     public static final ECRecovery instance = new ECRecovery();
 
-    public static void recoveryDataFromErasureCodes(final String sstHash, CountDownLatch latch) throws Exception {
+    public synchronized static void recoveryDataFromErasureCodes(final String sstHash, CountDownLatch latch) throws Exception {
 
         logger.debug("rymDebug: [Debug recovery] This is recovery for sstHash ({})", sstHash);
 
@@ -252,9 +252,10 @@ public class ECRecovery {
                 }
 
                 // get the needed parity code remotely, send a parity code request
+                logger.debug("rymDebug: Recovery stage, the parity codes are ({})", ecMetadataContent.parityHashList);
                 for (int i = 1; i < ecMetadataContent.parityHashList.size(); i++) {
-                    ECRequestParity request = new ECRequestParity(ecMetadataContent.parityHashList.get(i), oldSSTHash,
-                            i + k, true);
+                    logger.debug("rymDebug: Recovery stage, request parity code ({}) for sstable ({})", ecMetadataContent.parityHashList.get(i), oldSSTHash);
+                    ECRequestParity request = new ECRequestParity(ecMetadataContent.parityHashList.get(i), oldSSTHash, i + k, true);
                     request.requestParityCode(ecMetadataContent.parityNodes.get(i));
                 }
 
