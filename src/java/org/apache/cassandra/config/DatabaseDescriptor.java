@@ -1980,6 +1980,20 @@ public class DatabaseDescriptor
         conf.task_delay = task_delay;
     }
 
+    public static double getTargetStorageSaving() 
+    {
+        return conf.target_storage_saving;
+    }
+
+    public static void setTargetStorageSaving(double target_storage_saving)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.target_storage_saving = target_storage_saving;
+    }
+
     public static int getColdPeriod() 
     {
         return conf.cold_period;

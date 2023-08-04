@@ -190,6 +190,7 @@ public class Config {
     public boolean enable_migration = true;
     public boolean enable_erasure_coding = true;
     public int cold_period = 1440; // unit: minutes, the threshold to judge whether a sstable is extremely cold.
+    public double target_storage_saving = 0.5; 
 
 
     public int concurrent_ec = 3;
