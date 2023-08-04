@@ -232,10 +232,24 @@ public class ECRecovery {
                     // if (!StorageService.ossAccessObj.downloadFileFromOSS(parityCodeFileName, parityCodeFileName)) {
                     //     logger.error("[Tinoryj]: Could not download parity SSTable: {}", parityCodeFileName);
                     // }
-                    byte[] parityCode = StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, ecMetadataContent.parityNodes.get(0).getHostAddress(false));
-                    logger.debug("rymDebug: Download parity code ({}) for sstable ({}), the file size is ({})", 
-                                 ecMetadataContent.parityHashList.get(i), oldSSTHash, parityCode.length);
-                    StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k + i].put(ByteBuffer.wrap(parityCode));
+
+                    int retry_count = 0;
+
+                    while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, ecMetadataContent.parityNodes.get(0).getHostAddress(false)) &&
+                          retry_count < ECNetutils.getMigrationRetryCount()){
+                        retry_count++;
+                    }
+
+                    try {
+                        byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
+                        logger.debug("rymDebug: Download parity code ({}) for sstable ({}), the file size is ({})", 
+                                    ecMetadataContent.parityHashList.get(i), oldSSTHash, parityCode.length);
+                        StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k + i].put(ByteBuffer.wrap(parityCode));
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+
                 }
 
 

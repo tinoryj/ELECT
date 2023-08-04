@@ -159,7 +159,7 @@ public class OSSAccess implements AutoCloseable {
         return true;
     }
 
-    public byte[] downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
+    public boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
         try {
             ossClient.getObject(
@@ -168,19 +168,21 @@ public class OSSAccess implements AutoCloseable {
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
                     + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
-            // return false;
+            return false;
         } catch (ClientException ce) {
             logger.error("OSS Internet Error Message:" + ce.getMessage());
-            // return false;
+            return false;
         }
-        byte[] data = null;
-        try {
-            data = ECNetutils.readBytesFromFile(originalFilePath);
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        return data;
+        // byte[] data = null;
+        // try {
+        //     data = ECNetutils.readBytesFromFile(originalFilePath);
+        // } catch (IOException e) {
+        //     // TODO Auto-generated catch block
+        //     e.printStackTrace();
+        // }
+
+        // return data;
+        return true;
         // ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         // try {
         //     // ossObject包含文件所在的存储空间名称、文件名称、文件元信息以及一个输入流。

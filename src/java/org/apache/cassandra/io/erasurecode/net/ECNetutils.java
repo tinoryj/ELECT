@@ -85,6 +85,7 @@ public final class ECNetutils {
     private static final String dataDir = System.getProperty("user.dir")+"/data/data/";
     private static final String localParityCodeDir = System.getProperty("user.dir")+"/data/localParityHashes/";
     private static final String scriptsDir = System.getProperty("user.dir")+"/scripts/";
+    private static final int MIGRATION_RETRY_COUNT = 5;
 
     public static class ByteObjectConversion {
         public static byte[] objectToByteArray(Serializable obj) throws IOException {
@@ -158,6 +159,10 @@ public final class ECNetutils {
 
     public static String getLocalParityCodeDir() {
         return localParityCodeDir;
+    }
+
+    public static int getMigrationRetryCount() {
+        return MIGRATION_RETRY_COUNT;
     }
 
     /**
