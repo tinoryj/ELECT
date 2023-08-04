@@ -60,6 +60,7 @@ import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
+import org.apache.cassandra.utils.FBUtilities;
 
 /**
  * A read command that selects a (part of a) range of partitions.
@@ -387,10 +388,16 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         }
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0")
-                        && sstable.isDataMigrateToCloud()) {
+                        && sstable.isDataMigrateToCloud() && ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
+                    int retryCount = 0;
+                    while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
+                          retryCount < ECNetutils.getMigrationRetryCount()) {
+                        retryCount++;
+                    }
+                    StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
 
                 }
 
@@ -400,8 +407,14 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                        sstable.isDataMigrateToCloud()) {
+                        sstable.isDataMigrateToCloud() &&  ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
                     // Tinoryj TODO: retrive SSTable from cloud.
+                    int retryCount = 0;
+                    while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
+                          retryCount < ECNetutils.getMigrationRetryCount()) {
+                        retryCount++;
+                    }
+                    StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
                 }
                 if (isCurrentSSTableRepaired) {
                     readRecoveryedSSTableList.add(sstable.getFilename());

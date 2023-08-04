@@ -258,6 +258,7 @@ public class StorageService extends NotificationBroadcasterSupport
     private static int codeLength = 0;
 
     public ConcurrentSkipListSet<String> recoveredSSTables = new ConcurrentSkipListSet<String>();
+    public ConcurrentSkipListSet<String> migratedSStables = new ConcurrentSkipListSet<String>();
 
     // [CASSANDRAEC] The following parameters are used to support recovery
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();

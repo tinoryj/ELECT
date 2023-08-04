@@ -294,6 +294,38 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 dataFileSize);
     }
 
+    public StatsMetadata setIsDataMigrateToCloud(boolean newIsDataMigrateToCloud) {
+
+        logger.debug("rymDebug: newIsDataMigrateToCloud is StatsMetadata ({})", newIsDataMigrateToCloud);
+
+        return new StatsMetadata(estimatedPartitionSize,
+                estimatedCellPerPartitionCount,
+                commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
+                minTimestamp,
+                maxTimestamp,
+                minLocalDeletionTime,
+                maxLocalDeletionTime,
+                minTTL,
+                maxTTL,
+                compressionRatio,
+                estimatedTombstoneDropTime,
+                sstableLevel,
+                minClusteringValues,
+                maxClusteringValues,
+                hasLegacyCounterShards,
+                repairedAt,
+                totalColumnsSet,
+                totalRows,
+                originatingHostId,
+                pendingRepair,
+                isTransient,
+                newIsDataMigrateToCloud,
+                isReplicationTransferToErasureCoding,
+                hashID,
+                dataFileSize);
+    }
+
     public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient) {
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,

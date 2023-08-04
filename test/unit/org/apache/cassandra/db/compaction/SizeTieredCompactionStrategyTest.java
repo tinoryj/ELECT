@@ -176,9 +176,9 @@ public class SizeTieredCompactionStrategyTest
         List<SSTableReader> interestingBucket = mostInterestingBucket(Collections.singletonList(sstrs.subList(0, 2)), 4, 32);
         assertTrue("nothing should be returned when all buckets are below the min threshold", interestingBucket.isEmpty());
 
-        sstrs.get(0).overrideReadMeter(new RestorableMeter(100.0, 100.0));
-        sstrs.get(1).overrideReadMeter(new RestorableMeter(200.0, 200.0));
-        sstrs.get(2).overrideReadMeter(new RestorableMeter(300.0, 300.0));
+        sstrs.get(0).overrideReadMeter(new RestorableMeter(100.0, 100.0, 100.0));
+        sstrs.get(1).overrideReadMeter(new RestorableMeter(200.0, 200.0, 200.0));
+        sstrs.get(2).overrideReadMeter(new RestorableMeter(300.0, 300.0, 300.0));
 
         long estimatedKeys = sstrs.get(0).estimatedKeys();
 

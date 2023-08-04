@@ -22,6 +22,8 @@ package org.apache.cassandra.metrics;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+
 import static java.lang.Math.exp;
 import com.codahale.metrics.Clock;
 
@@ -40,6 +42,7 @@ public class RestorableMeter
 
     private final RestorableEWMA m15Rate;
     private final RestorableEWMA m120Rate;
+    private final RestorableEWMA coldPeriodRate;
 
     private final AtomicLong count = new AtomicLong();
     private final long startTime;
@@ -53,6 +56,7 @@ public class RestorableMeter
     {
         this.m15Rate = new RestorableEWMA(TimeUnit.MINUTES.toSeconds(15));
         this.m120Rate = new RestorableEWMA(TimeUnit.MINUTES.toSeconds(120));
+        this.coldPeriodRate = new RestorableEWMA(TimeUnit.MINUTES.toSeconds(DatabaseDescriptor.getColdPeriod()));
         this.startTime = this.clock.getTick();
         this.lastTick = new AtomicLong(startTime);
     }
@@ -62,10 +66,11 @@ public class RestorableMeter
      * @param lastM15Rate the last-seen 15m rate, in terms of events per second
      * @param lastM120Rate the last seen 2h rate, in terms of events per second
      */
-    public RestorableMeter(double lastM15Rate, double lastM120Rate)
+    public RestorableMeter(double lastM15Rate, double lastM120Rate, double lastMgrationPeriodRate)
     {
         this.m15Rate = new RestorableEWMA(lastM15Rate, TimeUnit.MINUTES.toSeconds(15));
         this.m120Rate = new RestorableEWMA(lastM120Rate, TimeUnit.MINUTES.toSeconds(120));
+        this.coldPeriodRate = new RestorableEWMA(TimeUnit.MINUTES.toSeconds(DatabaseDescriptor.getColdPeriod()));
         this.startTime = this.clock.getTick();
         this.lastTick = new AtomicLong(startTime);
     }
@@ -88,6 +93,7 @@ public class RestorableMeter
                 {
                     m15Rate.tick();
                     m120Rate.tick();
+                    coldPeriodRate.tick();
                 }
             }
         }
@@ -112,6 +118,7 @@ public class RestorableMeter
         count.addAndGet(n);
         m15Rate.update(n);
         m120Rate.update(n);
+        coldPeriodRate.update(n);
     }
 
     /**
@@ -131,6 +138,16 @@ public class RestorableMeter
         tickIfNecessary();
         return m120Rate.rate();
     }
+
+    /**
+     * Returns the cold period rate in terms of events per second.  This carries the previous rate when restored.
+     */
+    public double getColdPeriodRate()
+    {
+        tickIfNecessary();
+        return coldPeriodRate.rate();
+    }
+
 
     /**
      * The total number of events that have occurred since this object was created.  Note that the previous count

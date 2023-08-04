@@ -1980,6 +1980,20 @@ public class DatabaseDescriptor
         conf.task_delay = task_delay;
     }
 
+    public static int getColdPeriod() 
+    {
+        return conf.cold_period;
+    }
+
+    public static void setColdPeriod(int cold_period)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.cold_period = cold_period;
+    }
+
     public static boolean getEnableErasureCoding() 
     {
         return conf.enable_erasure_coding;

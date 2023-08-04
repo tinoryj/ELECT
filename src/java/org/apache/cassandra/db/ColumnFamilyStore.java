@@ -26,6 +26,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.rmi.server.Operation;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -597,11 +598,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     logger.debug("rymDebug: we map sstHash ({}) to parity Nodes ({})", ecMessage.ecMessageContent.sstHashID,
                                                                                                               ecMessage.ecMessageContent.parityNodes);
 
-                                    // send the raw data to the cloud (if any)
-                                    // if(DatabaseDescriptor.getEnableMigration()) {
-                                    //     StorageService.ossAccessObj.uploadFileToOSS(FileUtils.getCanonicalPath(SSTableReader.componentsFor(sstable.descriptor).));
-                                    // }
-
                                 } catch (IOException e) {
                                     logger.error("rymERROR: {}", e);
                                 } catch (Exception e) {
@@ -612,6 +608,21 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             // sstable.unsetIsSelectedByCompactionOrErasureCoding();
                             ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(sstable.getSSTableHashID());
+                        } else if (DatabaseDescriptor.getEnableMigration()) {
+                            // migrate the raw data to the cloud (if any)
+                            if(!sstable.isDataMigrateToCloud() && sstable.getReadMeter().getColdPeriodRate() == 0) {
+                                StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
+                                StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
+                                try {
+                                    // delete the raw data and create a empty file
+                                    sstable.SetIsDataMigrateToCloud();
+                                    Files.newBufferedWriter(Paths.get(sstable.getFilename()));
+                                } catch (IOException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+                            }
+
                         } else {
                             // logger.info("SSTable is transferred");
                             continue;

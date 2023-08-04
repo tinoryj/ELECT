@@ -1956,9 +1956,15 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         }
     }
 
-    public boolean SetIsDataMigrateToCloud() {
-        this.isDataMigrateToCloud = true;
-        this.sstableMetadata.setIsDataMigrateToCloudFlag(true);
+    public boolean SetIsDataMigrateToCloud() throws IOException {
+        // this.isDataMigrateToCloud = true;
+        // this.sstableMetadata.setIsDataMigrateToCloudFlag(true);
+        synchronized (tidy.global) {
+            logger.debug("rymDebug: set is replication transferred to erasure coding flag for sstable ({})", this.getSSTableHashID());
+            descriptor.getMetadataSerializer().setIsDataMigrateToCloud(descriptor, this.getSSTableHashID(), true);
+            reloadSSTableMetadata();
+        }
+
         if (this.isDataMigrateToCloud) {
             return true;
         } else {

@@ -299,6 +299,10 @@ public class MetadataSerializer implements IMetadataSerializer {
         mutateTransferredFlag(descriptor, sstHash, isTransferredToErasureCoding);
     }
 
+    public void setIsDataMigrateToCloud(Descriptor descriptor, String sstHash, boolean flag) throws IOException{
+        mutate(descriptor, stats -> stats.setIsDataMigrateToCloud(flag));
+    }
+
     @Override
     public void mutateRepairMetadata(Descriptor descriptor, long newRepairedAt, TimeUUID newPendingRepair,
             boolean isTransient) throws IOException {

@@ -74,7 +74,7 @@ public class IndexSummaryRedistributionTest
 
         List<SSTableReader> sstables = new ArrayList<>(cfs.getLiveSSTables());
         for (SSTableReader sstable : sstables)
-            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0));
+            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0, 100.0));
 
         long oldSize = 0;
         for (SSTableReader sstable : sstables)

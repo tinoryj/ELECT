@@ -189,6 +189,7 @@ public class Config {
     public int max_send_sstables = 16; // To avoid the network bottleneck, we should limit the number of sstables
     public boolean enable_migration = true;
     public boolean enable_erasure_coding = true;
+    public int cold_period = 1440; // unit: minutes, the threshold to judge whether a sstable is extremely cold.
 
 
     public int concurrent_ec = 3;
