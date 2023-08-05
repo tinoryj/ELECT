@@ -139,6 +139,7 @@ import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
 import org.apache.cassandra.io.erasurecode.net.ECMessage.ECMessageContent;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.SSTableAccessFrequencyComparator;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.SSTableReaderComparator;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
@@ -526,13 +527,28 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
-            Set<SSTableReader> sstables = cfs.getSSTableForLevel(level);
+            List<SSTableReader> sstables = new ArrayList<SSTableReader>(cfs.getSSTableForLevel(level));
+
+            int neededTransferredSSTablesCount  = 0;
+
+            if(DatabaseDescriptor.getEnableMigration()) {
+                neededTransferredSSTablesCount = (int) (1.5 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
+            } else {
+                neededTransferredSSTablesCount = (int) (2 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
+            }
+
+            // sort the sstables based on the access rate.
+            Collections.sort(sstables, new SSTableAccessFrequencyComparator());
+
             if (!sstables.isEmpty()) {
                 logger.debug("rymDebug: get {} sstables from level {}", sstables.size(), level);
                 int count = 0;
                 for (SSTableReader sstable : sstables) {
 
                     if(count >= MAX_EC_CANDIDATES)
+                        return;
+
+                    if(StorageService.instance.transferredSSTableCount >= neededTransferredSSTablesCount)
                         return;
                         
                     if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
@@ -569,6 +585,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     // TODO Auto-generated catch block
                                     e.printStackTrace();
                                 }
+
+                                StorageService.instance.transferredSSTableCount++;
                                 String key = sstable.first.getRawKey(sstable.metadata());
                                 try {
                                     byte[] sstContent = sstable.getSSTContent();

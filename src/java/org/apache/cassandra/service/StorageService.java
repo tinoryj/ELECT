@@ -264,6 +264,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();
     public ConcurrentHashMap<String, SSTableReader> globalRecoveredSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
 
+    public volatile long transferredSSTableCount = 0;
+
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 
     private final JMXProgressSupport progressSupport = new JMXProgressSupport(this);

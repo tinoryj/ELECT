@@ -302,6 +302,16 @@ public final class ECNetutils {
     }
 
 
+    public static class SSTableAccessFrequencyComparator implements Comparator<SSTableReader> {
+
+        @Override
+        public int compare(SSTableReader o1, SSTableReader o2) {
+            return Double.compare(o1.getReadMeter().twoHourRate(), o1.getReadMeter().twoHourRate());
+        }
+        
+    }
+
+
 
 
     public static class InetAddressAndPortComparator implements Comparator<InetAddressAndPort> {
