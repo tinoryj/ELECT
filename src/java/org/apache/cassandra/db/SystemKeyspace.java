@@ -1493,7 +1493,8 @@ public final class SystemKeyspace
                         table,
                         id.toString(),
                         meter.fifteenMinuteRate(),
-                        meter.twoHourRate());
+                        meter.twoHourRate(),
+                        meter.getColdPeriodRate());
 
         if (!DatabaseDescriptor.isUUIDSSTableIdentifiersEnabled() && id instanceof SequenceBasedSSTableId)
         {
@@ -1505,7 +1506,8 @@ public final class SystemKeyspace
                             table,
                             ((SequenceBasedSSTableId) id).generation,
                             meter.fifteenMinuteRate(),
-                            meter.twoHourRate());
+                            meter.twoHourRate(),
+                            meter.getColdPeriodRate());
         }
     }
 
