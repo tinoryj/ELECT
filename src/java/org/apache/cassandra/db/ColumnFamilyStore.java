@@ -628,7 +628,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(sstable.getSSTableHashID());
                         } else if (DatabaseDescriptor.getEnableMigration()) {
                             // migrate the raw data to the cloud (if any)
-                            if(!sstable.isDataMigrateToCloud() && sstable.getReadMeter().getColdPeriodRate() == 0) {
+                            long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+
+                            long coldDelayMilli = DatabaseDescriptor.getColdPeriod() * 60 * 1000;
+                            if(!sstable.isDataMigrateToCloud() && sstable.getReadMeter().getColdPeriodRate() == 0 &&
+                               duration >= coldDelayMilli) {
+                                logger.debug("rymDebug: migrate extremely cold sstable ({}) to cloud.", sstable.getSSTableHashID());
                                 StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
                                 StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
                                 try {
