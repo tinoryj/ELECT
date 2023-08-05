@@ -1487,7 +1487,7 @@ public final class SystemKeyspace
     public static void persistSSTableReadMeter(String keyspace, String table, SSTableId id, RestorableMeter meter)
     {
         // Store values with a one-day TTL to handle corner cases where cleanup might not occur
-        String cql = "INSERT INTO system.%s (keyspace_name, table_name, id, rate_15m, rate_120m, rate_cold_period) VALUES (?, ?, ?, ?, ?) USING TTL 864000";
+        String cql = "INSERT INTO system.%s (keyspace_name, table_name, id, rate_15m, rate_120m, rate_cold_period) VALUES (?, ?, ?, ?, ?, ?) USING TTL 864000";
         executeInternal(format(cql, SSTABLE_ACTIVITY_V2),
                         keyspace,
                         table,
@@ -1499,7 +1499,7 @@ public final class SystemKeyspace
         {
             // we do this in order to make it possible to downgrade until we switch in cassandra.yaml to UUID based ids
             // see the discussion on CASSANDRA-17048
-            cql = "INSERT INTO system.%s (keyspace_name, columnfamily_name, generation, rate_15m, rate_120m, rate_cold_period) VALUES (?, ?, ?, ?, ?) USING TTL 864000";
+            cql = "INSERT INTO system.%s (keyspace_name, columnfamily_name, generation, rate_15m, rate_120m, rate_cold_period) VALUES (?, ?, ?, ?, ?, ?) USING TTL 864000";
             executeInternal(format(cql, LEGACY_SSTABLE_ACTIVITY),
                             keyspace,
                             table,
