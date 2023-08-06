@@ -548,13 +548,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     if(count >= MAX_EC_CANDIDATES)
                         return;
 
-                    if(StorageService.instance.transferredSSTableCount >= neededTransferredSSTablesCount)
-                        return;
                         
                     if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
 
                         if (!sstable.isReplicationTransferredToErasureCoding() //&&!sstable.isSelectedByCompactionOrErasureCoding() && 
                             ) {
+                            if(StorageService.instance.transferredSSTableCount >= neededTransferredSSTablesCount)
+                                return;
 
                             logger.debug(
                                     "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
