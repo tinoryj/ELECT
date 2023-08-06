@@ -631,18 +631,23 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 
                             long coldDelayMilli = DatabaseDescriptor.getColdPeriod() * 60 * 1000;
-                            if(!sstable.isDataMigrateToCloud() && sstable.getReadMeter().getColdPeriodRate() == 0 &&
-                               duration >= coldDelayMilli) {
-                                logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.", sstable.descriptor, sstable.getSSTableHashID());
-                                StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
-                                StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
-                                try {
-                                    // delete the raw data and create a empty file
-                                    sstable.SetIsDataMigrateToCloud();
-                                    Files.newBufferedWriter(Paths.get(sstable.getFilename()));
-                                } catch (IOException e) {
-                                    // TODO Auto-generated catch block
-                                    e.printStackTrace();
+                            if(duration >= coldDelayMilli) {
+
+                                if(!sstable.isDataMigrateToCloud() && sstable.getReadMeter().getColdPeriodRate() == 0) {
+                                    logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.", sstable.descriptor, sstable.getSSTableHashID());
+                                    StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
+                                    StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
+                                    try {
+                                        // delete the raw data and create a empty file
+                                        sstable.SetIsDataMigrateToCloud();
+                                        Files.newBufferedWriter(Paths.get(sstable.getFilename()));
+                                    } catch (IOException e) {
+                                        // TODO Auto-generated catch block
+                                        e.printStackTrace();
+                                    }
+                                } else {
+                                    logger.debug("rymDebug: The access rate of sstable ({}: {}) within 15 min is ({}), 2 hours is ({}), cold period is ({})", 
+                                                 sstable.descriptor, sstable.getSSTableHashID(), sstable.getReadMeter().fifteenMinuteRate(), sstable.getReadMeter().twoHourRate(), sstable.getReadMeter().getColdPeriodRate());
                                 }
                             }
 
