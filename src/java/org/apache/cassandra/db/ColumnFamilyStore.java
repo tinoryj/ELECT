@@ -633,7 +633,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             long coldDelayMilli = DatabaseDescriptor.getColdPeriod() * 60 * 1000;
                             if(!sstable.isDataMigrateToCloud() && sstable.getReadMeter().getColdPeriodRate() == 0 &&
                                duration >= coldDelayMilli) {
-                                logger.debug("rymDebug: migrate extremely cold sstable ({}) to cloud.", sstable.getSSTableHashID());
+                                logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.", sstable.descriptor, sstable.getSSTableHashID());
                                 StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
                                 StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
                                 try {
