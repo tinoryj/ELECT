@@ -742,8 +742,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             targetSSTableSetSize = view.sstables.size();
             for (SSTableReader sstable : view.sstables) {
                 boolean isCurrentSSTableRepaired = false;
-                if (!sstable.getColumnFamilyName().equals("usertable0")
-                        && sstable.isReplicationTransferredToErasureCoding()) {
+                if (!sstable.getColumnFamilyName().equals("usertable0") && 
+                    sstable.isReplicationTransferredToErasureCoding() && 
+                    !sstable.isDataMigrateToCloud()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                         // logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
                         //         sstable.getColumnFamilyName(),
@@ -778,8 +779,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
                         }
                     }
-                } else if (sstable.getColumnFamilyName().equals("usertable0")
-                        && sstable.isDataMigrateToCloud()  && ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                } else if (sstable.getColumnFamilyName().equals("usertable0") && 
+                           sstable.isDataMigrateToCloud()  && 
+                           ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
@@ -1014,8 +1016,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         targetSSTableSetSize = view.sstables.size();
         for (SSTableReader sstable : view.sstables) {
             boolean isCurrentSSTableRepaired = false;
-            if (!sstable.getColumnFamilyName().equals("usertable0")
-                    && sstable.isReplicationTransferredToErasureCoding()) {
+            if (!sstable.getColumnFamilyName().equals("usertable0") && 
+                sstable.isReplicationTransferredToErasureCoding() && 
+                !sstable.isDataMigrateToCloud()) {
                 if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                     // logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
                     //         sstable.getColumnFamilyName(),
