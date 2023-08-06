@@ -799,6 +799,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                         sstable.isDataMigrateToCloud()  && ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                    
+                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
                     int retryCount = 0;
                     while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
@@ -1067,6 +1070,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
             } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                     sstable.isDataMigrateToCloud()   && ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                
+                logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
+                        sstable.getSSTableHashID(), sstable.getFilename());
                 // Tinoryj TODO: retrive SSTable from cloud.
                 int retryCount = 0;
                 while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&

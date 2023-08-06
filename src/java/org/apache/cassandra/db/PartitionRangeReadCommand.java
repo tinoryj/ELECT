@@ -409,6 +409,8 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                         sstable.isDataMigrateToCloud() &&  ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
                     // Tinoryj TODO: retrive SSTable from cloud.
+                    logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
+                            sstable.getSSTableHashID(), sstable.getFilename());
                     int retryCount = 0;
                     while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
