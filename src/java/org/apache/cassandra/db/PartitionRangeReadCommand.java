@@ -351,8 +351,9 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
             ArrayList<String> readRecoveryedSSTableHashList = new ArrayList<String>();
             for (SSTableReader sstable : view.sstables) {
                 boolean isCurrentSSTableRepaired = false;
-                if (!sstable.getColumnFamilyName().equals("usertable0")
-                        && sstable.isReplicationTransferredToErasureCoding()) {
+                if (!sstable.getColumnFamilyName().equals("usertable0") && 
+                    sstable.isReplicationTransferredToErasureCoding() && 
+                    !sstable.isDataMigrateToCloud()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                         // logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
                         //         sstable.getColumnFamilyName(),
