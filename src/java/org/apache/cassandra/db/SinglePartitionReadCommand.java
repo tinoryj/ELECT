@@ -780,7 +780,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0") && 
-                           sstable.isDataMigrateToCloud()  && 
                            ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
@@ -790,7 +789,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                         retryCount++;
                     }
-                    StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
+                    StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
 
                 }
 
@@ -799,8 +798,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         sstable.isReplicationTransferredToErasureCoding() &&
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
-                } else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                        sstable.isDataMigrateToCloud()  && ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                } else if (sstable.getColumnFamilyName().equals("usertable0") && 
+                           ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
                     
                      logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
@@ -810,7 +809,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                         retryCount++;
                     }
-                    StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
+                    StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                 }
 
                 // if we've already seen a partition tombstone with a timestamp greater
@@ -1053,8 +1052,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                     }
                 }
-            } else if (sstable.getColumnFamilyName().equals("usertable0")
-                    && sstable.isDataMigrateToCloud()   && ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+            } else if (sstable.getColumnFamilyName().equals("usertable0") && 
+                       ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
                 logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                         sstable.getSSTableHashID(), sstable.getFilename());
                 // Tinoryj TODO: retrive SSTable from cloud.
@@ -1063,7 +1062,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                       retryCount < ECNetutils.getMigrationRetryCount()) {
                     retryCount++;
                 }
-                StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
+                StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
 
             }
 
@@ -1072,7 +1071,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                 sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
             } else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                    sstable.isDataMigrateToCloud()   && ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                       ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
                 
                 logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                         sstable.getSSTableHashID(), sstable.getFilename());
@@ -1082,7 +1081,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                       retryCount < ECNetutils.getMigrationRetryCount()) {
                     retryCount++;
                 }
-                StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
+                StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
             }
 
             if (isCurrentSSTableRepaired) {

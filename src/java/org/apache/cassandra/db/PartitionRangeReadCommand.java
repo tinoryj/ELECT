@@ -389,7 +389,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         }
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0")
-                        && sstable.isDataMigrateToCloud() && ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                        && ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
@@ -408,7 +408,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                        sstable.isDataMigrateToCloud() &&  ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                           ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
                     // Tinoryj TODO: retrive SSTable from cloud.
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
@@ -417,7 +417,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                         retryCount++;
                     }
-                    StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
+                    StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                 }
                 if (isCurrentSSTableRepaired) {
                     readRecoveryedSSTableList.add(sstable.getFilename());
