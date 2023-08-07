@@ -32,7 +32,8 @@ func() {
     sed -i "s/operationcount=.*$/operationcount=${operationcount}/" workloads/workload_template
     
     
-    bin/ycsb run cassandra-cql histogram -i results/run-results/${file_name} -p hosts=$coordinator -p cassandra.readconsistencylevel="$consistency" -threads $threads -s -P workloads/workload_template > logs/run-log/${file_name}.log 2>&1
+    bin/ycsb run cassandra-cql -p hosts=$coordinator -p cassandra.readconsistencylevel="$consistency" -threads $threads -s -P workloads/workload_template > logs/run-log/${file_name}.log 2>&1
+    # histogram -i results/run-results/${file_name}
 }
 
 func "$1" "$2" "$3" "$4"

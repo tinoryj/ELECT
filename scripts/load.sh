@@ -39,7 +39,8 @@ func() {
     sed -i "s/fieldlength=.*$/fieldlength=${field_length}/" workloads/workload_template
     file_name="$(date +%s)-${record_count}-${field_length}-${threads}"
     # nohup bin/ycsb load cassandra-cql -p hosts=$coordinator -threads $threads -s -P workloads/workload_template > logs/insert-log/${file_name}.log 2>&1 &
-    bin/ycsb load cassandra-cql histogram -i results/load-results/${file_name} -p hosts=$coordinator -threads $threads -s -P workloads/workload_template > logs/insert-log/${file_name}.log 2>&1
+    bin/ycsb load cassandra-cql -p hosts=$coordinator -threads $threads -s -P workloads/workload_template > logs/insert-log/${file_name}.log 2>&1
+    # histogram -i results/load-results/${file_name}
 }
 
 func "$1" "$2" "$3" "$4"
