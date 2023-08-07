@@ -626,7 +626,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             // sstable.unsetIsSelectedByCompactionOrErasureCoding();
                             ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(sstable.getSSTableHashID());
-                        } else if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() >= 0.6) {
+                        } else if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.6) {
                             // migrate the raw data to the cloud (if any)
                             long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 

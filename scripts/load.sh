@@ -34,11 +34,12 @@ func() {
 
     cd /home/yjren/ycsb-0.17.0/
     mkdir -p logs/insert-log/
+    mkdir -p results/load-results/
     sed -i "s/recordcount=.*$/recordcount=${record_count}/" workloads/workload_template
     sed -i "s/fieldlength=.*$/fieldlength=${field_length}/" workloads/workload_template
-    file_name="$(date +%s)-${record_count}-${field_length}"
+    file_name="$(date +%s)-${record_count}-${field_length}-${threads}"
     # nohup bin/ycsb load cassandra-cql -p hosts=$coordinator -threads $threads -s -P workloads/workload_template > logs/insert-log/${file_name}.log 2>&1 &
-    bin/ycsb load cassandra-cql -p hosts=$coordinator -threads $threads -s -P workloads/workload_template > logs/insert-log/${file_name}.log 2>&1
+    bin/ycsb load cassandra-cql histogram -i results/load-results/${file_name} -p hosts=$coordinator -threads $threads -s -P workloads/workload_template > logs/insert-log/${file_name}.log 2>&1
 }
 
 func "$1" "$2" "$3" "$4"
