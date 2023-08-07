@@ -460,7 +460,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             }
             try {
 
-                if (DatabaseDescriptor.getEnableMigration()) {
+                if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45) {
 
                     for(int i = 0; i < parityCodes.length; i++) {
                         String parityCodeFileName = localParityCodeDir + parityHashList.get(i);
@@ -685,7 +685,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             // record first parity code to current node
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
 
-            if (DatabaseDescriptor.getEnableMigration()) {
+            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45) {
 
                 for(int i = 0; i < newParityCodes.length; i++) {
 

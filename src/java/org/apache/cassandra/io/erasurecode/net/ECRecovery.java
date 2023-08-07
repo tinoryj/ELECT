@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
+import javax.xml.crypto.Data;
+
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureDecoder;
@@ -224,7 +226,7 @@ public class ECRecovery {
 
 
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
-            if (DatabaseDescriptor.getEnableMigration()) {
+            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45) {
 
                 for(int i = 0; i < ecMetadataContent.parityHashList.size(); i++) {
                     String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(i);

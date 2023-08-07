@@ -29,6 +29,7 @@ import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.compaction.LeveledGenerations;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.slf4j.Logger;
@@ -53,6 +54,17 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         boolean isFound = false;
         for(SSTableReader sstable : sstables) {
             if(sstable.getSSTableHashID().equals(requestSSTHash)) {
+
+                if(ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                    // reload raw data from cloud
+                    int retryCount = 0;
+                    while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
+                          retryCount < ECNetutils.getMigrationRetryCount()) {
+                        retryCount++;
+                    }
+
+                    StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                }
 
                 // ByteBuffer buffer;
                 try {

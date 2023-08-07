@@ -326,7 +326,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // record first parity code to current node
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
-            if (DatabaseDescriptor.getEnableMigration()) {
+            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45) {
 
                 for(int i = 0; i < parity.length; i++) {
 
