@@ -556,6 +556,11 @@ public final class ECNetutils {
         scpCommand(sourceFileName, targetDir);
     }
 
+
+    public static synchronized boolean checkIsParityCodeMigrated(String parityCodeHash) {
+        return StorageService.instance.migratedParityCodes.contains(parityCodeHash);
+    }
+
     public static void main(String[] args) {
 
         ByteBuffer erasureCodes = ByteBuffer.allocateDirect(100);

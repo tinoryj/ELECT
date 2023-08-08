@@ -1,0 +1,138 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+- name: Rebuild and start Cassandra servers
+  hosts: cassandra_servers
+  become: true
+  become_user: yjren
+  tasks:
+  - name: Execute script start-server.sh
+    command: bash /mnt/ssd/Test/CassandraEC/scripts/start-server.sh {{ ec_data_nodes }} {{ parity_nodes }} {{ max_level_count }} {{ concurrent_ec }} {{ initial_delay }} {{ task_delay }} {{ stripe_update_frequency }} {{ max_send_sstables }} {{ internode_max_message_size }} {{ internode_application_send_queue_capacity }} {{ internode_application_send_queue_reserve_endpoint_capacity }} {{ internode_application_send_queue_reserve_global_capacity }} {{ internode_application_receive_queue_capacity }} {{ internode_application_receive_queue_reserve_endpoint_capacity }} {{ internode_application_receive_queue_reserve_global_capacity }}
+    vars:
+      ec_data_nodes: 4
+      parity_nodes: 2
+      max_level_count: 4
+      concurrent_ec: 64
+      initial_delay: 2
+      task_delay: 2
+      stripe_update_frequency: 2
+      max_send_sstables: 8
+      internode_max_message_size: 32MiB
+      internode_application_send_queue_capacity: 256MiB
+      internode_application_send_queue_reserve_endpoint_capacity: 512MiB
+      internode_application_send_queue_reserve_global_capacity: 1024MiB
+      internode_application_receive_queue_capacity: 512MiB
+      internode_application_receive_queue_reserve_endpoint_capacity: 512MiB
+      internode_application_receive_queue_reserve_global_capacity: 1024MiB
+
+    register: command_result
+    ignore_errors: True
+
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+  - name: Wait until all nodes are ready
+    pause:
+      seconds: 30
+
+- name: Prepare keyspace and tables for evaluation
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute script start-client.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/start-client.sh {{ ansible_hostname }} {{ sstable_size_in_mb }} {{ fanout_size }}
+    vars:
+      sstable_size_in_mb: 4
+      fanout_size: 4
+    register: command_result
+    ignore_errors: True
+
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+
+- name: Load data
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute script run.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/load.sh {{ ansible_hostname }} {{ record_count }} {{ filed_length }} {{ threads }} {{ consistency }}
+    vars:
+      record_count: 10000000
+      filed_length: 1024
+      threads: 32
+      consistency: TWO
+    register: command_result
+    ignore_errors: True
+
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+  - name: Wait until insertion is done
+    pause:
+      seconds: 30
+
+
+- name: Run Normal Read
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute run.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ ansible_hostname }} {{ operation_count }} {{ threads }}
+    vars:
+      operation_count: 10000000
+      threads: 32
+    register: command_result
+    ignore_errors: true
+  
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+
+- name: Test recovery
+  hosts: server2
+
+  tasks:
+  - name: Offline a server node
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/recovery.sh
+    register: command_result
+    ignore_errors: true
+  
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+  
+- name: Run Degraded Read
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute run.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ ansible_hostname }} {{ operation_count }} {{ threads }}
+    vars:
+      operation_count: 10000000
+      threads: 32
+    register: command_result
+    ignore_errors: true
+  
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
