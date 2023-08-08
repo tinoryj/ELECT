@@ -25,19 +25,20 @@ func() {
     threads=$3
     consistency=$4
     file_dir=$5
+    workload=$6
     file_name="$(date +%s)-${operationcount}-${threads}"
-    cd ~/ycsb-0.17.0
+    cd $file_dir
     mkdir -p logs/run-log/
     mkdir -p results/run-results/
     
-    sed -i "s/operationcount=.*$/operationcount=${operationcount}/" workloads/workload_template
+    sed -i "s/operationcount=.*$/operationcount=${operationcount}/" $workload
     
     
-    bin/ycsb run cassandra-cql -p hosts=$coordinator -p cassandra.readconsistencylevel="$consistency" -threads $threads -s -P workloads/workload_template > logs/run-log/${file_name}.log 2>&1
+    bin/ycsb run cassandra-cql -p hosts=$coordinator -p cassandra.readconsistencylevel="$consistency" -threads $threads -s -P $workload > logs/run-log/${file_name}.log 2>&1
     # histogram -i results/run-results/${file_name}
 }
 
-func "$1" "$2" "$3" "$4" "$5"
+func "$1" "$2" "$3" "$4" "$5" "$6"
 
 
 

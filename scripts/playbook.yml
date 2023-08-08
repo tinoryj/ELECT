@@ -93,13 +93,14 @@
 
   tasks:
   - name: Execute script load.sh
-    command: sh /mnt/ssd/Test/CassandraEC/scripts/load.sh {{ coordinator }} {{ record_count }} {{ filed_length }} {{ threads }} {{ file_dir }}
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/load.sh {{ coordinator }} {{ record_count }} {{ filed_length }} {{ threads }} {{ file_dir }} {{ workload }}
     vars:
       coordinator: "192.168.0.21"
       record_count: 10000000
       filed_length: 1024
       threads: 16
       file_dir: "/home/yjren/ycsb-0.17.0/"
+      workload: "workloads/workload_template"
     register: command_result
     ignore_errors: True
 
@@ -134,13 +135,14 @@
 
   tasks:
   - name: Execute run.sh
-    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }}
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }} {{ workload }}
     vars:
       coordinator: "192.168.0.21"
       operation_count: 500000
       threads: 16
       consistency: TWO
       file_dir: "/home/yjren/ycsb-0.17.0/"
+      workload: "workloads/workload_template"
       register: command_result
       ignore_errors: true
 
@@ -173,13 +175,14 @@
 
   tasks:
   - name: Execute run.sh
-    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }}
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }} {{ workload }}
     vars:
       coordinator: "192.168.0.21"
       operation_count: 500000
       threads: 16
       consistency: TWO
       file_dir: "/home/yjren/ycsb-0.17.0/"
+      workload: "workloads/workload_template"
       register: command_result
       ignore_errors: true
 

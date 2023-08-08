@@ -23,18 +23,19 @@ func() {
     field_length=$3
     threads=$4
     file_dir=$5
+    workload=$6
     
 
 
     cd ${file_dir}
     mkdir -p logs/insert-log/
     mkdir -p results/load-results/
-    sed -i "s/recordcount=.*$/recordcount=${record_count}/" workloads/workload_template
-    sed -i "s/fieldlength=.*$/fieldlength=${field_length}/" workloads/workload_template
+    sed -i "s/recordcount=.*$/recordcount=${record_count}/" $workload
+    sed -i "s/fieldlength=.*$/fieldlength=${field_length}/" $workload
     file_name="$(date +%s)-${record_count}-${field_length}-${threads}"
     # nohup bin/ycsb load cassandra-cql -p hosts=$coordinator -threads $threads -s -P workloads/workload_template > logs/insert-log/${file_name}.log 2>&1 &
-    bin/ycsb load cassandra-cql -p hosts=$coordinator -threads $threads -s -P workloads/workload_template > logs/insert-log/${file_name}.log 2>&1
+    bin/ycsb load cassandra-cql -p hosts=$coordinator -threads $threads -s -P $workload > logs/insert-log/${file_name}.log 2>&1
     # histogram -i results/load-results/${file_name}
 }
 
-func "$1" "$2" "$3" "$4" "$5"
+func "$1" "$2" "$3" "$4" "$5" "$6"
