@@ -59,6 +59,14 @@ func() {
     sed -i "s/stripe_update_frequency:.*$/stripe_update_frequency: ${stripe_update_frequency}/" conf/cassandra.yaml
     sed -i "s/max_send_sstables:.*$/max_send_sstables: ${max_send_sstables}/" conf/cassandra.yaml
 
+
+    sed -i "s/enable_migration:.*$/enable_migration: ${enable_migration}/" conf/cassandra.yaml
+    sed -i "s/enbale_erasure_coding:.*$/enbale_erasure_coding: ${enbale_erasure_coding}/" conf/cassandra.yaml
+    sed -i "s/cold_period:.*$/cold_period: ${cold_period}/" conf/cassandra.yaml
+    sed -i "s/target_storage_saving:.*$/target_storage_saving: ${target_storage_saving}/" conf/cassandra.yaml
+    sed -i 's/seeds:.*$/seeds: "${max_send_sstables}"/' conf/cassandra.yaml
+    sed -i "s/memtale_heap_space:.*$/memtale_heap_space: ${memtale_heap_space}/" conf/cassandra.yaml
+
     sed -i "s/internode_max_message_size:.*$/internode_max_message_size: ${internode_max_message_size}/" conf/cassandra.yaml
     sed -i "s/internode_application_send_queue_capacity:.*$/internode_application_send_queue_capacity: ${internode_application_send_queue_capacity}/" conf/cassandra.yaml
     sed -i "s/internode_application_send_queue_reserve_endpoint_capacity:.*$/internode_application_send_queue_reserve_endpoint_capacity: ${internode_application_send_queue_reserve_endpoint_capacity}/" conf/cassandra.yaml
@@ -70,4 +78,4 @@ func() {
     nohup bin/cassandra &> logs/debug.log &
 }
 
-func "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "$10" "$11" "$12" "$13" "$14" "$15"
+func #"$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "$10" "$11" "$12" "$13" "$14" "$15"
