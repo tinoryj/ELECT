@@ -64,7 +64,7 @@ func() {
     sed -i "s/enbale_erasure_coding:.*$/enbale_erasure_coding: ${enbale_erasure_coding}/" conf/cassandra.yaml
     sed -i "s/cold_period:.*$/cold_period: ${cold_period}/" conf/cassandra.yaml
     sed -i "s/target_storage_saving:.*$/target_storage_saving: ${target_storage_saving}/" conf/cassandra.yaml
-    sed -i 's/seeds:.*$/seeds: "${max_send_sstables}"/' conf/cassandra.yaml
+    sed -i "s/seeds:.*$/seeds: \"${seeds}\"/" conf/cassandra.yaml
     sed -i "s/memtale_heap_space:.*$/memtale_heap_space: ${memtale_heap_space}/" conf/cassandra.yaml
 
     sed -i "s/internode_max_message_size:.*$/internode_max_message_size: ${internode_max_message_size}/" conf/cassandra.yaml
