@@ -22,17 +22,11 @@ func() {
     record_count=$2
     field_length=$3
     threads=$4
+    file_dir=$5
+    
 
-    # while true; do
-    #     if ps aux | grep ycsb | grep -v grep | awk 'NR == 1' | awk '{print $2}' | xargs kill -9; then
-    #         echo "Killed ycsb process"
-    #     else
-    #         break
-    #     fi
-    #     sleep 1
-    # done
 
-    cd /home/yjren/ycsb-0.17.0/
+    cd ${file_dir}
     mkdir -p logs/insert-log/
     mkdir -p results/load-results/
     sed -i "s/recordcount=.*$/recordcount=${record_count}/" workloads/workload_template
@@ -43,4 +37,4 @@ func() {
     # histogram -i results/load-results/${file_name}
 }
 
-func "$1" "$2" "$3" "$4"
+func "$1" "$2" "$3" "$4" "$5"

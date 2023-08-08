@@ -24,6 +24,7 @@ func() {
     operationcount=$2
     threads=$3
     consistency=$4
+    file_dir=$5
     file_name="$(date +%s)-${operationcount}-${threads}"
     cd ~/ycsb-0.17.0
     mkdir -p logs/run-log/
@@ -36,7 +37,7 @@ func() {
     # histogram -i results/run-results/${file_name}
 }
 
-func "$1" "$2" "$3" "$4"
+func "$1" "$2" "$3" "$4" "$5"
 
 
 

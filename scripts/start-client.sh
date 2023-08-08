@@ -21,7 +21,8 @@ func() {
     coordinator=$1
     sstable_size=$2
     fanout_size=$3
-    cd /home/yjren/cassandra
+    file_dir=$4
+    cd $file_dir
     bin/cqlsh $coordinator -e "create keyspace ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 3 };
     USE ycsb;
     create table usertable0 (y_id varchar primary key, field0 varchar);
@@ -36,4 +37,4 @@ func() {
     consistency all;"
 }
 
-func "$1" "$2" "$3"
+func "$1" "$2" "$3" "$4"

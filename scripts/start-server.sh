@@ -14,31 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# . /etc/profile
 
 kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
 func() {
 
-    # ec_data_nodes=$1
-    # parity_nodes=$2
-    # max_level_count=$3
-    # concurrent_ec=$4
-    # initial_delay=$5
-    # task_delay=$6
-    # stripe_update_frequency=$7
-    # max_send_sstables=$8
-    # internode_max_message_size=$9
-    
-    # internode_application_send_queue_capacity=$10
-    # internode_application_send_queue_reserve_endpoint_capacity=$11
-    # internode_application_send_queue_reserve_global_capacity=$12
-    # internode_application_receive_queue_capacity=$13
-    # internode_application_receive_queue_reserve_endpoint_capacity=$14
-    # internode_application_receive_queue_reserve_global_capacity=$15
 
-    cd /mnt/ssd/Test/CassandraEC
-    git checkout yuanming
-    git pull origin yuanming
+    cd $project_base_dir
+    git checkout ${branch_name}
+    git pull origin ${branch_name}
 
 
     rm -rf data logs
@@ -47,7 +30,7 @@ func() {
     mkdir -p data/ECMetadata/
     mkdir -p data/tmp/
     mkdir -p logs
-    #ant realclean && ant -Duse.jdk11=true
+    ant realclean && ant -Duse.jdk11=true
     cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
     
     sed -i "s/ec_data_nodes:.*$/ec_data_nodes: ${ec_data_nodes}/" conf/cassandra.yaml

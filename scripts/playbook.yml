@@ -22,6 +22,8 @@
   - name: Execute script start-server.sh
     shell: |
       . /etc/profile &&
+      export project_base_dir="/mnt/ssd/Test/CassandraEC" &&
+      export branch_name="yuanming" &&
       export ec_data_nodes=4 &&
       export ec_data_nodes=4 &&
       export parity_nodes=2 &&
@@ -72,10 +74,12 @@
 
   tasks:
   - name: Execute script start-client.sh
-    command: sh /mnt/ssd/Test/CassandraEC/scripts/start-client.sh "192.168.0.21" {{ sstable_size_in_mb }} {{ fanout_size }}
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/start-client.sh {{ coordinator }} {{ sstable_size_in_mb }} {{ fanout_size }} {{ file_dir }}
     vars:
+      coordinator: "192.168.0.21"
       sstable_size_in_mb: 4
       fanout_size: 10
+      file_dir: "/home/yjren/cassandra"
     register: command_result
     ignore_errors: True
 
@@ -88,12 +92,14 @@
   hosts: cassandra_client
 
   tasks:
-  - name: Execute script run.sh
-    command: sh /mnt/ssd/Test/CassandraEC/scripts/load.sh "192.168.0.21" {{ record_count }} {{ filed_length }} {{ threads }}
+  - name: Execute script load.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/load.sh {{ coordinator }} {{ record_count }} {{ filed_length }} {{ threads }} {{ file_dir }}
     vars:
+      coordinator: "192.168.0.21"
       record_count: 10000000
       filed_length: 1024
       threads: 16
+      file_dir: "/home/yjren/ycsb-0.17.0/"
     register: command_result
     ignore_errors: True
 
@@ -123,56 +129,60 @@
     pause:
       seconds: 4000
 
-#- name: Run Normal Read
-#  hosts: cassandra_client
-#
-#  tasks:
-#  - name: Execute run.sh
-#    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh "192.168.10.21" {{ operation_count }} {{ threads }} {{ consistency }}
-#    vars:
-#      operation_count: 500000
-#      threads: 16
-#      consistency: TWO
-#      register: command_result
-#      ignore_errors: true
-#
-#  - name: Fail the play if the previous command did not succeed
-#    fail: msg="the command failed"
-#    when: "'FAILED' in command_result.stderr"
-#  - name: Wait until normal read is done
-#    pause:
-#      seconds: 60
+- name: Run Normal Read
+ hosts: cassandra_client
 
-#- name: Test recovery
-#  hosts: server2
-#
-#  tasks:
-#  - name: Offline a server node
-#    command: sh /mnt/ssd/Test/CassandraEC/scripts/recovery.sh
-#    register: command_result
-#    ignore_errors: true
-#
-#  - name: Fail the play if the previous command did not succeed
-#    fail: msg="the command failed"
-#    when: "'FAILED' in command_result.stderr"
-#
-#  - name: Wait until killed server is found
-#    pause:
-#      seconds: 60
-#
-#- name: Run Degraded Read
-#  hosts: cassandra_client
-#
-#  tasks:
-#  - name: Execute run.sh
-#    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh "192.168.10.21" {{ operation_count }} {{ threads }} {{ consistency }}
-#    vars:
-#      operation_count: 500000
-#      threads: 8
-#      consistency: TWO
-#      register: command_result
-#      ignore_errors: true
-#
-#  - name: Fail the play if the previous command did not succeed
-#    fail: msg="the command failed"
-#    when: "'FAILED' in command_result.stderr"
+ tasks:
+ - name: Execute run.sh
+   command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }}
+   vars:
+     coordinator: "192.168.0.21"
+     operation_count: 500000
+     threads: 16
+     consistency: TWO
+     file_dir: "/home/yjren/ycsb-0.17.0/"
+     register: command_result
+     ignore_errors: true
+
+ - name: Fail the play if the previous command did not succeed
+   fail: msg="the command failed"
+   when: "'FAILED' in command_result.stderr"
+ - name: Wait until normal read is done
+   pause:
+     seconds: 60
+
+- name: Test recovery
+ hosts: server2
+
+ tasks:
+ - name: Offline a server node
+   command: sh /mnt/ssd/Test/CassandraEC/scripts/recovery.sh
+   register: command_result
+   ignore_errors: true
+
+ - name: Fail the play if the previous command did not succeed
+   fail: msg="the command failed"
+   when: "'FAILED' in command_result.stderr"
+
+ - name: Wait until killed server is found
+   pause:
+     seconds: 60
+
+- name: Run Degraded Read
+ hosts: cassandra_client
+
+ tasks:
+ - name: Execute run.sh
+   command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }}
+   vars:
+     coordinator: "192.168.0.21"
+     operation_count: 500000
+     threads: 16
+     consistency: TWO
+     file_dir: "/home/yjren/ycsb-0.17.0/"
+     register: command_result
+     ignore_errors: true
+
+ - name: Fail the play if the previous command did not succeed
+   fail: msg="the command failed"
+   when: "'FAILED' in command_result.stderr"
