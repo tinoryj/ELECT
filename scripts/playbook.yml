@@ -158,7 +158,8 @@
 
   tasks:
   - name: Offline a server node
-    command: sh /mnt/ssd/Test/CassandraEC/scripts/recovery.sh
+    shell: |
+      . /etc/profile && kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
     register: command_result
     ignore_errors: true
 
