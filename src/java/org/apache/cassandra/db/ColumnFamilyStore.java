@@ -535,12 +535,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             int totalSSTableCount = cfs.getTracker().getView().liveSSTables().size();
             double tss = DatabaseDescriptor.getTargetStorageSaving();
 
-            int needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss / (rf - n / k)); // parameter a
+            int needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0 / (rf - ((double) (n * 1.0)) / k)); // parameter a
 
-            int needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf -1) * sstables.size()); // parameter c
+            int needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf - 1) * sstables.size()); // parameter c
 
-            logger.debug("rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({}), transferred sstables count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})", 
-                         needTransferSSTablesCount, needMigrateRawSSTablesCount, StorageService.instance.transferredSSTableCount, totalSSTableCount, k, n, tss);
+            logger.debug("rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})", 
+                         needTransferSSTablesCount, needMigrateRawSSTablesCount, ECNetutils.getNeedMigrateParityCodesCount(), StorageService.instance.transferredSSTableCount, totalSSTableCount, k, n, tss);
 
             // if(DatabaseDescriptor.getEnableMigration()) {
             //     neededTransferredSSTablesCount = (int) (1.5 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());

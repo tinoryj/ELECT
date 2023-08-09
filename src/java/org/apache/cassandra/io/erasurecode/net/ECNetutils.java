@@ -570,7 +570,7 @@ public final class ECNetutils {
         int totalSSTableCount = cfs.getTracker().getView().liveSSTables().size();
         double tss = DatabaseDescriptor.getTargetStorageSaving();
 
-        return (int) (rf * totalSSTableCount * tss - (rf - n / k) * cfs.getSSTableForLevel(DatabaseDescriptor.getMaxLevelCount() - 1).size());
+        return (int) (rf * totalSSTableCount * tss - (rf - n * 1.0 / k) * cfs.getSSTableForLevel(DatabaseDescriptor.getMaxLevelCount() - 1).size());
     }
 
 
@@ -582,10 +582,18 @@ public final class ECNetutils {
 
     public static void main(String[] args) {
 
-        ByteBuffer erasureCodes = ByteBuffer.allocateDirect(100);
-        byte[] data = new byte[10];
-        erasureCodes.put(data);
-        logger.debug("rymDebug: remaining is ({}), position is ({})", erasureCodes.remaining(), erasureCodes.position());
+        // ByteBuffer erasureCodes = ByteBuffer.allocateDirect(100);
+        // byte[] data = new byte[10];
+        // erasureCodes.put(data);
+        // logger.debug("rymDebug: remaining is ({}), position is ({})", erasureCodes.remaining(), erasureCodes.position());
+
+        int rf = 3;
+        int totalSSTableCount = 479;
+        double tss = 0.5;
+        int n = 6;
+        int k = 4;
+        int needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0 / (rf - n * 1.0 / k)); // parameter a
+        logger.debug("rymDebug: need transfer sstable count is ({})", needTransferSSTablesCount);
         
         // try {
         //     test();
