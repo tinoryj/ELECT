@@ -57,6 +57,9 @@ public class ECRecovery {
 
     public synchronized static void recoveryDataFromErasureCodes(final String sstHash, CountDownLatch latch) throws Exception {
 
+        if(ECNetutils.getIsRecovered(sstHash))
+            return;
+
         logger.debug("rymDebug: [Debug recovery] This is recovery for sstHash ({})", sstHash);
 
         int k = DatabaseDescriptor.getEcDataNodes();
