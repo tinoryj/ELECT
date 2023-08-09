@@ -539,6 +539,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
             int needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf -1) * sstables.size()); // parameter c
 
+            logger.debug("rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({})", needTransferSSTablesCount, needMigrateRawSSTablesCount);
+
             // if(DatabaseDescriptor.getEnableMigration()) {
             //     neededTransferredSSTablesCount = (int) (1.5 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
             // } else {
