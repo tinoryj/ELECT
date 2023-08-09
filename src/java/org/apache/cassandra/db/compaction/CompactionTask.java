@@ -963,7 +963,7 @@ public class CompactionTask extends AbstractCompactionTask {
                         for (SSTableContentWithHashID newSSTable : newSSTableContentWithHashID) {
                             logger.debug("rymDebug: send new sstable ({}) to parity node ({})", newSSTable.sstHash, parityNodes.get(0));
                             ECParityUpdate parityUpdate = new ECParityUpdate(newSSTable, false, parityNodes);
-
+                            StorageService.instance.transferredSSTableCount++;
                             parityUpdate.sendParityUpdateSignal();
                         }
 
@@ -984,6 +984,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                     throw new IllegalStateException(String.format("rymERROR: The parity nodes are different!!! {%s}", logString));
                                 }
                             }
+                            StorageService.instance.transferredSSTableCount--;
                             ECParityUpdate parityUpdate = new ECParityUpdate(oldSSTable, true, parityNodes);
 
                             logger.debug("rymDebug: send old sstable ({}) to parity node ({})", oldSSTable.sstHash, parityNodes.get(0));

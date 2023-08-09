@@ -399,6 +399,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         retryCount++;
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                    StorageService.instance.migratedRawSSTablecount--;
 
                 }
 
@@ -418,6 +419,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         retryCount++;
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                    StorageService.instance.migratedRawSSTablecount--;
                 }
                 if (isCurrentSSTableRepaired) {
                     readRecoveryedSSTableList.add(sstable.getFilename());

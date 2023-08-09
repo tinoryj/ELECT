@@ -790,6 +790,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         retryCount++;
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                    StorageService.instance.migratedRawSSTablecount--;
 
                 }
 
@@ -810,6 +811,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         retryCount++;
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                    StorageService.instance.migratedRawSSTablecount--;
                 }
 
                 // if we've already seen a partition tombstone with a timestamp greater
@@ -1063,6 +1065,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     retryCount++;
                 }
                 StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                StorageService.instance.migratedRawSSTablecount--;
 
             }
 
@@ -1082,6 +1085,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     retryCount++;
                 }
                 StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                StorageService.instance.migratedRawSSTablecount--;
             }
 
             if (isCurrentSSTableRepaired) {

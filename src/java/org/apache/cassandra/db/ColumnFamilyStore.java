@@ -529,13 +529,21 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
             List<SSTableReader> sstables = new ArrayList<SSTableReader>(cfs.getSSTableForLevel(level));
 
-            int neededTransferredSSTablesCount  = 0;
+            int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
+            int k = DatabaseDescriptor.getEcDataNodes();
+            int n = k + DatabaseDescriptor.getParityNodes();
+            int totalSSTableCount = cfs.getTracker().getView().liveSSTables().size();
+            double tss = DatabaseDescriptor.getTargetStorageSaving();
 
-            if(DatabaseDescriptor.getEnableMigration()) {
-                neededTransferredSSTablesCount = (int) (1.5 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
-            } else {
-                neededTransferredSSTablesCount = (int) (2 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
-            }
+            int needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss / (rf - n / k)); // parameter a
+
+            int needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf -1) * sstables.size()); // parameter c
+
+            // if(DatabaseDescriptor.getEnableMigration()) {
+            //     neededTransferredSSTablesCount = (int) (1.5 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
+            // } else {
+            //     neededTransferredSSTablesCount = (int) (2 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
+            // }
 
             // sort the sstables based on the access rate.
             Collections.sort(sstables, new SSTableAccessFrequencyComparator());
@@ -553,7 +561,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                         if (!sstable.isReplicationTransferredToErasureCoding() //&&!sstable.isSelectedByCompactionOrErasureCoding() && 
                             ) {
-                            if(StorageService.instance.transferredSSTableCount >= neededTransferredSSTablesCount)
+                            if(StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount)
                                 return;
 
                             logger.debug(
@@ -627,6 +635,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             // sstable.unsetIsSelectedByCompactionOrErasureCoding();
                             ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(sstable.getSSTableHashID());
                         } else if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.6) {
+                            if(StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount)
+                                return;
+
                             // migrate the raw data to the cloud (if any)
                             long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 
@@ -635,6 +646,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                                 if(!sstable.isDataMigrateToCloud() && sstable.getReadMeter().getColdPeriodRate() == 0) {
                                     logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.", sstable.descriptor, sstable.getSSTableHashID());
+                                    StorageService.instance.migratedRawSSTablecount++;
                                     StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
                                     StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
                                     try {
@@ -664,34 +676,34 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                 if (count == 0) {
                     System.out.println("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
-                    for (Keyspace keyspace : Keyspace.all()){
-                        for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
-                            if(cfs1.getColumnFamilyName().contains("usertable")) {
-                                List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
-                                if(sstables1.isEmpty())
-                                    continue;
-                                // Collections.sort(sstables1, new SSTableReaderComparator());
+                    // for (Keyspace keyspace : Keyspace.all()){
+                    //     for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
+                    //         if(cfs1.getColumnFamilyName().contains("usertable")) {
+                    //             List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
+                    //             if(sstables1.isEmpty())
+                    //                 continue;
+                    //             // Collections.sort(sstables1, new SSTableReaderComparator());
 
-                                // List<String> keyRanges = new ArrayList<>();
-                                int ecSSTableCnt = 0;
-                                for(SSTableReader sst : sstables1) {
-                                    if(SSTableReader.componentsFor(sst.descriptor).contains(Component.EC_METADATA)) {
-                                        ecSSTableCnt++;
-                                    }
-                                    // String range = String.format("SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s), isECSSTable (%s) \n",
-                                    //                              sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
-                                    //                              SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
-                                    // keyRanges.add(range);
-                                }
+                    //             // List<String> keyRanges = new ArrayList<>();
+                    //             int ecSSTableCnt = 0;
+                    //             for(SSTableReader sst : sstables1) {
+                    //                 if(SSTableReader.componentsFor(sst.descriptor).contains(Component.EC_METADATA)) {
+                    //                     ecSSTableCnt++;
+                    //                 }
+                    //                 // String range = String.format("SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s), isECSSTable (%s) \n",
+                    //                 //                              sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
+                    //                 //                              SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
+                    //                 // keyRanges.add(range);
+                    //             }
 
-                                // logger.debug("rymDebug: Let's check the key ranges of the sstables in the ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
+                    //             // logger.debug("rymDebug: Let's check the key ranges of the sstables in the ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
                                 
-                                logger.debug("rymDebug: We insight the sstable count in the last level of ({}) is ({}), ecSSTable count is ({}),total number is ({}),the first token is ({}), the last token is ({})",
-                                            cfs1.getColumnFamilyName(), sstables1.size(), ecSSTableCnt, cfs1.getTracker().getView().liveSSTables().size(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
-                            }
+                    //             logger.debug("rymDebug: We insight the sstable count in the last level of ({}) is ({}), ecSSTable count is ({}),total number is ({}),the first token is ({}), the last token is ({})",
+                    //                         cfs1.getColumnFamilyName(), sstables1.size(), ecSSTableCnt, cfs1.getTracker().getView().liveSSTables().size(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
+                    //         }
 
-                        }
-                    }
+                    //     }
+                    // }
 
 
                 }

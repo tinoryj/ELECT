@@ -226,7 +226,8 @@ public class ECRecovery {
 
 
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
-            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45) {
+            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 && 
+                ECNetutils.checkIsParityCodeMigrated(ecMetadataContent.parityHashList.get(0))) {
 
                 for(int i = 0; i < ecMetadataContent.parityHashList.size(); i++) {
                     String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(i);
@@ -251,6 +252,9 @@ public class ECRecovery {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
+                    
+                    StorageService.instance.migratedParityCodeCount--;
+                    StorageService.instance.migratedParityCodes.remove(ecMetadataContent.parityHashList.get(i));
 
                 }
 

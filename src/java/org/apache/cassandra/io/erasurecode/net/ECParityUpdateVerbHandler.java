@@ -460,7 +460,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             }
             try {
 
-                if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45) {
+                if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 && 
+                    ECNetutils.checkIsParityCodeMigrated(parityHashList.get(0))) {
 
                     for(int i = 0; i < parityCodes.length; i++) {
                         String parityCodeFileName = localParityCodeDir + parityHashList.get(i);
@@ -475,6 +476,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
                         parityCodes[i].put(parityCode);
                         StorageService.ossAccessObj.deleteSingleFileInOSS(parityCodeFileName);
+                        StorageService.instance.migratedParityCodeCount--;
+                        StorageService.instance.migratedParityCodes.remove(parityHashList.get(i));
                     }
                     StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
 
@@ -684,8 +687,9 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
             // record first parity code to current node
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
-
-            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45) {
+            int needMirateParityCodeCount = ECNetutils.getNeedMigrateParityCodesCount();
+            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
+                needMirateParityCodeCount > StorageService.instance.migratedParityCodeCount) {
 
                 for(int i = 0; i < newParityCodes.length; i++) {
 
@@ -696,6 +700,9 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                             parityInBytes)) {
                         logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
                                 localParityCodeDir + parityHashList.get(i));
+                    } else {
+                        StorageService.instance.migratedParityCodeCount++;
+                        StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
                     }
                     
                 }

@@ -51,8 +51,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.DecoratedKey;
+import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.StorageHook;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.index.Index.Indexer;
@@ -557,9 +559,26 @@ public final class ECNetutils {
     }
 
 
+
+    public static int getNeedMigrateParityCodesCount() {
+        
+        ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
+
+        int rf = Keyspace.open("ycsb").getAllReplicationFactor();
+        int k = DatabaseDescriptor.getEcDataNodes();
+        int n = k + DatabaseDescriptor.getParityNodes();
+        int totalSSTableCount = cfs.getTracker().getView().liveSSTables().size();
+        double tss = DatabaseDescriptor.getTargetStorageSaving();
+
+        return (int) (rf * totalSSTableCount * tss - (rf - n / k) * cfs.getSSTableForLevel(DatabaseDescriptor.getMaxLevelCount() - 1).size());
+    }
+
+
     public static synchronized boolean checkIsParityCodeMigrated(String parityCodeHash) {
         return StorageService.instance.migratedParityCodes.contains(parityCodeHash);
     }
+
+
 
     public static void main(String[] args) {
 

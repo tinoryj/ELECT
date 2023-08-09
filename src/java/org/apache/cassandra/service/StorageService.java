@@ -258,17 +258,18 @@ public class StorageService extends NotificationBroadcasterSupport
     private static int codeLength = 0;
 
     public ConcurrentSkipListSet<String> recoveredSSTables = new ConcurrentSkipListSet<String>();
-    public ConcurrentSkipListSet<String> migratedSStables = new ConcurrentSkipListSet<String>();
 
     // [CASSANDRAEC] The following parameters are used to support recovery
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();
     public ConcurrentHashMap<String, SSTableReader> globalRecoveredSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
 
-    public volatile long migratedParityCodeNumber = 0;
-    public ConcurrentSkipListSet<String> migratedParityCodes = new ConcurrentSkipListSet<String>();
 
 
     public volatile long transferredSSTableCount = 0;
+    public volatile long migratedParityCodeCount = 0;
+    public ConcurrentSkipListSet<String> migratedParityCodes = new ConcurrentSkipListSet<String>();
+    public volatile long migratedRawSSTablecount = 0;
+    public ConcurrentSkipListSet<String> migratedSStables = new ConcurrentSkipListSet<String>();
 
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 

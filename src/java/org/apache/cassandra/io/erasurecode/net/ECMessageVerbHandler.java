@@ -326,7 +326,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
             // record first parity code to current node
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
-            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45) {
+            int needMirateParityCodeCount = ECNetutils.getNeedMigrateParityCodesCount();
+            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
+                needMirateParityCodeCount > StorageService.instance.migratedParityCodeCount) {
 
                 for(int i = 0; i < parity.length; i++) {
 
@@ -336,6 +338,9 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                     if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(i), parityInBytes)) {
                         logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
                                 localParityCodeDir + parityHashList.get(i));
+                    } else {
+                        StorageService.instance.migratedParityCodeCount++;
+                        StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
                     }
 
                 }
