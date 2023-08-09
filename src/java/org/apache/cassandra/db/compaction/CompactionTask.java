@@ -787,8 +787,8 @@ public class CompactionTask extends AbstractCompactionTask {
                         transferredSSTablesNum++;
                     }
                 }
-                if(transferredSSTablesNum > DatabaseDescriptor.getMaxSendSSTables()) {
-                    logger.error("rymERROR: The selected sstable count ({}) is exceed the limit ({})", transferredSSTablesNum, DatabaseDescriptor.getMaxSendSSTables());
+                if(transferredSSTablesNum > DatabaseDescriptor.getMaxStripUpdateSSTables()) {
+                    logger.error("rymERROR: The selected sstable count ({}) is exceed the limit ({})", transferredSSTablesNum, DatabaseDescriptor.getMaxStripUpdateSSTables());
                 }
             }
 

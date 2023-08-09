@@ -496,7 +496,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         private final String cfName;
         private final int level;
         private final int delay; // in minutes
-        private static final int MAX_EC_CANDIDATES = 32;
+        private static final int MAX_EC_CANDIDATES = DatabaseDescriptor.getMaxSendSSTables();
 
         SendSSTRunnable(String keyspaceName, String cfName, int level, int delay) {
             this.keyspaceName = keyspaceName;
@@ -539,7 +539,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
             int needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf -1) * sstables.size()); // parameter c
 
-            logger.debug("rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({})", needTransferSSTablesCount, needMigrateRawSSTablesCount);
+            logger.debug("rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})", 
+                         needTransferSSTablesCount, needMigrateRawSSTablesCount, totalSSTableCount, k, n, tss);
 
             // if(DatabaseDescriptor.getEnableMigration()) {
             //     neededTransferredSSTablesCount = (int) (1.5 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());

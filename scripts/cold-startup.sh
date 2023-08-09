@@ -14,31 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-#!/bin/bash
-
 . /etc/profile
-
+kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
 func() {
-    coordinator=$1
-    operationcount=$2
-    threads=$3
-    consistency=$4
-    file_dir=$5
-    workload=$6
-    expName=$7
-    file_name="${expName}-$(date +%s)-${operationcount}-${threads}"
-    cd $file_dir
-    mkdir -p logs/run-log/
-    mkdir -p results/run-results/
-    
-    sed -i "s/operationcount=.*$/operationcount=${operationcount}/" $workload
-    
-    
-    bin/ycsb run cassandra-cql -p hosts=$coordinator -p cassandra.readconsistencylevel="$consistency" -threads $threads -s -P $workload > logs/run-log/${file_name}.log 2>&1
-    # histogram -i results/run-results/${file_name}
+
+    sourceDataDir=$1
+    targetDataDir=$2
+
+    cp -r ${sourceDataDir} ${targetDataDir}
+
+    nohup bin/cassandra &> logs/debug.log &
 }
 
-func "$1" "$2" "$3" "$4" "$5" "$6" "$7"
-
-
+func "$1" "$2" # "$3" "$4" "$5" "$6" "$7" "$8" "$9" "$10" "$11" "$12" "$13" "$14" "$15"

@@ -33,6 +33,7 @@
       export task_delay=10 &&
       export stripe_update_frequency=5 &&
       export max_send_sstables=8 &&
+      export max_stripe_update_sstable=32 &&
       export enable_migration=true &&
       export enbale_erasure_coding=true &&
       export cold_period=60 &&
@@ -93,7 +94,7 @@
 
   tasks:
   - name: Execute script load.sh
-    command: sh /mnt/ssd/Test/CassandraEC/scripts/load.sh {{ coordinator }} {{ record_count }} {{ filed_length }} {{ threads }} {{ file_dir }} {{ workload }}
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/load.sh {{ coordinator }} {{ record_count }} {{ filed_length }} {{ threads }} {{ file_dir }} {{ workload }} {{ expName }}
     vars:
       coordinator: "192.168.0.21"
       record_count: 10000000
@@ -101,6 +102,7 @@
       threads: 16
       file_dir: "/home/yjren/ycsb-0.17.0/"
       workload: "workloads/workload_template"
+      expName: "Exp#1"
     register: command_result
     ignore_errors: True
 
@@ -130,12 +132,29 @@
     pause:
       seconds: 4000
 
+
+    
+# - name: Backup data file for cold startup
+#   hosts: cassandra_servers
+#   tasks:
+#   - name: Copy files
+#     command: . /etc/profile && cp -r {{ sourceFileDir }} {{ targetFileDir }}
+#     vars:
+#       sourceFileDir: "/mnt/ssd/"
+#       targetFileDir: "target"
+#   - name: Fail the play if the previous command did not succeed
+#     fail: msg="the command failed"
+#     when: "'FAILED' in command_result.stderr"
+#   - name: Wait until normal read is done
+#     pause:
+#       seconds: 30
+
 - name: Run Normal Read
   hosts: cassandra_client
 
   tasks:
   - name: Execute run.sh
-    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }} {{ workload }}
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }} {{ workload }} {{ expName }}
     vars:
       coordinator: "192.168.0.21"
       operation_count: 500000
@@ -143,6 +162,7 @@
       consistency: TWO
       file_dir: "/home/yjren/ycsb-0.17.0/"
       workload: "workloads/workload_template"
+      expName: "Exp#1"
       register: command_result
       ignore_errors: true
 
@@ -154,10 +174,10 @@
       seconds: 60
 
 - name: Test recovery
-  hosts: server2
+  hosts: failure_nodes
 
   tasks:
-  - name: Offline a server node
+  - name: crush a server node
     shell: |
       . /etc/profile && kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
     register: command_result
@@ -176,7 +196,7 @@
 
   tasks:
   - name: Execute run.sh
-    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }} {{ workload }}
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }} {{ workload }} {{ expName }}
     vars:
       coordinator: "192.168.0.21"
       operation_count: 500000
@@ -184,9 +204,30 @@
       consistency: TWO
       file_dir: "/home/yjren/ycsb-0.17.0/"
       workload: "workloads/workload_template"
+      expName: "Exp#1"
       register: command_result
       ignore_errors: true
 
   - name: Fail the play if the previous command did not succeed
     fail: msg="the command failed"
     when: "'FAILED' in command_result.stderr"
+
+
+
+# - name: Cold Startup
+#   hosts: cassandra_servers
+#   tasks:
+#   - name: Cold Startup
+#     command: sh /mnt/ssd/Test/CassandraEC/scripts/cold-startup.sh {{ sourceFileDir }} {{ targetFileDir }}
+#     vars:
+#       sourceFileDir: "/mnt/ssd/"
+#       targetFileDir: "target"
+#   - name: Fail the play if the previous command did not succeed
+#     fail: msg="the command failed"
+#     when: "'FAILED' in command_result.stderr"
+#   - name: Wait until normal read is done
+#     pause:
+#       seconds: 60
+
+
+

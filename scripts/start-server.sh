@@ -41,6 +41,7 @@ func() {
     sed -i "s/task_delay:.*$/task_delay: ${task_delay}/" conf/cassandra.yaml
     sed -i "s/stripe_update_frequency:.*$/stripe_update_frequency: ${stripe_update_frequency}/" conf/cassandra.yaml
     sed -i "s/max_send_sstables:.*$/max_send_sstables: ${max_send_sstables}/" conf/cassandra.yaml
+    sed -i "s/max_stripe_update_sstable:.*$/max_stripe_update_sstable: ${max_stripe_update_sstable}/" conf/cassandra.yaml
 
 
     sed -i "s/enable_migration:.*$/enable_migration: ${enable_migration}/" conf/cassandra.yaml
