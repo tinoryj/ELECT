@@ -60,15 +60,20 @@
 
 - name: CPU&Memory Monitor
   hosts:  cassandra_servers
-
+  become: true
+  become_user: yjren
+  gather_facts: false
   tasks:
   - name: CPU&Memory Monitor
-    command: |
-      . /etc/profile && nohup sh /mnt/ssd/Test/CassandraEC/scripts/stats.sh {{ exp_name }}
+    shell: |
+      . /etc/profile && nohup bash /mnt/ssd/Test/CassandraEC/scripts/stats.sh {{ exp_name }} &
     vars:
       exp_name: "EXP#1"
     register: command_result
     ignore_errors: true
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
   
 
 - name: Setup log levels
@@ -107,12 +112,16 @@
 
   tasks:
   - name: Net&Disk Monitor
-    command: |
-      . /etc/profile && nohup sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+    shell: |
+      . /etc/profile && nohup bash /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup bash /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
     vars:
       exp_name: "EXP#1"
     register: command_result
     ignore_errors: true
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  
   
 
 - name: Load data
@@ -165,12 +174,16 @@
 
   tasks:
   - name: Net&Disk Monitor
-    command: |
-      . /etc/profile && nohup sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+    shell: |
+      . /etc/profile && nohup bash /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup bash /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
     vars:
       exp_name: "EXP#1"
     register: command_result
     ignore_errors: true
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  
   
 
     
@@ -220,12 +233,15 @@
 
   tasks:
   - name: Net&Disk Monitor
-    command: |
-      . /etc/profile && nohup sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+    shell: |
+      . /etc/profile && nohup bash /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup bash /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
     vars:
       exp_name: "EXP#1"
     register: command_result
     ignore_errors: true
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
   
 
 - name: Test recovery
@@ -252,12 +268,16 @@
 
   tasks:
   - name: Net&Disk Monitor
-    command: |
-      . /etc/profile && nohup sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+    shell: |
+      . /etc/profile && nohup bash /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup bash /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
     vars:
       exp_name: "EXP#1"
     register: command_result
     ignore_errors: true
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  
   
 
 - name: Run Degraded Read
