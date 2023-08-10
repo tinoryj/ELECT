@@ -37,4 +37,4 @@ func() {
     echo "Results written to $OUTPUT_FILE"
 }
 
-fun "$1"
+func "$1"

@@ -30,7 +30,7 @@ func() {
     mkdir -p data/ECMetadata/
     mkdir -p data/tmp/
     mkdir -p logs
-    ant realclean && ant -Duse.jdk11=true
+    # ant realclean && ant -Duse.jdk11=true
     cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
     
     sed -i "s/ec_data_nodes:.*$/ec_data_nodes: ${ec_data_nodes}/" conf/cassandra.yaml
