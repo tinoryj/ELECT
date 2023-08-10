@@ -45,4 +45,4 @@ func() {
     done
 }
 
-nohup func "$1"
+func "$1"

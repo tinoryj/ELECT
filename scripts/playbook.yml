@@ -64,7 +64,7 @@
   tasks:
   - name: CPU&Memory Monitor
     command: |
-      . /etc/profile && sh /mnt/ssd/Test/CassandraEC/scripts/stats.sh {{ exp_name }}
+      . /etc/profile && nohup sh /mnt/ssd/Test/CassandraEC/scripts/stats.sh {{ exp_name }}
     vars:
       exp_name: "EXP#1"
     register: command_result
@@ -108,7 +108,7 @@
   tasks:
   - name: Net&Disk Monitor
     command: |
-      . /etc/profile && sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh && sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+      . /etc/profile && nohup sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
     vars:
       exp_name: "EXP#1"
     register: command_result
@@ -166,7 +166,7 @@
   tasks:
   - name: Net&Disk Monitor
     command: |
-      . /etc/profile && sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh && sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+      . /etc/profile && nohup sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
     vars:
       exp_name: "EXP#1"
     register: command_result
@@ -221,7 +221,7 @@
   tasks:
   - name: Net&Disk Monitor
     command: |
-      . /etc/profile && sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh && sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+      . /etc/profile && nohup sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
     vars:
       exp_name: "EXP#1"
     register: command_result
@@ -253,7 +253,7 @@
   tasks:
   - name: Net&Disk Monitor
     command: |
-      . /etc/profile && sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh && sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+      . /etc/profile && nohup sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} && nohup sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
     vars:
       exp_name: "EXP#1"
     register: command_result

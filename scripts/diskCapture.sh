@@ -46,4 +46,4 @@ func() {
     echo "Results written to $OUTPUT_FILE"
 }
 
-nohup func "$1"
+func "$1"
