@@ -26,18 +26,18 @@
       export branch_name="yuanming" &&
       export ec_data_nodes=4 &&
       export parity_nodes=2 &&
-      export max_level_count=3 &&
+      export max_level_count=4 &&
       export concurrent_ec=64 &&
-      export initial_delay=10 &&
+      export initial_delay=300 &&
       export task_delay=1 &&
-      export stripe_update_frequency=5 &&
-      export max_send_sstables=32 &&
+      export stripe_update_frequency=10 &&
+      export max_send_sstables=24 &&
       export max_stripe_update_sstable=8 &&
       export enable_migration=true &&
       export enbale_erasure_coding=true &&
       export cold_period=60 &&
-      export target_storage_saving=0.7 &&
-      export seeds="192.168.0.21,192.168.0.22,192.168.0.23,192.168.0.25,192.168.0.26,192.168.0.28" &&
+      export target_storage_saving=0.5 &&
+      export seeds="192.168.10.21,192.168.10.22,192.168.10.23,192.168.10.25,192.168.10.26,192.168.10.28" &&
       export memtale_heap_space="1024MiB" &&
       export internode_max_message_size="32MiB" &&
       export internode_application_send_queue_capacity="256MiB" &&
@@ -77,7 +77,7 @@
   tasks:
   - name: Setup log levels
     shell: |
-      . /etc/profile && cd /mnt/ssd/Test/CassandraEC && bin/nodetool setlogginglevel org.apache.cassandra debug && bin/nodetool setlogginglevel ROOT error
+      . /etc/profile && cd /mnt/ssd/Test/CassandraEC && bin/nodetool setlogginglevel org.apache.cassandra error && bin/nodetool setlogginglevel ROOT error
     register: command_result
     ignore_errors: true
 
@@ -89,7 +89,7 @@
   - name: Execute script start-client.sh
     command: sh /mnt/ssd/Test/CassandraEC/scripts/start-client.sh {{ coordinator }} {{ sstable_size_in_mb }} {{ fanout_size }} {{ file_dir }}
     vars:
-      coordinator: "192.168.0.21"
+      coordinator: "192.168.10.21"
       sstable_size_in_mb: 4
       fanout_size: 10
       file_dir: "/home/yjren/cassandra"
@@ -122,8 +122,8 @@
   - name: Execute script load.sh
     command: sh /mnt/ssd/Test/CassandraEC/scripts/load.sh {{ coordinator }} {{ record_count }} {{ filed_length }} {{ threads }} {{ file_dir }} {{ workload }} {{ expName }}
     vars:
-      coordinator: "192.168.0.21"
-      record_count: 10000000
+      coordinator: "192.168.10.21"
+      record_count: 100000000
       filed_length: 1024
       threads: 16
       file_dir: "/home/yjren/ycsb-0.17.0/"
@@ -156,7 +156,7 @@
 
   - name: Wait until erasure coding is done
     pause:
-      seconds: 4000
+      seconds: 40000
 
   
 
@@ -174,20 +174,20 @@
   
 
     
-# - name: Backup data file for cold startup
-#   hosts: cassandra_servers
-#   tasks:
-#   - name: Copy files
-#     command: . /etc/profile && cp -r {{ sourceFileDir }} {{ targetFileDir }}
-#     vars:
-#       sourceFileDir: "/mnt/ssd/"
-#       targetFileDir: "target"
-#   - name: Fail the play if the previous command did not succeed
-#     fail: msg="the command failed"
-#     when: "'FAILED' in command_result.stderr"
-#   - name: Wait until normal read is done
-#     pause:
-#       seconds: 30
+- name: Backup data file for cold startup
+  hosts: cassandra_servers
+  tasks:
+  - name: Copy files
+    command: . /etc/profile && cp -r {{ sourceFileDir }} {{ targetFileDir }}
+    vars:
+      sourceFileDir: "/mnt/ssd/"
+      targetFileDir: "~/"
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  - name: Wait until normal read is done
+    pause:
+      seconds: 30
 
 - name: Run Normal Read
   hosts: cassandra_client
@@ -196,10 +196,10 @@
   - name: Execute run.sh
     command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }} {{ workload }} {{ expName }}
     vars:
-      coordinator: "192.168.0.21"
-      operation_count: 500000
+      coordinator: "192.168.10.21"
+      operation_count: 10000000
       threads: 16
-      consistency: TWO
+      consistency: ONE
       file_dir: "/home/yjren/ycsb-0.17.0/"
       workload: "workloads/workload_template"
       expName: "Exp#1"
@@ -211,7 +211,7 @@
     when: "'FAILED' in command_result.stderr"
   - name: Wait until normal read is done
     pause:
-      seconds: 60
+      seconds: 180
 
 
 
@@ -267,10 +267,10 @@
   - name: Execute run.sh
     command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }} {{ workload }} {{ expName }}
     vars:
-      coordinator: "192.168.0.21"
-      operation_count: 500000
+      coordinator: "192.168.10.21"
+      operation_count: 10000000
       threads: 16
-      consistency: TWO
+      consistency: ONE
       file_dir: "/home/yjren/ycsb-0.17.0/"
       workload: "workloads/workload_template"
       expName: "Exp#1"
