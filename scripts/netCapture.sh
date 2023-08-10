@@ -17,7 +17,6 @@
 
 func() {
 
-    kill -9 $(ps aux | grep "netCapture.sh" | grep -v grep | awk 'NR == 1'  | awk {'print $2'})
     expName=$1
     # Network interface (change this to your interface, e.g., wlan0, ens33, etc.)
     INTERFACE="eth0"

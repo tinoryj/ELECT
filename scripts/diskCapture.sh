@@ -17,7 +17,6 @@
 
 func() {
 
-    kill -9 $(ps aux | grep "diskCapture.sh" | grep -v grep | awk 'NR == 1'  | awk {'print $2'})
     expName=$1
     # Mount point
     MOUNT_POINT="/mnt/ssd"
