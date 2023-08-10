@@ -14,33 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-#!/bin/bash
-
 . /etc/profile
 
+kill -9 $(ps aux | grep ycsb | grep -v grep | awk 'NR == 1'  | awk {'print $2'})
 func() {
     coordinator=$1
-    operationcount=$2
-    threads=$3
-    consistency=$4
-    file_dir=$5
-    workload=$6
-    expName=$7
-
-    VALUE="${workload##*/}"
-
-    file_name="${expName}-$(date +%s)-${VALUE}-${operationcount}-${threads}"
+    sstable_size=$2
+    fanout_size=$3
+    file_dir=$4
     cd $file_dir
-    mkdir -p logs/run-log/
-    mkdir -p results/run-results/
-    
-    sed -i "s/operationcount=.*$/operationcount=${operationcount}/" $workload
-    
-    bin/ycsb run cassandra-cql -p hosts=$coordinator -p cassandra.readconsistencylevel="$consistency" -threads $threads -s -P $workload > logs/run-log/${file_name}.log 2>&1
-    # histogram -i results/run-results/${file_name}
+    bin/cqlsh $coordinator -e "create keyspace ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 3 };
+    USE ycsb;
+    create table usertable0 (y_id varchar primary key, field0 varchar);
+    ALTER TABLE usertable0 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
+    ALTER TABLE ycsb.usertable0 WITH compression = {'enabled':'false'};
+    consistency all;"
 }
 
-func "$1" "$2" "$3" "$4" "$5" "$6" "$7"
-
-
+func "$1" "$2" "$3" "$4"

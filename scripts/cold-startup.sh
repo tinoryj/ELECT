@@ -21,9 +21,14 @@ func() {
     sourceDataDir=$1
     targetDataDir=$2
 
+    rm -rf ${targetDataDir}
     cp -r ${sourceDataDir} ${targetDataDir}
+
+    cd $3
+    rm -rf data
+    rm -rf logs
 
     nohup bin/cassandra &> logs/debug.log &
 }
 
-func "$1" "$2" # "$3" "$4" "$5" "$6" "$7" "$8" "$9" "$10" "$11" "$12" "$13" "$14" "$15"
+func "$1" "$2" "$3" #"$4" "$5" "$6" "$7" "$8" "$9" "$10" "$11" "$12" "$13" "$14" "$15"
