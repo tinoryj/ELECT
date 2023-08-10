@@ -33,7 +33,7 @@ func() {
             MEM_USAGE=$(ps -o rss= -p $CASSANDRA_PID)
             echo "$(date): Cassandra PID $CASSANDRA_PID is using $MEM_USAGE KiB" >>$OUTPUT_MEM
 
-            CPU_LOAD=$(top -b -n 1 -p "$CASSANDRA_PID" | grep "$CASSANDRA_PID" | awk '{print $9}')
+            #CPU_LOAD=$(top -b -n 1 -p "$CASSANDRA_PID" | grep "$CASSANDRA_PID" | awk '{print $9}')
             echo "$(date): PID $CASSANDRA_PID CPU Load: $CPU_LOAD%" >>$OUTPUT_CPU
         else
             echo "$(date): Cassandra is not running" >>$OUTPUT_FILE
