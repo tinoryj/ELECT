@@ -15,7 +15,9 @@
 # limitations under the License.
 #!/bin/bash
 
-func() {
+func() {    
+    kill -9 $(ps aux | grep "stats.sh" | grep -v grep | awk 'NR == 1'  | awk {'print $2'})
+
     expName=$1
     CASSANDRA_PID=$(ps aux | grep CassandraDaemon | grep -v grep | awk '{print $2}')
     echo "Cassandra PID: $CASSANDRA_PID"
