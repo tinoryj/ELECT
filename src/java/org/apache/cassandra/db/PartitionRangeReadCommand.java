@@ -368,7 +368,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
                                     sstable.getSSTableHashID(), sstable.getFilename());
                         } else {
-                            logger.warn("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
+                            logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
                                     sstable.getSSTableHashID(), sstable.getFilename());
                             // Tinoryj TODO: call recvoery on current sstable.
                             CountDownLatch latch = new CountDownLatch(1);
