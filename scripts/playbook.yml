@@ -58,6 +58,19 @@
     pause:
       seconds: 50
 
+- name: CPU&Memory Monitor
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: CPU&Memory Monitor
+    command: |
+      . /etc/profile && sh /mnt/ssd/Test/CassandraEC/scripts/stats.sh {{ exp_name }}
+    vars:
+      exp_name: "EXP#1"
+    register: command_result
+    ignore_errors: true
+  
+
 - name: Setup log levels
   hosts:  cassandra_servers
 
@@ -87,6 +100,20 @@
     fail: msg="the command failed"
     when: "'FAILED' in command_result.stderr"
 
+
+
+- name: Net&Disk Monitor
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: Net&Disk Monitor
+    command: |
+      . /etc/profile && sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh && sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+    vars:
+      exp_name: "EXP#1"
+    register: command_result
+    ignore_errors: true
+  
 
 - name: Load data
   hosts: cassandra_client
@@ -131,6 +158,20 @@
     pause:
       seconds: 4000
 
+  
+
+- name: Net&Disk Monitor
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: Net&Disk Monitor
+    command: |
+      . /etc/profile && sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh && sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+    vars:
+      exp_name: "EXP#1"
+    register: command_result
+    ignore_errors: true
+  
 
     
 # - name: Backup data file for cold startup
@@ -172,6 +213,21 @@
     pause:
       seconds: 60
 
+
+
+- name: Net&Disk Monitor
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: Net&Disk Monitor
+    command: |
+      . /etc/profile && sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh && sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+    vars:
+      exp_name: "EXP#1"
+    register: command_result
+    ignore_errors: true
+  
+
 - name: Test recovery
   hosts: failure_nodes
 
@@ -189,6 +245,20 @@
   - name: Wait until killed server is found
     pause:
       seconds: 60
+
+
+- name: Net&Disk Monitor
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: Net&Disk Monitor
+    command: |
+      . /etc/profile && sh /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh && sh /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }}
+    vars:
+      exp_name: "EXP#1"
+    register: command_result
+    ignore_errors: true
+  
 
 - name: Run Degraded Read
   hosts: cassandra_client
