@@ -107,17 +107,17 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         }
         // TODO: should also not calculate if only one full node
         Boolean isDigestMatchFlag = true;
-        ByteBuffer digestSet[] = new ByteBuffer[snapshot.size()];
-        ArrayList<InetAddressAndPort> endpoints = new ArrayList<>();
-        int digestIndex = 0;
-        InetAddressAndPort dataResponseAddress = null;
-        int dataResponseIndex = 0;
+        // ByteBuffer digestSet[] = new ByteBuffer[snapshot.size()];
+        // ArrayList<InetAddressAndPort> endpoints = new ArrayList<>();
+        // int digestIndex = 0;
+        // InetAddressAndPort dataResponseAddress = null;
+        // int dataResponseIndex = 0;
         for (Message<ReadResponse> message : snapshot) {
             if (replicaPlan().lookup(message.from()).isTransient())
                 continue;
 
             ByteBuffer newDigest = message.payload.digest(command);
-            digestSet[digestIndex] = newDigest;
+            // digestSet[digestIndex] = newDigest;
             if (digest == null) {
                 digest = newDigest;
             }
@@ -125,50 +125,50 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                 // rely on the fact that only single partition queries use digests
                 isDigestMatchFlag = false;
             }
-            endpoints.add(message.from());
-            digestIndex++;
-            if (message.payload.isDigestResponse() == false) {
-                dataResponseAddress = message.from();
-                dataResponseIndex = digestIndex - 1;
-            }
+            // endpoints.add(message.from());
+            // digestIndex++;
+            // if (message.payload.isDigestResponse() == false) {
+            //     dataResponseAddress = message.from();
+            //     dataResponseIndex = digestIndex - 1;
+            // }
         }
-        int noDataCount = 0;
-        boolean noDataResponseFlag = false;
-        for (int i = 0; i < digestIndex; i++) {
-            // logger.debug(
-            // "[Tinoryj] Read operation get digest from {}, digest = {}",
-            // endpoints.get(i), "0x" + ByteBufferUtil.bytesToHex(digestSet[i]));
-            String digestStr = "0x" + ByteBufferUtil.bytesToHex(digestSet[i]);
-            if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
-                noDataCount++;
-                if (i == dataResponseIndex) {
-                    noDataResponseFlag = true;
-                }
-            }
-        }
-        if (noDataCount != 0) {
-            if (command.metadata().keyspace.equals("ycsb")) {
-                // Skip digest failure with up to two empty data (since redundancy transition
-                // may remove the data in secondary nodes).
-                if (noDataCount != snapshot.size()) {
-                    if (noDataResponseFlag) {
-                        logger.error("[Tinoryj-ERROR] Read get empty data response from {}.",
-                                dataResponseAddress);
-                        return false;
-                    } else {
-                        // Since no need to get data from all nodes, we can return true.
-                        return true;
-                    }
-                } else {
-                    logger.error(
-                            "[Tinoryj-ERROR] Read operation get no success response.");
-                    return false;
-                }
-            } else {
-                // Perform read repair when hash not match and data is invalid.
-                return false;
-            }
-        }
+        // int noDataCount = 0;
+        // boolean noDataResponseFlag = false;
+        // for (int i = 0; i < digestIndex; i++) {
+        //     // logger.debug(
+        //     // "[Tinoryj] Read operation get digest from {}, digest = {}",
+        //     // endpoints.get(i), "0x" + ByteBufferUtil.bytesToHex(digestSet[i]));
+        //     String digestStr = "0x" + ByteBufferUtil.bytesToHex(digestSet[i]);
+        //     if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
+        //         noDataCount++;
+        //         if (i == dataResponseIndex) {
+        //             noDataResponseFlag = true;
+        //         }
+        //     }
+        // }
+        // if (noDataCount != 0) {
+        //     if (command.metadata().keyspace.equals("ycsb")) {
+        //         // Skip digest failure with up to two empty data (since redundancy transition
+        //         // may remove the data in secondary nodes).
+        //         if (noDataCount != snapshot.size()) {
+        //             if (noDataResponseFlag) {
+        //                 logger.error("[Tinoryj-ERROR] Read get empty data response from {}.",
+        //                         dataResponseAddress);
+        //                 return false;
+        //             } else {
+        //                 // Since no need to get data from all nodes, we can return true.
+        //                 return true;
+        //             }
+        //         } else {
+        //             logger.error(
+        //                     "[Tinoryj-ERROR] Read operation get no success response.");
+        //             return false;
+        //         }
+        //     } else {
+        //         // Perform read repair when hash not match and data is invalid.
+        //         return false;
+        //     }
+        // }
 
         if (isDigestMatchFlag == false) {
             // Perform read repair when hash not match but they all valid (inconsistency).

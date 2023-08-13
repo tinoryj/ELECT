@@ -2201,40 +2201,47 @@ public class StorageProxy implements StorageProxyMBean {
                         DatabaseDescriptor.getSlowQueryTimeout(NANOSECONDS));
 
                 ReadResponse response;
-                Token tokenForRead = (command instanceof SinglePartitionReadCommand
-                        ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
-                        : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
+                // Token tokenForRead = (command instanceof SinglePartitionReadCommand
+                // ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                // : ((PartitionRangeReadCommand)
+                // command).dataRange().keyRange.left.getToken());
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
                     if (iterator == null) {
-                        if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
-                            logger.error(
-                                    "[Tinoryj-ERROR] For key token = {}, with data query, Local Could not get response from table {}",
-                                    tokenForRead,
-                                    command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
-                        }
+                        // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
+                        // false) {
+                        // logger.error(
+                        // "[Tinoryj-ERROR] For key token = {}, with data query, Local Could not get
+                        // response from table {}",
+                        // tokenForRead,
+                        // command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
+                        // }
                         response = command.createEmptyResponse();
                     } else {
                         response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                        if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
-                            ByteBuffer newDigest = response.digest(command);
-                            String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
-                            if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
-                                logger.error(
-                                        "[Tinoryj-ERROR] For key token = {}, with data query, Local Could not get non-empty response from table {}, address = {}, {}, response = {}",
-                                        tokenForRead,
-                                        command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                                        "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response);
-                            }
-                        }
+                        // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
+                        // false) {
+                        // ByteBuffer newDigest = response.digest(command);
+                        // String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
+                        // if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
+                        // logger.error(
+                        // "[Tinoryj-ERROR] For key token = {}, with data query, Local Could not get
+                        // non-empty response from table {}, address = {}, {}, response = {}",
+                        // tokenForRead,
+                        // command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
+                        // "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response);
+                        // }
+                        // }
                     }
                 } catch (RejectException e) {
-                    if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
-                        logger.error(
-                                "[Tinoryj-ERROR] For key token = {}, with data query, Local try to read from {} in keyspace {}, key not found, created empty response",
-                                tokenForRead,
-                                command.metadata().name, command.metadata().keyspace);
-                    }
+                    // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
+                    // false) {
+                    // logger.error(
+                    // "[Tinoryj-ERROR] For key token = {}, with data query, Local try to read from
+                    // {} in keyspace {}, key not found, created empty response",
+                    // tokenForRead,
+                    // command.metadata().name, command.metadata().keyspace);
+                    // }
                     if (!command.isTrackingWarnings()) {
                         throw e;
                     }

@@ -84,7 +84,6 @@ public abstract class AbstractReadExecutor {
     private final int initialDataRequestCount;
     protected volatile PartitionIterator result = null;
     private final List<InetAddressAndPort> sendRequestAddresses;
-    private final Token tokenForRead;
 
     AbstractReadExecutor(ColumnFamilyStore cfs, ReadCommand command, ReplicaPlan.ForTokenRead replicaPlan,
             int initialDataRequestCount, long queryStartNanoTime) {
@@ -99,12 +98,11 @@ public abstract class AbstractReadExecutor {
         this.traceState = Tracing.instance.get();
         this.queryStartNanoTime = queryStartNanoTime;
 
-        tokenForRead = (command instanceof SinglePartitionReadCommand
-                ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
-                : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
-
         // Tinoryj TODO, change to use natural nodes
         if (command.metadata().keyspace.equals("ycsb")) {
+            Token tokenForRead = (command instanceof SinglePartitionReadCommand
+                    ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                    : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
             this.sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(this.cfs.keyspace.getName(), tokenForRead);
             logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}, replica plan = {}",
@@ -201,10 +199,6 @@ public abstract class AbstractReadExecutor {
                 hasLocalEndpoint = true;
             } else {
                 MessagingService.instance().sendWithCallback(messageForDataRequest, endpoint, handler);
-                logger.debug(
-                        "[Tinoryj] Send data request for token = {} to {}, the message target table is ({}), at node {}",
-                        tokenForRead, readCommand.metadata().name, messageForDataRequest.payload.metadata().name,
-                        endpoint);
             }
             break;
         }
@@ -286,10 +280,6 @@ public abstract class AbstractReadExecutor {
                 continue;
             }
             MessagingService.instance().sendWithCallback(messageForDigestRequest, endpoint, handler);
-            logger.debug(
-                    "[Tinoryj] Send digest request for token = {} to {}, the message target table is ({}), at node {}",
-                    tokenForRead, readCommand.metadata().name, messageForDigestRequest.payload.metadata().name,
-                    endpoint);
         }
 
         // We delay the local (potentially blocking) read till the end to avoid stalling
@@ -371,8 +361,11 @@ public abstract class AbstractReadExecutor {
         if (this.command.metadata().keyspace.equals("ycsb")) {
             // logger.debug("[Tinoryj] makeRequestsForELECT in use");
             int usedAddressNumber = makeDataRequestsForELECT(command);
-            // logger.debug("[Tinoryj] After data request, used node number = {}", usedAddressNumber);
-            makeDigestRequestsForELECT(command.copyAsDigestQuery(), usedAddressNumber);
+            // logger.debug("[Tinoryj] After data request, used node number = {}",
+            // usedAddressNumber);
+            if (usedAddressNumber != sendRequestAddresses.size()) {
+                makeDigestRequestsForELECT(command.copyAsDigestQuery(), usedAddressNumber);
+            }
         } else {
             EndpointsForToken selected = replicaPlan().contacts();
             // Normal read path for Cassandra system tables.
