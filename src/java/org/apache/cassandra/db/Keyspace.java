@@ -107,19 +107,6 @@ public class Keyspace {
     private static final boolean TEST_FAIL_WRITES = !TEST_FAIL_WRITES_KS.isEmpty();
     private static int TEST_FAIL_MV_LOCKS_COUNT = Integer.getInteger("cassandra.test.fail_mv_locks_count", 0);
 
-    private static final String ycsbUsertableCql = "CREATE TABLE %s ("
-            + "y_id varchar primary key,"
-            + "field0 varchar,"
-            + "field1 varchar,"
-            + "field2 varchar,"
-            + "field3 varchar,"
-            + "field4 varchar,"
-            + "field5 varchar,"
-            + "field6 varchar,"
-            + "field7 varchar,"
-            + "field8 varchar,"
-            + "field9 varchar)";
-
     public final KeyspaceMetrics metric;
     public final InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
     public final String primaryColumnNameStr = "usertable0";
