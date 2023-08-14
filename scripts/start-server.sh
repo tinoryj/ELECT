@@ -21,7 +21,7 @@ func() {
 
     cd $project_base_dir
     git checkout ${branch_name}
-    git pull origin ${branch_name}
+    # git pull origin ${branch_name}
 
 
     rm -rf data logs
