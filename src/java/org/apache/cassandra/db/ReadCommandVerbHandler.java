@@ -52,7 +52,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
 
     private static final Logger logger = LoggerFactory.getLogger(ReadCommandVerbHandler.class);
 
-    public synchronized void doVerb(Message<ReadCommand> message) {
+    public void doVerb(Message<ReadCommand> message) {
         if (StorageService.instance.isBootstrapMode()) {
             throw new RuntimeException("Cannot service reads while bootstrapping!");
         }
