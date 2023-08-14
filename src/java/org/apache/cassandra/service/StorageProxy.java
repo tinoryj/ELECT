@@ -2105,7 +2105,7 @@ public class StorageProxy implements StorageProxyMBean {
         logger.debug("stack trace {}", new Exception(msg));
     }
 
-    private synchronized static PartitionIterator fetchRows(List<SinglePartitionReadCommand> commands,
+    private static PartitionIterator fetchRows(List<SinglePartitionReadCommand> commands,
             ConsistencyLevel consistencyLevel, long queryStartNanoTime)
             throws UnavailableException, ReadFailureException, ReadTimeoutException {
         int cmdCount = commands.size();

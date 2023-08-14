@@ -109,9 +109,6 @@ public class Keyspace {
 
     public final KeyspaceMetrics metric;
     public final InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
-    public final String primaryColumnNameStr = "usertable0";
-    public final String secondaryColumn1NameStr = "usertable1";
-    public final String secondaryColumn2NameStr = "usertable2";
 
     // It is possible to call Keyspace.open without a running daemon, so it makes
     // sense to ensure
