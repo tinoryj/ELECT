@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.db.ColumnFamilyStore;
@@ -57,6 +58,8 @@ import org.apache.cassandra.service.StorageService;
 import static com.google.common.collect.Iterables.all;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import java.lang.reflect.Field;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
+import org.apache.cassandra.tracing.Tracing;
 
 /**
  * Sends a read request to the replicas needed to satisfy a given
@@ -99,6 +102,7 @@ public abstract class AbstractReadExecutor {
         this.queryStartNanoTime = queryStartNanoTime;
 
         // Tinoryj TODO, change to use natural nodes
+        long tStart = nanoTime();
         if (command.metadata().keyspace.equals("ycsb")) {
             Token tokenForRead = (command instanceof SinglePartitionReadCommand
                     ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
@@ -113,7 +117,8 @@ public abstract class AbstractReadExecutor {
         } else {
             this.sendRequestAddresses = replicaPlan.contacts().endpointList();
         }
-
+        Tracing.trace("[Tinoryj] Executed get send target list time {}\u03bcs", "AbstractReadExecutor",
+                (nanoTime() - tStart) / 1000);
         // Set the digest version (if we request some digests). This is the smallest
         // version amongst all our target replicas since new nodes
         // knows how to produce older digest but the reverse is not true.
@@ -182,6 +187,7 @@ public abstract class AbstractReadExecutor {
     }
 
     private int makeDataRequestsForELECT(ReadCommand readCommand) {
+        long tStart1 = nanoTime();
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> messageForDataRequest = readCommand.createMessage(false);
         int usedAddressNumber = 0;
@@ -202,10 +208,12 @@ public abstract class AbstractReadExecutor {
             }
             break;
         }
-
+        Tracing.trace("[Tinoryj] Executed data send request time {}\u03bcs", "makeDataRequestsForELECT",
+                (nanoTime() - tStart1) / 1000);
         // We delay the local (potentially blocking) read till the end to avoid stalling
         // remote requests.
         if (hasLocalEndpoint) {
+            long tStart = nanoTime();
             switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                 case 0:
                     // In case received request is not for primary LSM tree
@@ -254,6 +262,8 @@ public abstract class AbstractReadExecutor {
                     logger.error("[Tinoryj-ERROR] Not support replication factor larger than 3");
                     break;
             }
+            Tracing.trace("[Tinoryj] Executed local data read time {}\u03bcs", "makeDataRequestsForELECT",
+                    (nanoTime() - tStart) / 1000);
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
         } else {
             logger.debug("[Tinoryj] No local endpoint, skip local read");
@@ -262,6 +272,7 @@ public abstract class AbstractReadExecutor {
     }
 
     private void makeDigestRequestsForELECT(ReadCommand readCommand, int usedAddressNumber) {
+        long tStart1 = nanoTime();
         boolean hasLocalEndpoint = false;
         Message<ReadCommand> messageForDigestRequest = readCommand.createMessage(false);
 
@@ -281,10 +292,12 @@ public abstract class AbstractReadExecutor {
             }
             MessagingService.instance().sendWithCallback(messageForDigestRequest, endpoint, handler);
         }
-
+        Tracing.trace("[Tinoryj] Executed digest send request time {}\u03bcs", "makeDigestRequestsForELECT",
+                (nanoTime() - tStart1) / 1000);
         // We delay the local (potentially blocking) read till the end to avoid stalling
         // remote requests.
         if (hasLocalEndpoint) {
+            long tStart = nanoTime();
             switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
                 case 0:
                     // In case received request is not for primary LSM tree
@@ -337,6 +350,8 @@ public abstract class AbstractReadExecutor {
                     logger.error("[Tinoryj-ERROR] Not support replication factor larger than 3");
                     break;
             }
+            Tracing.trace("[Tinoryj] Executed local digest read time {}\u03bcs", "makeDigestRequestsForELECT",
+                    (nanoTime() - tStart) / 1000);
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
         } else {
             logger.debug("[Tinoryj] No local endpoint, skip local digest read");

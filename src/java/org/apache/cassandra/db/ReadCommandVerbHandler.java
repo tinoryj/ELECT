@@ -44,6 +44,8 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.List;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
+import org.apache.cassandra.tracing.Tracing;
 
 public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
     public static final ReadCommandVerbHandler instance = new ReadCommandVerbHandler();
@@ -57,16 +59,17 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
 
         ReadCommand command = message.payload;
 
-        Token tokenForRead = (command instanceof SinglePartitionReadCommand
-                ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
-                : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
+        // String rawKey = (command instanceof SinglePartitionReadCommand
+        // ? ((SinglePartitionReadCommand)
+        // command).partitionKey().getRawKey(command.metadata())
+        // : null);
 
-        String rawKey = (command instanceof SinglePartitionReadCommand
-                ? ((SinglePartitionReadCommand) command).partitionKey().getRawKey(command.metadata())
-                : null);
-
-
+        long tStart = nanoTime();
         if (command.metadata().keyspace.equals("ycsb")) {
+
+            Token tokenForRead = (command instanceof SinglePartitionReadCommand
+                    ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                    : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
 
             List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, tokenForRead);
@@ -120,7 +123,8 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     command.isDigestQuery() == true ? "digest" : "data",
                     command.metadata().name, sendRequestAddresses);
         }
-
+        Tracing.trace("[Tinoryj] Executed remote modify read command time {}\u03bcs", "ReadCommandVerbHandler",
+                (nanoTime() - tStart) / 1000);
         validateTransientStatus(message);
         MessageParams.reset();
 
@@ -136,34 +140,41 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
         try (ReadExecutionController controller = command.executionController(message.trackRepairedData());
                 UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
             if (iterator == null) {
-                // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
-                //     logger.error(
-                //             "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler Error to get response from table {}",
-                //             tokenForRead,
-                //             command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
+                // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
+                // false) {
+                // logger.error(
+                // "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler
+                // Error to get response from table {}",
+                // tokenForRead,
+                // command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
                 // }
                 response = command.createEmptyResponse();
             } else {
                 response = command.createResponse(iterator, controller.getRepairedDataInfo());
-                // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
-                //     ByteBuffer newDigest = response.digest(command);
-                //     String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
-                //     if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
-                //         logger.error(
-                //                 "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler Could not get non-empty response from table {}, address = {}, {}, response = {}, raw key = {}",
-                //                 tokenForRead,
-                //                 command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
-                //                 "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response, rawKey);
-                //     }
+                // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
+                // false) {
+                // ByteBuffer newDigest = response.digest(command);
+                // String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
+                // if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
+                // logger.error(
+                // "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler
+                // Could not get non-empty response from table {}, address = {}, {}, response =
+                // {}, raw key = {}",
+                // tokenForRead,
+                // command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
+                // "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response, rawKey);
+                // }
                 // }
             }
         } catch (RejectException e) {
-            // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() == false) {
-            //     logger.error(
-            //             "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler from {}, Read Command target table is {}, target key is {}, meet errors",
-            //             tokenForRead,
-            //             message.from(),
-            //             command.metadata().name);
+            // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
+            // false) {
+            // logger.error(
+            // "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler from
+            // {}, Read Command target table is {}, target key is {}, meet errors",
+            // tokenForRead,
+            // message.from(),
+            // command.metadata().name);
             // }
             if (!command.isTrackingWarnings())
                 throw e;
