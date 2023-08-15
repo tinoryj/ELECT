@@ -1157,6 +1157,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 filter,
                                 sstable.isRepaired(),
                                 controller);
+                        break;
                     }
                 }
 
