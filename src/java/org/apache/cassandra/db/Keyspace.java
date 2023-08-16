@@ -691,14 +691,12 @@ public class Keyspace {
     public ColumnFamilyStore getColumnFamilyStore(PartitionUpdate upd) {
         // ByteBuffer key = mutation.key().getKey();
         String keyspaceName = upd.metadata().keyspace;
-        String key = upd.partitionKey().getRawKey(upd.metadata());
-        List<InetAddress> eps = StorageService.instance.getNaturalEndpoints(keyspaceName, upd.metadata().name, key);
+        // String key = upd.partitionKey().getRawKey(upd.metadata());
+        // List<InetAddress> eps = StorageService.instance.getNaturalEndpoints(keyspaceName, upd.metadata().name, key);
+        List<InetAddress> eps = StorageService.instance.getNaturalEndpoints(keyspaceName, upd.partitionKey().getKey());
         InetAddress localAddress = FBUtilities.getJustBroadcastAddress();
         TableId replicaUUID = null;
-        // logger.debug("rymDebug: Storage servers list size :{}, list content : {}",
-        // columnFamilyStores.size(), ep);
-        // logger.debug("localAddress is {}, replicaNodes are {}",localAddress, eps);
-        // make sure whether the mutation is for a primary or not.
+        
         int index = eps.indexOf(localAddress);
         if(index != -1)
             replicaUUID = globalNodeIDtoCFIDMap.get(index);
