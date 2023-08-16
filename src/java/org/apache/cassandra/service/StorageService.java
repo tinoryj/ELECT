@@ -4097,10 +4097,10 @@ public class StorageService extends NotificationBroadcasterSupport
 
             String result = "SSTable's Access Frequency of Each Level (" + cfs.getColumnFamilyName() + "): \n" +
                              "\tSSTables in each level: " + sstablesCountEachLevel.toString() + "\n" +
-                             "Total sstables's access count of each level: " + accessFrequencyEachLevel.toString() + "\n" + 
-                             "Minimum sstables's access count of each level: " + min.toString() + "\n" + 
-                             "Maximum sstables's access count of each level: " + max.toString() + "\n" + 
-                             "Average sstables's access count of each level: " + average.toString();
+                             "\tTotal sstables's access count of each level: " + accessFrequencyEachLevel.toString() + "\n" + 
+                             "\tMinimum sstables's access count of each level: " + min.toString() + "\n" + 
+                             "\tMaximum sstables's access count of each level: " + max.toString() + "\n" + 
+                             "\tAverage sstables's access count of each level: " + average.toString() + "\n";
 
             results.add(result);
         } 
