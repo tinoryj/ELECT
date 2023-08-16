@@ -4067,6 +4067,44 @@ public class StorageService extends NotificationBroadcasterSupport
         }
     }
 
+
+    public List<String> getSSTableAccessFrequency(String keyspace) {
+        int level = DatabaseDescriptor.getMaxLevelCount();
+        List<String> results = new ArrayList<>();
+
+        for(ColumnFamilyStore cfs : Keyspace.open(keyspace).getColumnFamilyStores()) {
+
+            int[] sstablesCountEachLevel = new int[level];
+            long[] accessFrequencyEachLevel = new long[level];
+            long[] min = new long[level];
+            for(int i = 0; i < level; i++) {
+                min[i] = Long.MAX_VALUE;
+            }
+            long[] max = new long[level];
+            long[] average = new long[level];
+
+            for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                sstablesCountEachLevel[sstable.getSSTableLevel()]++;
+                accessFrequencyEachLevel[sstable.getSSTableLevel()] += sstable.getReadMeter().count();
+                min[sstable.getSSTableLevel()] = min[sstable.getSSTableLevel()] < sstable.getReadMeter().count() ? min[sstable.getSSTableLevel()] : sstable.getReadMeter().count();
+                max[sstable.getSSTableLevel()] = max[sstable.getSSTableLevel()] > sstable.getReadMeter().count() ? max[sstable.getSSTableLevel()] : sstable.getReadMeter().count();
+            }
+            for(int i = 0; i < level; i++) {
+                average[i] = accessFrequencyEachLevel[i] / sstablesCountEachLevel[i];
+            }
+
+            String result = "SSTable's Access Frequency of Each Level (" + cfs.getColumnFamilyName() + "): \n" +
+                             "\tSSTables in each level: " + sstablesCountEachLevel.toString() + "\n" +
+                             "Total sstables's access count of each level: " + accessFrequencyEachLevel.toString() + 
+                             "Minimum sstables's access count of each level: " + min.toString() + 
+                             "Maximum sstables's access count of each level: " + max.toString() + 
+                             "Average sstables's access count of each level: " + average.toString();
+
+            results.add(result);
+        } 
+        return results;
+    }
+
     /**
      * Flush all memtables for a keyspace and column families.
      * 

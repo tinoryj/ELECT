@@ -119,6 +119,8 @@ public interface StorageServiceMBean extends NotificationEmitter {
      */
     public String getSchemaVersion();
 
+
+
     /**
      * Fetch the replication factor for a given keyspace.
      * 
@@ -485,6 +487,15 @@ public interface StorageServiceMBean extends NotificationEmitter {
      */
     public void forceKeyspaceFlush(String keyspaceName, String... tableNames)
             throws IOException, ExecutionException, InterruptedException;
+
+
+
+    /**
+     * Get all sstable's access frequency for keyspace
+     * @param keyspace
+     * @return the sstale's access frequency of each lsm tree
+     */
+    public List<String> getSSTableAccessFrequency(String keyspace);
 
     /**
      * Invoke repair asynchronously.

@@ -48,36 +48,8 @@ public class AccessFrequency extends NodeToolCmd
         PrintStream out = probe.output().out;
         out.println("Schema Version:" + probe.getSchemaVersion());
 
-        int level = DatabaseDescriptor.getMaxLevelCount();
-
-        for(ColumnFamilyStore cfs : Keyspace.open(keyspace).getColumnFamilyStores()) {
-
-            int[] sstablesCountEachLevel = new int[level];
-            long[] accessFrequencyEachLevel = new long[level];
-            long[] min = new long[level];
-            for(int i = 0; i < level; i++) {
-                min[i] = Long.MAX_VALUE;
-            }
-            long[] max = new long[level];
-            long[] average = new long[level];
-
-            for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
-                sstablesCountEachLevel[sstable.getSSTableLevel()]++;
-                accessFrequencyEachLevel[sstable.getSSTableLevel()] += sstable.getReadMeter().count();
-                min[sstable.getSSTableLevel()] = min[sstable.getSSTableLevel()] < sstable.getReadMeter().count() ? min[sstable.getSSTableLevel()] : sstable.getReadMeter().count();
-                max[sstable.getSSTableLevel()] = max[sstable.getSSTableLevel()] > sstable.getReadMeter().count() ? max[sstable.getSSTableLevel()] : sstable.getReadMeter().count();
-            }
-            for(int i = 0; i < level; i++) {
-                average[i] = accessFrequencyEachLevel[i] / sstablesCountEachLevel[i];
-            }
-
-            out.println("SSTable's Access Frequency of Each Level:");
-            out.println("\tSSTables in each level: " + sstablesCountEachLevel.toString());
-            out.println("\tTotal sstables's access count of each level: " + accessFrequencyEachLevel.toString());
-            out.println("\tMinimum sstables's access count of each level: " + min.toString());
-            out.println("\tMaximum sstables's access count of each level: " + max.toString());
-            out.println("\tAverage sstables's access count of each level: " + average.toString());
-
-        } 
+        for(String result : probe.getSSTableAccessFrequency(keyspace)) {
+            out.print(result);
+        }
     }
 }

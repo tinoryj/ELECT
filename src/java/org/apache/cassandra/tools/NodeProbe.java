@@ -462,6 +462,10 @@ public class NodeProbe implements AutoCloseable {
         ssProxy.forceKeyspaceFlush(keyspaceName, tableNames);
     }
 
+    public List<String> getSSTableAccessFrequency(String keyspace) {
+        return ssProxy.getSSTableAccessFrequency(keyspace);
+    }
+
     public String getKeyspaceReplicationInfo(String keyspaceName) {
         return ssProxy.getKeyspaceReplicationInfo(keyspaceName);
     }
