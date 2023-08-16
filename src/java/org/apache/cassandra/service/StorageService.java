@@ -4100,7 +4100,7 @@ public class StorageService extends NotificationBroadcasterSupport
                              "\tTotal sstables's access count of each level: " + Arrays.toString(accessFrequencyEachLevel) + "\n" + 
                              "\tMinimum sstables's access count of each level: " + Arrays.toString(min) + "\n" + 
                              "\tMaximum sstables's access count of each level: " + Arrays.toString(max) + "\n" + 
-                             "\tAverage sstables's access count of each level: " + Arrays.toString(average) + "\n";
+                             "\tAverage sstables's access count of each level: " + Arrays.toString(average) + "\n\n\n";
 
             results.add(result);
         } 
