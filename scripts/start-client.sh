@@ -22,8 +22,9 @@ func() {
     sstable_size=$2
     fanout_size=$3
     file_dir=$4
+    replication_factor=$5
     cd $file_dir
-    bin/cqlsh $coordinator -e "create keyspace ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 3 };
+    bin/cqlsh $coordinator -e "create keyspace ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': $replication_factor };
     USE ycsb;
     create table usertable0 (y_id varchar primary key, field0 varchar);
     ALTER TABLE usertable0 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
@@ -37,4 +38,4 @@ func() {
     consistency all;"
 }
 
-func "$1" "$2" "$3" "$4"
+func "$1" "$2" "$3" "$4" "$5"
