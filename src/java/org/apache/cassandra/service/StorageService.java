@@ -4090,6 +4090,8 @@ public class StorageService extends NotificationBroadcasterSupport
                 max[sstable.getSSTableLevel()] = max[sstable.getSSTableLevel()] > sstable.getReadMeter().count() ? max[sstable.getSSTableLevel()] : sstable.getReadMeter().count();
             }
             for(int i = 0; i < level; i++) {
+                if(sstablesCountEachLevel[i] == 0)
+                    continue;
                 average[i] = accessFrequencyEachLevel[i] / sstablesCountEachLevel[i];
             }
 
