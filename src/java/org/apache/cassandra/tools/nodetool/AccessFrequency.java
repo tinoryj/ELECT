@@ -28,10 +28,14 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
+import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.tools.NodeProbe;
 import org.apache.cassandra.tools.NodeTool.NodeToolCmd;
 
-@Command(name = "frequency", description = "Get sstale access frequency for every lsm-tree")
+@Command(name = "frequency", description = "Get sstale access frequency for every lsm-tree in a specified keyspace")
 public class AccessFrequency extends NodeToolCmd
 {
 
@@ -43,16 +47,37 @@ public class AccessFrequency extends NodeToolCmd
     {
         PrintStream out = probe.output().out;
         out.println("Schema Version:" + probe.getSchemaVersion());
-        out.println("TokenRange: ");
-        try
-        {
-            for (String tokenRangeString : probe.describeRing(keyspace, printPort))
-            {
-                out.println("\t" + tokenRangeString);
+
+        int level = DatabaseDescriptor.getMaxLevelCount();
+
+        for(ColumnFamilyStore cfs : Keyspace.open(keyspace).getColumnFamilyStores()) {
+
+            int[] sstablesCountEachLevel = new int[level];
+            long[] accessFrequencyEachLevel = new long[level];
+            long[] min = new long[level];
+            for(int i = 0; i < level; i++) {
+                min[i] = Long.MAX_VALUE;
             }
-        } catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
+            long[] max = new long[level];
+            long[] average = new long[level];
+
+            for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                sstablesCountEachLevel[sstable.getSSTableLevel()]++;
+                accessFrequencyEachLevel[sstable.getSSTableLevel()] += sstable.getReadMeter().count();
+                min[sstable.getSSTableLevel()] = min[sstable.getSSTableLevel()] < sstable.getReadMeter().count() ? min[sstable.getSSTableLevel()] : sstable.getReadMeter().count();
+                max[sstable.getSSTableLevel()] = max[sstable.getSSTableLevel()] > sstable.getReadMeter().count() ? max[sstable.getSSTableLevel()] : sstable.getReadMeter().count();
+            }
+            for(int i = 0; i < level; i++) {
+                average[i] = accessFrequencyEachLevel[i] / sstablesCountEachLevel[i];
+            }
+
+            out.println("SSTable's Access Frequency of Each Level:");
+            out.println("\tSSTables in each level: " + sstablesCountEachLevel.toString());
+            out.println("\tTotal sstables's access count of each level: " + accessFrequencyEachLevel.toString());
+            out.println("\tMinimum sstables's access count of each level: " + min.toString());
+            out.println("\tMaximum sstables's access count of each level: " + max.toString());
+            out.println("\tAverage sstables's access count of each level: " + average.toString());
+
+        } 
     }
 }
