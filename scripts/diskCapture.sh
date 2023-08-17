@@ -40,7 +40,7 @@ func() {
     TOTAL_KB_WRITTEN=$(echo "$STATS" | awk '{print $3}')
 
     # Write the results to the file
-    echo "Summary for device: $DEVICE_NAME (mounted at $MOUNT_POINT)" >$OUTPUT_FILE
+    echo "Summary for device: $DEVICE_NAME (mounted at $MOUNT_POINT)" >>$OUTPUT_FILE
     echo "Total KiB read: $TOTAL_KB_READ" >>$OUTPUT_FILE
     echo "Total KiB written: $TOTAL_KB_WRITTEN" >>$OUTPUT_FILE
 
