@@ -435,7 +435,7 @@ public class CassandraDaemon {
         // backstop against compactions stalling
         // due to scheduling errors or race conditions
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
-                ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(), 5, 1, TimeUnit.MINUTES);
+                ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(), 60, 1, TimeUnit.MINUTES);
 
         
         if(DatabaseDescriptor.getEnableErasureCoding()) {

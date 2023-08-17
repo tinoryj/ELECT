@@ -49,7 +49,7 @@ func() {
     sed -i "s/cold_period:.*$/cold_period: ${cold_period}/" conf/cassandra.yaml
     sed -i "s/target_storage_saving:.*$/target_storage_saving: ${target_storage_saving}/" conf/cassandra.yaml
     sed -i "s/seeds:.*$/seeds: \"${seeds}\"/" conf/cassandra.yaml
-    sed -i "s/memtale_heap_space:.*$/memtale_heap_space: ${memtale_heap_space}/" conf/cassandra.yaml
+    sed -i "s/memtable_heap_space:.*$/memtable_heap_space: ${memtable_heap_space}/" conf/cassandra.yaml
 
     sed -i "s/internode_max_message_size:.*$/internode_max_message_size: ${internode_max_message_size}/" conf/cassandra.yaml
     sed -i "s/internode_application_send_queue_capacity:.*$/internode_application_send_queue_capacity: ${internode_application_send_queue_capacity}/" conf/cassandra.yaml
