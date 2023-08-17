@@ -263,8 +263,6 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();
     public ConcurrentHashMap<String, SSTableReader> globalRecoveredSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
 
-
-
     public volatile long transferredSSTableCount = 0;
     public volatile long migratedParityCodeCount = 0;
     public ConcurrentSkipListSet<String> migratedParityCodes = new ConcurrentSkipListSet<String>();
@@ -4067,30 +4065,47 @@ public class StorageService extends NotificationBroadcasterSupport
         }
     }
 
-
     public List<String> getSSTableAccessFrequency(String keyspace) {
         int level = DatabaseDescriptor.getMaxLevelCount();
         List<String> results = new ArrayList<>();
 
-        for(ColumnFamilyStore cfs : Keyspace.open(keyspace).getColumnFamilyStores()) {
+        for (ColumnFamilyStore cfs : Keyspace.open(keyspace).getColumnFamilyStores()) {
 
             int[] sstablesCountEachLevel = new int[level];
             long[] accessFrequencyEachLevel = new long[level];
             long[] min = new long[level];
-            for(int i = 0; i < level; i++) {
+            for (int i = 0; i < level; i++) {
                 min[i] = Long.MAX_VALUE;
             }
             long[] max = new long[level];
             long[] average = new long[level];
+            long[][] sstableAccessFrequency = new long[level][];
 
-            for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+            for (SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
                 sstablesCountEachLevel[sstable.getSSTableLevel()]++;
                 accessFrequencyEachLevel[sstable.getSSTableLevel()] += sstable.getReadMeter().count();
-                min[sstable.getSSTableLevel()] = ((min[sstable.getSSTableLevel()] < sstable.getReadMeter().count()) ? min[sstable.getSSTableLevel()] : sstable.getReadMeter().count());
-                max[sstable.getSSTableLevel()] = ((max[sstable.getSSTableLevel()] > sstable.getReadMeter().count()) ? max[sstable.getSSTableLevel()] : sstable.getReadMeter().count());
+                min[sstable.getSSTableLevel()] = ((min[sstable.getSSTableLevel()] < sstable.getReadMeter().count())
+                        ? min[sstable.getSSTableLevel()]
+                        : sstable.getReadMeter().count());
+                max[sstable.getSSTableLevel()] = ((max[sstable.getSSTableLevel()] > sstable.getReadMeter().count())
+                        ? max[sstable.getSSTableLevel()]
+                        : sstable.getReadMeter().count());
+
             }
-            for(int i = 0; i < level; i++) {
-                if(sstablesCountEachLevel[i] == 0) {
+            for (int levelCount = 0; levelCount < level; levelCount++) {
+                sstableAccessFrequency[levelCount] = new long[sstablesCountEachLevel[levelCount]];
+            }
+            int indexOfCurrentLevel = 0, currentLevel = 0;
+            for (SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                if (currentLevel != sstable.getSSTableLevel()) {
+                    currentLevel = sstable.getSSTableLevel();
+                    indexOfCurrentLevel = 0;
+                }
+                sstableAccessFrequency[sstable.getSSTableLevel()][indexOfCurrentLevel++] = sstable.getReadMeter()
+                        .count();
+            }
+            for (int i = 0; i < level; i++) {
+                if (sstablesCountEachLevel[i] == 0) {
                     min[i] = 0;
                     continue;
                 }
@@ -4098,14 +4113,19 @@ public class StorageService extends NotificationBroadcasterSupport
             }
 
             String result = "SSTable's Access Frequency of Each Level (" + cfs.getColumnFamilyName() + "): \n" +
-                             "\tSSTables in each level: " + Arrays.toString(sstablesCountEachLevel) + "\n" +
-                             "\tTotal sstables's access count of each level: " + Arrays.toString(accessFrequencyEachLevel) + "\n" + 
-                             "\tMinimum sstables's access count of each level: " + Arrays.toString(min) + "\n" + 
-                             "\tMaximum sstables's access count of each level: " + Arrays.toString(max) + "\n" + 
-                             "\tAverage sstables's access count of each level: " + Arrays.toString(average) + "\n\n\n";
+                    "\tSSTables in each level: " + Arrays.toString(sstablesCountEachLevel) + "\n" +
+                    "\tTotal sstables's access count of each level: " + Arrays.toString(accessFrequencyEachLevel) + "\n"
+                    +
+                    "\tMinimum sstables's access count of each level: " + Arrays.toString(min) + "\n" +
+                    "\tMaximum sstables's access count of each level: " + Arrays.toString(max) + "\n" +
+                    "\tAverage sstables's access count of each level: " + Arrays.toString(average) + "\n\n\n";
 
+            for (int i = 0; i < level; i++) {
+                result += "\tSSTables's access count of level " + i + ": " + Arrays.toString(sstableAccessFrequency[i])
+                        + "\n\n";
+            }
             results.add(result);
-        } 
+        }
         return results;
     }
 
