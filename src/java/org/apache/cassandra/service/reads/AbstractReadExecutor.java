@@ -110,8 +110,6 @@ public abstract class AbstractReadExecutor {
             this.sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(this.cfs.keyspace.getName(), tokenForRead);
             logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}, replica plan = {}",
-                    sendRequestAddresses.size() == replicaPlan.contacts().endpoints().size() ? "NormalRead"
-                            : "DegradeRead",
                     tokenForRead,
                     sendRequestAddresses, replicaPlan.contacts().endpoints());
         } else {
