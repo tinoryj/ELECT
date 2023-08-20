@@ -156,7 +156,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     /* initial seeds for joining the cluster */
     @VisibleForTesting
-    final Set<InetAddressAndPort> seeds = new ConcurrentSkipListSet<>();
+    public final Set<InetAddressAndPort> seeds = new ConcurrentSkipListSet<>();
 
     /* map where key is the endpoint and value is the state associated with the endpoint.
      * This is made public to be consumed by the GossipInfoTable virtual table */

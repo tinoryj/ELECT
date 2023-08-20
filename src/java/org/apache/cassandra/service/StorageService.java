@@ -4522,13 +4522,13 @@ public class StorageService extends NotificationBroadcasterSupport
 
     public List<InetAddressAndPort> getReplicaNodesWithPortFromTokenForDegradeRead(String keyspaceName, Token token) {
 
-        Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(),
-                Gossiper.instance.getUnreachableMembers());
-        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>();
-        allHostsIterable.forEach(allHosts::add);
-        InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
-        Collections.sort(allHosts, comparator);
-        logger.debug("rymDebug: for token ({}), all hosts number is ({}), hosts are ({})", token,allHosts.size(), allHosts);
+        // Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(),
+        //         Gossiper.instance.getUnreachableMembers());
+        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>(Gossiper.instance.seeds);
+        // allHostsIterable.forEach(allHosts::add);
+        // InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
+        // Collections.sort(allHosts, comparator);
+        // logger.debug("rymDebug: for token ({}), all hosts number is ({}), hosts are ({})", token,allHosts.size(), allHosts);
         List<InetAddressAndPort> replicaNodes = new ArrayList<>();
 
         Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
