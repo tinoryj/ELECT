@@ -4524,7 +4524,7 @@ public class StorageService extends NotificationBroadcasterSupport
 
         // Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(),
         //         Gossiper.instance.getUnreachableMembers());
-        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>(DatabaseDescriptor.getSeeds());
+        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>(Gossiper.instance.seeds);
         // allHostsIterable.forEach(allHosts::add);
         // InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
         // Collections.sort(allHosts, comparator);
