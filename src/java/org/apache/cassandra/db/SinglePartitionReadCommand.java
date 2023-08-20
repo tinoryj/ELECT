@@ -1157,8 +1157,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 filter,
                                 sstable.isRepaired(),
                                 controller);
-                        if(sstable.getKeyspaceName().equals("ycsb"))
-                            break;
+                        // if(sstable.getKeyspaceName().equals("ycsb"))
+                        //     break;
                     }
                 }
 
