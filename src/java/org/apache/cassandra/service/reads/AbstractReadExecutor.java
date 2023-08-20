@@ -109,9 +109,11 @@ public abstract class AbstractReadExecutor {
                     : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
             this.sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(this.cfs.keyspace.getName(), tokenForRead);
-            logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}, replica plan = {}",
-                    tokenForRead,
-                    sendRequestAddresses, replicaPlan.contacts().endpoints());
+            if(!sendRequestAddresses.get(0).equals(replicaPlan.contacts().endpoints().iterator().next())) {
+                logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}, replica plan = {}",
+                        tokenForRead,
+                        sendRequestAddresses, replicaPlan.contacts().endpoints());
+            }
         } else {
             this.sendRequestAddresses = replicaPlan.contacts().endpointList();
         }
