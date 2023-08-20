@@ -4528,6 +4528,7 @@ public class StorageService extends NotificationBroadcasterSupport
         allHostsIterable.forEach(allHosts::add);
         InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
         Collections.sort(allHosts, comparator);
+        logger.debug("rymDebug: for token ({}), all hosts number is ({}), hosts are ({})", token,allHosts.size(), allHosts);
         List<InetAddressAndPort> replicaNodes = new ArrayList<>();
 
         Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
