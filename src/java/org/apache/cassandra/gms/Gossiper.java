@@ -45,7 +45,6 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.Uninterruptibles;
 
 import org.apache.cassandra.concurrent.*;
-import org.apache.cassandra.concurrent.FutureTask;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.NoPayload;
 import org.apache.cassandra.net.Verb;
@@ -57,8 +56,6 @@ import org.apache.cassandra.utils.NoSpamLogger;
 import org.apache.cassandra.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.dht.Token;
@@ -156,7 +153,11 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     /* initial seeds for joining the cluster */
     @VisibleForTesting
-    public final Set<InetAddressAndPort> seeds = new ConcurrentSkipListSet<>();
+    final Set<InetAddressAndPort> seeds = new ConcurrentSkipListSet<>();
+
+    static final ConcurrentSkipListSet<InetAddressAndPort> allNodes = new ConcurrentSkipListSet<>();
+
+    static final ConcurrentSkipListSet<Long> tokenRanges = new ConcurrentSkipListSet<>();
 
     /* map where key is the endpoint and value is the state associated with the endpoint.
      * This is made public to be consumed by the GossipInfoTable virtual table */
@@ -1929,6 +1930,28 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
                 continue;
             seeds.add(seed);
         }
+
+    }
+
+    public static ConcurrentSkipListSet<InetAddressAndPort> getAllNodesBasedOnSeeds() {
+        if(allNodes.isEmpty()){
+            for (InetAddressAndPort seed : DatabaseDescriptor.getSeeds())
+            {
+                allNodes.add(seed);
+            }
+        } 
+        return allNodes;
+    }
+
+
+    public static ConcurrentSkipListSet<Long> getTokenRanges() {
+        if(tokenRanges.isEmpty()) {
+            for (String token : DatabaseDescriptor.getTokenRanges())
+            {
+                tokenRanges.add(Long.parseLong(token));
+            }
+        }
+        return tokenRanges;
     }
 
     /**
