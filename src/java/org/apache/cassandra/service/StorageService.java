@@ -4524,18 +4524,18 @@ public class StorageService extends NotificationBroadcasterSupport
 
         // Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(),
         //         Gossiper.instance.getUnreachableMembers());
-        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>(Gossiper.instance.seeds);
+        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>(Gossiper.getAllNodesBasedOnSeeds());
         // allHostsIterable.forEach(allHosts::add);
         // InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
         // Collections.sort(allHosts, comparator);
         // logger.debug("rymDebug: for token ({}), all hosts number is ({}), hosts are ({})", token,allHosts.size(), allHosts);
         List<InetAddressAndPort> replicaNodes = new ArrayList<>();
 
-        Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
+        // Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
         long targetToken = (long) token.getTokenValue();
         int index = 0;
-        for (String tk : tokenRanges) {
-            long currentToken = Long.parseLong(tk);
+        for (long currentToken : Gossiper.getTokenRanges()) {
+            // long currentToken = Long.parseLong(tk);
             // int result = currentToken.compareTo(targetToken);
             if (currentToken >= targetToken) {
                 break;
@@ -4543,7 +4543,7 @@ public class StorageService extends NotificationBroadcasterSupport
             index++;
         }
 
-        if (index == tokenRanges.size())
+        if (index ==  Gossiper.getTokenRanges().size())
             index = 0;
 
         int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
