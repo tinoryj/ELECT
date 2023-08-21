@@ -4087,6 +4087,8 @@ public class StorageService extends NotificationBroadcasterSupport
             ECNetutils.writeBytesToFile(backupDir + "migratedSStables",  
                                         ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.migratedSStables));
 
+            logger.debug("rymDebug: backup migrated parity codes({}), migrated sstables ({})", StorageService.instance.migratedParityCodes, StorageService.instance.migratedSStables);
+
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -4109,6 +4111,8 @@ public class StorageService extends NotificationBroadcasterSupport
 
             StorageService.instance.migratedParityCodeCount = migratedParityCodes.size();
             StorageService.instance.migratedRawSSTablecount = migratedSStables.size();
+
+            logger.debug("rymDebug: reload migrated parity codes({}), migrated sstables ({})", StorageService.instance.migratedParityCodes, StorageService.instance.migratedSStables);
 
         } catch (IOException e) {
             // TODO Auto-generated catch block
