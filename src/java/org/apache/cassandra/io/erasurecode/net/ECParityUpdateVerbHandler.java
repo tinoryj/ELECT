@@ -475,7 +475,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                         byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
                         parityCodes[i].put(parityCode);
-                        StorageService.ossAccessObj.deleteSingleFileInOSS(parityCodeFileName);
+                        // StorageService.ossAccessObj.deleteSingleFileInOSS(parityCodeFileName);
                         StorageService.instance.migratedParityCodeCount--;
                         StorageService.instance.migratedParityCodes.remove(parityHashList.get(i));
                     }
