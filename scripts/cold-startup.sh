@@ -22,6 +22,8 @@ func() {
     # targetDataDir=$2
     projDir=$1
     waitTime=$2
+
+    cd $projDir
     
     bin/nodetool coldStartup backup
 
