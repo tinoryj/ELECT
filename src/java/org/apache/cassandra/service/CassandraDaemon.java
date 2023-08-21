@@ -781,25 +781,31 @@ public class CassandraDaemon {
 
     public void reloadMetadataForELECT() {
 
-        // reload ec sstables        
-        for(ColumnFamilyStore cfs : Keyspace.open("ycsb").getColumnFamilyStores()) {
-            if(cfs.getColumnFamilyName().equals("usertable0")) {
-                for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
-                    if(sstable.isReplicationTransferredToErasureCoding()) {
-                        StorageService.instance.transferredSSTableCount++;
-                    }
+        // reload ec sstables
+        for(Keyspace keyspace : Keyspace.all()) {
+            if(keyspace.getName().equals("ycsb")) {
+            
+                for(ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
+                    if(cfs.getColumnFamilyName().equals("usertable0")) {
+                        for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                            if(sstable.isReplicationTransferredToErasureCoding()) {
+                                StorageService.instance.transferredSSTableCount++;
+                            }
 
-                    if(sstable.isDataMigrateToCloud()) {
-                        StorageService.instance.migratedRawSSTablecount++;
-                    }
+                            if(sstable.isDataMigrateToCloud()) {
+                                StorageService.instance.migratedRawSSTablecount++;
+                            }
 
-                }
-            } else if (cfs.getColumnFamilyName().contains("usertable")) {
-                for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
-                    if(sstable.isReplicationTransferredToErasureCoding()) {
-                        StorageService.instance.globalSSTHashToECSSTableMap.put(sstable.getSSTableHashID(), sstable);
+                        }
+                    } else if (cfs.getColumnFamilyName().contains("usertable")) {
+                        for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                            if(sstable.isReplicationTransferredToErasureCoding()) {
+                                StorageService.instance.globalSSTHashToECSSTableMap.put(sstable.getSSTableHashID(), sstable);
+                            }
+                        }
                     }
                 }
+
             }
         }
 
