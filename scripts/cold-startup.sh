@@ -35,10 +35,9 @@ func() {
     # cd $3
     # rm -rf data
     # rm -rf logs
-    mv logs logs-bak
-    mv data data-bak
-    mkdir data logs
-
+    cp -r logs logs-bak
+    cp -r data data-bak
+    
     nohup bin/cassandra &> logs/debug.log &
     sleep $waitTime
     bin/nodetool coldStartup reload
