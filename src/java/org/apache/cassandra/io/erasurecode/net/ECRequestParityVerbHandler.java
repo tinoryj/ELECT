@@ -57,7 +57,10 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         while (retryCount < MAX_RETRY_COUNT) {
             if (Files.exists(path)) {
                 break;
-            } else {
+            } else if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityHash, message.from().getHostAddress(false))) {
+                break;
+            }
+            else {
                 try {
                     Thread.sleep(1000);
                     retryCount++;
