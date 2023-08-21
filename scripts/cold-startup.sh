@@ -33,11 +33,11 @@ func() {
     # cp -r ${sourceDataDir} ${targetDataDir}
 
     # cd $3
-    # rm -rf data
-    # rm -rf logs
+    rm -rf data-bak
+    rm -rf logs-bak
     cp -r logs logs-bak
     cp -r data data-bak
-    
+
     nohup bin/cassandra &> logs/debug.log &
     sleep $waitTime
     bin/nodetool coldStartup reload
