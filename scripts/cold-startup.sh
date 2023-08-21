@@ -15,20 +15,28 @@
 # limitations under the License.
 
 . /etc/profile
-kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
+
 func() {
 
-    sourceDataDir=$1
-    targetDataDir=$2
+    # sourceDataDir=$1
+    # targetDataDir=$2
+    projDir=$1
+    waitTime=$2
+    
+    bin/nodetool coldStartup backup
 
-    rm -rf ${targetDataDir}
-    cp -r ${sourceDataDir} ${targetDataDir}
+    kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
 
-    cd $3
-    rm -rf data
-    rm -rf logs
+    # rm -rf ${targetDataDir}
+    # cp -r ${sourceDataDir} ${targetDataDir}
+
+    # cd $3
+    # rm -rf data
+    # rm -rf logs
 
     nohup bin/cassandra &> logs/debug.log &
+    sleep $waitTime
+    bin/nodetool coldStartup reload
 }
 
-func "$1" "$2" "$3" #"$4" "$5" "$6" "$7" "$8" "$9" "$10" "$11" "$12" "$13" "$14" "$15"
+func "$1" "$2" #"$3" #"$4" "$5" "$6" "$7" "$8" "$9" "$10" "$11" "$12" "$13" "$14" "$15"
