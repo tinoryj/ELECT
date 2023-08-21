@@ -35,6 +35,9 @@ func() {
     # cd $3
     # rm -rf data
     # rm -rf logs
+    mv logs logs-bak
+    mv data data-bak
+    mkdir data logs
 
     nohup bin/cassandra &> logs/debug.log &
     sleep $waitTime

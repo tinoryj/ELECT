@@ -4075,17 +4075,17 @@ public class StorageService extends NotificationBroadcasterSupport
         // Backup data to support degraded read
         try {
             ECNetutils.writeBytesToFile(backupDir + "globalCachedKeys",  
-                                        ByteObjectConversion.objectToByteArray((Serializable) globalCachedKeys));
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalCachedKeys));
             ECNetutils.writeBytesToFile(backupDir + "globalStripIdToECMetadataMap",  
-                                        ByteObjectConversion.objectToByteArray((Serializable) globalStripIdToECMetadataMap));
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalStripIdToECMetadataMap));
             ECNetutils.writeBytesToFile(backupDir + "globalSSTHashToParityNodesMap",  
-                                        ByteObjectConversion.objectToByteArray((Serializable) globalSSTHashToParityNodesMap));
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalSSTHashToParityNodesMap));
             ECNetutils.writeBytesToFile(backupDir + "globalSSTHashToStripIDMap",  
-                                        ByteObjectConversion.objectToByteArray((Serializable) globalSSTHashToStripIDMap));
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalSSTHashToStripIDMap));
             ECNetutils.writeBytesToFile(backupDir + "migratedParityCodes",  
-                                        ByteObjectConversion.objectToByteArray((Serializable) migratedParityCodes));
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.migratedParityCodes));
             ECNetutils.writeBytesToFile(backupDir + "migratedSStables",  
-                                        ByteObjectConversion.objectToByteArray((Serializable) migratedSStables));
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.migratedSStables));
 
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -4100,14 +4100,15 @@ public class StorageService extends NotificationBroadcasterSupport
 
         String backupDir = ECNetutils.getInMemoryDataDir();
         try {
-            globalCachedKeys = (ConcurrentHashMap<String, Integer>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalCachedKeys"));
-            globalStripIdToECMetadataMap = (ConcurrentHashMap<String, ECMetadataContent>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalStripIdToECMetadataMap"));
-            globalSSTHashToParityNodesMap = (ConcurrentHashMap<String, List<InetAddressAndPort>>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalSSTHashToParityNodesMap"));
-            globalSSTHashToStripIDMap = (ConcurrentHashMap<String, String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalSSTHashToStripIDMap"));
-            migratedParityCodes = (ConcurrentSkipListSet<String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "migratedParityCodes"));
-            migratedSStables = (ConcurrentSkipListSet<String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "migratedSStables"));
+            StorageService.instance.globalCachedKeys = (ConcurrentHashMap<String, Integer>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalCachedKeys"));
+            StorageService.instance.globalStripIdToECMetadataMap = (ConcurrentHashMap<String, ECMetadataContent>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalStripIdToECMetadataMap"));
+            StorageService.instance.globalSSTHashToParityNodesMap = (ConcurrentHashMap<String, List<InetAddressAndPort>>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalSSTHashToParityNodesMap"));
+            StorageService.instance.globalSSTHashToStripIDMap = (ConcurrentHashMap<String, String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalSSTHashToStripIDMap"));
+            StorageService.instance.migratedParityCodes = (ConcurrentSkipListSet<String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "migratedParityCodes"));
+            StorageService.instance.migratedSStables = (ConcurrentSkipListSet<String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "migratedSStables"));
 
             StorageService.instance.migratedParityCodeCount = migratedParityCodes.size();
+            StorageService.instance.migratedRawSSTablecount = migratedSStables.size();
 
         } catch (IOException e) {
             // TODO Auto-generated catch block
