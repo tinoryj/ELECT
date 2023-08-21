@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOError;
 import java.io.IOException;
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -116,8 +117,10 @@ import org.apache.cassandra.hints.HintsService;
 import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler.BlockedECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.InetAddressAndPortComparator;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
@@ -263,6 +266,7 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();
     public ConcurrentHashMap<String, SSTableReader> globalRecoveredSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
 
+    // [CASSANDRAEC] The following parameters are used to support data migration
     public volatile long transferredSSTableCount = 0;
     public volatile long migratedParityCodeCount = 0;
     public ConcurrentSkipListSet<String> migratedParityCodes = new ConcurrentSkipListSet<String>();
@@ -4063,6 +4067,57 @@ public class StorageService extends NotificationBroadcasterSupport
             logger.debug("Forcing flush on keyspace {}, CF {}", keyspaceName, cfStore.name);
             cfStore.forceBlockingFlush(ColumnFamilyStore.FlushReason.USER_FORCED);
         }
+    }
+
+    public void backupImMemoryDataForElectColdStartup(){
+        String backupDir = ECNetutils.getInMemoryDataDir();
+
+        // Backup data to support degraded read
+        try {
+            ECNetutils.writeBytesToFile(backupDir + "globalCachedKeys",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) globalCachedKeys));
+            ECNetutils.writeBytesToFile(backupDir + "globalStripIdToECMetadataMap",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) globalStripIdToECMetadataMap));
+            ECNetutils.writeBytesToFile(backupDir + "globalSSTHashToParityNodesMap",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) globalSSTHashToParityNodesMap));
+            ECNetutils.writeBytesToFile(backupDir + "globalSSTHashToStripIDMap",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) globalSSTHashToStripIDMap));
+            ECNetutils.writeBytesToFile(backupDir + "migratedParityCodes",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) migratedParityCodes));
+            ECNetutils.writeBytesToFile(backupDir + "migratedSStables",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) migratedSStables));
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+    }
+
+    public void reloadImMemoryDataForElectColdStartup(){
+
+        // Backup data to support degraded read
+
+        String backupDir = ECNetutils.getInMemoryDataDir();
+        try {
+            globalCachedKeys = (ConcurrentHashMap<String, Integer>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalCachedKeys"));
+            globalStripIdToECMetadataMap = (ConcurrentHashMap<String, ECMetadataContent>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalStripIdToECMetadataMap"));
+            globalSSTHashToParityNodesMap = (ConcurrentHashMap<String, List<InetAddressAndPort>>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalSSTHashToParityNodesMap"));
+            globalSSTHashToStripIDMap = (ConcurrentHashMap<String, String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalSSTHashToStripIDMap"));
+            migratedParityCodes = (ConcurrentSkipListSet<String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "migratedParityCodes"));
+            migratedSStables = (ConcurrentSkipListSet<String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "migratedSStables"));
+
+            StorageService.instance.migratedParityCodeCount = migratedParityCodes.size();
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+
     }
 
     public List<String> getSSTableAccessFrequency(String keyspace) {

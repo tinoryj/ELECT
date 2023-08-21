@@ -497,6 +497,13 @@ public interface StorageServiceMBean extends NotificationEmitter {
      */
     public List<String> getSSTableAccessFrequency(String keyspace);
 
+
+    /**
+     * Backup or reload in memory data for cold startup
+     */
+    public void backupImMemoryDataForElectColdStartup();
+    public void reloadImMemoryDataForElectColdStartup();
+
     /**
      * Invoke repair asynchronously.
      * You can track repair progress by subscribing JMX notification sent from this

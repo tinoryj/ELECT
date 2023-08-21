@@ -73,6 +73,7 @@ import org.apache.cassandra.io.erasurecode.net.ECMessageVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdateVerbHandler;
 import org.apache.cassandra.io.sstable.SSTableHeaderFix;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -735,6 +736,12 @@ public class CassandraDaemon {
 
             setup(); // loading ssts, etc.
 
+
+            // [ELECT]
+            reloadMetadataForELECT();
+
+
+
             String pidFile = CASSANDRA_PID_FILE.getString();
 
             if (pidFile != null) {
@@ -770,6 +777,38 @@ public class CassandraDaemon {
                 exitOrFail(3, "Exception encountered during startup: " + e.getMessage());
             }
         }
+    }
+
+    public void reloadMetadataForELECT() {
+
+        // reload ec sstables
+        for(Keyspace keyspace : Keyspace.all()) {
+            if(keyspace.getName().equals("ycsb")) {
+            
+                for(ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
+                    if(cfs.getColumnFamilyName().equals("usertable0")) {
+                        for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                            if(sstable.isReplicationTransferredToErasureCoding()) {
+                                StorageService.instance.transferredSSTableCount++;
+                            }
+
+                            if(sstable.isDataMigrateToCloud()) {
+                                StorageService.instance.migratedRawSSTablecount++;
+                            }
+
+                        }
+                    } else if (cfs.getColumnFamilyName().contains("usertable")) {
+                        for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                            if(sstable.isReplicationTransferredToErasureCoding()) {
+                                StorageService.instance.globalSSTHashToECSSTableMap.put(sstable.getSSTableHashID(), sstable);
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
     }
 
     @VisibleForTesting
