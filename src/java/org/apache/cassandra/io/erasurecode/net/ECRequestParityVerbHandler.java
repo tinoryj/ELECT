@@ -25,6 +25,7 @@ import java.nio.file.Paths;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
+import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.StorageService;
@@ -45,10 +46,9 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         String sstHash = message.payload.sstHash;
         int parityIndex = message.payload.parityIndex;
         boolean isRecovery = message.payload.isRecovery;
-        String firstParityNode = message.payload.firstParityNode;
+        String requestNode = message.payload.requestNode;
         String receivedParityCodeDir = ECNetutils.getReceivedParityCodeDir();
         String filePath = receivedParityCodeDir + parityHash;
-        String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
         
 
         byte[] parityCode;
@@ -59,10 +59,6 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         int retryCount = 0;
         while (retryCount < MAX_RETRY_COUNT) {
             if (Files.exists(path)) {
-                break;
-            } else if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(localParityCodeDir + parityHash, firstParityNode)) {
-                filePath = localParityCodeDir + parityHash;
-                path = Paths.get(filePath);
                 break;
             }
             else {
@@ -97,7 +93,11 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
             parityCode = ECNetutils.readBytesFromFile(filePath);
             // response this parityCode to to source node
             ECResponseParity response = new ECResponseParity(parityHash, sstHash, parityCode, parityIndex, isRecovery);
-            response.responseParity(message.from());
+
+            if(requestNode == null)
+                response.responseParity(message.from());
+            else
+                response.responseParity(InetAddressAndPort.getByName(requestNode));
 
             // delete parity code file locally if it is parity update
             if (!isRecovery)

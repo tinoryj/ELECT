@@ -506,7 +506,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                                                                       oldSSTHash, 
                                                                       i, 
                                                                       false, 
-                                                                      parityNodes.get(0).getHostAddress(false));
+                                                                      null);
                         request.requestParityCode(parityNodes.get(i));
                     }
                     // delete local parity code file
