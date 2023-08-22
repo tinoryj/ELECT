@@ -223,7 +223,7 @@ public class ECRecovery {
         if (ecMetadataContent.parityHashList == null ||
                 ecMetadataContent.parityNodes == null) {
             ECNetutils.printStackTace(String.format(
-                    "rymERROR: When we are update old sstable (%s), we cannot to get parity hash or parity code for stripID (%s)",
+                    "rymERROR: When we are recovery old sstable (%s), we cannot to get parity hash or parity code for stripID (%s)",
                     oldSSTHash, ecMetadataContent.stripeId));
         } else {
 
@@ -287,20 +287,6 @@ public class ECRecovery {
                 }
 
             }
-
-            // File parityCodeFile = new File(parityCodeFileName);
-
-            // if(!parityCodeFile.exists()) {
-            // // retrieve from cloud
-            // try {
-            // ECNetutils.retrieveDataFromCloud("127.0.0.1",
-            // FBUtilities.getBroadcastAddressAndPort().getHostName(false), "usertable0",
-            // parityCodeFileName, ECNetutils.getLocalParityCodeDir());
-            // } catch (IOException e) {
-            // // TODO Auto-generated catch block
-            // e.printStackTrace();
-            // }
-            // }
 
 
         }
