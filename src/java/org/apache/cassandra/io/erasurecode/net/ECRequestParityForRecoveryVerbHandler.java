@@ -46,7 +46,7 @@ public class ECRequestParityForRecoveryVerbHandler implements IVerbHandler<ECReq
         List<String> parityHashList = message.payload.parityHashList;
         String sstHash = message.payload.sstHash;
         List<InetAddressAndPort>  parityNodeList = message.payload.parityNodeList;
-        int k = DatabaseDescriptor.getParityNodes();
+        int k = DatabaseDescriptor.getEcDataNodes();
 
         String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
 

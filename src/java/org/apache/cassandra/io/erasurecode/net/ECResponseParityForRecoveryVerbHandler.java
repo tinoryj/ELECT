@@ -41,7 +41,7 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
         List<String> parityHashList = message.payload.parityHashList;
         String firstParityNode = message.from().getHostAddress(false);
         String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
-        int k = DatabaseDescriptor.getParityNodes();
+        int k = DatabaseDescriptor.getEcDataNodes();
 
         logger.debug("rymDebug: Get parity code ({}) from ({}) for sstable ({}), the recovery flag is ({})", parityHashList, message.from(), sstHash);
 
@@ -49,7 +49,19 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
         for(int i = 0; i < parityHashList.size(); i++) {
             String parityCodeFileName = localParityCodeDir + parityHashList.get(i);
             if(StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, firstParityNode)) {
-                ByteBuffer parityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
+                byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
+                if(parityCode.length == 0)
+                    throw new IllegalArgumentException(String.format("rymERROR: cannot read data from parity code file (%s)", parityCodeFileName));
+
+                if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) == null) {
+                    throw new IllegalArgumentException(String.format("rymERROR: The erasure codes for sstHash (%s) is empty", sstHash));
+                }
+
+                if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].position() != 0) {
+                    throw new IllegalArgumentException(String.format("rymERROR: The erasure codes index (%s) for sstHash (%s) is empty", k + i, sstHash));
+                }
+
+
                 StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].put(parityCode);
             } else {
                 throw new FileNotFoundException(String.format("rymERROR: cannot download file (%s) from cloud", parityCodeFileName));
