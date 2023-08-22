@@ -61,6 +61,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
             if (Files.exists(path)) {
                 break;
             } else if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(localParityCodeDir + parityHash, firstParityNode)) {
+                path = Paths.get(localParityCodeDir + parityHash);
                 break;
             }
             else {
