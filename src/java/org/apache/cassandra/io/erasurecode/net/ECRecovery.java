@@ -227,6 +227,7 @@ public class ECRecovery {
                     oldSSTHash, ecMetadataContent.stripeId));
         } else {
 
+            // send recovery signal to the first parity node
 
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 && 
@@ -268,6 +269,7 @@ public class ECRecovery {
                 String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(0);
                 try {
                     ByteBuffer localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
+                    logger.debug("rymDebug: Read parity code ({}) locally for recovery", parityCodeFileName);
                     StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k].put(localParityCode);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
