@@ -20,6 +20,8 @@ package org.apache.cassandra.io.erasurecode.net;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -269,7 +271,7 @@ public class ECRecovery {
                 String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(0);
                 try {
                     ByteBuffer localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
-                    logger.debug("rymDebug: Read parity code ({}) locally for recovery", parityCodeFileName);
+                    logger.debug("rymDebug: Read parity code ({}) locally for recovery, the file is exists? ({})", parityCodeFileName, Files.exists(Paths.get(parityCodeFileName)));
                     StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k].put(localParityCode);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
