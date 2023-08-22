@@ -781,6 +781,9 @@ public class CassandraDaemon {
 
     public void reloadMetadataForELECT() {
 
+
+        Gossiper.buildNodeAndTokenList();
+
         // reload ec sstables
         for(Keyspace keyspace : Keyspace.all()) {
             if(keyspace.getName().equals("ycsb")) {
@@ -808,6 +811,8 @@ public class CassandraDaemon {
 
             }
         }
+
+
 
     }
 
