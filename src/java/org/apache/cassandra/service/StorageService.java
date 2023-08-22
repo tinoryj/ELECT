@@ -4616,7 +4616,7 @@ public class StorageService extends NotificationBroadcasterSupport
             replicaNodes.addAll(allHosts.subList(index, endIndex));
         }
 
-        logger.debug("rymDebug: token is ({}), replica nodes are ({})", token, replicaNodes);
+        logger.debug("rymDebug: token is ({}), replica nodes are ({}), all hosts are ({}), token ranges are ({})", token, replicaNodes, allHosts, Gossiper.getTokenRanges());
 
         return replicaNodes;
 
