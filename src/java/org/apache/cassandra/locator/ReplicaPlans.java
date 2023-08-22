@@ -607,8 +607,10 @@ public class ReplicaPlans
     public static ReplicaPlan.ForRangeRead forRangeRead(Keyspace keyspace, ConsistencyLevel consistencyLevel, AbstractBounds<PartitionPosition> range, int vnodeCount)
     {
         AbstractReplicationStrategy replicationStrategy = keyspace.getReplicationStrategy();
-        EndpointsForRange candidates = candidatesForRead(consistencyLevel, ReplicaLayout.forRangeReadLiveSorted(replicationStrategy, range).natural());
+        EndpointsForRange candidates = candidatesForRead(consistencyLevel,
+                ReplicaLayout.forRangeReadLiveSorted(replicationStrategy, range).natural());
         EndpointsForRange contacts = contactForRead(replicationStrategy, consistencyLevel, false, candidates);
+        logger.debug("[Tinoryj] range query candidates: {}, contacts: {}", candidates, contacts);
 
         assureSufficientLiveReplicasForRead(replicationStrategy, consistencyLevel, contacts);
         return new ReplicaPlan.ForRangeRead(keyspace, replicationStrategy, consistencyLevel, range, candidates, contacts, vnodeCount);
