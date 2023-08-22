@@ -270,8 +270,8 @@ public class ECRecovery {
                 // first get local parity codes
                 String parityCodeFileName = localParityCodeDir + ecMetadataContent.parityHashList.get(0);
                 try {
-                    ByteBuffer localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
                     logger.debug("rymDebug: Read parity code ({}) locally for recovery, the file is exists? ({})", parityCodeFileName, Files.exists(Paths.get(parityCodeFileName)));
+                    ByteBuffer localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
                     StorageService.instance.globalSSTHashToErasureCodesMap.get(oldSSTHash)[k].put(localParityCode);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
