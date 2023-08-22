@@ -45,8 +45,11 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         String sstHash = message.payload.sstHash;
         int parityIndex = message.payload.parityIndex;
         boolean isRecovery = message.payload.isRecovery;
+        String firstParityNode = message.payload.firstParityNode;
         String receivedParityCodeDir = ECNetutils.getReceivedParityCodeDir();
         String filePath = receivedParityCodeDir + parityHash;
+        String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
+        
 
         byte[] parityCode;
 
@@ -57,7 +60,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         while (retryCount < MAX_RETRY_COUNT) {
             if (Files.exists(path)) {
                 break;
-            } else if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityHash, message.from().getHostAddress(false))) {
+            } else if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(localParityCodeDir + parityHash, firstParityNode)) {
                 break;
             }
             else {

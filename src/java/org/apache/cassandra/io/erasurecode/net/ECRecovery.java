@@ -278,7 +278,11 @@ public class ECRecovery {
                 logger.debug("rymDebug: Recovery stage, the parity codes are ({})", ecMetadataContent.parityHashList);
                 for (int i = 1; i < ecMetadataContent.parityHashList.size(); i++) {
                     logger.debug("rymDebug: Recovery stage, request parity code ({}) for sstable ({})", ecMetadataContent.parityHashList.get(i), oldSSTHash);
-                    ECRequestParity request = new ECRequestParity(ecMetadataContent.parityHashList.get(i), oldSSTHash, i + k, true);
+                    ECRequestParity request = new ECRequestParity(ecMetadataContent.parityHashList.get(i), 
+                                                                  oldSSTHash, 
+                                                                  i + k, 
+                                                                  true, 
+                                                                  ecMetadataContent.parityNodes.get(0).getHostAddress(false));
                     request.requestParityCode(ecMetadataContent.parityNodes.get(i));
                 }
 
