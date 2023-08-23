@@ -213,8 +213,8 @@ public class ECRecovery {
                             "rymERROR: we cannot get index for sstable (%s) in ecMetadata, sstHash list is ({})",
                             oldSSTHash, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdList));
                 ECRequestData request = new ECRequestData(oldSSTHash, entry.getKey(), index);
-                logger.debug("rymDebug: request raw data of ({}) from nodes ({}), all replication nodes are ({})", 
-                             oldSSTHash, entry.getValue().get(0), entry.getValue());
+                logger.debug("rymDebug: Recovery sstable ({}), we request raw data of ({}) from nodes ({}), all replication nodes are ({})", 
+                             oldSSTHash, entry.getKey(), entry.getValue().get(0), entry.getValue());
                 request.requestData(entry.getValue().get(0));
                 // index++;
             }

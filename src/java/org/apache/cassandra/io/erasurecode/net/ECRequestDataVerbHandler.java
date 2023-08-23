@@ -86,7 +86,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         }
 
         if(!isFound)
-            throw new IllegalStateException(String.format("rymERROR: cannot find sstable (%s) in usertable0", requestSSTHash));
+            throw new IllegalStateException(String.format("rymERROR: cannot find sstable (%s) in usertable0 for recovery/update sstable (%s)", requestSSTHash, sstHash));
         
         
     }
