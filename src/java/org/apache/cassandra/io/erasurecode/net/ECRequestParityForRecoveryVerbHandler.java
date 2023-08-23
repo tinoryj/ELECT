@@ -79,13 +79,17 @@ public class ECRequestParityForRecoveryVerbHandler implements IVerbHandler<ECReq
             // get the needed parity code remotely, send a parity code request
             logger.debug("rymDebug: Recovery stage, the parity codes are ({})", parityHashList);
             for (int i = 1; i < parityHashList.size(); i++) {
-                logger.debug("rymDebug: Recovery stage, request parity code ({}) for sstable ({})", parityHashList.get(i), sstHash);
+                logger.debug("rymDebug: Recovery stage, request parity code ({}) for sstable ({}) from parity node ({})", parityHashList.get(i), sstHash, parityNodeList.get(i));
                 ECRequestParity request = new ECRequestParity(parityHashList.get(i), 
                                                               sstHash, 
                                                               i + k, 
                                                               true, 
                                                               message.from().getHostAddress(false));
-                request.requestParityCode(parityNodeList.get(i));
+                if(parityNodeList.get(i) instanceof InetAddressAndPort)
+                    request.requestParityCode(parityNodeList.get(i));
+                else {
+                    throw new IllegalStateException(String.format("rymERROR: the parity node (%s) is not type of InetAddressAndPort", parityNodeList.get(i)));
+                }
             }
         }
 
