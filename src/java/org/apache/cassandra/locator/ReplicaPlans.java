@@ -37,6 +37,7 @@ import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.UnavailableException;
 import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.service.reads.AlwaysSpeculativeRetryPolicy;
@@ -66,7 +67,7 @@ import static org.apache.cassandra.db.ConsistencyLevel.localQuorumForOurDc;
 import static org.apache.cassandra.locator.Replicas.addToCountPerDc;
 import static org.apache.cassandra.locator.Replicas.countInOurDc;
 import static org.apache.cassandra.locator.Replicas.countPerDc;
-
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 public class ReplicaPlans {
     private static final Logger logger = LoggerFactory.getLogger(ReplicaPlans.class);
 
@@ -636,8 +637,9 @@ public class ReplicaPlans {
                 ReplicaLayout.forRangeReadLiveSorted(replicationStrategy, range).natural());
         EndpointsForRange contacts = contactForRead(replicationStrategy, consistencyLevel, false, candidates);
         if (keyspace.getName().equals("ycsb")) {
-            logger.debug("[Tinoryj] For key token = {}, range query candidates: {}, contacts: {}",
-                    range.right.getToken(), candidates, contacts);
+            logger.debug("[Tinoryj] For key token right = {}, left = {}, range query candidates: {}, contacts: {}",
+                    range.right.getToken(), range.left.getToken(), candidates, contacts);
+            ECNetutils.printStackTace("forRangeRead");
         }
         assureSufficientLiveReplicasForRead(replicationStrategy, consistencyLevel, contacts);
         return new ReplicaPlan.ForRangeRead(keyspace, replicationStrategy, consistencyLevel, range, candidates,
