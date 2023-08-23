@@ -13,7 +13,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License.
+* limitations under the License
  */
 package org.apache.cassandra.cql3;
 
@@ -483,6 +483,7 @@ public class QueryProcessor implements QueryHandler
 
     public static Future<UntypedResultSet> executeAsync(InetAddressAndPort address, String query, Object... values)
     {
+        logger.debug("[Tinoryj] executeAsync: the query string is {}", query);
         Prepared prepared = prepareInternal(query);
         int nowInSec = FBUtilities.nowInSeconds();
         QueryOptions options = makeInternalOptionsWithNowInSec(prepared.statement, nowInSec, values);
