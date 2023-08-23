@@ -639,7 +639,7 @@ public class ReplicaPlans {
         if (keyspace.getName().equals("ycsb")) {
             logger.debug("[Tinoryj] For key token right = {}, left = {}, range query candidates: {}, contacts: {}",
                     range.right.getToken(), range.left.getToken(), candidates, contacts);
-            ECNetutils.printStackTace("forRangeRead");
+            // ECNetutils.printStackTace("forRangeRead");
         }
         assureSufficientLiveReplicasForRead(replicationStrategy, consistencyLevel, contacts);
         return new ReplicaPlan.ForRangeRead(keyspace, replicationStrategy, consistencyLevel, range, candidates,

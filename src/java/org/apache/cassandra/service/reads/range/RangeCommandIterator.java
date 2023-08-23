@@ -220,45 +220,49 @@ public class RangeCommandIterator extends AbstractIterator<RowIterator> implemen
             }
 
             // for (Replica replica : replicaPlan.contacts()) {
-            //     Tracing.trace("Enqueuing request to {}", replica);
-            //     logger.debug("[Tinoryj] current replica is: {}", replica);
-            //     ReadCommand command = replica.isFull() ? rangeCommand : rangeCommand.copyAsTransientQuery(replica);
-            //     Message<ReadCommand> message = command.createMessage(trackRepairedStatus && replica.isFull());
-            //     MessagingService.instance().sendWithCallback(message, replica.endpoint(), handler);
+            // Tracing.trace("Enqueuing request to {}", replica);
+            // logger.debug("[Tinoryj] current replica is: {}", replica);
+            // ReadCommand command = replica.isFull() ? rangeCommand :
+            // rangeCommand.copyAsTransientQuery(replica);
+            // Message<ReadCommand> message = command.createMessage(trackRepairedStatus &&
+            // replica.isFull());
+            // MessagingService.instance().sendWithCallback(message, replica.endpoint(),
+            // handler);
             // }
 
-            // switch (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
-            //     case 0:
-            //         // In case received request is not for primary LSM tree
-            //         rangeCommand.updateTableMetadata(
-            //                 Keyspace.open("ycsb").getColumnFamilyStore("usertable0")
-            //                         .metadata());
-            //         ColumnFilter newColumnFilter = ColumnFilter
-            //                 .allRegularColumnsBuilder(rangeCommand.metadata(), false)
-            //                 .build();
-            //         rangeCommand.updateColumnFilter(newColumnFilter);
-            //         break;
-            //     case 1:
-            //         rangeCommand.updateTableMetadata(
-            //                 Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
-            //                         .metadata());
-            //         ColumnFilter newColumnFilter1 = ColumnFilter
-            //                 .allRegularColumnsBuilder(rangeCommand.metadata(), false)
-            //                 .build();
-            //         rangeCommand.updateColumnFilter(newColumnFilter1);
-            //         break;
-            //     case 2:
-            //         rangeCommand.updateTableMetadata(
-            //                 Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
-            //                         .metadata());
-            //         ColumnFilter newColumnFilter2 = ColumnFilter
-            //                 .allRegularColumnsBuilder(rangeCommand.metadata(), false)
-            //                 .build();
-            //         rangeCommand.updateColumnFilter(newColumnFilter2);
-            //         break;
-            //     default:
-            //         logger.error("[Tinoryj-ERROR] Not support replication factor larger than 3");
-            //         break;
+            // switch
+            // (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
+            // case 0:
+            // // In case received request is not for primary LSM tree
+            // rangeCommand.updateTableMetadata(
+            // Keyspace.open("ycsb").getColumnFamilyStore("usertable0")
+            // .metadata());
+            // ColumnFilter newColumnFilter = ColumnFilter
+            // .allRegularColumnsBuilder(rangeCommand.metadata(), false)
+            // .build();
+            // rangeCommand.updateColumnFilter(newColumnFilter);
+            // break;
+            // case 1:
+            // rangeCommand.updateTableMetadata(
+            // Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
+            // .metadata());
+            // ColumnFilter newColumnFilter1 = ColumnFilter
+            // .allRegularColumnsBuilder(rangeCommand.metadata(), false)
+            // .build();
+            // rangeCommand.updateColumnFilter(newColumnFilter1);
+            // break;
+            // case 2:
+            // rangeCommand.updateTableMetadata(
+            // Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
+            // .metadata());
+            // ColumnFilter newColumnFilter2 = ColumnFilter
+            // .allRegularColumnsBuilder(rangeCommand.metadata(), false)
+            // .build();
+            // rangeCommand.updateColumnFilter(newColumnFilter2);
+            // break;
+            // default:
+            // logger.error("[Tinoryj-ERROR] Not support replication factor larger than 3");
+            // break;
             // }
 
         } else {
@@ -285,6 +289,8 @@ public class RangeCommandIterator extends AbstractIterator<RowIterator> implemen
             for (int i = 0; i < concurrencyFactor && replicaPlans.hasNext();) {
                 ReplicaPlan.ForRangeRead replicaPlan = replicaPlans.next();
 
+                logger.debug("[Tinoryj] The next request replica plan is : {}. contacts is {}", replicaPlan,
+                        replicaPlan.contacts());
                 @SuppressWarnings("resource") // response will be closed by concatAndBlockOnRepair, or in the catch
                                               // block below
                 SingleRangeResponse response = query(replicaPlan, i == 0);
