@@ -69,7 +69,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
 
             Token tokenForRead = (command instanceof SinglePartitionReadCommand
                     ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
-                    : ((PartitionRangeReadCommand) command).dataRange().keyRange.left.getToken());
+                    : ((PartitionRangeReadCommand) command).dataRange().keyRange.right.getToken());
 
             List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(command.metadata().keyspace, tokenForRead);

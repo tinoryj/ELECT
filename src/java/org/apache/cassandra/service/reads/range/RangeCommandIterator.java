@@ -202,9 +202,9 @@ public class RangeCommandIterator extends AbstractIterator<RowIterator> implemen
 
         if (rangeCommand.metadata().keyspace.equals("ycsb")) {
             logger.debug("[Tinoryj] rangeCommand: {}, replicaPlan is: {}", rangeCommand, replicaPlan.contacts());
-            List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
-                    .getReplicaNodesWithPortFromTokenForDegradeRead("ycsb",
-                            rangeCommand.dataRange().keyRange.left.getToken());
+            // List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
+            //         .getReplicaNodesWithPortFromTokenForDegradeRead("ycsb",
+            //                 rangeCommand.dataRange().keyRange.left.getToken());
 
             if (replicaPlan.contacts().size() == 1 && replicaPlan.contacts().get(0).isSelf()) {
                 Stage.READ.execute(new StorageProxy.LocalReadRunnable(rangeCommand, handler, trackRepairedStatus));

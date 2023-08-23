@@ -83,9 +83,9 @@ public class RangeCommands {
                 consistencyLevel);
         if (command.metadata().keyspace.equals("ycsb")) {
             logger.debug(
-                    "[Tinoryj] For right token is {}, left token is {}, Create range command iterator, the replica plans is {}",
+                    "[Tinoryj] For right token is {}, left token is {}, Create range command iterator, the number of replica plans is {}",
                     command.dataRange().keyRange.right.getToken(), command.dataRange().keyRange.left.getToken(),
-                    replicaPlans);
+                    replicaPlans.size());
         }
         // our estimate of how many result rows there will be per-range
         float resultsPerRange = estimateResultsPerRange(command, keyspace);
