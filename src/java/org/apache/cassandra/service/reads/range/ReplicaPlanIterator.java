@@ -38,8 +38,11 @@ import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.AbstractIterator;
 import org.apache.cassandra.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class ReplicaPlanIterator extends AbstractIterator<ReplicaPlan.ForRangeRead> {
+    private static final Logger logger = LoggerFactory.getLogger(ReplicaPlanIterator.class);
     private final Keyspace keyspace;
     private final ConsistencyLevel consistency;
     @VisibleForTesting
@@ -68,7 +71,7 @@ class ReplicaPlanIterator extends AbstractIterator<ReplicaPlan.ForRangeRead> {
     protected ReplicaPlan.ForRangeRead computeNext() {
         if (!ranges.hasNext())
             return endOfData();
-
+        logger.debug("[Tinoryj] Compute next replica plan for range read");
         return ReplicaPlans.forRangeRead(keyspace, consistency, ranges.next(), 1);
     }
 
