@@ -109,7 +109,7 @@ public class ECRequestParityForRecovery {
 
             try {
                 List<String> parityHashList = (List<String>) ByteObjectConversion.byteArrayToObject(parityHashListInBytes);
-                List<InetAddressAndPort> parityNodeList = (List<InetAddressAndPort>) ByteObjectConversion.byteArrayToObject(parityHashListInBytes);
+                List<InetAddressAndPort> parityNodeList = (List<InetAddressAndPort>) ByteObjectConversion.byteArrayToObject(parityNodeListInBytes);
 
                 return new ECRequestParityForRecovery(sstHash, parityHashList, parityNodeList);
             } catch (Exception e) {
