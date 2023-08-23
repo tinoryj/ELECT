@@ -197,7 +197,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             executeCount++;
 
             logger.debug(
-                    "rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({}), total received ec messages are ({}), consumed ec messages are ({}), globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({}), generated normal metadata is ({}), padding zero metadata is ({}), execute count is ({})",
+                    "rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({}), total received ec messages are ({}), consumed ec messages are ({}), globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({}), generated normal metadata is ({}), padding zero metadata is ({}), migrated parity code count is ({}), migrated sstable count is ({}) , execute count is ({})",
                     StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(),
                     StorageService.instance.globalReadyOldSSTableForECStripUpdateCount, traversedSSTables,
                     globalReceivedNewSSTable, globalConsumedNewSSTable, globalReceivedOldSSTable,
@@ -207,7 +207,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     StorageService.instance.globalReadyECMetadataCount,
                     StorageService.instance.globalBolckedECMetadataCount,
                     StorageService.instance.generatedNormalECMetadata,
-                    StorageService.instance.generatedPaddingZeroECMetadata, executeCount);
+                    StorageService.instance.generatedPaddingZeroECMetadata, 
+                    StorageService.instance.migratedParityCodeCount,
+                    StorageService.instance.migratedRawSSTablecount,
+                    executeCount);
             long traversedNewSSTables = 0;
 
             long totalTimeOfRetrievedParityCodes = 0;
@@ -475,7 +478,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                         byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
                         parityCodes[i].put(parityCode);
-                        StorageService.ossAccessObj.deleteSingleFileInOSS(parityCodeFileName);
+                        // StorageService.ossAccessObj.deleteSingleFileInOSS(parityCodeFileName);
                         StorageService.instance.migratedParityCodeCount--;
                         StorageService.instance.migratedParityCodes.remove(parityHashList.get(i));
                     }
@@ -499,7 +502,11 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                     // get the needed parity code remotely, send a parity code request
                     for (int i = 1; i < parityHashList.size(); i++) {
-                        ECRequestParity request = new ECRequestParity(parityHashList.get(i), oldSSTHash, i, false);
+                        ECRequestParity request = new ECRequestParity(parityHashList.get(i), 
+                                                                      oldSSTHash, 
+                                                                      i, 
+                                                                      false, 
+                                                                      null);
                         request.requestParityCode(parityNodes.get(i));
                     }
                     // delete local parity code file

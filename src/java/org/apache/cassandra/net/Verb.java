@@ -70,10 +70,14 @@ import org.apache.cassandra.io.erasurecode.net.ECRecoveryForSecondaryVerbHandler
 import org.apache.cassandra.io.erasurecode.net.ECRequestData;
 import org.apache.cassandra.io.erasurecode.net.ECRequestDataVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECRequestParity;
+import org.apache.cassandra.io.erasurecode.net.ECRequestParityForRecovery;
+import org.apache.cassandra.io.erasurecode.net.ECRequestParityForRecoveryVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECRequestParityVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECResponseData;
 import org.apache.cassandra.io.erasurecode.net.ECResponseDataVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECResponseParity;
+import org.apache.cassandra.io.erasurecode.net.ECResponseParityForRecovery;
+import org.apache.cassandra.io.erasurecode.net.ECResponseParityForRecoveryVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECResponseParityVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler;
@@ -174,6 +178,10 @@ public enum Verb {
     LSMTREERECOVERY_REQ(226, P3, writeTimeout, ERASURECODE, () -> LSMTreeRecovery.serializer, () -> LSMTreeRecoveryVerbHandler.instance, LSMTREERECOVERY_RSP),
     RESPONSELSMTREERECOVERY_RSP(227, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
     RESPONSELSMTREERECOVERY_REQ(228, P3, writeTimeout, ERASURECODE, () -> ResponseLSMTreeRecovery.serializer, () -> ResponseLSMTreeRecoveryVerbHandler.instance, RESPONSELSMTREERECOVERY_RSP),
+    ECREQUESTPARITYFORRECOVERY_RSP(229, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECREQUESTPARITYFORRECOVERY_REQ(230, P3, writeTimeout, ERASURECODE, () -> ECRequestParityForRecovery.serializer, () -> ECRequestParityForRecoveryVerbHandler.instance, ECREQUESTPARITYFORRECOVERY_RSP),
+    ECRESPONSEPARITYFORRECOVERY_RSP(231, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECRESPONSEPARITYFORRECOVERY_REQ(232, P3, writeTimeout, ERASURECODE, () -> ECResponseParityForRecovery.serializer, () -> ECResponseParityForRecoveryVerbHandler.instance, ECRESPONSEPARITYFORRECOVERY_RSP),
 
     PAXOS_PREPARE_RSP(93, P2, writeTimeout, REQUEST_RESPONSE, () -> PrepareResponse.serializer,
             () -> ResponseVerbHandler.instance),

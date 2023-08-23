@@ -1933,24 +1933,25 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 
     }
 
+    public static void buildNodeAndTokenList() {
+
+        for (InetAddressAndPort seed : DatabaseDescriptor.getSeeds())
+        {
+            allNodes.add(seed);
+        }
+
+        for (String token : DatabaseDescriptor.getTokenRanges())
+        {
+            tokenRanges.add(Long.parseLong(token));
+        }
+    }
+
     public static ConcurrentSkipListSet<InetAddressAndPort> getAllNodesBasedOnSeeds() {
-        if(allNodes.isEmpty()){
-            for (InetAddressAndPort seed : DatabaseDescriptor.getSeeds())
-            {
-                allNodes.add(seed);
-            }
-        } 
         return allNodes;
     }
 
 
     public static ConcurrentSkipListSet<Long> getTokenRanges() {
-        if(tokenRanges.isEmpty()) {
-            for (String token : DatabaseDescriptor.getTokenRanges())
-            {
-                tokenRanges.add(Long.parseLong(token));
-            }
-        }
         return tokenRanges;
     }
 

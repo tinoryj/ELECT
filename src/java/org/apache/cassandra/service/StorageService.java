@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOError;
 import java.io.IOException;
+import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -116,8 +117,10 @@ import org.apache.cassandra.hints.HintsService;
 import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler.BlockedECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.InetAddressAndPortComparator;
 import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
 import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
@@ -263,6 +266,7 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();
     public ConcurrentHashMap<String, SSTableReader> globalRecoveredSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
 
+    // [CASSANDRAEC] The following parameters are used to support data migration
     public volatile long transferredSSTableCount = 0;
     public volatile long migratedParityCodeCount = 0;
     public ConcurrentSkipListSet<String> migratedParityCodes = new ConcurrentSkipListSet<String>();
@@ -4065,6 +4069,62 @@ public class StorageService extends NotificationBroadcasterSupport
         }
     }
 
+    public void backupImMemoryDataForElectColdStartup(){
+        String backupDir = ECNetutils.getInMemoryDataDir();
+
+        // Backup data to support degraded read
+        try {
+            ECNetutils.writeBytesToFile(backupDir + "globalCachedKeys",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalCachedKeys));
+            ECNetutils.writeBytesToFile(backupDir + "globalStripIdToECMetadataMap",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalStripIdToECMetadataMap));
+            ECNetutils.writeBytesToFile(backupDir + "globalSSTHashToParityNodesMap",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalSSTHashToParityNodesMap));
+            ECNetutils.writeBytesToFile(backupDir + "globalSSTHashToStripIDMap",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalSSTHashToStripIDMap));
+            ECNetutils.writeBytesToFile(backupDir + "migratedParityCodes",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.migratedParityCodes));
+            ECNetutils.writeBytesToFile(backupDir + "migratedSStables",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.migratedSStables));
+
+            logger.debug("rymDebug: backup migrated parity codes({}), migrated sstables ({})", StorageService.instance.migratedParityCodes, StorageService.instance.migratedSStables);
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+    }
+
+    public void reloadImMemoryDataForElectColdStartup(){
+
+        // Backup data to support degraded read
+
+        String backupDir = ECNetutils.getInMemoryDataDir();
+        try {
+            StorageService.instance.globalCachedKeys = (ConcurrentHashMap<String, Integer>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalCachedKeys"));
+            StorageService.instance.globalStripIdToECMetadataMap = (ConcurrentHashMap<String, ECMetadataContent>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalStripIdToECMetadataMap"));
+            StorageService.instance.globalSSTHashToParityNodesMap = (ConcurrentHashMap<String, List<InetAddressAndPort>>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalSSTHashToParityNodesMap"));
+            StorageService.instance.globalSSTHashToStripIDMap = (ConcurrentHashMap<String, String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalSSTHashToStripIDMap"));
+            StorageService.instance.migratedParityCodes = (ConcurrentSkipListSet<String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "migratedParityCodes"));
+            StorageService.instance.migratedSStables = (ConcurrentSkipListSet<String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "migratedSStables"));
+
+            StorageService.instance.migratedParityCodeCount = migratedParityCodes.size();
+            StorageService.instance.migratedRawSSTablecount = migratedSStables.size();
+
+            logger.debug("rymDebug: reload migrated parity codes({}), migrated sstables ({})", StorageService.instance.migratedParityCodes, StorageService.instance.migratedSStables);
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+
+    }
+
     public List<String> getSSTableAccessFrequency(String keyspace) {
         int level = DatabaseDescriptor.getMaxLevelCount();
         List<String> results = new ArrayList<>();
@@ -4555,6 +4615,8 @@ public class StorageService extends NotificationBroadcasterSupport
         } else {
             replicaNodes.addAll(allHosts.subList(index, endIndex));
         }
+
+        logger.debug("rymDebug: token is ({}), replica nodes are ({}), all hosts are ({}), token ranges are ({})", token, replicaNodes, allHosts, Gossiper.getTokenRanges());
 
         return replicaNodes;
 
