@@ -68,7 +68,7 @@ public class ECRequestParityForRecoveryVerbHandler implements IVerbHandler<ECReq
                 logger.debug("rymDebug: Read parity code ({}) locally for recovery, the file is exists? ({})", parityCodeFileName, Files.exists(Paths.get(parityCodeFileName)));
                 // send back to the requested node
                 byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
-                ECResponseParity response = new ECResponseParity(parityHashList.get(0), sstHash, parityCode, 0, true);
+                ECResponseParity response = new ECResponseParity(parityHashList.get(0), sstHash, parityCode, k, true);
                 response.responseParity(message.from());
 
             } catch (IOException e) {
