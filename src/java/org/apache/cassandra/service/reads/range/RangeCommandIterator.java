@@ -199,82 +199,14 @@ public class RangeCommandIterator extends AbstractIterator<RowIterator> implemen
                 sharedReplicaPlan, readRepair, queryStartNanoTime, trackRepairedStatus);
         ReadCallback<EndpointsForRange, ReplicaPlan.ForRangeRead> handler = new ReadCallback<>(resolver, rangeCommand,
                 sharedReplicaPlan, queryStartNanoTime);
-
-        if (rangeCommand.metadata().keyspace.equals("ycsb")) {
-            logger.debug("[Tinoryj] rangeCommand: {}, replicaPlan is: {}", rangeCommand, replicaPlan.contacts());
-            // List<InetAddressAndPort> sendRequestAddresses = StorageService.instance
-            //         .getReplicaNodesWithPortFromTokenForDegradeRead("ycsb",
-            //                 rangeCommand.dataRange().keyRange.left.getToken());
-
-            if (replicaPlan.contacts().size() == 1 && replicaPlan.contacts().get(0).isSelf()) {
-                Stage.READ.execute(new StorageProxy.LocalReadRunnable(rangeCommand, handler, trackRepairedStatus));
-            } else {
-                for (Replica replica : replicaPlan.contacts()) {
-                    Tracing.trace("Enqueuing request to {}", replica);
-                    logger.debug("[Tinoryj] for left token is {}, current replica is: {}",
-                            rangeCommand.dataRange().keyRange.left.getToken(), replica);
-                    ReadCommand command = replica.isFull() ? rangeCommand : rangeCommand.copyAsTransientQuery(replica);
-                    Message<ReadCommand> message = command.createMessage(trackRepairedStatus && replica.isFull());
-                    MessagingService.instance().sendWithCallback(message, replica.endpoint(), handler);
-                }
-            }
-
-            // for (Replica replica : replicaPlan.contacts()) {
-            // Tracing.trace("Enqueuing request to {}", replica);
-            // logger.debug("[Tinoryj] current replica is: {}", replica);
-            // ReadCommand command = replica.isFull() ? rangeCommand :
-            // rangeCommand.copyAsTransientQuery(replica);
-            // Message<ReadCommand> message = command.createMessage(trackRepairedStatus &&
-            // replica.isFull());
-            // MessagingService.instance().sendWithCallback(message, replica.endpoint(),
-            // handler);
-            // }
-
-            // switch
-            // (sendRequestAddresses.indexOf(FBUtilities.getBroadcastAddressAndPort())) {
-            // case 0:
-            // // In case received request is not for primary LSM tree
-            // rangeCommand.updateTableMetadata(
-            // Keyspace.open("ycsb").getColumnFamilyStore("usertable0")
-            // .metadata());
-            // ColumnFilter newColumnFilter = ColumnFilter
-            // .allRegularColumnsBuilder(rangeCommand.metadata(), false)
-            // .build();
-            // rangeCommand.updateColumnFilter(newColumnFilter);
-            // break;
-            // case 1:
-            // rangeCommand.updateTableMetadata(
-            // Keyspace.open("ycsb").getColumnFamilyStore("usertable1")
-            // .metadata());
-            // ColumnFilter newColumnFilter1 = ColumnFilter
-            // .allRegularColumnsBuilder(rangeCommand.metadata(), false)
-            // .build();
-            // rangeCommand.updateColumnFilter(newColumnFilter1);
-            // break;
-            // case 2:
-            // rangeCommand.updateTableMetadata(
-            // Keyspace.open("ycsb").getColumnFamilyStore("usertable2")
-            // .metadata());
-            // ColumnFilter newColumnFilter2 = ColumnFilter
-            // .allRegularColumnsBuilder(rangeCommand.metadata(), false)
-            // .build();
-            // rangeCommand.updateColumnFilter(newColumnFilter2);
-            // break;
-            // default:
-            // logger.error("[Tinoryj-ERROR] Not support replication factor larger than 3");
-            // break;
-            // }
-
+        if (replicaPlan.contacts().size() == 1 && replicaPlan.contacts().get(0).isSelf()) {
+            Stage.READ.execute(new StorageProxy.LocalReadRunnable(rangeCommand, handler, trackRepairedStatus));
         } else {
-            if (replicaPlan.contacts().size() == 1 && replicaPlan.contacts().get(0).isSelf()) {
-                Stage.READ.execute(new StorageProxy.LocalReadRunnable(rangeCommand, handler, trackRepairedStatus));
-            } else {
-                for (Replica replica : replicaPlan.contacts()) {
-                    Tracing.trace("Enqueuing request to {}", replica);
-                    ReadCommand command = replica.isFull() ? rangeCommand : rangeCommand.copyAsTransientQuery(replica);
-                    Message<ReadCommand> message = command.createMessage(trackRepairedStatus && replica.isFull());
-                    MessagingService.instance().sendWithCallback(message, replica.endpoint(), handler);
-                }
+            for (Replica replica : replicaPlan.contacts()) {
+                Tracing.trace("Enqueuing request to {}", replica);
+                ReadCommand command = replica.isFull() ? rangeCommand : rangeCommand.copyAsTransientQuery(replica);
+                Message<ReadCommand> message = command.createMessage(trackRepairedStatus && replica.isFull());
+                MessagingService.instance().sendWithCallback(message, replica.endpoint(), handler);
             }
         }
 

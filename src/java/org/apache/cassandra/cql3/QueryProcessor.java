@@ -483,7 +483,6 @@ public class QueryProcessor implements QueryHandler
 
     public static Future<UntypedResultSet> executeAsync(InetAddressAndPort address, String query, Object... values)
     {
-        logger.debug("[Tinoryj] executeAsync: the query string is {}", query);
         Prepared prepared = prepareInternal(query);
         int nowInSec = FBUtilities.nowInSeconds();
         QueryOptions options = makeInternalOptionsWithNowInSec(prepared.statement, nowInSec, values);
