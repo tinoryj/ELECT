@@ -54,7 +54,8 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                             String passWd = "yjren";
                             String host = sourceAddress.getHostAddress(false);
                             String targetDir = userName + "@" + host + ":" + rawCfPath;
-                            String script = "sshpass -p \"" + passWd + "\" scp -r " + dir + " " + targetDir;
+                            // String script = "sshpass -p \"" + passWd + "\" scp -r " + dir + " " + targetDir;
+                            String script = "ls " + dir;                            
                             logger.debug("rymDebug: The script is ({})", script);
                             ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
                             Process process = processBuilder.start();
