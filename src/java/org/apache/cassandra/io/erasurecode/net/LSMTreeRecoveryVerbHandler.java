@@ -55,6 +55,7 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                             String host = sourceAddress.getHostAddress(false);
                             String targetDir = userName + "@" + host + ":" + rawCfPath;
                             String script = "sshpass -p \"" + passWd + "\" scp -r " + dir + " " + targetDir;
+                            logger.debug("rymDebug: The script is ({})", script);
                             ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
                             Process process = processBuilder.start();
                             
@@ -84,5 +85,33 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
         
         
     }
+
+    // write a Main function to test this class
+    public static void main(String[] args) throws IOException {
+        // String rawCfPath = "/home/yjren/cassandra/data/ycsb/usertable1-bak";
+        // String sourceCfName = "usertable1";
+        // String targetCfName = "usertable2";
+        String script = "ls";
+
+        ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
+        Process process = processBuilder.start();
+        try {
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                logger.debug("rymDebug: Performing rsync script successfully!");
+
+                // send response code back
+                //logger.debug("rymDebug: Copied ({}) files to node ({}), source cfName is ({}), rawPath is ({})", targetCfName, sourceAddress, sourceCfName, rawCfPath);
+                //ResponseLSMTreeRecovery.sendRecoveryIsReadySignal(sourceAddress, rawCfPath, sourceCfName);
+
+            } else {
+                logger.debug("rymDebug: Failed to perform rsync script!");
+            }
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
 
 }
