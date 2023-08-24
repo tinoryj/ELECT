@@ -75,6 +75,9 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
                             try {
                                 recoveryDataFromErasureCodesForLSMTree(file.getAbsolutePath(), subDir.getAbsolutePath());
                                 cnt++;
+                                if(cnt%30==0) {
+                                    Thread.sleep(1000);
+                                }
                                 // Time.sleep(1, TimeUnit.SECONDS);
                             } catch (Exception e) {
                                 // TODO Auto-generated catch block
@@ -101,7 +104,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
     }
 
 
-    private static synchronized void recoveryDataFromErasureCodesForLSMTree(String ecMetadataFile, String cfPath) throws Exception {
+    private static void recoveryDataFromErasureCodesForLSMTree(String ecMetadataFile, String cfPath) throws Exception {
         int k = DatabaseDescriptor.getEcDataNodes();
         int m = DatabaseDescriptor.getParityNodes();
         logger.debug("rymDebug: start recovery ecMetadata ({})", ecMetadataFile);
