@@ -51,7 +51,7 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                     for(String dir : dataDirs) {
                         if(dir.contains(targetCfName)) {
                             String userName = "yjren";
-                            String passWd = "yjren";
+                            // String passWd = "yjren";
                             String host = sourceAddress.getHostAddress(false);
                             String targetDir = userName + "@" + host + ":" + rawCfPath;
                             // String script = "sshpass -p \"" + passWd + "\" scp -r " + dir + " " + targetDir;

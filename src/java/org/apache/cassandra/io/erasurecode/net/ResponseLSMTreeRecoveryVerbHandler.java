@@ -64,18 +64,26 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         int cnt = 0;
 
         if(dataFolder.exists() && dataFolder.isDirectory()) {
-            File[] files = dataFolder.listFiles();
-            for(File file : files) {
-                if(file.isFile() && file.getName().contains("EC.db")) {
-                    try {
-                        // recoveryDataFromErasureCodesForLSMTree(file.getName(), rawCfPath);
-                        cnt++;
-                        Time.sleep(1, TimeUnit.SECONDS);
-                    } catch (Exception e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
+            File[] subDirectories = dataFolder.listFiles(File::isDirectory);
+            if(subDirectories != null) {
+
+                for(File subDir : subDirectories) {
+                    logger.debug("rymDebug: current dir is ({})", subDir.getAbsolutePath());
+                    File[] files = subDir.listFiles();
+                    for(File file : files) {
+                        if(file.isFile() && file.getName().contains("EC.db")) {
+                            try {
+                                // recoveryDataFromErasureCodesForLSMTree(file.getName(), rawCfPath);
+                                cnt++;
+                                Time.sleep(1, TimeUnit.SECONDS);
+                            } catch (Exception e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
+                        }
                     }
                 }
+
             }
 
         } else {
