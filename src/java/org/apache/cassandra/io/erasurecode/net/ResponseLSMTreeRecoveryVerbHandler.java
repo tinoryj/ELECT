@@ -104,6 +104,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
     private static void recoveryDataFromErasureCodesForLSMTree(String ecMetadataFile, String cfPath) throws Exception {
         int k = DatabaseDescriptor.getEcDataNodes();
         int m = DatabaseDescriptor.getParityNodes();
+        logger.debug("rymDebug: start recovery ecMetadata ({})", ecMetadataFile);
         // Step 1: Get the ECSSTable from global map and get the ecmetadata
         byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
         logger.debug("rymDebug: [Debug recovery] the size of ecMetadataInBytes is ({})", ecMetadataInBytes.length);
