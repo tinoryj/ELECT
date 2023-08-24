@@ -48,7 +48,7 @@ public class ResponseLSMTreeRecovery {
     public static void sendRecoveryIsReadySignal(InetAddressAndPort target, String rawCfPath, String cfName) {
 
         ResponseLSMTreeRecovery msg = new ResponseLSMTreeRecovery(rawCfPath, cfName);
-        Message<ResponseLSMTreeRecovery> message = Message.outWithFlag(Verb.ECREQUESTDATA_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
+        Message<ResponseLSMTreeRecovery> message = Message.outWithFlag(Verb.RESPONSELSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, target);
 
     }
