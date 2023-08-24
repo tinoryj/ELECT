@@ -101,7 +101,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
     }
 
 
-    private static void recoveryDataFromErasureCodesForLSMTree(String ecMetadataFile, String cfPath) throws Exception {
+    private static synchronized void recoveryDataFromErasureCodesForLSMTree(String ecMetadataFile, String cfPath) throws Exception {
         int k = DatabaseDescriptor.getEcDataNodes();
         int m = DatabaseDescriptor.getParityNodes();
         logger.debug("rymDebug: start recovery ecMetadata ({})", ecMetadataFile);
@@ -150,6 +150,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
             recoveryOriginalSrc[i].rewind();
         }
 
+        StorageService.instance.globalSSTHashToErasureCodesMap.remove(sstHash);
         ErasureCoderOptions ecOptions = new ErasureCoderOptions(k, m);
         ErasureDecoder decoder = new NativeRSDecoder(ecOptions);
         ByteBuffer[] output = new ByteBuffer[1];
@@ -172,7 +173,6 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         byte[] sstContent = new byte[dataFileSize];
         output[0].get(sstContent);
         ECNetutils.writeBytesToFile(dataFileName, sstContent);
-        StorageService.instance.globalSSTHashToErasureCodesMap.remove(sstHash);
         // SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
 
         // debug
