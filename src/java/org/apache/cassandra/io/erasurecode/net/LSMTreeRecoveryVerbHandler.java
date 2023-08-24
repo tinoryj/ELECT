@@ -39,6 +39,7 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
     @Override
     public void doVerb(Message<LSMTreeRecovery> message) throws IOException {
         String rawCfPath = message.payload.rawCfPath;
+        String sourceCfName = message.payload.sourceCfName;
         String targetCfName = message.payload.targetCfName;
         InetAddressAndPort sourceAddress = message.from();
         for (Keyspace keyspace : Keyspace.all()){
@@ -50,9 +51,10 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                     for(String dir : dataDirs) {
                         if(dir.contains(targetCfName)) {
                             String userName = "yjren";
+                            String passWd = "yjren";
                             String host = sourceAddress.getHostAddress(false);
-                            String targetDir = userName + "@" + host + rawCfPath;
-                            String script = "rsync -avz --progress -r " + dir + " " + targetDir;
+                            String targetDir = userName + "@" + host + ":" + rawCfPath;
+                            String script = "sshpass -p \"" + passWd + "\" scp -r " + dir + " " + targetDir;
                             ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
                             Process process = processBuilder.start();
                             
@@ -62,7 +64,8 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                                     logger.debug("rymDebug: Performing rsync script successfully!");
 
                                     // send response code back
-                                    ResponseLSMTreeRecovery.sendRecoveryIsReadySignal(sourceAddress, rawCfPath);
+                                    logger.debug("rymDebug: Copied ({}) files to node ({}), source cfName is ({}), rawPath is ({})", targetCfName, sourceAddress, sourceCfName, rawCfPath);
+                                    ResponseLSMTreeRecovery.sendRecoveryIsReadySignal(sourceAddress, rawCfPath, sourceCfName);
 
                                 } else {
                                     logger.debug("rymDebug: Failed to perform rsync script!");

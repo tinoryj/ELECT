@@ -26,20 +26,10 @@ import java.util.Map;
 import org.apache.cassandra.service.StorageServiceMBean;
 import org.apache.cassandra.utils.concurrent.Condition;
 
-import org.apache.cassandra.utils.progress.ProgressEvent;
-import org.apache.cassandra.utils.progress.ProgressEventType;
-import org.apache.cassandra.utils.progress.jmx.JMXNotificationProgressListener;
-
-import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.apache.cassandra.service.ActiveRepairService.ParentRepairStatus;
-import static org.apache.cassandra.service.ActiveRepairService.ParentRepairStatus.FAILED;
-import static org.apache.cassandra.service.ActiveRepairService.ParentRepairStatus.valueOf;
-import static org.apache.cassandra.tools.NodeProbe.JMX_NOTIFICATION_POLL_INTERVAL_SECONDS;
 import static org.apache.cassandra.utils.concurrent.Condition.newOneTimeCondition;
 import static org.apache.cassandra.utils.progress.ProgressEventType.*;
 
-public class RecoveryRunner extends JMXNotificationProgressListener
+public class RecoveryRunner
 {
     private final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS");
 
@@ -62,137 +52,9 @@ public class RecoveryRunner extends JMXNotificationProgressListener
 
     public void run() throws Exception
     {
-        cmd = ssProxy.recoveryAsync(keyspace, cfsName);
-        if (cmd <= 0)
-        {
-            // repairAsync can only return 0 for replication factor 1.
-            String message = String.format("Replication factor is 1. No repair is needed for keyspace '%s'", keyspace);
-            printMessage(message);
-        }
-        else
-        {
-            while (!condition.await(JMX_NOTIFICATION_POLL_INTERVAL_SECONDS, SECONDS))
-            {
-                queryForCompletedRepair(String.format("After waiting for poll interval of %s seconds",
-                                                      JMX_NOTIFICATION_POLL_INTERVAL_SECONDS));
-            }
-            Exception error = this.error;
-            if (error == null)
-            {
-                // notifications are lossy so its possible to see complete and not error; request latest state
-                // from the server
-                queryForCompletedRepair("condition satisfied");
-                error = this.error;
-            }
-            if (error != null)
-            {
-                throw error;
-            }
-        }
-    }
-
-    @Override
-    public boolean isInterestedIn(String tag)
-    {
-        return tag.equals("repair:" + cmd);
-    }
-
-    @Override
-    public void handleNotificationLost(long timestamp, String message)
-    {
-        if (cmd > 0)
-        {
-            // Check to see if the lost notification was a completion message
-            queryForCompletedRepair("After receiving lost notification");
-        }
-    }
-
-    @Override
-    public void handleConnectionClosed(long timestamp, String message)
-    {
-        handleConnectionFailed(timestamp, message);
-    }
-
-    @Override
-    public void handleConnectionFailed(long timestamp, String message)
-    {
-        error = new IOException(String.format("[%s] JMX connection closed. You should check server log for repair status of keyspace %s"
-                                              + "(Subsequent keyspaces are not going to be repaired).",
-                                              format.format(timestamp), keyspace));
-        condition.signalAll();
-    }
-
-    @Override
-    public void progress(String tag, ProgressEvent event)
-    {
-        ProgressEventType type = event.getType();
-        String message = event.getMessage();
-        if (type == PROGRESS)
-        {
-            message = message + " (progress: " + (int) event.getProgressPercentage() + "%)";
-        }
-        printMessage(message);
-        if (type == ERROR)
-        {
-            error = new RuntimeException(String.format("Repair job has failed with the error message: %s. " +
-                                                       "Check the logs on the repair participants for further details",
-                                                       message));
-        }
-        if (type == COMPLETE)
-        {
-            condition.signalAll();
-        }
+        ssProxy.recoveryAsync(keyspace, cfsName);
+     
     }
 
 
-    private void queryForCompletedRepair(String triggeringCondition)
-    {
-        List<String> status = ssProxy.getParentRepairStatus(cmd);
-        String queriedString = "queried for parent session status and";
-        if (status == null)
-        {
-            String message = String.format("%s %s couldn't find repair status for cmd: %s", triggeringCondition,
-                                           queriedString, cmd);
-            printMessage(message);
-        }
-        else
-        {
-            ParentRepairStatus parentRepairStatus = valueOf(status.get(0));
-            List<String> messages = status.subList(1, status.size());
-            switch (parentRepairStatus)
-            {
-                case COMPLETED:
-                case FAILED:
-                    printMessage(String.format("%s %s discovered repair %s.",
-                                              triggeringCondition,
-                                              queriedString, parentRepairStatus.name().toLowerCase()));
-                    if (parentRepairStatus == FAILED)
-                    {
-                        error = new IOException(messages.get(0));
-                    }
-                    printMessages(messages);
-                    condition.signalAll();
-                    break;
-                case IN_PROGRESS:
-                    break;
-                default:
-                    printMessage(String.format("WARNING Encountered unexpected RepairRunnable.ParentRepairStatus: %s", parentRepairStatus));
-                    printMessages(messages);
-                    break;
-            }
-        }
-    }
-
-    private void printMessages(List<String> messages)
-    {
-        for (String message : messages)
-        {
-            printMessage(message);
-        }
-    }
-
-    private void printMessage(String message)
-    {
-        out.println(String.format("[%s] %s", this.format.format(currentTimeMillis()), message));
-    }
 }

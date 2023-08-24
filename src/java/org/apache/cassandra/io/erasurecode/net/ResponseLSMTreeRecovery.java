@@ -37,15 +37,17 @@ public class ResponseLSMTreeRecovery {
     private static final Logger logger = LoggerFactory.getLogger(ResponseLSMTreeRecovery.class);
     public static final Serializer serializer = new Serializer();
     public final String rawCfPath;
+    public final String cfName;
 
-    public ResponseLSMTreeRecovery(String rawCfPath) {
+    public ResponseLSMTreeRecovery(String rawCfPath, String cfName) {
         this.rawCfPath = rawCfPath;
+        this.cfName = cfName;
     }
 
     
-    public static void sendRecoveryIsReadySignal(InetAddressAndPort target, String rawCfPath) {
+    public static void sendRecoveryIsReadySignal(InetAddressAndPort target, String rawCfPath, String cfName) {
 
-        ResponseLSMTreeRecovery msg = new ResponseLSMTreeRecovery(rawCfPath);
+        ResponseLSMTreeRecovery msg = new ResponseLSMTreeRecovery(rawCfPath, cfName);
         Message<ResponseLSMTreeRecovery> message = Message.outWithFlag(Verb.ECREQUESTDATA_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, target);
 
@@ -56,17 +58,19 @@ public class ResponseLSMTreeRecovery {
         @Override
         public void serialize(ResponseLSMTreeRecovery t, DataOutputPlus out, int version) throws IOException {
             out.writeUTF(t.rawCfPath);
+            out.writeUTF(t.cfName);
         }
 
         @Override
         public ResponseLSMTreeRecovery deserialize(DataInputPlus in, int version) throws IOException {
             String rawCfPath = in.readUTF();
-            return new ResponseLSMTreeRecovery(rawCfPath);
+            String cfName  = in.readUTF();
+            return new ResponseLSMTreeRecovery(rawCfPath, cfName);
         }
 
         @Override
         public long serializedSize(ResponseLSMTreeRecovery t, int version) {
-            long size = sizeof(t.rawCfPath);
+            long size = sizeof(t.rawCfPath) + sizeof(t.cfName);
             return size;
         }
         

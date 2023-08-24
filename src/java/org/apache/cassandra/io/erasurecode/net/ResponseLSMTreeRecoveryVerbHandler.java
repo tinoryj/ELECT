@@ -22,6 +22,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.io.File;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -39,6 +40,10 @@ import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import net.openhft.chronicle.core.util.Time;
+
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<ResponseLSMTreeRecovery> {
     
     private static final Logger logger = LoggerFactory.getLogger(ResponseLSMTreeRecoveryVerbHandler.class);
@@ -48,16 +53,24 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         
 
         String rawCfPath = message.payload.rawCfPath;
+        String cfName = message.payload.cfName;
 
+        // calculate the copy file time
+        long retrieveFileCost = currentTimeMillis() - StorageService.instance.recoveringCFS.get(cfName);
+
+        long startDecodeTimeStamp = currentTimeMillis();
         // read the ec sstables and perform the recovery
         File dataFolder = new File(rawCfPath);
+        int cnt = 0;
 
         if(dataFolder.exists() && dataFolder.isDirectory()) {
             File[] files = dataFolder.listFiles();
             for(File file : files) {
                 if(file.isFile() && file.getName().contains("EC.db")) {
                     try {
-                        recoveryDataFromErasureCodesForLSMTree(file.getName(), rawCfPath);
+                        // recoveryDataFromErasureCodesForLSMTree(file.getName(), rawCfPath);
+                        cnt++;
+                        Time.sleep(1, TimeUnit.SECONDS);
                     } catch (Exception e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
@@ -69,7 +82,13 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
             throw new FileNotFoundException(String.format("rymERROR: Folder for path (%s) does not exists!", rawCfPath));
         }
 
+        long endDecodeTimeStamp = currentTimeMillis();
 
+        // caculate the decode time
+        long decodeTimeCost = endDecodeTimeStamp - startDecodeTimeStamp;
+        
+        logger.debug("rymDedebug: We recovery the colum family ({}), the retrieve file cost is {}(ms), decode time cost is {}(ms), the decoded sstable count is ({})", 
+                     cfName, retrieveFileCost, decodeTimeCost, cnt);
 
     }
 

@@ -57,12 +57,14 @@ public class RecoveryELECT extends NodeToolCmd {
         String[] cfnames = parseOptionalTables(args);
         logger.debug("RecoveryELECT The target keyspaces = {}, tables = {}", keyspaces, cfnames);
         for (String keyspace : keyspaces) {
-            for (String cfsName : cfnames) {
-                logger.debug("RecoveryELECT Runing target keyspace = {}, table = {}", keyspace, cfsName);
-                try {
-                    probe.recoveryAsync(probe.output().out, keyspace, cfsName);
-                } catch (Exception e) {
-                    throw new RuntimeException("Error occurred during repair", e);
+            if(keyspace.equals("ycsb")) {
+                for (String cfsName : cfnames) {
+                    logger.debug("RecoveryELECT Runing target keyspace = {}, table = {}", keyspace, cfsName);
+                    try {
+                        probe.recoveryAsync(probe.output().out, keyspace, cfsName);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error occurred during repair", e);
+                    }
                 }
             }
         }

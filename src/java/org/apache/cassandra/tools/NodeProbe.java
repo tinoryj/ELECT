@@ -503,20 +503,9 @@ public class NodeProbe implements AutoCloseable {
             throws IOException {
         RecoveryRunner runner = new RecoveryRunner(out, ssProxy, keyspace, cfsName);
         try {
-            if (jmxc != null)
-                jmxc.addConnectionNotificationListener(runner, null, null);
-            ssProxy.addNotificationListener(runner, null, null);
             runner.run();
         } catch (Exception e) {
             throw new IOException(e);
-        } finally {
-            try {
-                ssProxy.removeNotificationListener(runner);
-                if (jmxc != null)
-                    jmxc.removeConnectionNotificationListener(runner);
-            } catch (Throwable e) {
-                out.println("Exception occurred during clean-up. " + e);
-            }
         }
     }
 

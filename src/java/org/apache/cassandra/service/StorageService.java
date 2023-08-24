@@ -118,6 +118,7 @@ import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
+import org.apache.cassandra.io.erasurecode.net.LSMTreeRecovery;
 import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
 import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler.BlockedECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
@@ -272,6 +273,13 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentSkipListSet<String> migratedParityCodes = new ConcurrentSkipListSet<String>();
     public volatile long migratedRawSSTablecount = 0;
     public ConcurrentSkipListSet<String> migratedSStables = new ConcurrentSkipListSet<String>();
+
+
+    // [ELECT] Recovery the LSM-tree
+    // cfName -> start time.
+    public ConcurrentHashMap<String, Long> recoveringCFS = new ConcurrentHashMap<String, Long>();
+
+
 
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 
@@ -4206,8 +4214,8 @@ public class StorageService extends NotificationBroadcasterSupport
         return repair(keyspace, repairSpec, Collections.emptyList()).left;
     }
 
-    public int recoveryAsync(String keyspace, String cfsName) {
-        return recovery(keyspace, cfsName, Collections.emptyList()).left;
+    public void recoveryAsync(String keyspace, String cfsName) {
+        LSMTreeRecovery.recoveryLSMTree(keyspace, cfsName);        
     }
 
     public Pair<Integer, Future<?>> repair(String keyspace, Map<String, String> repairSpec,
