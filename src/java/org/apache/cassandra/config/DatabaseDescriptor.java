@@ -2048,6 +2048,21 @@ public class DatabaseDescriptor
         conf.enable_migration = enable_migration;
     }
 
+    public static int getStorageSavingGrade() 
+    {
+        return conf.storage_saving_grade;
+    }
+
+    public static void setStorageSavingGrade(int storage_saving_grade)
+    {
+        if (storage_saving_grade < 0)
+        {
+            throw new IllegalArgumentException("Data nodes num must be non-negative");
+        }
+        conf.storage_saving_grade = storage_saving_grade;
+    }
+
+
     public static int getEcDataNodes() 
     {
         return conf.ec_data_nodes;

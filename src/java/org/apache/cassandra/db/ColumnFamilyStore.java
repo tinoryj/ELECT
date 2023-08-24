@@ -529,15 +529,30 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
             List<SSTableReader> sstables = new ArrayList<SSTableReader>(cfs.getSSTableForLevel(level));
 
+            int sstableCountOfLastLevel = sstables.size();
             int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
             int k = DatabaseDescriptor.getEcDataNodes();
             int n = k + DatabaseDescriptor.getParityNodes();
             int totalSSTableCount = cfs.getTracker().getView().liveSSTables().size();
             double tss = DatabaseDescriptor.getTargetStorageSaving();
 
-            int needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0 / (rf - ((double) (n * 1.0)) / k)); // parameter a
+            int needTransferSSTablesCount = 0;
+            int needMigrateRawSSTablesCount = 0;
 
-            int needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf - 1) * sstables.size()); // parameter c
+            if(DatabaseDescriptor.getStorageSavingGrade() == 0) {
+                needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0 / (rf - ((double) (n * 1.0)) / k)); // parameter a
+                needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf - 1) * sstableCountOfLastLevel); // parameter c
+            } else if(DatabaseDescriptor.getStorageSavingGrade() == 1) {
+                needTransferSSTablesCount = sstableCountOfLastLevel;
+            } else if(DatabaseDescriptor.getStorageSavingGrade() == 2) {
+                needTransferSSTablesCount = sstableCountOfLastLevel;
+            } else if(DatabaseDescriptor.getStorageSavingGrade() == 3){
+                needTransferSSTablesCount = sstableCountOfLastLevel;
+                needMigrateRawSSTablesCount = sstableCountOfLastLevel;
+            } else {
+                throw new IllegalStateException("");
+            }
+
 
             logger.debug("rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})", 
                          needTransferSSTablesCount, needMigrateRawSSTablesCount, ECNetutils.getNeedMigrateParityCodesCount(), StorageService.instance.transferredSSTableCount, totalSSTableCount, k, n, tss);
