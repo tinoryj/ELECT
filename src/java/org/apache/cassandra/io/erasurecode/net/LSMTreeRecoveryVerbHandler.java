@@ -58,6 +58,14 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                             logger.debug("rymDebug: The script is ({})", script);
                             ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
                             Process process = processBuilder.start();
+
+                            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                            
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                System.out.println("Script output: " + line);
+                            }
+            
                             
                             try {
                                 int exitCode = process.waitFor();
