@@ -72,9 +72,9 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
                     File[] files = subDir.listFiles();
                     for(File file : files) {
                         if(file.isFile() && file.getName().contains("EC.db")) {
+                            cnt++;
                             try {
                                 recoveryDataFromErasureCodesForLSMTree(file.getAbsolutePath(), subDir.getAbsolutePath());
-                                cnt++;
                                 if(cnt%30==0) {
                                     Thread.sleep(1000);
                                 }
