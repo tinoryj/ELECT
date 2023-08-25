@@ -55,7 +55,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         for(SSTableReader sstable : sstables) {
             if(sstable.getSSTableHashID().equals(requestSSTHash)) {
 
-                if(ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                if(sstable.isDataMigrateToCloud()) {
                     // reload raw data from cloud
                     int retryCount = 0;
                     while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
