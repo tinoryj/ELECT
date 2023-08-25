@@ -398,6 +398,13 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                         retryCount++;
                     }
+                    
+                    try {
+                        sstable.SetIsDataMigrateToCloud(false);
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
 
@@ -417,6 +424,13 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                         retryCount++;
+                    }
+                    
+                    try {
+                        sstable.SetIsDataMigrateToCloud(false);
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;

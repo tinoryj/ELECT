@@ -790,6 +790,12 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             retryCount < ECNetutils.getMigrationRetryCount()) {
                         retryCount++;
                     }
+                    try {
+                        sstable.SetIsDataMigrateToCloud(false);
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
 
@@ -811,6 +817,13 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
                             retryCount < ECNetutils.getMigrationRetryCount()) {
                         retryCount++;
+                    }
+
+                    try {
+                        sstable.SetIsDataMigrateToCloud(false);
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
@@ -1071,6 +1084,13 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         retryCount < ECNetutils.getMigrationRetryCount()) {
                     retryCount++;
                 }
+
+                try {
+                    sstable.SetIsDataMigrateToCloud(false);
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
                 StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                 StorageService.instance.migratedRawSSTablecount--;
 
@@ -1091,6 +1111,13 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
                         retryCount < ECNetutils.getMigrationRetryCount()) {
                     retryCount++;
+                }
+
+                try {
+                    sstable.SetIsDataMigrateToCloud(false);
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
                 }
                 StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                 StorageService.instance.migratedRawSSTablecount--;
