@@ -556,9 +556,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
 
             logger.debug(
-                    "rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})",
-                    needTransferSSTablesCount, needMigrateRawSSTablesCount, ECNetutils.getNeedMigrateParityCodesCount(),
-                    StorageService.instance.transferredSSTableCount, totalSSTableCount, k, n, tss);
+                    "rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), migrated parity SSTable count ({}), migrated raw SSTable count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})",
+                    needTransferSSTablesCount, needMigrateRawSSTablesCount,
+                    ECNetutils.getNeedMigrateParityCodesCount(),
+                    StorageService.instance.transferredSSTableCount,
+                    StorageService.instance.migratedRawSSTablecount,
+                    StorageService.instance.migratedRawSSTablecount, totalSSTableCount, k, n, tss);
 
             // if(DatabaseDescriptor.getEnableMigration()) {
             // neededTransferredSSTablesCount = (int) (1.5 * (1 -
@@ -671,7 +674,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             // migrate the raw data to the cloud (if any)
                             long duration = currentTimeMillis() -
-                            sstable.getCreationTimeFor(Component.DATA);
+                                    sstable.getCreationTimeFor(Component.DATA);
 
                             long coldDelayMilli = DatabaseDescriptor.getColdPeriod() * 60 * 1000;
                             if (duration >= coldDelayMilli) {
