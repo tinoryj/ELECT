@@ -75,7 +75,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
                             cnt++;
                             try {
                                 recoveryDataFromErasureCodesForLSMTree(file.getAbsolutePath(), subDir.getAbsolutePath());
-                                if(cnt%30==0) {
+                                if(cnt % 35 == 0) {
                                     Thread.sleep(1000);
                                 }
                                 // Time.sleep(1, TimeUnit.SECONDS);

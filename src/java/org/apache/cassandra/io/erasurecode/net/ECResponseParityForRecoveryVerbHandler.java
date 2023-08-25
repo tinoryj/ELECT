@@ -54,7 +54,8 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
                     throw new IllegalArgumentException(String.format("rymERROR: cannot read data from parity code file (%s)", parityCodeFileName));
 
                 if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) == null) {
-                    throw new IllegalArgumentException(String.format("rymERROR: The erasure codes for sstHash (%s) is empty", sstHash));
+                    // throw new IllegalArgumentException(String.format("rymERROR: The erasure codes for sstHash (%s) is empty", sstHash));
+                    logger.debug("rymDebug: The erasure codes for sstHash (%s) is empty", sstHash);
                 }
 
                 if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].position() != 0) {
