@@ -560,7 +560,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     needTransferSSTablesCount, needMigrateRawSSTablesCount,
                     ECNetutils.getNeedMigrateParityCodesCount(),
                     StorageService.instance.transferredSSTableCount,
-                    StorageService.instance.migratedRawSSTablecount,
+                    StorageService.instance.migratedParityCodeCount,
                     StorageService.instance.migratedRawSSTablecount, totalSSTableCount, k, n, tss);
 
             // if(DatabaseDescriptor.getEnableMigration()) {
