@@ -529,23 +529,46 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
             List<SSTableReader> sstables = new ArrayList<SSTableReader>(cfs.getSSTableForLevel(level));
 
+            int sstableCountOfLastLevel = sstables.size();
             int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
             int k = DatabaseDescriptor.getEcDataNodes();
             int n = k + DatabaseDescriptor.getParityNodes();
             int totalSSTableCount = cfs.getTracker().getView().liveSSTables().size();
             double tss = DatabaseDescriptor.getTargetStorageSaving();
 
-            int needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0 / (rf - ((double) (n * 1.0)) / k)); // parameter a
+            int needTransferSSTablesCount = 0;
+            int needMigrateRawSSTablesCount = 0;
 
-            int needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf - 1) * sstables.size()); // parameter c
+            if (DatabaseDescriptor.getStorageSavingGrade() == 0) {
+                needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0
+                        / (rf - ((double) (n * 1.0)) / k)); // parameter a
+                needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf - 1) * sstableCountOfLastLevel); // parameter
+                                                                                                                         // c
+            } else if (DatabaseDescriptor.getStorageSavingGrade() == 1) {
+                needTransferSSTablesCount = sstableCountOfLastLevel;
+            } else if (DatabaseDescriptor.getStorageSavingGrade() == 2) {
+                needTransferSSTablesCount = sstableCountOfLastLevel;
+            } else if (DatabaseDescriptor.getStorageSavingGrade() == 3) {
+                needTransferSSTablesCount = sstableCountOfLastLevel;
+                needMigrateRawSSTablesCount = sstableCountOfLastLevel;
+            } else {
+                throw new IllegalStateException("");
+            }
 
-            logger.debug("rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})", 
-                         needTransferSSTablesCount, needMigrateRawSSTablesCount, ECNetutils.getNeedMigrateParityCodesCount(), StorageService.instance.transferredSSTableCount, totalSSTableCount, k, n, tss);
+            logger.debug(
+                    "rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), migrated parity SSTable count ({}), migrated raw SSTable count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})",
+                    needTransferSSTablesCount, needMigrateRawSSTablesCount,
+                    ECNetutils.getNeedMigrateParityCodesCount(),
+                    StorageService.instance.transferredSSTableCount,
+                    StorageService.instance.migratedParityCodeCount,
+                    StorageService.instance.migratedRawSSTablecount, totalSSTableCount, k, n, tss);
 
             // if(DatabaseDescriptor.getEnableMigration()) {
-            //     neededTransferredSSTablesCount = (int) (1.5 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
+            // neededTransferredSSTablesCount = (int) (1.5 * (1 -
+            // DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
             // } else {
-            //     neededTransferredSSTablesCount = (int) (2 * (1 - DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
+            // neededTransferredSSTablesCount = (int) (2 * (1 -
+            // DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
             // }
 
             // sort the sstables based on the access rate.
@@ -556,15 +579,15 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 int count = 0;
                 for (SSTableReader sstable : sstables) {
 
-                    if(count >= MAX_EC_CANDIDATES)
+                    if (count >= MAX_EC_CANDIDATES)
                         return;
 
-                        
                     if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
 
-                        if (!sstable.isReplicationTransferredToErasureCoding() //&&!sstable.isSelectedByCompactionOrErasureCoding() && 
-                            ) {
-                            if(StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount)
+                        if (!sstable.isReplicationTransferredToErasureCoding() // &&!sstable.isSelectedByCompactionOrErasureCoding()
+                                                                               // &&
+                        ) {
+                            if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount)
                                 return;
 
                             logger.debug(
@@ -580,13 +603,14 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             long delayMilli = delay * 60 * 1000;
 
-                            if (duration >= delayMilli && sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
+                            if (duration >= delayMilli
+                                    && sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
                                 // logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                                //         sstable.getSSTableLevel());
+                                // sstable.getSSTableLevel());
 
-                                if(ECNetutils.isSSTableCompactingOrErasureCoding(sstable.getSSTableHashID()))
+                                if (ECNetutils.isSSTableCompactingOrErasureCoding(sstable.getSSTableHashID()))
                                     continue;
-                                
+
                                 count++;
                                 try {
                                     if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
@@ -606,26 +630,32 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                             .getReplicaNodesWithPort(keyspaceName, cfName, key);
 
                                     // Token tk = sstable.first.getToken();
-                                    // ReplicaPlan.ForWrite replicaPlan = ReplicaPlans.forWrite(Keyspace.open(keyspaceName), ConsistencyLevel.ALL, tk, ReplicaPlans.writeNormal);
-                                    // List<InetAddressAndPort> address = StorageService.instance.getReplicaNodesWithPortFromTokenForDegradeRead(keyspaceName, tk);
-                                    // ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(replicaPlan, address, tk);
+                                    // ReplicaPlan.ForWrite replicaPlan =
+                                    // ReplicaPlans.forWrite(Keyspace.open(keyspaceName), ConsistencyLevel.ALL, tk,
+                                    // ReplicaPlans.writeNormal);
+                                    // List<InetAddressAndPort> address =
+                                    // StorageService.instance.getReplicaNodesWithPortFromTokenForDegradeRead(keyspaceName,
+                                    // tk);
+                                    // ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(replicaPlan, address,
+                                    // tk);
 
                                     // AbstractReplicationStrategy rs = replicaPlan.replicationStrategy();
 
-                                    
-
                                     // Sync sstable with secondary nodes for rewrite
-                                    ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID, "Erasure Coding", cfs);
-                                    
+                                    ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID,
+                                            "Erasure Coding", cfs);
+
                                     // Send selected sstable for perform erasure coding.
                                     ECMessage ecMessage = new ECMessage(sstContent,
                                             new ECMessageContent(sstHashID, keyspaceName, cfName,
                                                     replicaNodes));
                                     ecMessage.sendSSTableToParity();
-                                    StorageService.instance.globalSSTHashToParityNodesMap.put(ecMessage.ecMessageContent.sstHashID,
-                                                                                              ecMessage.ecMessageContent.parityNodes);
-                                    logger.debug("rymDebug: we map sstHash ({}) to parity Nodes ({})", ecMessage.ecMessageContent.sstHashID,
-                                                                                                              ecMessage.ecMessageContent.parityNodes);
+                                    StorageService.instance.globalSSTHashToParityNodesMap.put(
+                                            ecMessage.ecMessageContent.sstHashID,
+                                            ecMessage.ecMessageContent.parityNodes);
+                                    logger.debug("rymDebug: we map sstHash ({}) to parity Nodes ({})",
+                                            ecMessage.ecMessageContent.sstHashID,
+                                            ecMessage.ecMessageContent.parityNodes);
 
                                 } catch (IOException e) {
                                     logger.error("rymERROR: {}", e);
@@ -637,32 +667,41 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             // sstable.unsetIsSelectedByCompactionOrErasureCoding();
                             ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(sstable.getSSTableHashID());
-                        } else if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.6) {
-                            if(StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount)
+                        } else if (DatabaseDescriptor.getEnableMigration()
+                                && DatabaseDescriptor.getTargetStorageSaving() > 0.6) {
+                            if (StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount)
                                 return;
 
                             // migrate the raw data to the cloud (if any)
-                            long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+                            long duration = currentTimeMillis() -
+                                    sstable.getCreationTimeFor(Component.DATA);
 
                             long coldDelayMilli = DatabaseDescriptor.getColdPeriod() * 60 * 1000;
-                            if(duration >= coldDelayMilli) {
+                            if (duration >= coldDelayMilli) {
 
-                                if(!sstable.isDataMigrateToCloud() && sstable.getReadMeter().getColdPeriodRate() == 0) {
-                                    logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.", sstable.descriptor, sstable.getSSTableHashID());
+                                if (!sstable.isDataMigrateToCloud() && sstable.isReplicationTransferredToErasureCoding()
+                                // && sstable.getReadMeter().getColdPeriodRate() == 0
+                                ) {
+                                    logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.",
+                                            sstable.descriptor, sstable.getSSTableHashID());
                                     StorageService.instance.migratedRawSSTablecount++;
                                     StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
                                     StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
                                     try {
                                         // delete the raw data and create a empty file
-                                        sstable.SetIsDataMigrateToCloud();
+                                        sstable.SetIsDataMigrateToCloud(true);
                                         Files.newBufferedWriter(Paths.get(sstable.getFilename()));
                                     } catch (IOException e) {
                                         // TODO Auto-generated catch block
                                         e.printStackTrace();
                                     }
                                 } else {
-                                    logger.debug("rymDebug: The access rate of sstable ({}: {}) within 15 min is ({}), 2 hours is ({}), cold period is ({})", 
-                                                 sstable.descriptor, sstable.getSSTableHashID(), sstable.getReadMeter().fifteenMinuteRate(), sstable.getReadMeter().twoHourRate(), sstable.getReadMeter().getColdPeriodRate());
+                                    logger.debug(
+                                            "rymDebug: The access rate of sstable ({}: {}) within 15 min is ({}), 2 hours is ({}), cold period is ({})",
+                                            sstable.descriptor, sstable.getSSTableHashID(),
+                                            sstable.getReadMeter().fifteenMinuteRate(),
+                                            sstable.getReadMeter().twoHourRate(),
+                                            sstable.getReadMeter().getColdPeriodRate());
                                 }
                             }
 
@@ -678,36 +717,47 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 }
 
                 if (count == 0) {
-                    System.out.println("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
+                    System.out.println(
+                            "rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
                     // for (Keyspace keyspace : Keyspace.all()){
-                    //     for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
-                    //         if(cfs1.getColumnFamilyName().contains("usertable")) {
-                    //             List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
-                    //             if(sstables1.isEmpty())
-                    //                 continue;
-                    //             // Collections.sort(sstables1, new SSTableReaderComparator());
+                    // for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
+                    // if(cfs1.getColumnFamilyName().contains("usertable")) {
+                    // List<SSTableReader> sstables1 = new
+                    // ArrayList<>(cfs1.getSSTableForLevel(level));
+                    // if(sstables1.isEmpty())
+                    // continue;
+                    // // Collections.sort(sstables1, new SSTableReaderComparator());
 
-                    //             // List<String> keyRanges = new ArrayList<>();
-                    //             int ecSSTableCnt = 0;
-                    //             for(SSTableReader sst : sstables1) {
-                    //                 if(SSTableReader.componentsFor(sst.descriptor).contains(Component.EC_METADATA)) {
-                    //                     ecSSTableCnt++;
-                    //                 }
-                    //                 // String range = String.format("SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s), isECSSTable (%s) \n",
-                    //                 //                              sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
-                    //                 //                              SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
-                    //                 // keyRanges.add(range);
-                    //             }
-
-                    //             // logger.debug("rymDebug: Let's check the key ranges of the sstables in the ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
-                                
-                    //             logger.debug("rymDebug: We insight the sstable count in the last level of ({}) is ({}), ecSSTable count is ({}),total number is ({}),the first token is ({}), the last token is ({})",
-                    //                         cfs1.getColumnFamilyName(), sstables1.size(), ecSSTableCnt, cfs1.getTracker().getView().liveSSTables().size(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
-                    //         }
-
-                    //     }
+                    // // List<String> keyRanges = new ArrayList<>();
+                    // int ecSSTableCnt = 0;
+                    // for(SSTableReader sst : sstables1) {
+                    // if(SSTableReader.componentsFor(sst.descriptor).contains(Component.EC_METADATA))
+                    // {
+                    // ecSSTableCnt++;
+                    // }
+                    // // String range = String.format("SSTable (%s), first token is (%s), last
+                    // token is (%s), isTransferred (%s), isECSSTable (%s) \n",
+                    // // sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(),
+                    // sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
+                    // //
+                    // SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
+                    // // keyRanges.add(range);
                     // }
 
+                    // // logger.debug("rymDebug: Let's check the key ranges of the sstables in the
+                    // ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
+
+                    // logger.debug("rymDebug: We insight the sstable count in the last level of
+                    // ({}) is ({}), ecSSTable count is ({}),total number is ({}),the first token is
+                    // ({}), the last token is ({})",
+                    // cfs1.getColumnFamilyName(), sstables1.size(), ecSSTableCnt,
+                    // cfs1.getTracker().getView().liveSSTables().size(),
+                    // sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() -
+                    // 1).last.getToken());
+                    // }
+
+                    // }
+                    // }
 
                 }
 
@@ -1672,17 +1722,18 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         long start = nanoTime();
         try {
             // if (metadata.keyspace.equals("ycsb")) {
-            //     try {
-            //         FileWriter writer = new FileWriter("logs/" + metadata.name, true);
-            //         BufferedWriter buffer = new BufferedWriter(writer);
-            //         buffer.write("key="+update.partitionKey().getRawKey(update.metadata()) + ", token="+update.partitionKey().getToken()+"\n");
-            //         buffer.close();
-            //     } catch (IOException e) {
-            //         // TODO Auto-generated catch block
-            //         e.printStackTrace();
-            //     }
+            // try {
+            // FileWriter writer = new FileWriter("logs/" + metadata.name, true);
+            // BufferedWriter buffer = new BufferedWriter(writer);
+            // buffer.write("key="+update.partitionKey().getRawKey(update.metadata()) + ",
+            // token="+update.partitionKey().getToken()+"\n");
+            // buffer.close();
+            // } catch (IOException e) {
+            // // TODO Auto-generated catch block
+            // e.printStackTrace();
             // }
-            
+            // }
+
             Memtable mt = data.getMemtableFor(opGroup, commitLogPosition);
 
             long timeDelta = mt.put(update, indexer, opGroup);
@@ -1816,15 +1867,16 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             // [CASSANDRAEC]
             // List<SSTableReader> resultOverlapped = new ArrayList<>();
             // for(SSTableReader sstable : overlapped) {
-            //     if(!sstable.isReplicationTransferredToErasureCoding() || sstable.getColumnFamilyName().equals("usertable")) {
-            //         resultOverlapped.add(sstable);
-            //     }
+            // if(!sstable.isReplicationTransferredToErasureCoding() ||
+            // sstable.getColumnFamilyName().equals("usertable")) {
+            // resultOverlapped.add(sstable);
+            // }
             // }
 
             Refs<SSTableReader> refs = Refs.tryRef(overlapped);
             if (refs != null)
                 return refs;
-            else 
+            else
                 return null;
         }
     }
@@ -1982,7 +2034,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 
-    //[CASSANDRAEC] rewrite the sstables based on the source decorated keys
+    // [CASSANDRAEC] rewrite the sstables based on the source decorated keys
     public CompactionManager.AllSSTableOpStatus sstablesRewrite(
             final Map<String, DecoratedKey> sourceKeys,
             final DecoratedKey first,
@@ -1996,20 +2048,18 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final int jobs) throws ExecutionException, InterruptedException {
         logger.debug("rymDebug: this is sstablesRewrite, task id is ({})", txn.opId());
 
-        return CompactionManager.instance.performSSTableRewrite(sourceKeys, 
+        return CompactionManager.instance.performSSTableRewrite(sourceKeys,
                 ColumnFamilyStore.this, first, last, sstables, metadata,
                 fileNamePrefix, txn,
                 skipIfCurrentVersion,
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 
-
     public static Runnable getForceCompactionForTheLastLevelRunnable() {
         return new ForceCompactionForTheLastLevelRunnable();
     }
 
     private static class ForceCompactionForTheLastLevelRunnable implements Runnable {
-
 
         private static class ForceCompactionCandidates {
             List<SSTableReader> selectedSSTables;
@@ -2019,7 +2069,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 this.selectedSSTables = new ArrayList<SSTableReader>();
                 this.suspectedSSTables = new ArrayList<SSTableReader>();
             }
-            
+
         }
 
         @Override
@@ -2027,18 +2077,19 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
             logger.debug("rymDebug: This is ForceCompactionForTheLastLevelRunnable");
 
-
-            for (Keyspace keyspace : Keyspace.all()){
+            for (Keyspace keyspace : Keyspace.all()) {
                 for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
-                    if (cfs.getColumnFamilyName().contains("usertable") || cfs.getColumnFamilyName().equals("usertable0") // &&
-                        // !cfs.isPerformForceCompactionLastLevel
-                        ) {
-                        
+                    if (cfs.getColumnFamilyName().contains("usertable")
+                            || cfs.getColumnFamilyName().equals("usertable0") // &&
+                    // !cfs.isPerformForceCompactionLastLevel
+                    ) {
+
                         // cfs.isPerformForceCompactionLastLevel = true;
 
                         int maxCompactionThreshold = 32;
-                        logger.debug("rymDebug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
-                                    cfs.getColumnFamilyName(), maxCompactionThreshold);
+                        logger.debug(
+                                "rymDebug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
+                                cfs.getColumnFamilyName(), maxCompactionThreshold);
                         // ColumnFamilyStore cfs =
                         // Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
                         int level = LeveledGenerations.getMaxLevelCount() - 1;
@@ -2047,24 +2098,25 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             return;
 
                         Collections.sort(sstables, new SSTableReaderComparator());
-                        
+
                         SSTableReader lastSSTable = null;
                         // List<SSTableReader> candidates = new ArrayList<SSTableReader>();
                         ForceCompactionCandidates candidates = new ForceCompactionCandidates();
 
-                        for(int i = 0; i < sstables.size(); i++) {
+                        for (int i = 0; i < sstables.size(); i++) {
 
-                            if(candidates.selectedSSTables.isEmpty()) {
+                            if (candidates.selectedSSTables.isEmpty()) {
                                 lastSSTable = sstables.get(i);
                                 candidates.selectedSSTables.add(lastSSTable);
                                 continue;
                             }
 
-                            if(lastSSTable.last.compareTo(sstables.get(i).first) >= 0 && !(lastSSTable.isReplicationTransferredToErasureCoding() &&
-                                                                                        sstables.get(i).isReplicationTransferredToErasureCoding()) ) {
-                                    
+                            if (lastSSTable.last.compareTo(sstables.get(i).first) >= 0
+                                    && !(lastSSTable.isReplicationTransferredToErasureCoding() &&
+                                            sstables.get(i).isReplicationTransferredToErasureCoding())) {
+
                                 candidates.selectedSSTables.add(sstables.get(i));
-                                if(!candidates.selectedSSTables.contains(lastSSTable)){
+                                if (!candidates.selectedSSTables.contains(lastSSTable)) {
                                     candidates.selectedSSTables.add(lastSSTable);
                                 }
 
@@ -2074,30 +2126,39 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             lastSSTable = sstables.get(i);
 
-                            if(candidates.selectedSSTables.size() >= maxCompactionThreshold || (i == sstables.size() - 1) && candidates.selectedSSTables.size() > 1) {
+                            if (candidates.selectedSSTables.size() >= maxCompactionThreshold
+                                    || (i == sstables.size() - 1) && candidates.selectedSSTables.size() > 1) {
 
                                 // TODO: select from the lower level.
-                                List<SSTableReader> lowerLevelSSTables = new ArrayList<>(cfs.getSSTableForLevel(level -1));
+                                List<SSTableReader> lowerLevelSSTables = new ArrayList<>(
+                                        cfs.getSSTableForLevel(level - 1));
 
                                 Token startSelectedToken = candidates.selectedSSTables.get(0).first.getToken();
-                                Token endSelectedToken = candidates.selectedSSTables.get(candidates.selectedSSTables.size() - 1).last.getToken();
-                                List<SSTableReader> overlappedSSTables = new ArrayList<>(LeveledManifest.overlapping(startSelectedToken, endSelectedToken, lowerLevelSSTables));
+                                Token endSelectedToken = candidates.selectedSSTables
+                                        .get(candidates.selectedSSTables.size() - 1).last.getToken();
+                                List<SSTableReader> overlappedSSTables = new ArrayList<>(LeveledManifest
+                                        .overlapping(startSelectedToken, endSelectedToken, lowerLevelSSTables));
                                 candidates.selectedSSTables.addAll(overlappedSSTables);
 
-                                
-                                // Token startSuspectedToken = candidates.suspectedSSTables.get(0).first.getToken();
-                                // Token endSuspectedToken = candidates.suspectedSSTables.get(candidates.suspectedSSTables.size() - 1).last.getToken();
-                                // List<SSTableReader> overlappedSSTablesForSuspected = new ArrayList<>(LeveledManifest.overlapping(startSuspectedToken, endSuspectedToken, lowerLevelSSTables));
+                                // Token startSuspectedToken =
+                                // candidates.suspectedSSTables.get(0).first.getToken();
+                                // Token endSuspectedToken =
+                                // candidates.suspectedSSTables.get(candidates.suspectedSSTables.size() -
+                                // 1).last.getToken();
+                                // List<SSTableReader> overlappedSSTablesForSuspected = new
+                                // ArrayList<>(LeveledManifest.overlapping(startSuspectedToken,
+                                // endSuspectedToken, lowerLevelSSTables));
                                 // if(!overlappedSSTablesForSuspected.isEmpty()) {
-                                //     candidates.selectedSSTables.addAll(overlappedSSTablesForSuspected);
-                                //     candidates.selectedSSTables.addAll(candidates.suspectedSSTables);
+                                // candidates.selectedSSTables.addAll(overlappedSSTablesForSuspected);
+                                // candidates.selectedSSTables.addAll(candidates.suspectedSSTables);
                                 // }
 
                                 final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates.selectedSSTables,
                                         OperationType.COMPACTION);
                                 if (txn != null) {
                                     try {
-                                        AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(candidates.selectedSSTables, txn,
+                                        AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(
+                                                candidates.selectedSSTables, txn,
                                                 false,
                                                 Long.MAX_VALUE, false, 1);
                                         if (status != AllSSTableOpStatus.SUCCESSFUL)
@@ -2121,9 +2182,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 candidates.suspectedSSTables.clear();
                             }
 
-
                         }
-                        
 
                     }
                 }
@@ -2132,15 +2191,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         }
     }
 
-
     public static boolean isOverlappedWithLowerLevelSSTables(SSTableReader sstable) {
-
-
-
 
         return false;
     }
-    
 
     // [CASSANDRAEC] rewrite the sstables based on the source decorated keys
     public CompactionManager.AllSSTableOpStatus forceCompactionForTheLastLevel(
@@ -2150,7 +2204,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final long skipIfNewerThanTimestamp,
             final boolean skipIfCompressionMatches,
             final int jobs) throws ExecutionException, InterruptedException {
-        logger.debug("rymDebug: this is force compaction for the last level, the involved sstables count is ({})", candidates.size());
+        logger.debug("rymDebug: this is force compaction for the last level, the involved sstables count is ({})",
+                candidates.size());
 
         return CompactionManager.instance.performForceCompactionForTheLastLevel(ColumnFamilyStore.this, candidates, txn,
                 skipIfCurrentVersion,
@@ -2158,7 +2213,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     // [CASSANDRAEC]
-    public void updateECSSTable(ECMetadata metadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix, final LifecycleTransaction txn) {
+    public void updateECSSTable(ECMetadata metadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix,
+            final LifecycleTransaction txn) {
         // notify sstable changes to view and leveled generation
         // unmark sstable compacting status
 
@@ -2167,13 +2223,17 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         try {
 
             SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, sstHash, cfs, fileNamePrefix, txn.opId());
-            logger.debug("rymDebug: Opened the new ec sstable successfully, the transaction id is ({})", ecSSTable.getSSTableHashID(), txn.opId());
-            if(!txn.originals().isEmpty())
-                logger.debug("rymDebug: update old ecSSTable ({}) with new ecSSTable ({})", txn.originals().iterator().next().descriptor, ecSSTable.descriptor);
+            logger.debug("rymDebug: Opened the new ec sstable successfully, the transaction id is ({})",
+                    ecSSTable.getSSTableHashID(), txn.opId());
+            if (!txn.originals().isEmpty())
+                logger.debug("rymDebug: update old ecSSTable ({}) with new ecSSTable ({})",
+                        txn.originals().iterator().next().descriptor, ecSSTable.descriptor);
             if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
                 logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
             }
-            logger.debug("rymDebug: this is replace SSTable method, replacing SSTable {}, before update the transaction is ({})", ecSSTable.descriptor, txn.opId());
+            logger.debug(
+                    "rymDebug: this is replace SSTable method, replacing SSTable {}, before update the transaction is ({})",
+                    ecSSTable.descriptor, txn.opId());
             txn.update(ecSSTable, false);
             logger.debug("rymDebug: After update, transaction is ({})", txn.opId());
             txn.checkpoint();

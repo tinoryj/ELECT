@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
+import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,8 +70,8 @@ public class OSSAccess implements AutoCloseable {
     public OSSAccess() {
         EnvironmentVariableCredentialsProvider credentialsProvider = new EnvironmentVariableCredentialsProvider();
         ClientBuilderConfiguration conf = new ClientBuilderConfiguration();
-        // conf.setProxyHost("proxy.cse.cuhk.edu.hk");
-        // conf.setProxyPort(8000);
+        conf.setProxyHost("proxy.cse.cuhk.edu.hk");
+        conf.setProxyPort(8000);
         conf.setMaxConnections(200);
         conf.setSocketTimeout(10000);
         conf.setConnectionTimeout(10000);
@@ -161,6 +162,9 @@ public class OSSAccess implements AutoCloseable {
 
     public boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
+
+        FileUtils.delete(originalFilePath);
+
         try {
             ossClient.getObject(
                     new GetObjectRequest(bucketName, objectName),

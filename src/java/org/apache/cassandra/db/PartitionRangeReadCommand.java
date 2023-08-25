@@ -388,8 +388,10 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             }
                         }
                     }
-                } else if (sstable.getColumnFamilyName().equals("usertable0")
-                        && ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                } else if (sstable.getColumnFamilyName().equals("usertable0") &&
+                // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
+                sstable.isDataMigrateToCloud()
+                ) {
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
@@ -397,6 +399,13 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                         retryCount++;
+                    }
+                    
+                    try {
+                        sstable.SetIsDataMigrateToCloud(false);
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
@@ -409,7 +418,9 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                           ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())) {
+                // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
+                sstable.isDataMigrateToCloud()
+                ) {
                     // Tinoryj TODO: retrive SSTable from cloud.
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
@@ -417,6 +428,13 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                         retryCount++;
+                    }
+                    
+                    try {
+                        sstable.SetIsDataMigrateToCloud(false);
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;

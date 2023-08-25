@@ -191,7 +191,16 @@ public class Config {
     public boolean enable_migration = true;
     public boolean enable_erasure_coding = true;
     public int cold_period = 1440; // unit: minutes, the threshold to judge whether a sstable is extremely cold.
-    public double target_storage_saving = 0.5; 
+    public double target_storage_saving = 0.5;
+
+    /**
+     * This parameter indicates three storage saving levels.
+     *  case 0: By default
+     *  case 1: Means that all of the sstables of the last level should perform transition
+     *  case 2: Means that on top of case 1, migrate all of the parity codes
+     *  case 3: Means that on top of case 1&2, migrate all of the raw sstables  
+     */
+    public int storage_saving_grade = 0; 
 
 
     public int concurrent_ec = 3;

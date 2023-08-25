@@ -22,6 +22,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.io.File;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -39,6 +40,10 @@ import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import net.openhft.chronicle.core.util.Time;
+
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<ResponseLSMTreeRecovery> {
     
     private static final Logger logger = LoggerFactory.getLogger(ResponseLSMTreeRecoveryVerbHandler.class);
@@ -48,28 +53,53 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         
 
         String rawCfPath = message.payload.rawCfPath;
+        String cfName = message.payload.cfName;
 
+        // calculate the copy file time
+        long retrieveFileCost = currentTimeMillis() - StorageService.instance.recoveringCFS.get(cfName);
+
+        long startDecodeTimeStamp = currentTimeMillis();
         // read the ec sstables and perform the recovery
         File dataFolder = new File(rawCfPath);
+        int cnt = 0;
 
         if(dataFolder.exists() && dataFolder.isDirectory()) {
-            File[] files = dataFolder.listFiles();
-            for(File file : files) {
-                if(file.isFile() && file.getName().contains("EC.db")) {
-                    try {
-                        recoveryDataFromErasureCodesForLSMTree(file.getName(), rawCfPath);
-                    } catch (Exception e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
+            File[] subDirectories = dataFolder.listFiles(File::isDirectory);
+            if(subDirectories != null) {
+
+                for(File subDir : subDirectories) {
+                    logger.debug("rymDebug: current dir is ({})", subDir.getAbsolutePath());
+                    File[] files = subDir.listFiles();
+                    for(File file : files) {
+                        if(file.isFile() && file.getName().contains("EC.db")) {
+                            cnt++;
+                            try {
+                                recoveryDataFromErasureCodesForLSMTree(file.getAbsolutePath(), subDir.getAbsolutePath());
+                                if(cnt % 35 == 0) {
+                                    Thread.sleep(1000);
+                                }
+                                // Time.sleep(1, TimeUnit.SECONDS);
+                            } catch (Exception e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
+                        }
                     }
                 }
+
             }
 
         } else {
             throw new FileNotFoundException(String.format("rymERROR: Folder for path (%s) does not exists!", rawCfPath));
         }
 
+        long endDecodeTimeStamp = currentTimeMillis();
 
+        // caculate the decode time
+        long decodeTimeCost = endDecodeTimeStamp - startDecodeTimeStamp;
+        
+        logger.debug("rymDedebug: We recovery the colum family ({}), the retrieve file cost is {}(ms), decode time cost is {}(ms), the decoded sstable count is ({})", 
+                     cfName, retrieveFileCost, decodeTimeCost, cnt);
 
     }
 
@@ -77,6 +107,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
     private static void recoveryDataFromErasureCodesForLSMTree(String ecMetadataFile, String cfPath) throws Exception {
         int k = DatabaseDescriptor.getEcDataNodes();
         int m = DatabaseDescriptor.getParityNodes();
+        logger.debug("rymDebug: start recovery ecMetadata ({})", ecMetadataFile);
         // Step 1: Get the ECSSTable from global map and get the ecmetadata
         byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
         logger.debug("rymDebug: [Debug recovery] the size of ecMetadataInBytes is ({})", ecMetadataInBytes.length);
@@ -122,6 +153,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
             recoveryOriginalSrc[i].rewind();
         }
 
+        StorageService.instance.globalSSTHashToErasureCodesMap.remove(sstHash);
         ErasureCoderOptions ecOptions = new ErasureCoderOptions(k, m);
         ErasureDecoder decoder = new NativeRSDecoder(ecOptions);
         ByteBuffer[] output = new ByteBuffer[1];
@@ -144,7 +176,6 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         byte[] sstContent = new byte[dataFileSize];
         output[0].get(sstContent);
         ECNetutils.writeBytesToFile(dataFileName, sstContent);
-        StorageService.instance.globalSSTHashToErasureCodesMap.remove(sstHash);
         // SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
 
         // debug

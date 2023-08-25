@@ -39,6 +39,7 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
     @Override
     public void doVerb(Message<LSMTreeRecovery> message) throws IOException {
         String rawCfPath = message.payload.rawCfPath;
+        String sourceCfName = message.payload.sourceCfName;
         String targetCfName = message.payload.targetCfName;
         InetAddressAndPort sourceAddress = message.from();
         for (Keyspace keyspace : Keyspace.all()){
@@ -50,11 +51,23 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                     for(String dir : dataDirs) {
                         if(dir.contains(targetCfName)) {
                             String userName = "yjren";
+                            // String passWd = "yjren";
                             String host = sourceAddress.getHostAddress(false);
-                            String targetDir = userName + "@" + host + rawCfPath;
-                            String script = "rsync -avz --progress -r " + dir + " " + targetDir;
+                            String targetDir = userName + "@" + host + ":" + rawCfPath;
+                            // String script = "sshpass -p \"" + passWd + "\" scp -r " + dir + " " + targetDir;
+                            // String script = "ls " + dir; 
+                            String script = "rsync -avz --progress -r " + dir + " " + targetDir;                           
+                            logger.debug("rymDebug: The script is ({})", script);
                             ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
                             Process process = processBuilder.start();
+
+                            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                            
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                System.out.println("Script output: " + line);
+                            }
+            
                             
                             try {
                                 int exitCode = process.waitFor();
@@ -62,7 +75,8 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                                     logger.debug("rymDebug: Performing rsync script successfully!");
 
                                     // send response code back
-                                    ResponseLSMTreeRecovery.sendRecoveryIsReadySignal(sourceAddress, rawCfPath);
+                                    logger.debug("rymDebug: Copied ({}) files to node ({}), source cfName is ({}), rawPath is ({})", targetCfName, sourceAddress, sourceCfName, rawCfPath);
+                                    ResponseLSMTreeRecovery.sendRecoveryIsReadySignal(sourceAddress, rawCfPath, sourceCfName);
 
                                 } else {
                                     logger.debug("rymDebug: Failed to perform rsync script!");
@@ -81,5 +95,33 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
         
         
     }
+
+    // write a Main function to test this class
+    public static void main(String[] args) throws IOException {
+        // String rawCfPath = "/home/yjren/cassandra/data/ycsb/usertable1-bak";
+        // String sourceCfName = "usertable1";
+        // String targetCfName = "usertable2";
+        String script = "ls";
+
+        ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
+        Process process = processBuilder.start();
+        try {
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                logger.debug("rymDebug: Performing rsync script successfully!");
+
+                // send response code back
+                //logger.debug("rymDebug: Copied ({}) files to node ({}), source cfName is ({}), rawPath is ({})", targetCfName, sourceAddress, sourceCfName, rawCfPath);
+                //ResponseLSMTreeRecovery.sendRecoveryIsReadySignal(sourceAddress, rawCfPath, sourceCfName);
+
+            } else {
+                logger.debug("rymDebug: Failed to perform rsync script!");
+            }
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
+
 
 }

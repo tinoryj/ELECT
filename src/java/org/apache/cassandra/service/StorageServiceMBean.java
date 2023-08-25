@@ -533,7 +533,7 @@ public interface StorageServiceMBean extends NotificationEmitter {
      * @param cfsName  CFS name to recovery. Should not be null.
      * @return Repair command number, or 0 if nothing to recovery
      */
-    public int recoveryAsync(String keyspace, String cfsName);
+    public void recoveryAsync(String keyspace, String cfsName);
 
     public void forceTerminateAllRepairSessions();
 
