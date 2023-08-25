@@ -657,31 +657,31 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 return;
 
                             // migrate the raw data to the cloud (if any)
-                            long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+                            // long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 
-                            long coldDelayMilli = DatabaseDescriptor.getColdPeriod() * 60 * 1000;
-                            if(duration >= coldDelayMilli) {
+                            // long coldDelayMilli = DatabaseDescriptor.getColdPeriod() * 60 * 1000;
+                            // if(duration >= coldDelayMilli) {
 
-                                if(!sstable.isDataMigrateToCloud() && sstable.isReplicationTransferredToErasureCoding()
-                                //&& sstable.getReadMeter().getColdPeriodRate() == 0
-                                ) {
-                                    logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.", sstable.descriptor, sstable.getSSTableHashID());
-                                    StorageService.instance.migratedRawSSTablecount++;
-                                    StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
-                                    StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
-                                    try {
-                                        // delete the raw data and create a empty file
-                                        sstable.SetIsDataMigrateToCloud(true);
-                                        Files.newBufferedWriter(Paths.get(sstable.getFilename()));
-                                    } catch (IOException e) {
-                                        // TODO Auto-generated catch block
-                                        e.printStackTrace();
-                                    }
-                                } else {
-                                    logger.debug("rymDebug: The access rate of sstable ({}: {}) within 15 min is ({}), 2 hours is ({}), cold period is ({})", 
-                                                    sstable.descriptor, sstable.getSSTableHashID(), sstable.getReadMeter().fifteenMinuteRate(), sstable.getReadMeter().twoHourRate(), sstable.getReadMeter().getColdPeriodRate());
+                            if(!sstable.isDataMigrateToCloud() && sstable.isReplicationTransferredToErasureCoding()
+                            //&& sstable.getReadMeter().getColdPeriodRate() == 0
+                            ) {
+                                logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.", sstable.descriptor, sstable.getSSTableHashID());
+                                StorageService.instance.migratedRawSSTablecount++;
+                                StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
+                                StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
+                                try {
+                                    // delete the raw data and create a empty file
+                                    sstable.SetIsDataMigrateToCloud(true);
+                                    Files.newBufferedWriter(Paths.get(sstable.getFilename()));
+                                } catch (IOException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
                                 }
+                            } else {
+                                logger.debug("rymDebug: The access rate of sstable ({}: {}) within 15 min is ({}), 2 hours is ({}), cold period is ({})", 
+                                                sstable.descriptor, sstable.getSSTableHashID(), sstable.getReadMeter().fifteenMinuteRate(), sstable.getReadMeter().twoHourRate(), sstable.getReadMeter().getColdPeriodRate());
                             }
+                            // }
 
                         } else {
                             // logger.info("SSTable is transferred");
