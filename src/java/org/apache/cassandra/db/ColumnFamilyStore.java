@@ -671,7 +671,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
                                 try {
                                     // delete the raw data and create a empty file
-                                    sstable.SetIsDataMigrateToCloud();
+                                    sstable.SetIsDataMigrateToCloud(true);
                                     Files.newBufferedWriter(Paths.get(sstable.getFilename()));
                                 } catch (IOException e) {
                                     // TODO Auto-generated catch block

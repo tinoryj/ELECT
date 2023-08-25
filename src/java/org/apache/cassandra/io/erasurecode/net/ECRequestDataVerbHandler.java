@@ -63,7 +63,14 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                         retryCount++;
                     }
 
+                    try {
+                        sstable.SetIsDataMigrateToCloud(false);
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                    StorageService.instance.migratedRawSSTablecount--;
                 }
 
                 // ByteBuffer buffer;
