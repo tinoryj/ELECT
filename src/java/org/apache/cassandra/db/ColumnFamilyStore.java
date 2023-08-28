@@ -576,7 +576,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             if (!sstables.isEmpty()) {
                 logger.debug("rymDebug: get {} sstables from level {}", sstables.size(), level);
                 int count = 0;
+                int migratedSSTableCnt = 0;
                 for (SSTableReader sstable : sstables) {
+
+                    if(sstable.isDataMigrateToCloud())
+                        migratedSSTableCnt++;
 
                     if (count >= MAX_EC_CANDIDATES)
                         return;
@@ -711,43 +715,48 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                 }
 
-                if (count == 0) {
-                    System.out.println("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
-                    for (Keyspace keyspace : Keyspace.all()){
-                        for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
-                            if(cfs1.getColumnFamilyName().equals("usertable0")) {
-                                List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
-                                if(sstables1.isEmpty())
-                                    continue;
-                                // Collections.sort(sstables1, new SSTableReaderComparator());
 
-                                // List<String> keyRanges = new ArrayList<>();
-                                int ecSSTableCnt = 0;
-                                int migratedCnt = 0;
-                                for(SSTableReader sst : sstables1) {
-                                    if(SSTableReader.componentsFor(sst.descriptor).contains(Component.EC_METADATA)) {
-                                        ecSSTableCnt++;
-                                    }
 
-                                    if(sst.isDataMigrateToCloud())
-                                        migratedCnt++;
-                                    // String range = String.format("SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s), isECSSTable (%s) \n",
-                                    //                              sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
-                                    //                              SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
-                                    // keyRanges.add(range);
-                                }
+                logger.debug("rymDebug: migrated sstable count is ({})", migratedSSTableCnt);
 
-                                // logger.debug("rymDebug: Let's check the key ranges of the sstables in the ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
+
+                // if (count == 0) {
+                //     System.out.println("rymDebug: All sstables are transferred or it's not time to perform erasure coding.");
+                //     for (Keyspace keyspace : Keyspace.all()){
+                //         for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
+                //             if(cfs1.getColumnFamilyName().equals("usertable0")) {
+                //                 List<SSTableReader> sstables1 = new ArrayList<>(cfs1.getSSTableForLevel(level));
+                //                 if(sstables1.isEmpty())
+                //                     continue;
+                //                 // Collections.sort(sstables1, new SSTableReaderComparator());
+
+                //                 // List<String> keyRanges = new ArrayList<>();
+                //                 int ecSSTableCnt = 0;
+                //                 int migratedCnt = 0;
+                //                 for(SSTableReader sst : sstables1) {
+                //                     if(SSTableReader.componentsFor(sst.descriptor).contains(Component.EC_METADATA)) {
+                //                         ecSSTableCnt++;
+                //                     }
+
+                //                     if(sst.isDataMigrateToCloud())
+                //                         migratedCnt++;
+                //                     // String range = String.format("SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s), isECSSTable (%s) \n",
+                //                     //                              sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
+                //                     //                              SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
+                //                     // keyRanges.add(range);
+                //                 }
+
+                //                 // logger.debug("rymDebug: Let's check the key ranges of the sstables in the ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
                                 
-                                logger.debug("rymDebug: We insight the sstable count in the last level of ({}) is ({}), ecSSTable count is ({}), migrated sstable count is ({}),total number is ({}),the first token is ({}), the last token is ({})",
-                                            cfs1.getColumnFamilyName(), sstables1.size(), ecSSTableCnt, migratedCnt, cfs1.getTracker().getView().liveSSTables().size(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
-                            }
+                //                 logger.debug("rymDebug: We insight the sstable count in the last level of ({}) is ({}), ecSSTable count is ({}), migrated sstable count is ({}),total number is ({}),the first token is ({}), the last token is ({})",
+                //                             cfs1.getColumnFamilyName(), sstables1.size(), ecSSTableCnt, migratedCnt, cfs1.getTracker().getView().liveSSTables().size(), sstables1.get(0).first.getToken(), sstables1.get(sstables1.size() - 1).last.getToken());
+                //             }
 
-                        }
-                    }
+                //         }
+                //     }
 
 
-                }
+                // }
 
             } else {
                 logger.debug("rymDebug: cannot get sstables from level {}", level);
