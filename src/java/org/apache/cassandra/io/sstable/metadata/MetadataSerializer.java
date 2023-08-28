@@ -300,7 +300,9 @@ public class MetadataSerializer implements IMetadataSerializer {
     }
 
     public void setIsDataMigrateToCloud(Descriptor descriptor, String sstHash, boolean flag) throws IOException{
-        mutate(descriptor, stats -> stats.setIsDataMigrateToCloud(flag));
+        logger.debug("Set {}, {} to IsDataMigrateToCloud as {}", descriptor.filenameFor(Component.STATS), sstHash, flag);
+        // mutate(descriptor, stats -> stats.setIsDataMigrateToCloud(flag));
+        mutateMigrationFlag(descriptor, sstHash, flag);
     }
 
     @Override
@@ -351,6 +353,42 @@ public class MetadataSerializer implements IMetadataSerializer {
         logger.debug("rymDebug: after rewriteSSTableMetadata method, the transferred flag of sstable ({}) is ({})", sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isReplicationTransferToErasureCoding);
     }
 
+    private void mutateMigrationFlag(Descriptor descriptor, String sstHash, boolean migrationFlag) throws IOException {
+        Map<MetadataType, MetadataComponent> currentComponents = deserialize(descriptor,
+                EnumSet.allOf(MetadataType.class));
+        StatsMetadata stats = (StatsMetadata) currentComponents.remove(MetadataType.STATS);
+
+        currentComponents.put(MetadataType.STATS, new StatsMetadata(stats.estimatedPartitionSize, 
+                                                                    stats.estimatedCellPerPartitionCount,
+                                                                    stats.commitLogIntervals,
+                                                                    now().getLong(ChronoField.MILLI_OF_SECOND),
+                                                                    stats.minTimestamp,
+                                                                    stats.maxTimestamp,
+                                                                    stats.minLocalDeletionTime,
+                                                                    stats.maxLocalDeletionTime,
+                                                                    stats.minTTL,
+                                                                    stats.maxTTL,
+                                                                    stats.compressionRatio,
+                                                                    stats.estimatedTombstoneDropTime,
+                                                                    stats.sstableLevel,
+                                                                    stats.minClusteringValues,
+                                                                    stats.maxClusteringValues,
+                                                                    stats.hasLegacyCounterShards,
+                                                                    stats.repairedAt,
+                                                                    stats.totalColumnsSet,
+                                                                    stats.totalRows,
+                                                                    stats.originatingHostId,
+                                                                    stats.pendingRepair,
+                                                                    stats.isTransient,
+                                                                    migrationFlag,
+                                                                    stats.isReplicationTransferToErasureCoding,
+                                                                    stats.hashID,
+                                                                    stats.dataFileSize));
+        logger.debug("rymDebug: before rewriteSSTableMetadata method, the migrationFlag of sstable ({}) is ({}), migrationFlag ({})", 
+                            sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isDataMigrateToCloud, migrationFlag);
+        rewriteSSTableMetadata(descriptor, currentComponents);
+        logger.debug("rymDebug: after rewriteSSTableMetadata method, the migrationFlag of sstable ({}) is ({})", sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isDataMigrateToCloud);
+    }
     private void mutate(Descriptor descriptor, UnaryOperator<StatsMetadata> transform) throws IOException {
         Map<MetadataType, MetadataComponent> currentComponents = deserialize(descriptor,
                 EnumSet.allOf(MetadataType.class));
