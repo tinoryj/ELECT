@@ -590,8 +590,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         if (!sstable.isReplicationTransferredToErasureCoding() // &&!sstable.isSelectedByCompactionOrErasureCoding()
                                                                                // &&
                         ) {
-                            if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount)
-                                return;
+                            // if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount)
+                            //     return;
 
                             logger.debug(
                                     "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
@@ -669,8 +669,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(sstable.getSSTableHashID());
                         } else if (DatabaseDescriptor.getEnableMigration()
                                 && DatabaseDescriptor.getTargetStorageSaving() > 0.6) {
-                            if (StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount)
-                                return;
+                            // if (StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount)
+                            //     return;
 
                             // migrate the raw data to the cloud (if any)
                             long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
