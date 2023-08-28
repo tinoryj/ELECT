@@ -540,8 +540,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             int needMigrateRawSSTablesCount = 0;
 
             if (DatabaseDescriptor.getStorageSavingGrade() == 0) {
-                needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0
-                        / (rf - ((double) (n * 1.0)) / k)); // parameter a
+                needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0 / (rf - ((double) (n * 1.0)) / k)); // parameter a
                 needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf - 1) * sstableCountOfLastLevel); // parameter
                                                                                                                          // c
             } else if (DatabaseDescriptor.getStorageSavingGrade() == 1) {
@@ -642,13 +641,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     // AbstractReplicationStrategy rs = replicaPlan.replicationStrategy();
 
                                     // Sync sstable with secondary nodes for rewrite
-                                    ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID,
-                                            "Erasure Coding", cfs);
+                                    ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID, "Erasure Coding", cfs);
 
                                     // Send selected sstable for perform erasure coding.
-                                    ECMessage ecMessage = new ECMessage(sstContent,
-                                            new ECMessageContent(sstHashID, keyspaceName, cfName,
-                                                    replicaNodes));
+                                    ECMessage ecMessage = new ECMessage(sstContent, new ECMessageContent(sstHashID, keyspaceName, cfName, replicaNodes));
                                     ecMessage.sendSSTableToParity();
                                     StorageService.instance.globalSSTHashToParityNodesMap.put(
                                             ecMessage.ecMessageContent.sstHashID,
@@ -673,8 +669,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 return;
 
                             // migrate the raw data to the cloud (if any)
-                            long duration = currentTimeMillis() -
-                                    sstable.getCreationTimeFor(Component.DATA);
+                            long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
 
                             long coldDelayMilli = DatabaseDescriptor.getColdPeriod() * 60 * 1000;
                             if (duration >= coldDelayMilli) {
@@ -682,8 +677,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 if (!sstable.isDataMigrateToCloud() && sstable.isReplicationTransferredToErasureCoding()
                                 // && sstable.getReadMeter().getColdPeriodRate() == 0
                                 ) {
-                                    logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.",
-                                            sstable.descriptor, sstable.getSSTableHashID());
+                                    logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.", sstable.descriptor, sstable.getSSTableHashID());
                                     StorageService.instance.migratedRawSSTablecount++;
                                     StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
                                     StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
