@@ -410,6 +410,10 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
 
+                } else {
+                    logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                            sstable.getSSTableHashID(), sstable.getFilename(),
+                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
                 }
 
                 if (sstable.getColumnFamilyName().contains("usertable")
@@ -438,7 +442,12 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
+                } else {
+                    logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                            sstable.getSSTableHashID(), sstable.getFilename(),
+                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
                 }
+                
                 if (isCurrentSSTableRepaired) {
                     readRecoveryedSSTableList.add(sstable.getFilename());
                     readRecoveryedSSTableHashList.add(sstable.getSSTableHashID());

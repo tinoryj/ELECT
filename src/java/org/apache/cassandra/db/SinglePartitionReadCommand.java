@@ -801,6 +801,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
 
+                } else {
+                    logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                            sstable.getSSTableHashID(), sstable.getFilename(),
+                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
                 }
 
                 if (sstable.getColumnFamilyName().contains("usertable")
@@ -831,6 +835,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
+                } else {
+                    logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                            sstable.getSSTableHashID(), sstable.getFilename(),
+                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
                 }
 
                 // if we've already seen a partition tombstone with a timestamp greater
@@ -1100,7 +1108,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                 StorageService.instance.migratedRawSSTablecount--;
 
-            }
+            } else {
+                    logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                            sstable.getSSTableHashID(), sstable.getFilename(),
+                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
+                }
 
             if (sstable.getColumnFamilyName().contains("usertable") &&
                     sstable.isReplicationTransferredToErasureCoding() &&
@@ -1129,6 +1141,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 }
                 StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                 StorageService.instance.migratedRawSSTablecount--;
+            } else {
+                logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                        sstable.getSSTableHashID(), sstable.getFilename(),
+                        sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
             }
 
             // if (isCurrentSSTableRepaired) {

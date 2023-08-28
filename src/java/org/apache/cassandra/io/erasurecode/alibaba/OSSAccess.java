@@ -88,6 +88,7 @@ public class OSSAccess implements AutoCloseable {
 
     public boolean uploadFileToOSS(String targetFilePath) {
         String objectName = targetFilePath.replace('/', '_') + localIP;
+        logger.debug("rymDebug: target object name is ({})", objectName);
         try {
             InputStream inputStream = new FileInputStream(targetFilePath);
             // 创建PutObjectRequest对象。
