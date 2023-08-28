@@ -457,9 +457,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 size += TypeSizes.sizeof(component.isTransient);
             }
 
-            if (version.hasIsDataMigrateToCloud()) {
-                size += TypeSizes.sizeof(component.isDataMigrateToCloud);
-            }
+            // if (version.hasIsDataMigrateToCloud()) {
+            size += TypeSizes.sizeof(component.isDataMigrateToCloud);
+            // }
 
             size += TypeSizes.sizeof(component.isReplicationTransferToErasureCoding);
 
