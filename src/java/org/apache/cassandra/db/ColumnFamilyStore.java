@@ -744,8 +744,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     if(sst.isDataMigrateToCloud())
                                         migratedCnt++;
 
-                                    if(sst.isReplicationTransferredToErasureCoding())
-                                        transferredCnt++;
+                                    // if(sst.isReplicationTransferredToErasureCoding())
+                                    //     transferredCnt++;
                                     // String range = String.format("SSTable (%s), first token is (%s), last token is (%s), isTransferred (%s), isECSSTable (%s) \n",
                                     //                              sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(), sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
                                     //                              SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
