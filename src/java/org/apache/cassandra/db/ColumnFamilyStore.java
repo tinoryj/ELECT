@@ -684,6 +684,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     try {
                                         // delete the raw data and create a empty file
                                         sstable.SetIsDataMigrateToCloud(true);
+                                        logger.debug("rymDebug: set data migration flag for sstable ({}) as ({})", sstable.getSSTableHashID(), sstable.isDataMigrateToCloud());
                                         Files.newBufferedWriter(Paths.get(sstable.getFilename()));
                                     } catch (IOException e) {
                                         // TODO Auto-generated catch block

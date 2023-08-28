@@ -81,8 +81,8 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
     public final UUID originatingHostId;
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
-    public boolean isDataMigrateToCloud;
-    public boolean isReplicationTransferToErasureCoding;
+    public final boolean isDataMigrateToCloud;
+    public final boolean isReplicationTransferToErasureCoding;
     public String hashID = null;
     public long dataFileSize = 0;
     // just holds the current encoding stats to avoid allocating - it is not
@@ -200,15 +200,15 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
         return true;
     }
 
-    public Boolean setIsReplicationTransferredToErasureCodingFlag(boolean isReplicationTransferToErasureCoding) {
-        this.isReplicationTransferToErasureCoding = isReplicationTransferToErasureCoding;
-        return true;
-    }
+    // public Boolean setIsReplicationTransferredToErasureCodingFlag(boolean isReplicationTransferToErasureCoding) {
+    //     this.isReplicationTransferToErasureCoding = isReplicationTransferToErasureCoding;
+    //     return true;
+    // }
 
-    public Boolean setIsDataMigrateToCloudFlag(boolean isDataMigrateToCloud) {
-        this.isDataMigrateToCloud = isDataMigrateToCloud;
-        return true;
-    }
+    // public Boolean setIsDataMigrateToCloudFlag(boolean isDataMigrateToCloud) {
+    //     this.isDataMigrateToCloud = isDataMigrateToCloud;
+    //     return true;
+    // }
 
     /**
      * @param gcBefore gc time in seconds
@@ -262,7 +262,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 dataFileSize);
     }
 
-    public StatsMetadata setIsTransferredToErasureCoding(boolean newIsReplicationTransferToErasureCoding) {
+    public StatsMetadata setIsTransferredToErasureCoding(final boolean newIsReplicationTransferToErasureCoding) {
 
         logger.debug("rymDebug: setIsTransferredToErasureCoding is StatsMetadata ({})", newIsReplicationTransferToErasureCoding);
 

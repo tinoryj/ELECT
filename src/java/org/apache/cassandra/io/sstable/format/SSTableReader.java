@@ -1981,7 +1981,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         }
     }
 
-    public boolean SetIsDataMigrateToCloud(boolean flag) throws IOException {
+    public void SetIsDataMigrateToCloud(boolean flag) throws IOException {
         // this.isDataMigrateToCloud = true;
         // this.sstableMetadata.setIsDataMigrateToCloudFlag(true);
         synchronized (tidy.global) {
@@ -1990,11 +1990,11 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             reloadSSTableMetadata();
         }
 
-        if (this.isDataMigrateToCloud) {
-            return true;
-        } else {
-            return false;
-        }
+        // if (this.isDataMigrateToCloud) {
+        //     return true;
+        // } else {
+        //     return false;
+        // }
     }
 
     public boolean isParityUpdate() {
