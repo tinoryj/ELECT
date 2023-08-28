@@ -1962,7 +1962,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public boolean isDataMigrateToCloud() {
-        return this.isDataMigrateToCloud;
+        return this.sstableMetadata.isDataMigrateToCloud;
     }
 
     public boolean SetIsReplicationTransferredToErasureCoding() throws IOException {
