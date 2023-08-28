@@ -111,6 +111,7 @@ public class OSSAccess implements AutoCloseable {
 
     public boolean uploadFileToOSS(String targetFilePath, byte[] content) {
         String objectName = targetFilePath.replace('/', '_') + localIP;
+        
         try {
             logger.debug("rymDebug: target file path is ({}), content size is ({}), object name is ({})", targetFilePath, content.length, objectName);
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName, new ByteArrayInputStream(content));
@@ -161,9 +162,11 @@ public class OSSAccess implements AutoCloseable {
     }
 
     public boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
+
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
 
         FileUtils.delete(originalFilePath);
+        logger.debug("rymDebug: Download original file from OSS, file name is ({})", objectName);
 
         try {
             ossClient.getObject(
