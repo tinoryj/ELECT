@@ -1985,7 +1985,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // this.isDataMigrateToCloud = true;
         // this.sstableMetadata.setIsDataMigrateToCloudFlag(true);
         synchronized (tidy.global) {
-            logger.debug("rymDebug: set is replication transferred to erasure coding flag for sstable ({})", this.getSSTableHashID());
+            logger.debug("rymDebug: set is migrated to cloud flag for sstable ({})", this.getSSTableHashID());
             descriptor.getMetadataSerializer().setIsDataMigrateToCloud(descriptor, this.getSSTableHashID(), flag);
             reloadSSTableMetadata();
         }
