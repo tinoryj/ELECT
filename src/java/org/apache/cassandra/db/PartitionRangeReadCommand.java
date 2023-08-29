@@ -341,27 +341,28 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 UnfilteredPartitionIterator iter = memtable.partitionIterator(columnFilter(), dataRange(),
                         readCountUpdater);
                 controller.updateMinOldestUnrepairedTombstone(memtable.getMinLocalDeletionTime());
-                inputCollector
-                        .addMemtableIterator(
-                                RTBoundValidator.validate(iter, RTBoundValidator.Stage.MEMTABLE, false));
+                inputCollector.addMemtableIterator(
+                        RTBoundValidator.validate(iter, RTBoundValidator.Stage.MEMTABLE, false));
             }
 
-            int readRecoveryedSSTableCount = 0;
-            ArrayList<String> readRecoveryedSSTableList = new ArrayList<String>();
-            ArrayList<String> readRecoveryedSSTableHashList = new ArrayList<String>();
             for (SSTableReader sstable : view.sstables) {
-                boolean isCurrentSSTableRepaired = false;
-                if (!sstable.getColumnFamilyName().equals("usertable0") && 
-                    sstable.isReplicationTransferredToErasureCoding() && 
-                    !sstable.isDataMigrateToCloud()) {
+                // boolean isCurrentSSTableRepaired = false;
+                if (!sstable.getColumnFamilyName().equals("usertable0") &&
+                        sstable.isReplicationTransferredToErasureCoding()) {
                     if (!controller.shouldPerformOnlineRecoveryDuringRead()) {
                         // logger.debug("[Tinoryj] Skip metadata sstable from read for {}: [{},{}]",
-                        //         sstable.getColumnFamilyName(),
-                        //         sstable.getSSTableHashID(), sstable.getFilename());
+                        // sstable.getColumnFamilyName(),
+                        // sstable.getSSTableHashID(), sstable.getFilename());
                         continue;
                     } else {
-                        isCurrentSSTableRepaired = true;
-                        readRecoveryedSSTableCount++;
+                        if (sstable.isDataMigrateToCloud()) {
+                            logger.error(
+                                    "[Tinoryj-ERROR] SSTable ({},{}) in secondary LSM-tree should not be migrated to cloud",
+                                    sstable.getFilename(), sstable.getSSTableHashID());
+                            continue;
+                        }
+                        // isCurrentSSTableRepaired = true;
+                        // readRecoveryedSSTableCount++;
                         logger.debug("[Tinoryj] Start online recovery for metadata sstable: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
                         if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
@@ -390,63 +391,70 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                 // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
-                sstable.isDataMigrateToCloud()
-                ) {
-                    logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
+                        sstable.isDataMigrateToCloud()
+                        && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                    logger.debug("[Tinoryj] Start online retrive for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
                     int retryCount = 0;
-                    while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
-                          retryCount < ECNetutils.getMigrationRetryCount()) {
-                        retryCount++;
+                    if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
+                        StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
+                        while (!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
+                                FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
+                                retryCount < ECNetutils.getMigrationRetryCount()) {
+                            retryCount++;
+                        }
+                    } else {
+                        while (!StorageService.instance.downloadedSSTables.contains(sstable.getSSTableHashID())
+                                && StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
+                                retryCount < ECNetutils.getMigrationRetryCount()) {
+                            try {
+                                Thread.sleep(1);
+                            } catch (InterruptedException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
+                            retryCount++;
+                        }
                     }
-                    
+
                     try {
-                        sstable.SetIsDataMigrateToCloud(false);
+                        StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
+                        StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
+                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
-
+                } else {
+                    logger.debug(
+                            "rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                            sstable.getSSTableHashID(), sstable.getFilename(),
+                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
                 }
 
+                // Get updated sstable from memory
                 if (sstable.getColumnFamilyName().contains("usertable")
                         && !sstable.getColumnFamilyName().equals("usertable0") &&
                         sstable.isReplicationTransferredToErasureCoding() &&
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
-                } else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
-                sstable.isDataMigrateToCloud()
-                ) {
-                    // Tinoryj TODO: retrive SSTable from cloud.
-                    logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
-                            sstable.getSSTableHashID(), sstable.getFilename());
-                    int retryCount = 0;
-                    while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
-                          retryCount < ECNetutils.getMigrationRetryCount()) {
-                        retryCount++;
-                    }
-                    
-                    try {
-                        sstable.SetIsDataMigrateToCloud(false);
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                    StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
-                    StorageService.instance.migratedRawSSTablecount--;
+                } else if (sstable.getColumnFamilyName().equals("usertable0")
+                        && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                    sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
+                    StorageService.instance.globalDownloadedSSTableMap.remove(sstable.getSSTableHashID());
                 }
-                if (isCurrentSSTableRepaired) {
-                    readRecoveryedSSTableList.add(sstable.getFilename());
-                    readRecoveryedSSTableHashList.add(sstable.getSSTableHashID());
-                    logger.debug(
-                            "[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
-                            sstable.getSSTableHashID(),
-                            sstable.getFilename());
-                }
+
+                // if (isCurrentSSTableRepaired) {
+                // readRecoveryedSSTableList.add(sstable.getFilename());
+                // readRecoveryedSSTableHashList.add(sstable.getSSTableHashID());
+                // logger.debug(
+                // "[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
+                // sstable.getSSTableHashID(),
+                // sstable.getFilename());
+                // }
                 @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
                                               // method
                 UnfilteredPartitionIterator iter = sstable.partitionIterator(columnFilter(), dataRange(),
@@ -456,11 +464,6 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
 
                 if (!sstable.isRepaired())
                     controller.updateMinOldestUnrepairedTombstone(sstable.getMinLocalDeletionTime());
-            }
-            if (readRecoveryedSSTableCount != 0 && inputCollector.isEmpty()) {
-                logger.error(
-                        "[Tinoryj-ERROR] Read recoveryed sstable count = {}, but get no data from them. The SSTables list = {}, hash list = {}",
-                        readRecoveryedSSTableCount, readRecoveryedSSTableList, readRecoveryedSSTableHashList);
             }
             // iterators can be empty for offline tools
             if (inputCollector.isEmpty())

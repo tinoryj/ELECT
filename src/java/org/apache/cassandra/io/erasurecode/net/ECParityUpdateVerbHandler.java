@@ -696,7 +696,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             int needMirateParityCodeCount = ECNetutils.getNeedMigrateParityCodesCount();
             if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
-                needMirateParityCodeCount > StorageService.instance.migratedParityCodeCount || DatabaseDescriptor.getStorageSavingGrade() == 2) {
+                needMirateParityCodeCount > StorageService.instance.migratedParityCodeCount || DatabaseDescriptor.getStorageSavingGrade() >= 2) {
 
                 for(int i = 0; i < newParityCodes.length; i++) {
 

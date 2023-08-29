@@ -59,7 +59,7 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
                 }
 
                 if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].position() != 0) {
-                    throw new IllegalArgumentException(String.format("rymERROR: The erasure codes index (%s) for sstHash (%s) is empty", k + i, sstHash));
+                    throw new IllegalArgumentException(String.format("rymERROR: The erasure codes index (%s) for sstHash (%s) is not empty", k + i, sstHash));
                 }
 
 

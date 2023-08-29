@@ -192,6 +192,7 @@ public class Config {
     public boolean enable_erasure_coding = true;
     public int cold_period = 1440; // unit: minutes, the threshold to judge whether a sstable is extremely cold.
     public double target_storage_saving = 0.5;
+    public int max_concurrent_download = 5;
 
     /**
      * This parameter indicates three storage saving levels.

@@ -55,16 +55,35 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         for(SSTableReader sstable : sstables) {
             if(sstable.getSSTableHashID().equals(requestSSTHash)) {
 
-                if(sstable.isDataMigrateToCloud()) {
+                if(sstable.isDataMigrateToCloud()
+                && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
                     // reload raw data from cloud
                     int retryCount = 0;
-                    while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
+                    if(!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
+                        StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
+                        while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
-                        retryCount++;
+                            retryCount++;
+                        }
+                    } else {
+                        while(!StorageService.instance.downloadedSSTables.contains(sstable.getSSTableHashID())&& StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
+                          retryCount < ECNetutils.getMigrationRetryCount()) {
+                            try {
+                                Thread.sleep(2);
+                            } catch (InterruptedException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
+                            retryCount++;
+                        }
                     }
 
                     try {
-                        sstable.SetIsDataMigrateToCloud(false);
+                        
+                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                        StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
+                        StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
+                        
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();

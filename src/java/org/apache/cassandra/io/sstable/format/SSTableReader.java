@@ -566,29 +566,39 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    // public static void loadRawDataForMigrationg(String filePath, Descriptor desc, SSTableReader oldSSTable) {
+    public static SSTableReader loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) throws IOException {
 
-    //     // replace the old sstable with a new one
-    //     SSTableReader newSSTable = SSTableReader.open(desc);
-    //     ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
-    //     final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
-    //     logger.debug("rymDebug: Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
-    //     try {
-    //         if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
-    //             logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
-    //         }
+        // replace the old sstable with a new one
+        SSTableReader newSSTable = SSTableReader.open(desc);
+        
+        newSSTable.SetIsDataMigrateToCloud(false);
+        StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
+        // ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+        // final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
+        // if(txn != null) {
+        //     logger.debug("rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
+        //     // try {
+        //     //     if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
+        //     //         logger.error("rymERROR: [Migration Stage]  set IsReplicationTransferredToErasureCoding failed!");
+        //     //     }
 
-    //     } catch (IOException e) {
-    //         e.printStackTrace();
-    //     }
-    //     txn.update(newSSTable, true);
-    //     txn.checkpoint();
-    //     Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
+        //     // } catch (IOException e) {
+        //     //     e.printStackTrace();
+        //     // }
+        //     txn.update(newSSTable, true);
+        //     txn.checkpoint();
+        //     Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
 
-    //     StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
-    //     StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
 
-    // }
+        // } else {
+        //     logger.debug("rymDebug: the txn is null for loading migration sstable ({})", newSSTable.getSSTableHashID());
+        // }
+        return newSSTable;
+        
+        // StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
+        // StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
+
+    }
 
 
     public static SSTableReader open(Descriptor desc, TableMetadataRef metadata) {
@@ -1962,7 +1972,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     }
 
     public boolean isDataMigrateToCloud() {
-        return this.isDataMigrateToCloud;
+        return this.sstableMetadata.isDataMigrateToCloud;
     }
 
     public boolean SetIsReplicationTransferredToErasureCoding() throws IOException {
@@ -1981,20 +1991,20 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         }
     }
 
-    public boolean SetIsDataMigrateToCloud(boolean flag) throws IOException {
+    public void SetIsDataMigrateToCloud(boolean flag) throws IOException {
         // this.isDataMigrateToCloud = true;
         // this.sstableMetadata.setIsDataMigrateToCloudFlag(true);
         synchronized (tidy.global) {
-            logger.debug("rymDebug: set is replication transferred to erasure coding flag for sstable ({})", this.getSSTableHashID());
+            logger.debug("rymDebug: set is migrated to cloud flag for sstable ({})", this.getSSTableHashID());
             descriptor.getMetadataSerializer().setIsDataMigrateToCloud(descriptor, this.getSSTableHashID(), flag);
             reloadSSTableMetadata();
         }
 
-        if (this.isDataMigrateToCloud) {
-            return true;
-        } else {
-            return false;
-        }
+        // if (this.isDataMigrateToCloud) {
+        //     return true;
+        // } else {
+        //     return false;
+        // }
     }
 
     public boolean isParityUpdate() {
