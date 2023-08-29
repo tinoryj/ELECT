@@ -205,6 +205,10 @@ public class OSSAccess implements AutoCloseable {
         } finally {
             semaphore.release();
         }
+        if (downlObjectMetadata == null) {
+            logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})", objectName);
+            return false;
+        }
         if (downlObjectMetadata.isRestoreCompleted()) {
             logger.debug("rymDebug: Downloaded original file from OSS, file name is ({})", objectName);
             return true;
