@@ -304,6 +304,7 @@ public abstract class SSTableReaderBuilder {
                     int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / summary.size());
                     ifile = ibuilder.bufferSize(indexBufferSize).complete();
                     dfile = dbuilder.bufferSize(dataBufferSize).complete();
+                    logger.debug("[Tinoryj] the new dfile is {}, data buffer size is {}", dfile, dataBufferSize);
                     bf = FilterFactory.AlwaysPresent;
 
                     SSTableReader sstable = readerFactory.open(this);
@@ -334,6 +335,7 @@ public abstract class SSTableReaderBuilder {
                     int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / summary.size());
                     ifile = ibuilder.bufferSize(indexBufferSize).complete();
                     dfile = dbuilder.bufferSize(dataBufferSize).complete();
+                    logger.debug("[Tinoryj] the new dfile is {}, data buffer size is {}", dfile, dataBufferSize);
                     bf = FilterFactory.AlwaysPresent;
 
                     SSTableReader sstable = readerFactory.open(this);
@@ -482,7 +484,7 @@ public abstract class SSTableReaderBuilder {
                     }
 
                     dfile = dbuilder.bufferSize(dataBufferSize).complete();
-
+                    logger.debug("[Tinoryj] the new dfile is {}, data buffer size is {}", dfile, dataBufferSize);
                     if (buildSummary) {
                         if (saveSummaryIfCreated)
                             SSTableReader.saveSummary(descriptor, first, last, summary);
@@ -529,6 +531,7 @@ public abstract class SSTableReaderBuilder {
                     }
 
                     dfile = dbuilder.bufferSize(dataBufferSize).complete();
+                    logger.debug("[Tinoryj] the new dfile is {}, data buffer size is {}", dfile, dataBufferSize);
 
                 } catch (Throwable t) { // Because the tidier has not been set-up yet in SSTableReader.open(), we must
                                         // release the files in case of error
