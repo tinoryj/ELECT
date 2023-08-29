@@ -780,9 +780,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                        ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
-                        // sstable.isDataMigrateToCloud()
-                        ) {
+                        // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
+                sstable.isDataMigrateToCloud()
+                ) {
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
@@ -802,7 +802,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     StorageService.instance.migratedRawSSTablecount--;
 
                 } else {
-                    logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                    logger.debug(
+                            "rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
                             sstable.getSSTableHashID(), sstable.getFilename(),
                             sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
                 }
@@ -813,9 +814,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                        ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
-                        // sstable.isDataMigrateToCloud()
-                        ) {
+                        // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
+                sstable.isDataMigrateToCloud()
+                ) {
 
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
@@ -836,7 +837,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
                 } else {
-                    logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                    logger.debug(
+                            "rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
                             sstable.getSSTableHashID(), sstable.getFilename(),
                             sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
                 }
@@ -1086,9 +1088,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     }
                 }
             } else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                        ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
-                        // sstable.isDataMigrateToCloud()
-                        ) {
+                    // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
+            sstable.isDataMigrateToCloud()
+            ) {
                 logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                         sstable.getSSTableHashID(), sstable.getFilename());
                 // Tinoryj TODO: retrive SSTable from cloud.
@@ -1109,19 +1111,20 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 StorageService.instance.migratedRawSSTablecount--;
 
             } else {
-                    logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
-                            sstable.getSSTableHashID(), sstable.getFilename(),
-                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
-                }
+                logger.debug(
+                        "rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                        sstable.getSSTableHashID(), sstable.getFilename(),
+                        sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
+            }
 
             if (sstable.getColumnFamilyName().contains("usertable") &&
                     sstable.isReplicationTransferredToErasureCoding() &&
                     ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                 sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
             } else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                        ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
-                        // sstable.isDataMigrateToCloud()
-                        ) {
+                    // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
+            sstable.isDataMigrateToCloud()
+            ) {
 
                 logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                         sstable.getSSTableHashID(), sstable.getFilename());
@@ -1134,15 +1137,19 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 }
 
                 try {
+                    SSTableReader.loadRawDataForMigrationg(sstable.descriptor, sstable);
+                    StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                    StorageService.instance.migratedRawSSTablecount--;
                     sstable.SetIsDataMigrateToCloud(false);
+                    
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
-                StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
-                StorageService.instance.migratedRawSSTablecount--;
+
             } else {
-                logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
+                logger.debug(
+                        "rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
                         sstable.getSSTableHashID(), sstable.getFilename(),
                         sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
             }
@@ -1208,7 +1215,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 filter,
                                 sstable.isRepaired(),
                                 controller);
-                        if(sstable.getKeyspaceName().equals("ycsb"))
+                        if (sstable.getKeyspaceName().equals("ycsb"))
                             break;
                     }
                 }

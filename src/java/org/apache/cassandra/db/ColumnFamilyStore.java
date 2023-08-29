@@ -1098,7 +1098,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
 
             File dataFile = new File(desc.filenameFor(Component.DATA));
-            if ((components.contains(Component.DATA) && dataFile.length() > 0)
+            if ((components.contains(Component.DATA))
                     || components.contains(Component.EC_METADATA))
                 // everything appears to be in order... moving on.
                 continue;

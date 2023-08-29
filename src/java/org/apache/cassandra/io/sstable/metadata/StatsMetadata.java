@@ -181,9 +181,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                         this.hashID = sb.toString();
                     }
 
-                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash
-                    // length is {}",
-                    // this.hashID, this.hashID.length());
+                    logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash length is {}", this.hashID, this.hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
                     // logger.debug("[Tinoryj]: Could not generated hash value for current SSTable =

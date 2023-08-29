@@ -566,29 +566,29 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    // public static void loadRawDataForMigrationg(String filePath, Descriptor desc, SSTableReader oldSSTable) {
+    public static void loadRawDataForMigrationg(Descriptor desc, SSTableReader oldSSTable) {
 
-    //     // replace the old sstable with a new one
-    //     SSTableReader newSSTable = SSTableReader.open(desc);
-    //     ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
-    //     final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
-    //     logger.debug("rymDebug: Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
-    //     try {
-    //         if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
-    //             logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
-    //         }
+        // replace the old sstable with a new one
+        SSTableReader newSSTable = SSTableReader.open(desc);
+        ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+        final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
+        logger.debug("rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
+        try {
+            if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
+                logger.error("rymERROR: [Migration Stage]  set IsReplicationTransferredToErasureCoding failed!");
+            }
 
-    //     } catch (IOException e) {
-    //         e.printStackTrace();
-    //     }
-    //     txn.update(newSSTable, true);
-    //     txn.checkpoint();
-    //     Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        txn.update(newSSTable, true);
+        txn.checkpoint();
+        Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
 
-    //     StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
-    //     StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
+        // StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
+        // StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
 
-    // }
+    }
 
 
     public static SSTableReader open(Descriptor desc, TableMetadataRef metadata) {
