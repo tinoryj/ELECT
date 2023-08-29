@@ -566,10 +566,12 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    public static SSTableReader loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) {
+    public static SSTableReader loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) throws IOException {
 
         // replace the old sstable with a new one
         SSTableReader newSSTable = SSTableReader.open(desc);
+        
+        newSSTable.SetIsDataMigrateToCloud(false);
         ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
         final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
         logger.debug("rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
