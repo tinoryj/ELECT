@@ -106,7 +106,7 @@ public class MmappedRegions extends SharedCloseableImpl
 
     public static MmappedRegions map(ChannelProxy channel, long length)
     {
-        if (length <= 0)
+        if (length < 0)
             throw new IllegalArgumentException("Length must be positive");
 
         return new MmappedRegions(channel, null, length);
