@@ -176,8 +176,6 @@ public class OSSAccess implements AutoCloseable {
 
     public boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
-        // // ObjectMetadata downlObjectMetadata = null;
-        // boolean isDownloaded = false;
         try {
             semaphore.acquire();
             try {
@@ -205,15 +203,8 @@ public class OSSAccess implements AutoCloseable {
         } finally {
             semaphore.release();
         }
-        // if (isDownloaded == false) {
-        // logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file
-        // name is ({})",
-        // objectName);
-        // return false;
-        // } else {
         logger.debug("rymDebug: Downloaded original file from OSS, file name is ({})", objectName);
         return true;
-        // }
     }
 
     public boolean deleteSingleFileInOSS(String targetFilePath) {
