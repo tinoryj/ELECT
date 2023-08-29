@@ -403,7 +403,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         }
                         StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
                     } else {
-                        while(!StorageService.instance.downloadedSSTables.contains(sstable.getSSTableHashID()) &&
+                        while(!StorageService.instance.downloadedSSTables.contains(sstable.getSSTableHashID()) && StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                             try {
                                 Thread.sleep(2);
@@ -413,6 +413,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             }
                             retryCount++;
                         }
+                        StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
                     }
                     
                     try {
