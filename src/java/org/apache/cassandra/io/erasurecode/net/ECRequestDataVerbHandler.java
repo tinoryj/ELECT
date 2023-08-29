@@ -66,7 +66,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                             retryCount++;
                         }
                     } else {
-                        while(!StorageService.instance.downloadedSSTables.contains(sstable.getSSTableHashID())&& StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
+                        while(!StorageService.instance.globalDownloadedSSTableMap.contains(sstable.getSSTableHashID())&& StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                             try {
                                 Thread.sleep(2);
@@ -80,8 +80,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
 
                     try {
                         
-                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
-                        StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
+                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
                         
                     } catch (IOException e) {
