@@ -176,23 +176,16 @@ public class OSSAccess implements AutoCloseable {
 
     public boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
-        ObjectMetadata downlObjectMetadata = null;
-        boolean isDownloaded = false;
+        // // ObjectMetadata downlObjectMetadata = null;
+        // boolean isDownloaded = false;
         try {
             semaphore.acquire();
             try {
-                FileUtils.delete(originalFilePath);
+                // FileUtils.delete(originalFilePath);
                 // Varify the file exist or not
-                downlObjectMetadata = ossClient.getObject(
+                ossClient.getObject(
                         new GetObjectRequest(bucketName, objectName),
                         new File(originalFilePath));
-                if (downlObjectMetadata != null) {
-                    while (true) {
-                        if (downlObjectMetadata.isRestoreCompleted()) {
-                            break;
-                        }
-                    }
-                }
             } catch (OSSException oe) {
                 logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
                         + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
@@ -212,15 +205,16 @@ public class OSSAccess implements AutoCloseable {
         } finally {
             semaphore.release();
         }
-        if (isDownloaded == false) {
-            logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})",
-                    objectName);
-            return false;
-        } else {
-            logger.debug("rymDebug: Downloaded original file from OSS, file name is ({}), data size is ({})",
-                    objectName, downlObjectMetadata.getContentLength());
-            return true;
-        }
+        // if (isDownloaded == false) {
+        // logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file
+        // name is ({})",
+        // objectName);
+        // return false;
+        // } else {
+        logger.debug("rymDebug: Downloaded original file from OSS, file name is ({}), data size is ({})",
+                objectName, downlObjectMetadata.getContentLength());
+        return true;
+        // }
     }
 
     public boolean deleteSingleFileInOSS(String targetFilePath) {
