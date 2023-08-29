@@ -211,8 +211,7 @@ public class OSSAccess implements AutoCloseable {
         // objectName);
         // return false;
         // } else {
-        logger.debug("rymDebug: Downloaded original file from OSS, file name is ({}), data size is ({})",
-                objectName, downlObjectMetadata.getContentLength());
+        logger.debug("rymDebug: Downloaded original file from OSS, file name is ({})", objectName);
         return true;
         // }
     }
