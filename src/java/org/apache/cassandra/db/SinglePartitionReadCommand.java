@@ -793,6 +793,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         retryCount++;
                     }
                     try {
+
+                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         sstable.SetIsDataMigrateToCloud(false);
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
@@ -829,6 +831,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     }
 
                     try {
+
+                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         sstable.SetIsDataMigrateToCloud(false);
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
@@ -1102,6 +1106,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 }
 
                 try {
+
+                    SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                     sstable.SetIsDataMigrateToCloud(false);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
@@ -1137,15 +1143,15 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 }
 
                 try {
-                    SSTableReader.loadRawDataForMigrationg(sstable.descriptor, sstable);
-                    StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
-                    StorageService.instance.migratedRawSSTablecount--;
+                    SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                     sstable.SetIsDataMigrateToCloud(false);
                     
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
+                StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                StorageService.instance.migratedRawSSTablecount--;
 
             } else {
                 logger.debug(

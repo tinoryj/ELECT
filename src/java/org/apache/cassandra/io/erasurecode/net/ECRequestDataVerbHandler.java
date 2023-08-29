@@ -64,6 +64,8 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                     }
 
                     try {
+                        
+                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         sstable.SetIsDataMigrateToCloud(false);
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
