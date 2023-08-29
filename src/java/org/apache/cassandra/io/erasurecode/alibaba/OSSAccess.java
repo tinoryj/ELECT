@@ -162,7 +162,7 @@ public class OSSAccess implements AutoCloseable {
         return true;
     }
 
-    public boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
+    public synchronized boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
 
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
 
