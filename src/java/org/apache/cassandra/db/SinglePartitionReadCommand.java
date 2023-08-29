@@ -1134,6 +1134,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                     // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
             sstable.isDataMigrateToCloud()
+            && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())
             ) {
 
                 logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
