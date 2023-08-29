@@ -33,6 +33,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 
+import javax.xml.crypto.Data;
+
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.utils.FBUtilities;
@@ -69,7 +72,7 @@ public class OSSAccess implements AutoCloseable {
     private static String bucketName = "elect-cloud";
     private static String localIP = FBUtilities.getBroadcastAddressAndPort().toString(false).replace('/', '_');
     private static OSS ossClient;
-    private final int maxConcurrentDownloads = 10;    
+    private final int maxConcurrentDownloads = DatabaseDescriptor.getMaxConcurrentDownload();    
     private final Semaphore semaphore = new Semaphore(maxConcurrentDownloads);
 
 

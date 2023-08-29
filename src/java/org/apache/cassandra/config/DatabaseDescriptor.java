@@ -1992,6 +1992,20 @@ public class DatabaseDescriptor
         conf.task_delay = task_delay;
     }
 
+    public static int getMaxConcurrentDownload() 
+    {
+        return conf.max_concurrent_download;
+    }
+
+    public static void setMaxConcurrentDownload(int max_concurrent_download)
+    {
+        if (max_concurrent_download < 0)
+        {
+            throw new IllegalArgumentException("Concurrent download must be non-negative");
+        }
+        conf.max_concurrent_download = max_concurrent_download;
+    }
+
     public static double getTargetStorageSaving() 
     {
         return conf.target_storage_saving;
