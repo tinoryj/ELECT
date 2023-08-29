@@ -433,7 +433,7 @@ public final class ECNetutils {
     public synchronized static boolean getIsDownloaded(String sstHash) {
         if(sstHash == null)
             return false;
-        return StorageService.instance.downloadedSSTables.contains(sstHash);
+        return StorageService.instance.globalDownloadedSSTableMap.contains(sstHash);
     }
 
 

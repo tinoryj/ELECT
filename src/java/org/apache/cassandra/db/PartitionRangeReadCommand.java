@@ -405,7 +405,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             retryCount++;
                         }
                     } else {
-                        while (!StorageService.instance.downloadedSSTables.contains(sstable.getSSTableHashID())
+                        while (!StorageService.instance.globalDownloadedSSTableMap.contains(sstable.getSSTableHashID())
                                 && StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                                 retryCount < ECNetutils.getMigrationRetryCount()) {
                             try {
@@ -419,16 +419,15 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     }
 
                     try {
-                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
-                        StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
-
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
+                    sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 } else {
                     logger.debug(
                             "rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
@@ -442,10 +441,6 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         sstable.isReplicationTransferredToErasureCoding() &&
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
-                } else if (sstable.getColumnFamilyName().equals("usertable0")
-                        && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
-                    sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
-                    // StorageService.instance.globalDownloadedSSTableMap.remove(sstable.getSSTableHashID());
                 }
 
                 // if (isCurrentSSTableRepaired) {

@@ -275,7 +275,6 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentSkipListSet<String> migratedSStables = new ConcurrentSkipListSet<String>();
 
     
-    public ConcurrentSkipListSet<String> downloadedSSTables = new ConcurrentSkipListSet<String>();
     public ConcurrentSkipListSet<String> downloadingSSTables = new ConcurrentSkipListSet<String>();
     public ConcurrentHashMap<String, SSTableReader> globalDownloadedSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
 
