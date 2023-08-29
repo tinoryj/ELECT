@@ -174,7 +174,6 @@ public class OSSAccess implements AutoCloseable {
 
     public boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
 
-
         try {
             semaphore.acquire();
             try {

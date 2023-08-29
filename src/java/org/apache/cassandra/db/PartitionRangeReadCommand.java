@@ -406,7 +406,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         while(!StorageService.instance.downloadedSSTables.contains(sstable.getSSTableHashID()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                             try {
-                                Thread.sleep(1);
+                                Thread.sleep(2);
                             } catch (InterruptedException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
