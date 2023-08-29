@@ -51,6 +51,7 @@ import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.model.PutObjectResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.aliyun.oss.model.BucketInfo;
 import com.aliyun.oss.model.DeleteObjectsRequest;
 import com.aliyun.oss.model.DeleteObjectsResult;
@@ -58,6 +59,7 @@ import com.aliyun.oss.model.GetObjectRequest;
 import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.OSSObjectSummary;
 import com.aliyun.oss.model.ObjectListing;
+import com.aliyun.oss.model.ObjectMetadata;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -174,13 +176,14 @@ public class OSSAccess implements AutoCloseable {
 
     public boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
+        ObjectMetadata downlObjectMetadata;
         try {
             semaphore.acquire();
 
             try {
                 FileUtils.delete(originalFilePath);
                 // Varify the file exist or not
-                ossClient.getObject(
+                downlObjectMetadata = ossClient.getObject(
                         new GetObjectRequest(bucketName, objectName),
                         new File(originalFilePath));
             } catch (OSSException oe) {
@@ -202,9 +205,13 @@ public class OSSAccess implements AutoCloseable {
         } finally {
             semaphore.release();
         }
-        logger.debug("rymDebug: Downloaded original file from OSS, file name is ({})", objectName);
-        return true;
-
+        if (downlObjectMetadata.isRestoreCompleted()) {
+            logger.debug("rymDebug: Downloaded original file from OSS, file name is ({})", objectName);
+            return true;
+        } else {
+            logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})", objectName);
+            return false;
+        }
     }
 
     public boolean deleteSingleFileInOSS(String targetFilePath) {
