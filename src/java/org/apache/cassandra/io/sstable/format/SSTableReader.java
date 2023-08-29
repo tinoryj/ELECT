@@ -572,7 +572,6 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         SSTableReader newSSTable = SSTableReader.open(desc);
 
         newSSTable.SetIsDataMigrateToCloud(false);
-        StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
         ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
         final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
         if (txn != null) {
@@ -590,9 +589,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             txn.update(newSSTable, true);
             txn.checkpoint();
             Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
-
+            StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
         } else {
-            logger.debug("rymDebug: the txn is null for loading migration sstable ({})", newSSTable.getSSTableHashID());
+            logger.debug("rymDebug: the txn is null for loading migration sstable ({},{})", newSSTable.getFilename(),
+                    newSSTable.getSSTableHashID());
         }
         return;
 
