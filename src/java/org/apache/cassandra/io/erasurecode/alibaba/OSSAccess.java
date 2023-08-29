@@ -176,32 +176,31 @@ public class OSSAccess implements AutoCloseable {
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
         try {
             semaphore.acquire();
-            try {
-                // FileUtils.delete(originalFilePath);
-                try {
-                    ossClient.getObject(
-                            new GetObjectRequest(bucketName, objectName),
-                            new File(originalFilePath));
-                } catch (OSSException oe) {
-                    logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
-                            + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
-                    logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})",
-                            objectName);
-                    return false;
-                } catch (ClientException ce) {
-                    logger.error("OSS Internet Error Message:" + ce.getMessage());
-                    logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})",
-                            objectName);
-                    return false;
-                }
 
-            } finally {
-                semaphore.release();
+            try {
+                FileUtils.delete(originalFilePath);
+                // Varify the file exist or not
+                ossClient.getObject(
+                        new GetObjectRequest(bucketName, objectName),
+                        new File(originalFilePath));
+            } catch (OSSException oe) {
+                logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
+                        + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
+                logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})",
+                        objectName);
+                return false;
+            } catch (ClientException ce) {
+                logger.error("OSS Internet Error Message:" + ce.getMessage());
+                logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})",
+                        objectName);
+                return false;
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})", objectName);
             return false;
+        } finally {
+            semaphore.release();
         }
         logger.debug("rymDebug: Downloaded original file from OSS, file name is ({})", objectName);
         return true;

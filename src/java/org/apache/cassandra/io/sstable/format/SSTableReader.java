@@ -573,27 +573,44 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         newSSTable.SetIsDataMigrateToCloud(false);
         ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
-        final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
-        if (txn != null) {
-            logger.debug("rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})",
-                    txn.opId(), desc);
-            // try {
-            // if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
-            // logger.error("rymERROR: [Migration Stage] set
-            // IsReplicationTransferredToErasureCoding failed!");
-            // }
+        final int MAX_RETRIES = 3; // Set your max retry limit
+        int retryCount = 0;
 
-            // } catch (IOException e) {
-            // e.printStackTrace();
-            // }
-            txn.update(newSSTable, true);
-            txn.checkpoint();
-            Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
-            StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
-        } else {
-            logger.debug("rymDebug: the txn is null for loading migration sstable ({},{})", newSSTable.getFilename(),
-                    newSSTable.getSSTableHashID());
+        while (retryCount < MAX_RETRIES) {
+            final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
+            if (txn != null) {
+                logger.debug(
+                        "rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})",
+                        txn.opId(), desc);
+
+                try {
+                    txn.update(newSSTable, true);
+                    txn.checkpoint();
+                    Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
+                    StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
+
+                    // If we reach here, operation was successful. Break the loop.
+                    break;
+                } catch (Exception e) { // Replace with more specific exceptions if needed
+                    logger.error("rymERROR: [Migration Stage] An error occurred. Retrying... Attempt {} of {}",
+                            retryCount + 1, MAX_RETRIES, e);
+                    retryCount++;
+                }
+            } else {
+                logger.debug("rymDebug: the txn is null for loading migration sstable ({},{})",
+                        newSSTable.getFilename(),
+                        newSSTable.getSSTableHashID());
+                // Decide if you want to break or continue here
+            }
         }
+
+        // If we've exhausted retries, handle as necessary.
+        if (retryCount >= MAX_RETRIES) {
+            logger.error("rymERROR: [Migration Stage] Max retry attempts for update migrated raw sstable reached. Exiting...");
+            // Handle this condition, possibly by throwing an exception or notifying other
+            // services
+        }
+
         return;
 
         // StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(),
