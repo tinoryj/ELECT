@@ -419,9 +419,10 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     }
 
                     try {
+                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
                         StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
-                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
@@ -444,7 +445,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 } else if (sstable.getColumnFamilyName().equals("usertable0")
                         && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
-                    StorageService.instance.globalDownloadedSSTableMap.remove(sstable.getSSTableHashID());
+                    // StorageService.instance.globalDownloadedSSTableMap.remove(sstable.getSSTableHashID());
                 }
 
                 // if (isCurrentSSTableRepaired) {
