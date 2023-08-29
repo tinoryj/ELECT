@@ -782,6 +782,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                         // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
                 sstable.isDataMigrateToCloud()
+                && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())
                 ) {
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
@@ -795,6 +796,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     try {
 
                         sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                        StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
                         
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
@@ -818,6 +820,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                         // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
                 sstable.isDataMigrateToCloud()
+                && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())
                 ) {
 
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
@@ -833,6 +836,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     try {
 
                         sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                        StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
                         
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
@@ -1094,6 +1098,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                     // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
             sstable.isDataMigrateToCloud()
+            && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())
             ) {
                 logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                         sstable.getSSTableHashID(), sstable.getFilename());
@@ -1107,6 +1112,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
                 try {
                     sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                    StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
@@ -1142,6 +1148,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
                 try {
                     sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                    StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
                     
                     
                 } catch (IOException e) {

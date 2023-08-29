@@ -328,7 +328,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             int needMirateParityCodeCount = ECNetutils.getNeedMigrateParityCodesCount();
             if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
-                needMirateParityCodeCount > StorageService.instance.migratedParityCodeCount || DatabaseDescriptor.getStorageSavingGrade() == 2) {
+                needMirateParityCodeCount > StorageService.instance.migratedParityCodeCount || DatabaseDescriptor.getStorageSavingGrade() >= 2) {
 
                 for(int i = 0; i < parity.length; i++) {
 

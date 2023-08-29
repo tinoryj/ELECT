@@ -390,7 +390,8 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                 // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
-                sstable.isDataMigrateToCloud()
+                sstable.isDataMigrateToCloud() 
+                && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())
                 ) {
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
@@ -403,6 +404,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     
                     try {
                         sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                        StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
                         
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
@@ -425,6 +427,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                 // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
                 sstable.isDataMigrateToCloud()
+                && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())
                 ) {
                     // Tinoryj TODO: retrive SSTable from cloud.
                     logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
@@ -437,6 +440,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     
                     try {
                         sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                        StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
                         
                     } catch (IOException e) {
                         // TODO Auto-generated catch block

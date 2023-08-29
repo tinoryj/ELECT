@@ -274,6 +274,9 @@ public class StorageService extends NotificationBroadcasterSupport
     public volatile long migratedRawSSTablecount = 0;
     public ConcurrentSkipListSet<String> migratedSStables = new ConcurrentSkipListSet<String>();
 
+    
+    public ConcurrentSkipListSet<String> downloadedSSTables = new ConcurrentSkipListSet<String>();
+
 
     // [ELECT] Recovery the LSM-tree
     // cfName -> start time.
