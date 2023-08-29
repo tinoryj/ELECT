@@ -402,8 +402,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     }
                     
                     try {
-                        
-                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         sstable.SetIsDataMigrateToCloud(false);
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
@@ -437,7 +436,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     }
                     
                     try {
-                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         sstable.SetIsDataMigrateToCloud(false);
                     } catch (IOException e) {
                         // TODO Auto-generated catch block

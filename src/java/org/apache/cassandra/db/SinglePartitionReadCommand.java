@@ -794,7 +794,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     }
                     try {
 
-                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         sstable.SetIsDataMigrateToCloud(false);
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
@@ -832,7 +832,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
                     try {
 
-                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         sstable.SetIsDataMigrateToCloud(false);
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
@@ -1107,7 +1107,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
                 try {
 
-                    SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                    sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                     sstable.SetIsDataMigrateToCloud(false);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
@@ -1143,7 +1143,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 }
 
                 try {
-                    SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                    sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                     sstable.SetIsDataMigrateToCloud(false);
                     
                 } catch (IOException e) {

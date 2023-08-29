@@ -566,7 +566,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    public static void loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) {
+    public static SSTableReader loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) {
 
         // replace the old sstable with a new one
         SSTableReader newSSTable = SSTableReader.open(desc);
@@ -584,6 +584,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         txn.update(newSSTable, true);
         txn.checkpoint();
         Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
+        return newSSTable;
 
         // StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
         // StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
