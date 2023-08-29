@@ -586,8 +586,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         txn.update(newSSTable, true);
         txn.checkpoint();
         Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
-        return newSSTable;
 
+        StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
+        return newSSTable;
+        
         // StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
         // StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
 

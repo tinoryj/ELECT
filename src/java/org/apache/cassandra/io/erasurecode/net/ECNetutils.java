@@ -437,6 +437,13 @@ public final class ECNetutils {
     }
 
 
+    public synchronized static boolean getIsDownloading(String sstHash) {
+        if(sstHash == null)
+            return false;
+        return StorageService.instance.downloadingSSTables.contains(sstHash);
+    }
+
+
     public static void checkTheReplicaPlanIsEqualsToNaturalEndpoint(ReplicaPlan.ForWrite replicaPlan, List<InetAddressAndPort> sendRequestAddresses, Token targetReadToken) {
         boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
         for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {

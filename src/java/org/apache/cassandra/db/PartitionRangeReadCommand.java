@@ -424,7 +424,12 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         sstable.isReplicationTransferredToErasureCoding() &&
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
-                } else if (sstable.getColumnFamilyName().equals("usertable0") &&
+                } else if (sstable.getColumnFamilyName().equals("usertable0") 
+                && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())
+                ) {
+                    sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
+                }
+                else if (sstable.getColumnFamilyName().equals("usertable0") &&
                 // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
                 sstable.isDataMigrateToCloud()
                 && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())
