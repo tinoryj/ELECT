@@ -566,28 +566,33 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    public synchronized static SSTableReader loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) throws IOException {
+    public static SSTableReader loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) throws IOException {
 
         // replace the old sstable with a new one
         SSTableReader newSSTable = SSTableReader.open(desc);
         
         newSSTable.SetIsDataMigrateToCloud(false);
-        ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
-        final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
-        logger.debug("rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
-        // try {
-        //     if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
-        //         logger.error("rymERROR: [Migration Stage]  set IsReplicationTransferredToErasureCoding failed!");
-        //     }
-
-        // } catch (IOException e) {
-        //     e.printStackTrace();
-        // }
-        txn.update(newSSTable, true);
-        txn.checkpoint();
-        Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
-
         StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
+        // ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+        // final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
+        // if(txn != null) {
+        //     logger.debug("rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
+        //     // try {
+        //     //     if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
+        //     //         logger.error("rymERROR: [Migration Stage]  set IsReplicationTransferredToErasureCoding failed!");
+        //     //     }
+
+        //     // } catch (IOException e) {
+        //     //     e.printStackTrace();
+        //     // }
+        //     txn.update(newSSTable, true);
+        //     txn.checkpoint();
+        //     Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
+
+
+        // } else {
+        //     logger.debug("rymDebug: the txn is null for loading migration sstable ({})", newSSTable.getSSTableHashID());
+        // }
         return newSSTable;
         
         // StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
