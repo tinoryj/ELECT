@@ -60,13 +60,13 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                     // reload raw data from cloud
                     int retryCount = 0;
                     if(!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
+                        StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
                         while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                             retryCount++;
                         }
-                        StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
                     } else {
-                        while(!StorageService.instance.downloadedSSTables.contains(sstable.getSSTableHashID()) &&
+                        while(!StorageService.instance.downloadedSSTables.contains(sstable.getSSTableHashID())&& StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                             try {
                                 Thread.sleep(2);
@@ -76,6 +76,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                             }
                             retryCount++;
                         }
+                        StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
                     }
 
                     try {

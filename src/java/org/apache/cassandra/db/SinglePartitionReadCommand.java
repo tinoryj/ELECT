@@ -1055,7 +1055,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     continue;
                 } else {
                     // isCurrentSSTableRepaired = true;
-                    readRecoveryedSSTableCount++;
+                    // readRecoveryedSSTableCount++;
                     logger.debug("[Tinoryj] Start online recovery for metadata sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
