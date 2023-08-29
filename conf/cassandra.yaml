@@ -48,7 +48,7 @@ allocate_tokens_for_local_replication_factor: 3
 # comma-separated list -- it's primarily used when adding nodes to legacy clusters 
 # that do not have vnodes enabled.
 initial_token: -9223372036854775808
-token_ranges: -9223372036854775808,-6148914691236517376,-3074457345618258944,0,3074457345618257920,6148914691236515840
+token_ranges: -9223372036854775808,-7378697629483820544,-5534023222112865280,-3689348814741909504,-1844674407370954752,0,1844674407370956800,3689348814741911552,5534023222112866304,7378697629483821056
 
 # May either be "true" or "false" to enable globally
 hinted_handoff_enabled: true
@@ -552,7 +552,7 @@ seed_provider:
     parameters:
       # seeds is actually a comma-delimited list of addresses.
       # Ex: "<ip1>,<ip2>,<ip3>"
-      - seeds: "172.27.96.1,172.27.96.2,172.27.96.3,172.27.96.4,172.27.96.5,172.27.96.6"
+      - seeds: "172.27.96.1,172.27.96.2,172.27.96.3,172.27.96.4,172.27.96.5,172.27.96.6,172.27.96.7,172.27.96.8,172.27.96.9,172.27.96.10"
 
 # For workloads with more data than can fit in memory, Cassandra's
 # bottleneck will be reads that need to fetch data from
@@ -568,17 +568,18 @@ seed_provider:
 
 ec_data_nodes: 4
 parity_nodes: 2
-max_level_count: 4
+max_level_count: 9
 concurrent_ec: 64
 initial_delay: 300
 task_delay: 1
 stripe_update_frequency: 10
-max_send_sstables: 24
+max_send_sstables: 32
 enable_migration: true
 enable_erasure_coding: true
-cold_period: 60
-target_storage_saving: 0.5
-max_stripe_update_sstable: 8
+cold_period: 3
+target_storage_saving: 0.6
+max_stripe_update_sstable: 2
+storage_saving_grade: 0
 
 concurrent_reads: 64
 concurrent_writes: 64
