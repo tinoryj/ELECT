@@ -396,9 +396,23 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
                     int retryCount = 0;
-                    while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
+                    if(!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
+                        while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
-                        retryCount++;
+                            retryCount++;
+                        }
+                        StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
+                    } else {
+                        while(!StorageService.instance.downloadedSSTables.contains(sstable.getSSTableHashID()) &&
+                          retryCount < ECNetutils.getMigrationRetryCount()) {
+                            try {
+                                Thread.sleep(1);
+                            } catch (InterruptedException e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
+                            retryCount++;
+                        }
                     }
                     
                     try {
