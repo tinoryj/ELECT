@@ -413,12 +413,12 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             }
                             retryCount++;
                         }
-                        StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
                     }
                     
                     try {
                         sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                         StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
+                        StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
                         
                     } catch (IOException e) {
                         // TODO Auto-generated catch block
