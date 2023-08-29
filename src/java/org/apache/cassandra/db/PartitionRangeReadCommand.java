@@ -341,8 +341,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 UnfilteredPartitionIterator iter = memtable.partitionIterator(columnFilter(), dataRange(),
                         readCountUpdater);
                 controller.updateMinOldestUnrepairedTombstone(memtable.getMinLocalDeletionTime());
-                inputCollector
-                        .addMemtableIterator(
+                inputCollector.addMemtableIterator(
                                 RTBoundValidator.validate(iter, RTBoundValidator.Stage.MEMTABLE, false));
             }
 
@@ -350,7 +349,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
             ArrayList<String> readRecoveryedSSTableList = new ArrayList<String>();
             ArrayList<String> readRecoveryedSSTableHashList = new ArrayList<String>();
             for (SSTableReader sstable : view.sstables) {
-                boolean isCurrentSSTableRepaired = false;
+                // boolean isCurrentSSTableRepaired = false;
                 if (!sstable.getColumnFamilyName().equals("usertable0") && 
                     sstable.isReplicationTransferredToErasureCoding() && 
                     !sstable.isDataMigrateToCloud()) {
@@ -360,7 +359,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         //         sstable.getSSTableHashID(), sstable.getFilename());
                         continue;
                     } else {
-                        isCurrentSSTableRepaired = true;
+                        // isCurrentSSTableRepaired = true;
                         readRecoveryedSSTableCount++;
                         logger.debug("[Tinoryj] Start online recovery for metadata sstable: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
@@ -419,6 +418,8 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
                 }
 
+
+                // Get updated sstable from memory
                 if (sstable.getColumnFamilyName().contains("usertable")
                         && !sstable.getColumnFamilyName().equals("usertable0") &&
                         sstable.isReplicationTransferredToErasureCoding() &&
@@ -429,44 +430,16 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 ) {
                     sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 }
-                else if (sstable.getColumnFamilyName().equals("usertable0") &&
-                // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
-                sstable.isDataMigrateToCloud()
-                && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())
-                ) {
-                    // Tinoryj TODO: retrive SSTable from cloud.
-                    logger.debug("[Tinoryj] Start online migrate for data sstable: [{},{}]",
-                            sstable.getSSTableHashID(), sstable.getFilename());
-                    int retryCount = 0;
-                    while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
-                          retryCount < ECNetutils.getMigrationRetryCount()) {
-                        retryCount++;
-                    }
-                    
-                    try {
-                        sstable = SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
-                        StorageService.instance.downloadedSSTables.add(sstable.getSSTableHashID());
-                        
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                    StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
-                    StorageService.instance.migratedRawSSTablecount--;
-                } else {
-                    logger.debug("rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
-                            sstable.getSSTableHashID(), sstable.getFilename(),
-                            sstable.isReplicationTransferredToErasureCoding(), sstable.isDataMigrateToCloud());
-                }
+
                 
-                if (isCurrentSSTableRepaired) {
-                    readRecoveryedSSTableList.add(sstable.getFilename());
-                    readRecoveryedSSTableHashList.add(sstable.getSSTableHashID());
-                    logger.debug(
-                            "[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
-                            sstable.getSSTableHashID(),
-                            sstable.getFilename());
-                }
+                // if (isCurrentSSTableRepaired) {
+                //     readRecoveryedSSTableList.add(sstable.getFilename());
+                //     readRecoveryedSSTableHashList.add(sstable.getSSTableHashID());
+                //     logger.debug(
+                //             "[Tinoryj] Add sstable iterator from recovered SSTable: [{},{}]",
+                //             sstable.getSSTableHashID(),
+                //             sstable.getFilename());
+                // }
                 @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
                                               // method
                 UnfilteredPartitionIterator iter = sstable.partitionIterator(columnFilter(), dataRange(),
