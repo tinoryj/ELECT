@@ -566,7 +566,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    public static SSTableReader loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) throws IOException {
+    public synchronized static SSTableReader loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) throws IOException {
 
         // replace the old sstable with a new one
         SSTableReader newSSTable = SSTableReader.open(desc);

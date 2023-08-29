@@ -166,7 +166,7 @@ public class OSSAccess implements AutoCloseable {
 
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
 
-        FileUtils.delete(originalFilePath);
+        // FileUtils.delete(originalFilePath);
         logger.debug("rymDebug: Download original file from OSS, file name is ({})", objectName);
 
         try {
