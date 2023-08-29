@@ -566,40 +566,42 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    public static SSTableReader loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) throws IOException {
+    public static void loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) throws IOException {
 
         // replace the old sstable with a new one
         SSTableReader newSSTable = SSTableReader.open(desc);
-        
+
         newSSTable.SetIsDataMigrateToCloud(false);
         StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
-        // ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
-        // final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
-        // if(txn != null) {
-        //     logger.debug("rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
-        //     // try {
-        //     //     if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
-        //     //         logger.error("rymERROR: [Migration Stage]  set IsReplicationTransferredToErasureCoding failed!");
-        //     //     }
+        ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+        final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
+        if (txn != null) {
+            logger.debug("rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})",
+                    txn.opId(), desc);
+            // try {
+            // if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
+            // logger.error("rymERROR: [Migration Stage] set
+            // IsReplicationTransferredToErasureCoding failed!");
+            // }
 
-        //     // } catch (IOException e) {
-        //     //     e.printStackTrace();
-        //     // }
-        //     txn.update(newSSTable, true);
-        //     txn.checkpoint();
-        //     Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
+            // } catch (IOException e) {
+            // e.printStackTrace();
+            // }
+            txn.update(newSSTable, true);
+            txn.checkpoint();
+            Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
 
+        } else {
+            logger.debug("rymDebug: the txn is null for loading migration sstable ({})", newSSTable.getSSTableHashID());
+        }
+        return;
 
-        // } else {
-        //     logger.debug("rymDebug: the txn is null for loading migration sstable ({})", newSSTable.getSSTableHashID());
-        // }
-        return newSSTable;
-        
-        // StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
-        // StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
+        // StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(),
+        // newSSTable);
+        // StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(),
+        // newSSTable);
 
     }
-
 
     public static SSTableReader open(Descriptor desc, TableMetadataRef metadata) {
         return open(desc, componentsFor(desc), metadata);
@@ -1979,8 +1981,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // this.isReplicationTransferredToErasureCoding = true;
         // this.sstableMetadata.setIsReplicationTransferredToErasureCodingFlag(true);
         synchronized (tidy.global) {
-            logger.debug("rymDebug: set is replication transferred to erasure coding flag for sstable ({})", this.getSSTableHashID());
-            descriptor.getMetadataSerializer().setIsTransferredToErasureCoding(descriptor, this.getSSTableHashID(), true);
+            logger.debug("rymDebug: set is replication transferred to erasure coding flag for sstable ({})",
+                    this.getSSTableHashID());
+            descriptor.getMetadataSerializer().setIsTransferredToErasureCoding(descriptor, this.getSSTableHashID(),
+                    true);
             reloadSSTableMetadata();
         }
         if (this.sstableMetadata.isReplicationTransferToErasureCoding) {
@@ -2001,9 +2005,9 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         }
 
         // if (this.isDataMigrateToCloud) {
-        //     return true;
+        // return true;
         // } else {
-        //     return false;
+        // return false;
         // }
     }
 
