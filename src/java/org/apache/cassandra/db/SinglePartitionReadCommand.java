@@ -794,9 +794,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     int retryCount = 0;
                     if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                         StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
-                        while (!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
-                                FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
-                                retryCount < ECNetutils.getMigrationRetryCount()) {
+                        while (retryCount < ECNetutils.getMigrationRetryCount()) {
+                            if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
+                                    FBUtilities.getJustBroadcastAddress().getHostAddress())) {
+                                break;
+                            }
                             retryCount++;
                         }
                     } else {
@@ -804,7 +806,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 && StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                                 retryCount < ECNetutils.getMigrationRetryCount()) {
                             try {
-                                Thread.sleep(1);
+                                Thread.sleep(retryCount, 10000);
                             } catch (InterruptedException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
@@ -1097,9 +1099,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 int retryCount = 0;
                 if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                     StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
-                    while (!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
-                            FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
-                            retryCount < ECNetutils.getMigrationRetryCount()) {
+                    while (retryCount < ECNetutils.getMigrationRetryCount()) {
+                        if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
+                                FBUtilities.getJustBroadcastAddress().getHostAddress())) {
+                            break;
+                        }
                         retryCount++;
                     }
                 } else {
@@ -1107,7 +1111,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             && StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                             retryCount < ECNetutils.getMigrationRetryCount()) {
                         try {
-                            Thread.sleep(1);
+                            Thread.sleep(retryCount, 10000);
                         } catch (InterruptedException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();

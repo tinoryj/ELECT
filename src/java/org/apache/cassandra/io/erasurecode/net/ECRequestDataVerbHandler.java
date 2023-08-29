@@ -61,15 +61,18 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                     int retryCount = 0;
                     if(!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                         StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
-                        while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(), FBUtilities.getJustBroadcastAddress().getHostAddress()) &&
-                          retryCount < ECNetutils.getMigrationRetryCount()) {
+                        while (retryCount < ECNetutils.getMigrationRetryCount()) {
+                            if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
+                                    FBUtilities.getJustBroadcastAddress().getHostAddress())) {
+                                break;
+                            }
                             retryCount++;
                         }
                     } else {
                         while(!StorageService.instance.globalDownloadedSSTableMap.contains(sstable.getSSTableHashID())&& StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                           retryCount < ECNetutils.getMigrationRetryCount()) {
                             try {
-                                Thread.sleep(2);
+                                Thread.sleep(retryCount, 10000);
                             } catch (InterruptedException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();

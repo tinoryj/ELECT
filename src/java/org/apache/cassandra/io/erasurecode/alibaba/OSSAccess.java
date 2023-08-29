@@ -72,10 +72,8 @@ public class OSSAccess implements AutoCloseable {
     private static String bucketName = "elect-cloud";
     private static String localIP = FBUtilities.getBroadcastAddressAndPort().toString(false).replace('/', '_');
     private static OSS ossClient;
-    private final int maxConcurrentDownloads = DatabaseDescriptor.getMaxConcurrentDownload();    
+    private final int maxConcurrentDownloads = DatabaseDescriptor.getMaxConcurrentDownload();
     private final Semaphore semaphore = new Semaphore(maxConcurrentDownloads);
-
-
 
     public OSSAccess() {
         EnvironmentVariableCredentialsProvider credentialsProvider = new EnvironmentVariableCredentialsProvider();
@@ -122,10 +120,12 @@ public class OSSAccess implements AutoCloseable {
 
     public boolean uploadFileToOSS(String targetFilePath, byte[] content) {
         String objectName = targetFilePath.replace('/', '_') + localIP;
-        
+
         try {
-            logger.debug("rymDebug: target file path is ({}), content size is ({}), object name is ({})", targetFilePath, content.length, objectName);
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName, new ByteArrayInputStream(content));
+            logger.debug("rymDebug: target file path is ({}), content size is ({}), object name is ({})",
+                    targetFilePath, content.length, objectName);
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName,
+                    new ByteArrayInputStream(content));
             PutObjectResult result = ossClient.putObject(putObjectRequest);
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
@@ -173,15 +173,11 @@ public class OSSAccess implements AutoCloseable {
     }
 
     public boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
-
+        String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
         try {
             semaphore.acquire();
             try {
-                String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
-
                 // FileUtils.delete(originalFilePath);
-                logger.debug("rymDebug: Download original file from OSS, file name is ({})", objectName);
-
                 try {
                     ossClient.getObject(
                             new GetObjectRequest(bucketName, objectName),
@@ -189,21 +185,26 @@ public class OSSAccess implements AutoCloseable {
                 } catch (OSSException oe) {
                     logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
                             + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
+                    logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})",
+                            objectName);
                     return false;
                 } catch (ClientException ce) {
                     logger.error("OSS Internet Error Message:" + ce.getMessage());
+                    logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})",
+                            objectName);
                     return false;
                 }
-                
+
             } finally {
                 semaphore.release();
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})", objectName);
             return false;
         }
+        logger.debug("rymDebug: Downloaded original file from OSS, file name is ({})", objectName);
         return true;
-       
 
     }
 
