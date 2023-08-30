@@ -40,58 +40,59 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
     private static final int MAX_RETRY_COUNT = 5;
 
     private static final Logger logger = LoggerFactory.getLogger(ECRequestDataVerbHandler.class);
+
     @Override
     public void doVerb(Message<ECRequestData> message) {
-        
+
         String sstHash = message.payload.sstHash;
         int index = message.payload.index;
         String requestSSTHash = message.payload.requestSSTHash;
 
-        int level =  LeveledGenerations.getMaxLevelCount() - 1;
+        int level = LeveledGenerations.getMaxLevelCount() - 1;
         ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
         Set<SSTableReader> sstables = cfs.getSSTableForLevel(level);
 
         boolean isFound = false;
-        for(SSTableReader sstable : sstables) {
-            if(sstable.getSSTableHashID().equals(requestSSTHash)) {
+        for (SSTableReader sstable : sstables) {
+            if (sstable.getSSTableHashID().equals(requestSSTHash)) {
 
-                if(sstable.isDataMigrateToCloud()
-                && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
-                    // reload raw data from cloud
-                    int retryCount = 0;
-                    if(!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
-                        StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
-                        while (retryCount < ECNetutils.getMigrationRetryCount()) {
-                            if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
-                                    FBUtilities.getJustBroadcastAddress().getHostAddress())) {
-                                break;
+                if (sstable.isDataMigrateToCloud()) {
+                    if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                        // reload raw data from cloud
+                        int retryCount = 0;
+                        if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
+                            StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
+                            while (retryCount < ECNetutils.getMigrationRetryCount()) {
+                                if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
+                                        FBUtilities.getJustBroadcastAddress().getHostAddress())) {
+                                    break;
+                                }
+                                retryCount++;
                             }
-                            retryCount++;
-                        }
-                    } else {
-                        while(!StorageService.instance.globalDownloadedSSTableMap.contains(sstable.getSSTableHashID())&& StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
-                          retryCount < ECNetutils.getMigrationRetryCount()) {
                             try {
-                                Thread.sleep(retryCount, 10000);
-                            } catch (InterruptedException e) {
+                                SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                                StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
+                            } catch (IOException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
                             }
-                            retryCount++;
+                        } else {
+                            while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())
+                                    &&
+                                    retryCount < ECNetutils.getMigrationRetryCount()) {
+                                try {
+                                    Thread.sleep(retryCount, 10000);
+                                } catch (InterruptedException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+                                retryCount++;
+                            }
                         }
-                    }
-
-                    try {
-                        
-                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
-                        StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
-                        
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
+                    sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 }
 
                 // ByteBuffer buffer;
@@ -113,10 +114,11 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
             }
         }
 
-        if(!isFound)
-            throw new IllegalStateException(String.format("rymERROR: cannot find sstable (%s) in usertable0 for recovery/update sstable (%s)", requestSSTHash, sstHash));
-        
-        
+        if (!isFound)
+            throw new IllegalStateException(
+                    String.format("rymERROR: cannot find sstable (%s) in usertable0 for recovery/update sstable (%s)",
+                            requestSSTHash, sstHash));
+
     }
 
 }

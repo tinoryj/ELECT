@@ -78,16 +78,15 @@ import org.slf4j.LoggerFactory;
 import org.tartarus.snowball.ext.italianStemmer;
 import org.tartarus.snowball.ext.porterStemmer;
 
-
 public final class ECNetutils {
     private static final Logger logger = LoggerFactory.getLogger(ECNetutils.class);
-    
-    private static final String dataForRewriteDir = System.getProperty("user.dir")+"/data/tmp/";
-    private static final String receivedParityCodeDir = System.getProperty("user.dir")+"/data/receivedParityHashes/";
-    private static final String dataDir = System.getProperty("user.dir")+"/data/data/";
-    private static final String localParityCodeDir = System.getProperty("user.dir")+"/data/localParityHashes/";
-    private static final String scriptsDir = System.getProperty("user.dir")+"/scripts/";
-    private static final String inMemoryDataBackupDir = System.getProperty("user.dir")+"/data/inMemoryData/";
+
+    private static final String dataForRewriteDir = System.getProperty("user.dir") + "/data/tmp/";
+    private static final String receivedParityCodeDir = System.getProperty("user.dir") + "/data/receivedParityHashes/";
+    private static final String dataDir = System.getProperty("user.dir") + "/data/data/";
+    private static final String localParityCodeDir = System.getProperty("user.dir") + "/data/localParityHashes/";
+    private static final String scriptsDir = System.getProperty("user.dir") + "/scripts/";
+    private static final String inMemoryDataBackupDir = System.getProperty("user.dir") + "/data/inMemoryData/";
     private static final int MIGRATION_RETRY_COUNT = 5;
 
     public static class ByteObjectConversion {
@@ -116,6 +115,7 @@ public final class ECNetutils {
         public final String stripID;
         public final String sstHash;
         public final List<InetAddressAndPort> parityNodes;
+
         public StripIDToSSTHashAndParityNodes(String stripID, String sstHash, List<InetAddressAndPort> parityNodes) {
             this.stripID = stripID;
             this.sstHash = sstHash;
@@ -132,7 +132,7 @@ public final class ECNetutils {
             oos.flush();
             return baos.toByteArray();
         }
-    
+
         public static SSTablesInBytes fromByteArray(byte[] bytes) throws IOException, ClassNotFoundException {
             ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
             ObjectInputStream ois = new ObjectInputStream(bais);
@@ -140,10 +140,8 @@ public final class ECNetutils {
         }
     }
 
-    public static class DecoratedKeyComparator implements Comparator<DecoratedKey>
-    {
-        public int compare(DecoratedKey o1, DecoratedKey o2)
-        {
+    public static class DecoratedKeyComparator implements Comparator<DecoratedKey> {
+        public int compare(DecoratedKey o1, DecoratedKey o2) {
             return o2.compareTo(o1);
         }
     };
@@ -169,7 +167,9 @@ public final class ECNetutils {
     }
 
     /**
-     * This method is to sync a given sstable's file (without Data.db) with secondary nodes during erasure coding and parity update.
+     * This method is to sync a given sstable's file (without Data.db) with
+     * secondary nodes during erasure coding and parity update.
+     * 
      * @param sstable
      * @param replicaNodes
      * @param sstHashID
@@ -177,9 +177,9 @@ public final class ECNetutils {
      * @throws Exception
      */
     public static void syncSSTableWithSecondaryNodes(SSTableReader sstable,
-                                                     List<InetAddressAndPort> replicaNodes,
-                                                     String sstHashID, String operationType, 
-                                                     ColumnFamilyStore cfs) throws Exception {
+            List<InetAddressAndPort> replicaNodes,
+            String sstHashID, String operationType,
+            ColumnFamilyStore cfs) throws Exception {
 
         // Read a given sstable's Filter.db, Index.db, Statistics.db and Summary.db
         byte[] filterFile = readBytesFromFile(sstable.descriptor.filenameFor(Component.FILTER));
@@ -193,31 +193,34 @@ public final class ECNetutils {
         String lastKey = sstable.last.getRawKey(cfs.metadata());
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
 
-        logger.debug("rymDebug: send sstable to secondary nodes, hash id is ({}), descriptor is ({})", sstable.getSSTableHashID(), sstable.descriptor);
+        logger.debug("rymDebug: send sstable to secondary nodes, hash id is ({}), descriptor is ({})",
+                sstable.getSSTableHashID(), sstable.descriptor);
 
         for (InetAddressAndPort rpn : replicaNodes) {
             if (!rpn.equals(locaIP)) {
                 String targetCfName = "usertable" + replicaNodes.indexOf(rpn);
-                ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, firstKey, lastKey, sstInBytes, allKeys);
+                ECSyncSSTable ecSync = new ECSyncSSTable(sstHashID, targetCfName, firstKey, lastKey, sstInBytes,
+                        allKeys);
                 ecSync.sendSSTableToSecondary(rpn);
             }
         }
 
-        if(!allKeys.get(0).equals(firstKey) || !allKeys.get(allKeys.size() - 1).equals(lastKey)) {
-            logger.debug("rymERROR: keys are different, first key is {}, last key is {}, first entry of allKeys {}, last key {}",
-                         firstKey, lastKey, allKeys.get(0), allKeys.get(allKeys.size()-1));
+        if (!allKeys.get(0).equals(firstKey) || !allKeys.get(allKeys.size() - 1).equals(lastKey)) {
+            logger.debug(
+                    "rymERROR: keys are different, first key is {}, last key is {}, first entry of allKeys {}, last key {}",
+                    firstKey, lastKey, allKeys.get(0), allKeys.get(allKeys.size() - 1));
         }
 
         logger.debug(
-            "rymDebug: [{}] send sstables ({}), replicaNodes are {}, row num is {}, all key num is {}, first key is {}, last key is {}, first entry of allKeys {}, last key {}", operationType,
-            sstHashID,
-            replicaNodes, sstable.getTotalRows(), allKeys.size(),
-            firstKey, lastKey, allKeys.get(0), allKeys.get(allKeys.size()-1));
+                "rymDebug: [{}] send sstables ({}), replicaNodes are {}, row num is {}, all key num is {}, first key is {}, last key is {}, first entry of allKeys {}, last key {}",
+                operationType,
+                sstHashID,
+                replicaNodes, sstable.getTotalRows(), allKeys.size(),
+                firstKey, lastKey, allKeys.get(0), allKeys.get(allKeys.size() - 1));
 
     }
 
-    public static byte[] readBytesFromFile(String fileName) throws IOException
-    {
+    public static byte[] readBytesFromFile(String fileName) throws IOException {
         // String fileName = descriptor.filenameFor(Component.DATA);
 
         // File file = new File(fileName);
@@ -226,11 +229,13 @@ public final class ECNetutils {
         // byte[] buffer = new byte[(int)fileLength];
         // int offset = 0;
         // int numRead = 0;
-        // while (offset < buffer.length && (numRead = fileStream.read(buffer, offset, buffer.length - offset)) >= 0) {
-        //     offset += numRead;
+        // while (offset < buffer.length && (numRead = fileStream.read(buffer, offset,
+        // buffer.length - offset)) >= 0) {
+        // offset += numRead;
         // }
         // if (offset != buffer.length) {
-        //     throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
+        // throw new IOException(String.format("Could not read %s, only read %d bytes",
+        // fileName, offset));
         // }
         // fileStream.close();
         // logger.debug("rymDebug: read file {} successfully!", fileName);
@@ -242,17 +247,15 @@ public final class ECNetutils {
         // return ByteBuffer.wrap(buffer);
     }
 
-    public static void writeBytesToFile(String fileName, byte[] buffer) throws IOException
-    {
+    public static void writeBytesToFile(String fileName, byte[] buffer) throws IOException {
 
         Files.write(Paths.get(fileName), buffer);
         // try (FileOutputStream outputStream = new FileOutputStream(fileName)) {
-        //     outputStream.write(buffer);
+        // outputStream.write(buffer);
         // } catch (Exception e) {
-        //     logger.error("rymERROR: failed to write bytes to file, {}", e);
+        // logger.error("rymERROR: failed to write bytes to file, {}", e);
         // }
     }
-
 
     public static Optional<Path> findDirectoryByPrefix(Path parentDirectory, String prefix) throws IOException {
         return Files.list(parentDirectory)
@@ -260,7 +263,6 @@ public final class ECNetutils {
                 .filter(path -> path.getFileName().toString().startsWith(prefix))
                 .findFirst();
     }
-
 
     public static String stringToHex(String str) {
         byte[] bytes = str.getBytes();
@@ -286,11 +288,13 @@ public final class ECNetutils {
     public static void printStatusCode(int statusCode, String cfName) {
         switch (statusCode) {
             case 1:
-                logger.debug("Aborted rewrite sstables for at least one table in cfs {}, check server logs for more information.",
+                logger.debug(
+                        "Aborted rewrite sstables for at least one table in cfs {}, check server logs for more information.",
                         cfName);
                 break;
             case 2:
-                logger.error("Failed marking some sstables compacting in cfs {}, check server logs for more information.",
+                logger.error(
+                        "Failed marking some sstables compacting in cfs {}, check server logs for more information.",
                         cfName);
         }
     }
@@ -304,18 +308,14 @@ public final class ECNetutils {
 
     }
 
-
     public static class SSTableAccessFrequencyComparator implements Comparator<SSTableReader> {
 
         @Override
         public int compare(SSTableReader o1, SSTableReader o2) {
             return Double.compare(o1.getReadMeter().twoHourRate(), o1.getReadMeter().twoHourRate());
         }
-        
+
     }
-
-
-
 
     public static class InetAddressAndPortComparator implements Comparator<InetAddressAndPort> {
         @Override
@@ -326,8 +326,8 @@ public final class ECNetutils {
         }
     }
 
-
-    public synchronized static void addOldSSTableForECStripeUpdateToReadyList(InetAddressAndPort primaryNode, SSTableContentWithHashID oldSSTable) {
+    public synchronized static void addOldSSTableForECStripeUpdateToReadyList(InetAddressAndPort primaryNode,
+            SSTableContentWithHashID oldSSTable) {
         if (StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.containsKey(primaryNode)) {
             StorageService.instance.globalReadyOldSSTableForECStripUpdateMap.get(primaryNode).add(oldSSTable);
         } else {
@@ -336,10 +336,12 @@ public final class ECNetutils {
                             Collections.singleton(oldSSTable)));
         }
         StorageService.instance.globalReadyOldSSTableForECStripUpdateCount++;
-        logger.debug("rymDebug: add old sstable ({}) to ready list for primary node ({})", oldSSTable.sstHash, primaryNode);
+        logger.debug("rymDebug: add old sstable ({}) to ready list for primary node ({})", oldSSTable.sstHash,
+                primaryNode);
     }
 
-    public synchronized static void addNewSSTableForECStripeUpdateToReadyList(InetAddressAndPort primaryNode, SSTableContentWithHashID newSSTable) {
+    public synchronized static void addNewSSTableForECStripeUpdateToReadyList(InetAddressAndPort primaryNode,
+            SSTableContentWithHashID newSSTable) {
         if (StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.containsKey(primaryNode)) {
             StorageService.instance.globalReadyNewSSTableForECStripUpdateMap.get(primaryNode)
                     .add(newSSTable);
@@ -348,7 +350,8 @@ public final class ECNetutils {
                     new ConcurrentLinkedQueue<SSTableContentWithHashID>(
                             Collections.singleton(newSSTable)));
         }
-        logger.debug("rymDebug: add new sstable ({}) to ready list for primary node ({})", newSSTable.sstHash, primaryNode);
+        logger.debug("rymDebug: add new sstable ({}) to ready list for primary node ({})", newSSTable.sstHash,
+                primaryNode);
     }
 
     public synchronized static ECMessage getDataBlockFromGlobalRecvQueue(InetAddressAndPort addr) {
@@ -362,36 +365,35 @@ public final class ECNetutils {
 
     public synchronized static void saveECMessageToGlobalRecvQueue(InetAddressAndPort primaryNode, ECMessage message) {
         StorageService.instance.totalReceivedECMessages++;
-        if(!StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
+        if (!StorageService.instance.globalRecvQueues.containsKey(primaryNode)) {
             ConcurrentLinkedQueue<ECMessage> recvQueue = new ConcurrentLinkedQueue<ECMessage>();
             recvQueue.add(message);
             StorageService.instance.globalRecvQueues.put(primaryNode, recvQueue);
-        }
-        else {
+        } else {
             StorageService.instance.globalRecvQueues.get(primaryNode).add(message);
         }
     }
 
     public synchronized static boolean isSSTableCompactingOrErasureCoding(String sstableHash) {
 
-        if(StorageService.instance.compactingOrErasureCodingSSTables.contains(sstableHash)) {
+        if (StorageService.instance.compactingOrErasureCodingSSTables.contains(sstableHash)) {
             return true;
         } else {
             StorageService.instance.compactingOrErasureCodingSSTables.add(sstableHash);
             return false;
         }
-        
+
     }
 
-    public synchronized static void unsetIsSelectedByCompactionOrErasureCodingSSTables(String sstableHash){
-        if(StorageService.instance.compactingOrErasureCodingSSTables.contains(sstableHash)) {
+    public synchronized static void unsetIsSelectedByCompactionOrErasureCodingSSTables(String sstableHash) {
+        if (StorageService.instance.compactingOrErasureCodingSSTables.contains(sstableHash)) {
             StorageService.instance.compactingOrErasureCodingSSTables.remove(sstableHash);
         }
         // else {
-        //     logger.error("rymERROR: we can not find the specified stable hash ({})", sstableHash);
+        // logger.error("rymERROR: we can not find the specified stable hash ({})",
+        // sstableHash);
         // }
     }
-
 
     public static void printStackTace(String msg) {
         // logger.debug(msg);
@@ -401,43 +403,42 @@ public final class ECNetutils {
     }
 
     public static void throwError(String msg) throws InterruptedException {
-        
+
         throw new InterruptedException(msg);
     }
 
-    public static void test() throws Exception{
+    public static void test() throws Exception {
         printStackTace("test print stack trace method");
 
         System.out.println("ok");
     }
 
     public synchronized static void setIsRecovered(String sstHash) {
-        if(!StorageService.instance.recoveredSSTables.contains(sstHash)){
+        if (!StorageService.instance.recoveredSSTables.contains(sstHash)) {
             StorageService.instance.recoveredSSTables.add(sstHash);
         }
     }
 
     public synchronized static boolean getIsRecovered(String sstHash) {
-        if(sstHash == null)
+        if (sstHash == null)
             return false;
         return StorageService.instance.recoveredSSTables.contains(sstHash);
     }
 
     public synchronized static boolean getIsMigratedToCloud(String sstHash) {
-        if(sstHash == null)
+        if (sstHash == null)
             return false;
         return StorageService.instance.migratedSStables.contains(sstHash);
     }
 
-
     public synchronized static boolean getIsDownloaded(String sstHash) {
-        if(sstHash == null)
+        if (sstHash == null)
             return false;
         return StorageService.instance.globalDownloadedSSTableMap.contains(sstHash);
     }
 
-
-    public static void checkTheReplicaPlanIsEqualsToNaturalEndpoint(ReplicaPlan.ForWrite replicaPlan, List<InetAddressAndPort> sendRequestAddresses, Token targetReadToken) {
+    public static void checkTheReplicaPlanIsEqualsToNaturalEndpoint(ReplicaPlan.ForWrite replicaPlan,
+            List<InetAddressAndPort> sendRequestAddresses, Token targetReadToken) {
         boolean isReplicaPlanMatchToNaturalEndpointFlag = true;
         for (int i = 0; i < replicaPlan.contacts().endpointList().size(); i++) {
             if (!replicaPlan.contacts().endpointList().get(i).equals(sendRequestAddresses.get(i))) {
@@ -445,22 +446,22 @@ public final class ECNetutils {
             }
         }
         if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
-            throw new IllegalStateException(String.format("rymERROR: for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
-                                                          targetReadToken,
-                                                          replicaPlan.contacts().endpointList(),
-                                                          sendRequestAddresses));
+            throw new IllegalStateException(String.format(
+                    "rymERROR: for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
+                    targetReadToken,
+                    replicaPlan.contacts().endpointList(),
+                    sendRequestAddresses));
         }
     }
 
-
-
-
-
     public final static EnumSet<TCPService> TCPServices = EnumSet.allOf(TCPService.class);
+
     public enum TCPService {
         MIGRATION("migration"),
         RECOVERYLSMTREE("recoveryLSMTree");
+
         final String serviceName;
+
         TCPService(String serviceName) {
             this.serviceName = serviceName;
         }
@@ -474,28 +475,27 @@ public final class ECNetutils {
         }
     }
 
-    public static String getScriptsDir(){
+    public static String getScriptsDir() {
         return scriptsDir;
     }
 
     public static String getInMemoryDataDir() {
-        
+
         File inMemoryDataBackupDirFolder = new File(inMemoryDataBackupDir);
-        if(!inMemoryDataBackupDirFolder.createDirectoriesIfNotExists()) {
+        if (!inMemoryDataBackupDirFolder.createDirectoriesIfNotExists()) {
             logger.error("rymERROR: failed to create file dir ({})", inMemoryDataBackupDir);
         }
         return inMemoryDataBackupDir;
     }
 
-
     public static void startTCPServer(int port) {
         try {
-            
+
             ServerSocket serverSocket = new ServerSocket(port);
             // System.out.println("服务器已启动，等待客户端连接...");
 
             while (true) {
-                
+
                 Socket clientSocket = serverSocket.accept();
                 Thread clientThread = new Thread(new TCPClientHandler(clientSocket));
                 clientThread.start();
@@ -505,19 +505,17 @@ public final class ECNetutils {
         }
     }
 
-
     public static class TCPClientHandler implements Runnable {
 
         private Socket clientSocket;
 
-
         public TCPClientHandler(Socket clientSocket) {
             this.clientSocket = clientSocket;
         }
-        
+
         @Override
         public void run() {
-            
+
             BufferedReader in;
             try {
                 in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
@@ -526,8 +524,8 @@ public final class ECNetutils {
                 TCPService svc = TCPService.fromRepresentation(svcName);
 
                 // TODO finish the tcp services
-                if(svc.equals(TCPService.MIGRATION)) {
-    
+                if (svc.equals(TCPService.MIGRATION)) {
+
                 } else if (svc.equals(TCPService.RECOVERYLSMTREE)) {
 
                 }
@@ -538,7 +536,6 @@ public final class ECNetutils {
             }
         }
 
-        
     }
 
     public static void scpCommand(String source, String target) throws IOException {
@@ -546,7 +543,7 @@ public final class ECNetutils {
         String script = "rsync -avz --progress -r " + source + " " + target;
         ProcessBuilder processBuilder = new ProcessBuilder(script.split(" "));
         Process process = processBuilder.start();
-        
+
         try {
             int exitCode = process.waitFor();
             if (exitCode == 0) {
@@ -561,9 +558,8 @@ public final class ECNetutils {
         }
     }
 
-    
-    public static void migrateDataToCloud(String cloudIp, String currentIp, String cfName, String dataFileName) throws IOException {
-
+    public static void migrateDataToCloud(String cloudIp, String currentIp, String cfName, String dataFileName)
+            throws IOException {
 
         // String userName = "yjren";
         String targetDir = "yjren@" + cloudIp + ":~/" + currentIp + "/" + cfName;
@@ -571,15 +567,14 @@ public final class ECNetutils {
 
     }
 
-    public static void retrieveDataFromCloud(String cloudIp, String requestIp, String cfName, String dataFileName, String targetDir) throws IOException {
+    public static void retrieveDataFromCloud(String cloudIp, String requestIp, String cfName, String dataFileName,
+            String targetDir) throws IOException {
         String sourceFileName = "yjren@" + cloudIp + ":~/" + requestIp + "/" + cfName + "/" + dataFileName;
         scpCommand(sourceFileName, targetDir);
     }
 
-
-
     public static int getNeedMigrateParityCodesCount() {
-        
+
         ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
 
         int rf = Keyspace.open("ycsb").getAllReplicationFactor();
@@ -588,23 +583,21 @@ public final class ECNetutils {
         int totalSSTableCount = cfs.getTracker().getView().liveSSTables().size();
         double tss = DatabaseDescriptor.getTargetStorageSaving();
 
-        return (int) (rf * totalSSTableCount * tss - (rf - n * 1.0 / k) * cfs.getSSTableForLevel(DatabaseDescriptor.getMaxLevelCount() - 1).size());
+        return (int) (rf * totalSSTableCount * tss
+                - (rf - n * 1.0 / k) * cfs.getSSTableForLevel(DatabaseDescriptor.getMaxLevelCount() - 1).size());
     }
-
 
     public static synchronized boolean checkIsParityCodeMigrated(String parityCodeHash) {
         return StorageService.instance.migratedParityCodes.contains(parityCodeHash);
     }
-
-
-
 
     public static void main(String[] args) {
 
         // ByteBuffer erasureCodes = ByteBuffer.allocateDirect(100);
         // byte[] data = new byte[10];
         // erasureCodes.put(data);
-        // logger.debug("rymDebug: remaining is ({}), position is ({})", erasureCodes.remaining(), erasureCodes.position());
+        // logger.debug("rymDebug: remaining is ({}), position is ({})",
+        // erasureCodes.remaining(), erasureCodes.position());
 
         int rf = 3;
         int totalSSTableCount = 479;
@@ -613,20 +606,19 @@ public final class ECNetutils {
         int k = 4;
         int needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0 / (rf - n * 1.0 / k)); // parameter a
         logger.debug("rymDebug: need transfer sstable count is ({})", needTransferSSTablesCount);
-        
+
         // try {
-        //     test();
+        // test();
         // } catch (Exception e) {
-        //     // TODO Auto-generated catch block
-        //     e.printStackTrace();
+        // // TODO Auto-generated catch block
+        // e.printStackTrace();
         // }
 
-
         // try {
-        //     throwError("test throw interrupted error method");
+        // throwError("test throw interrupted error method");
         // } catch (InterruptedException e) {
-        //     // TODO Auto-generated catch block
-        //     e.printStackTrace();
+        // // TODO Auto-generated catch block
+        // e.printStackTrace();
         // }
 
         // List<String> tt = new ArrayList<String>();
@@ -636,30 +628,30 @@ public final class ECNetutils {
 
         // System.out.println("ok");
 
-
         // String ss = "usertbale";
         // boolean a = false;
         // boolean b = false;
         // System.out.println(a&&b);
 
-
         // try {
-        //     String file = "/home/rym/test1";
-        //     FileOutputStream fos = new FileOutputStream(file,true ) ; 
-        //     String str = "Data.db\n"; 
-        //     fos.write(str.getBytes()) ;
-        //     fos.close (); 
+        // String file = "/home/rym/test1";
+        // FileOutputStream fos = new FileOutputStream(file,true ) ;
+        // String str = "Data.db\n";
+        // fos.write(str.getBytes()) ;
+        // fos.close ();
         // } catch (IOException e) {
-        //     // TODO Auto-generated catch block
-        //     e.printStackTrace();
-        // }  
+        // // TODO Auto-generated catch block
+        // e.printStackTrace();
+        // }
 
         // boolean assertTest = false;
         // assert assertTest;
         // int p1 = 0x01;
         // int p2 = 0x02;
         // int flags = 54;
-        // logger.debug("rymDebug: p1&p1 is ({}), p2 & p2 is ({}), p1 & p2 is ({}), p1 & flags is ({}), p2 & flags is ({})", p1 & p1, p2 & p2, p1 & p2, p1 & flags, p2 & flags);
-        //110110
+        // logger.debug("rymDebug: p1&p1 is ({}), p2 & p2 is ({}), p1 & p2 is ({}), p1 &
+        // flags is ({}), p2 & flags is ({})", p1 & p1, p2 & p2, p1 & p2, p1 & flags, p2
+        // & flags);
+        // 110110
     }
 }

@@ -391,42 +391,43 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                 // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
-                        sstable.isDataMigrateToCloud()
-                        && !ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                        sstable.isDataMigrateToCloud()) {
                     logger.debug("[Tinoryj] Start online retrive for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
-                    int retryCount = 0;
-                    if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
-                        StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
-                        while (retryCount < ECNetutils.getMigrationRetryCount()) {
-                            if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
-                                    FBUtilities.getJustBroadcastAddress().getHostAddress())) {
-                                break;
+
+                    if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                        int retryCount = 0;
+                        if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
+                            StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
+                            while (retryCount < ECNetutils.getMigrationRetryCount()) {
+                                if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
+                                        FBUtilities.getJustBroadcastAddress().getHostAddress())) {
+                                    break;
+                                }
+                                retryCount++;
                             }
-                            retryCount++;
-                        }
-                    } else {
-                        while (!StorageService.instance.globalDownloadedSSTableMap.contains(sstable.getSSTableHashID())
-                                && StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
-                                retryCount < ECNetutils.getMigrationRetryCount()) {
                             try {
-                                Thread.sleep(retryCount, 10000);
-                            } catch (InterruptedException e) {
+                                SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                                StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
+                            } catch (IOException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
                             }
-                            retryCount++;
+                        } else {
+                            while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
+                                    retryCount < ECNetutils.getMigrationRetryCount()) {
+                                try {
+                                    Thread.sleep(retryCount, 10000);
+                                } catch (InterruptedException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+                                retryCount++;
+                            }
                         }
                     }
 
-                    try {
-                        SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
-                        StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
                     sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
