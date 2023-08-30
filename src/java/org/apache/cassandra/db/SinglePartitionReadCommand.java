@@ -839,6 +839,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
                 } else if (sstable.getColumnFamilyName().equals("usertable0")
                         && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                    logger.debug("[Tinoryj] Fetch downloaded sstable for read ({}, {})", sstable.getFilename(),
+                            sstable.getSSTableHashID());
                     sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 }
 
@@ -1146,6 +1148,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
             } else if (sstable.getColumnFamilyName().equals("usertable0")
                     && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                logger.debug("[Tinoryj] Fetch downloaded sstable for read ({}, {})", sstable.getFilename(),
+                        sstable.getSSTableHashID());
                 sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
             }
 

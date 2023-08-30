@@ -96,6 +96,8 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
 
                 if (sstable.getColumnFamilyName().equals("usertable0")
                         && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                    logger.debug("[Tinoryj] Fetch downloaded sstable for recovery ({}, {})", sstable.getFilename(),
+                            sstable.getSSTableHashID());
                     sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 }
 

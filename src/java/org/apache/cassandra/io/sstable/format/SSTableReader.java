@@ -570,49 +570,60 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         // replace the old sstable with a new one
         SSTableReader newSSTable = SSTableReader.open(desc);
-        StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
-
+        if (oldSSTable.getSSTableHashID() == null) {
+            logger.error("[Tinoryj-ERROR] Could not get old sstable's hash for reload");
+        }
+        newSSTable.SetIsDataMigrateToCloud(false);
+        StorageService.instance.globalDownloadedSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
         return;
 
         // newSSTable.SetIsDataMigrateToCloud(false);
-        // ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+        // ColumnFamilyStore cfs =
+        // Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
         // final int MAX_RETRIES = 3; // Set your max retry limit
         // int retryCount = 0;
 
         // while (retryCount < MAX_RETRIES) {
-        //     final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
-        //     if (txn != null) {
-        //         logger.debug(
-        //                 "rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})",
-        //                 txn.opId(), desc);
+        // final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable,
+        // OperationType.COMPACTION);
+        // if (txn != null) {
+        // logger.debug(
+        // "rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data
+        // of sstable ({})",
+        // txn.opId(), desc);
 
-        //         try {
-        //             txn.update(newSSTable, true);
-        //             txn.checkpoint();
-        //             Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
-        //             StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
+        // try {
+        // txn.update(newSSTable, true);
+        // txn.checkpoint();
+        // Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
+        // StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(),
+        // newSSTable);
 
-        //             // If we reach here, operation was successful. Break the loop.
-        //             break;
-        //         } catch (Exception e) { // Replace with more specific exceptions if needed
-        //             logger.error("rymERROR: [Migration Stage] An error occurred. Retrying... Attempt {} of {}",
-        //                     retryCount + 1, MAX_RETRIES, e);
-        //             retryCount++;
-        //         }
-        //     } else {
-        //         logger.debug("rymDebug: the txn is null for loading migration sstable ({},{})",
-        //                 newSSTable.getFilename(),
-        //                 newSSTable.getSSTableHashID());
-        //         // Decide if you want to break or continue here
-        //     }
+        // // If we reach here, operation was successful. Break the loop.
+        // break;
+        // } catch (Exception e) { // Replace with more specific exceptions if needed
+        // logger.error("rymERROR: [Migration Stage] An error occurred. Retrying...
+        // Attempt {} of {}",
+        // retryCount + 1, MAX_RETRIES, e);
+        // retryCount++;
+        // }
+        // } else {
+        // logger.debug("rymDebug: the txn is null for loading migration sstable
+        // ({},{})",
+        // newSSTable.getFilename(),
+        // newSSTable.getSSTableHashID());
+        // // Decide if you want to break or continue here
+        // }
         // }
 
         // // If we've exhausted retries, handle as necessary.
         // if (retryCount >= MAX_RETRIES) {
-        //     logger.error(
-        //             "rymERROR: [Migration Stage] Max retry attempts for update migrated raw sstable reached. Exiting...");
-        //     // Handle this condition, possibly by throwing an exception or notifying other
-        //     // services
+        // logger.error(
+        // "rymERROR: [Migration Stage] Max retry attempts for update migrated raw
+        // sstable reached. Exiting...");
+        // // Handle this condition, possibly by throwing an exception or notifying
+        // other
+        // // services
         // }
 
         // return;
