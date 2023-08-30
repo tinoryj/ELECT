@@ -54,7 +54,7 @@ public class ECResponseDataVerbHandler implements IVerbHandler<ECResponseData>{
                 throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s)", index, sstHash));
             }
         } else {
-            throw new NullPointerException(String.format("rymERROR: We cannot find data blocks for sstable (%s)", message.from(), sstHash));
+            throw new NullPointerException(String.format("rymERROR: We cannot find erasure codes for sstable (%s), the request is from (%s)", sstHash, message.from()));
         }
 
     }

@@ -813,7 +813,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                                     retryCount < 50) {
                                 try {
-                                logger.debug("rymDebug: the sstable ({}) is still downloading!", sstable.getSSTableHashID());
+                                    logger.debug("rymDebug: the sstable ({}) is still downloading!", sstable.getSSTableHashID());
                                     Thread.sleep(1000);
                                 } catch (InterruptedException e) {
                                     // TODO Auto-generated catch block
