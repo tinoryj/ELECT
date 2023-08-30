@@ -578,19 +578,22 @@ public final class ECNetutils {
 
     public static int getNeedMigrateParityCodesCount() {
 
-        if (DatabaseDescriptor.getStorageSavingGrade() == 1) {
+        if (DatabaseDescriptor.getStorageSavingGrade() == 0) {
+            ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
+
+            int rf = Keyspace.open("ycsb").getAllReplicationFactor();
+            int k = DatabaseDescriptor.getEcDataNodes();
+            int n = k + DatabaseDescriptor.getParityNodes();
+            int totalSSTableCount = cfs.getTracker().getView().liveSSTables().size();
+            double tss = DatabaseDescriptor.getTargetStorageSaving();
+
+            return (int) (rf * totalSSTableCount * tss
+                    - (rf - n * 1.0 / k) * cfs.getSSTableForLevel(DatabaseDescriptor.getMaxLevelCount() - 1).size());
+        } else if (DatabaseDescriptor.getStorageSavingGrade() == 1) {
             return 0;
+        } else {
+            return Integer.MAX_VALUE;
         }
-        ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
-
-        int rf = Keyspace.open("ycsb").getAllReplicationFactor();
-        int k = DatabaseDescriptor.getEcDataNodes();
-        int n = k + DatabaseDescriptor.getParityNodes();
-        int totalSSTableCount = cfs.getTracker().getView().liveSSTables().size();
-        double tss = DatabaseDescriptor.getTargetStorageSaving();
-
-        return (int) (rf * totalSSTableCount * tss
-                - (rf - n * 1.0 / k) * cfs.getSSTableForLevel(DatabaseDescriptor.getMaxLevelCount() - 1).size());
     }
 
     public static synchronized boolean checkIsParityCodeMigrated(String parityCodeHash) {
