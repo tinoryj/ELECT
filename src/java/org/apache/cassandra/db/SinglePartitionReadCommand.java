@@ -825,7 +825,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
-                    sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 } else {
                     logger.debug(
                             "rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
@@ -839,6 +838,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         sstable.isReplicationTransferredToErasureCoding() &&
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
+                } else if (sstable.getColumnFamilyName().equals("usertable0")
+                        && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                    sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 }
 
                 // if we've already seen a partition tombstone with a timestamp greater
@@ -1131,7 +1133,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
                 StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                 StorageService.instance.migratedRawSSTablecount--;
-                sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
             } else {
                 logger.debug(
                         "rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
@@ -1145,6 +1146,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     sstable.isReplicationTransferredToErasureCoding() &&
                     ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                 sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
+            } else if (sstable.getColumnFamilyName().equals("usertable0")
+                    && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
             }
 
             // if (isCurrentSSTableRepaired) {

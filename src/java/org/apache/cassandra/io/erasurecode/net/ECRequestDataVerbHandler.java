@@ -92,6 +92,10 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                     }
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
+                }
+
+                if (sstable.getColumnFamilyName().equals("usertable0")
+                        && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 }
 

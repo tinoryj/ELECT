@@ -430,7 +430,6 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
 
                     StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                     StorageService.instance.migratedRawSSTablecount--;
-                    sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 } else {
                     logger.debug(
                             "rymDebug: for sstable: [{},{}], isReplicationTransferredToErasureCoding = {}, isDataMigrateToCloud = {}",
@@ -444,6 +443,9 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         sstable.isReplicationTransferredToErasureCoding() &&
                         ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                     sstable = StorageService.instance.globalRecoveredSSTableMap.get(sstable.getSSTableHashID());
+                } else if (sstable.getColumnFamilyName().equals("usertable0")
+                        && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                    sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 }
 
                 // if (isCurrentSSTableRepaired) {
