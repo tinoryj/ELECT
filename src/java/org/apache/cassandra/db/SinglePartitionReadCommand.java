@@ -767,9 +767,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
                                     sstable.getSSTableHashID(), sstable.getFilename());
                             // Tinoryj TODO: call recvoery on current sstable.
-                            CountDownLatch latch = new CountDownLatch(1);
+                            CountDownLatch recoveryLatch = new CountDownLatch(1);
                             try {
-                                ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
+                                ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), recoveryLatch);
                                 ECNetutils.setIsRecovered(sstable.getSSTableHashID());
 
                             } catch (Exception e) {
@@ -778,7 +778,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
 
                             try {
-                                latch.await();
+                                recoveryLatch.await();
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
@@ -795,31 +795,25 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         int retryCount = 0;
                         if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                             StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
-                            while (retryCount < ECNetutils.getMigrationRetryCount()) {
-                                if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
-                                        FBUtilities.getJustBroadcastAddress().getHostAddress())) {
-                                    break;
-                                }
-                                retryCount++;
-                            }
+                            CountDownLatch migrationLatch = new CountDownLatch(1);
                             try {
-                                SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
-                                while (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
-                                    logger.debug("[Tinoryj] Retry to get the sstable ({},{}) from downloaded map",
-                                            sstable.getFilename(),
-                                            sstable.getSSTableHashID());
-                                }
-                                StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
-                                StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
-                                StorageService.instance.migratedRawSSTablecount--;
+                                SSTableReader.loadRawDataFromCloud(sstable.descriptor, sstable, migrationLatch);
+                               
                             } catch (IOException e) {
                                 // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
+
+                            try {
+                                migrationLatch.await();
+                            } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
                         } else {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                                     retryCount < ECNetutils.getMigrationRetryCount()) {
                                 try {
+                                logger.debug("rymDebug: the sstable ({}) is still downloading!", sstable.getSSTableHashID());
                                     Thread.sleep(retryCount, 10000);
                                 } catch (InterruptedException e) {
                                     // TODO Auto-generated catch block
@@ -827,6 +821,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 }
                                 retryCount++;
                             }
+
                         }
                     } else {
                         logger.debug("[Tinoryj] The sstable ({},{}) is downloaded", sstable.getFilename(),
@@ -1084,9 +1079,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
                         // Tinoryj TODO: call recvoery on current sstable.
-                        CountDownLatch latch = new CountDownLatch(1);
+                        CountDownLatch recoveryLatch = new CountDownLatch(1);
                         try {
-                            ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), latch);
+                            ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), recoveryLatch);
                             ECNetutils.setIsRecovered(sstable.getSSTableHashID());
 
                         } catch (Exception e) {
@@ -1095,7 +1090,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
 
                         try {
-                            latch.await();
+                            recoveryLatch.await();
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
@@ -1112,31 +1107,26 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     int retryCount = 0;
                     if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                         StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
-                        while (retryCount < ECNetutils.getMigrationRetryCount()) {
-                            if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
-                                    FBUtilities.getJustBroadcastAddress().getHostAddress())) {
-                                break;
-                            }
-                            retryCount++;
-                        }
+                        CountDownLatch migrationLatch = new CountDownLatch(1);
                         try {
-                            SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
-                            while (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
-                                logger.debug("[Tinoryj] Retry to get the sstable ({},{}) from downloaded map",
-                                        sstable.getFilename(),
-                                        sstable.getSSTableHashID());
-                            }
-                            StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
-                            StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
-                            StorageService.instance.migratedRawSSTablecount--;
+                            SSTableReader.loadRawDataFromCloud(sstable.descriptor, sstable, migrationLatch);
+
                         } catch (IOException e) {
                             // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            migrationLatch.await();
+                        } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
                     } else {
                         while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                                 retryCount < ECNetutils.getMigrationRetryCount()) {
                             try {
+                                logger.debug("rymDebug: the sstable ({}) is still downloading!",
+                                        sstable.getSSTableHashID());
                                 Thread.sleep(retryCount, 10000);
                             } catch (InterruptedException e) {
                                 // TODO Auto-generated catch block
@@ -1144,6 +1134,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
                             retryCount++;
                         }
+
                     }
                 } else {
                     logger.debug("[Tinoryj] The sstable ({},{}) is downloaded", sstable.getFilename(),

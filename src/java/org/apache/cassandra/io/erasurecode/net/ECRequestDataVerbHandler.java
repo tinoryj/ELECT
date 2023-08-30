@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
@@ -62,22 +63,22 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                         int retryCount = 0;
                         if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                             StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
-                            while (retryCount < ECNetutils.getMigrationRetryCount()) {
-                                if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(sstable.getFilename(),
-                                        FBUtilities.getJustBroadcastAddress().getHostAddress())) {
-                                    break;
-                                }
-                                retryCount++;
-                            }
+                            
+                            CountDownLatch migrationLatch = new CountDownLatch(1);
                             try {
-                                SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
-                                StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
-                                StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
-                                StorageService.instance.migratedRawSSTablecount--;
+                                SSTableReader.loadRawDataFromCloud(sstable.descriptor, sstable, migrationLatch);
+
                             } catch (IOException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
                             }
+
+                            try {
+                                migrationLatch.await();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+
                         } else {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())
                                     &&

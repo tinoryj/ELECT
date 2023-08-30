@@ -30,6 +30,7 @@ import java.nio.file.Paths;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -566,7 +567,17 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     }
 
-    public static void loadRawDataForMigration(Descriptor desc, SSTableReader oldSSTable) throws IOException {
+    public static void loadRawDataFromCloud(Descriptor desc, SSTableReader oldSSTable, CountDownLatch latch) throws IOException {
+
+        // Download raw data from cloud
+        int retryDownloadCount = 0;
+        while (retryDownloadCount < ECNetutils.getMigrationRetryCount()) {
+            if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(oldSSTable.getFilename(),
+                    FBUtilities.getJustBroadcastAddress().getHostAddress())) {
+                break;
+            }
+            retryDownloadCount++;
+        }
 
         // replace the old sstable with a new one
         SSTableReader newSSTable = SSTableReader.open(desc);
@@ -634,19 +645,20 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         // If we've exhausted retries, handle as necessary.
         if (retryCount >= MAX_RETRIES) {
-            logger.error(
-                    "rymERROR: [Migration Stage] Max retry attempts for update migrated raw sstable reached. Exiting...");
-            // Handle this condition, possibly by throwing an exception or notifying other
-            // services
+            logger.error("rymERROR: [Migration Stage] Max retry attempts for update migrated raw sstable reached. Exiting...");
+
         }
 
+        while (!ECNetutils.getIsDownloaded(newSSTable.getSSTableHashID())) {
+            logger.debug("[Tinoryj] Retry to get the sstable ({},{}) from downloaded map",
+                    newSSTable.getFilename(),
+                    newSSTable.getSSTableHashID());
+        }
+        StorageService.instance.downloadingSSTables.remove(newSSTable.getSSTableHashID());
+        StorageService.instance.migratedSStables.remove(newSSTable.getSSTableHashID());
+        StorageService.instance.migratedRawSSTablecount--;
+        latch.countDown();
         return;
-
-        // StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(),
-        // newSSTable);
-        // StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(),
-        // newSSTable);
-
     }
 
     public static SSTableReader open(Descriptor desc, TableMetadataRef metadata) {
