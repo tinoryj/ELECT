@@ -572,80 +572,75 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         SSTableReader newSSTable = SSTableReader.open(desc);
         if (oldSSTable.getSSTableHashID() == null) {
             logger.error("[Tinoryj-ERROR] Could not get old sstable's hash for reload");
+            return;
         }
-        // newSSTable.SetIsDataMigrateToCloud(false);
-        logger.debug(
-                "[Tinoryj] Before insert download SSTable into map success, current map size is ({})",
-                StorageService.instance.globalDownloadedSSTableMap.size());
-        SSTableReader oldValue = StorageService.instance.globalDownloadedSSTableMap.put(oldSSTable.getSSTableHashID(),
-                newSSTable);
-        if (ECNetutils.getIsDownloaded(oldSSTable.getSSTableHashID())) {
-            if (oldValue == null) {
-                logger.debug("[Tinoryj] Insert download SSTable into map success, current map size is ({})",
-                        StorageService.instance.globalDownloadedSSTableMap.size());
-            } else {
+
+        newSSTable.SetIsDataMigrateToCloud(false);
+        ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+        final int MAX_RETRIES = 3; // Set your max retry limit
+        int retryCount = 0;
+
+        while (retryCount < MAX_RETRIES) {
+            final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable,
+                    OperationType.COMPACTION);
+            if (txn != null) {
                 logger.debug(
-                        "[Tinoryj] Replcae download SSTable into map success, current map size is ({}), the original sstable for this hash is ({})",
-                        StorageService.instance.globalDownloadedSSTableMap.size(), oldValue.getFilename());
+                        "rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})",
+                        txn.opId(), desc);
+
+                try {
+                    txn.update(newSSTable, true);
+                    txn.checkpoint();
+                    Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
+                    StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(),
+                            newSSTable);
+
+                    logger.debug(
+                            "[Tinoryj] Before insert download SSTable into map success, current map size is ({})",
+                            StorageService.instance.globalDownloadedSSTableMap.size());
+                    SSTableReader oldValue = StorageService.instance.globalDownloadedSSTableMap.put(
+                            newSSTable.getSSTableHashID(),
+                            newSSTable);
+                    if (ECNetutils.getIsDownloaded(newSSTable.getSSTableHashID())) {
+                        if (oldValue == null) {
+                            logger.debug("[Tinoryj] Insert download SSTable into map success, current map size is ({})",
+                                    StorageService.instance.globalDownloadedSSTableMap.size());
+                        } else {
+                            logger.debug(
+                                    "[Tinoryj] Replcae download SSTable into map success, current map size is ({}), the original sstable for this hash is ({})",
+                                    StorageService.instance.globalDownloadedSSTableMap.size(), oldValue.getFilename());
+                        }
+                    } else {
+                        logger.error(
+                                "[Tinoryj-ERROR] Could not insert download SSTable ({}) into map, current map size is ({})",
+                                newSSTable.getSSTableHashID(),
+                                StorageService.instance.globalDownloadedSSTableMap.size());
+                    }
+
+                    // If we reach here, operation was successful. Break the loop.
+                    break;
+                } catch (Exception e) { // Replace with more specific exceptions if needed
+                    logger.error("rymERROR: [Migration Stage] An error occurred. Retrying...Attempt {} of {}",
+                            retryCount + 1, MAX_RETRIES, e);
+                    retryCount++;
+                }
+            } else {
+                logger.debug("rymDebug: the txn is null for loading migration sstable ({},{})",
+                        newSSTable.getFilename(),
+                        newSSTable.getSSTableHashID());
+                // Decide if you want to break or continue here
             }
-        } else {
-            logger.error(
-                    "[Tinoryj-ERROR] Could not insert download SSTable ({}) into map, current map size is ({})",
-                    oldSSTable.getSSTableHashID(),
-                    StorageService.instance.globalDownloadedSSTableMap.size());
         }
+
+        // If we've exhausted retries, handle as necessary.
+        if (retryCount >= MAX_RETRIES) {
+            logger.error(
+                    "rymERROR: [Migration Stage] Max retry attempts for update migrated raw sstable reached. Exiting...");
+            // Handle this condition, possibly by throwing an exception or notifying other
+            // services
+        }
+
         return;
-
-        // newSSTable.SetIsDataMigrateToCloud(false);
-        // ColumnFamilyStore cfs =
-        // Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
-        // final int MAX_RETRIES = 3; // Set your max retry limit
-        // int retryCount = 0;
-
-        // while (retryCount < MAX_RETRIES) {
-        // final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable,
-        // OperationType.COMPACTION);
-        // if (txn != null) {
-        // logger.debug(
-        // "rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data
-        // of sstable ({})",
-        // txn.opId(), desc);
-
-        // try {
-        // txn.update(newSSTable, true);
-        // txn.checkpoint();
-        // Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
-        // StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(),
-        // newSSTable);
-
-        // // If we reach here, operation was successful. Break the loop.
-        // break;
-        // } catch (Exception e) { // Replace with more specific exceptions if needed
-        // logger.error("rymERROR: [Migration Stage] An error occurred. Retrying...
-        // Attempt {} of {}",
-        // retryCount + 1, MAX_RETRIES, e);
-        // retryCount++;
-        // }
-        // } else {
-        // logger.debug("rymDebug: the txn is null for loading migration sstable
-        // ({},{})",
-        // newSSTable.getFilename(),
-        // newSSTable.getSSTableHashID());
-        // // Decide if you want to break or continue here
-        // }
-        // }
-
-        // // If we've exhausted retries, handle as necessary.
-        // if (retryCount >= MAX_RETRIES) {
-        // logger.error(
-        // "rymERROR: [Migration Stage] Max retry attempts for update migrated raw
-        // sstable reached. Exiting...");
-        // // Handle this condition, possibly by throwing an exception or notifying
-        // other
-        // // services
-        // }
-
-        // return;
 
         // StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(),
         // newSSTable);
