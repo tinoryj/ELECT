@@ -578,6 +578,9 @@ public final class ECNetutils {
 
     public static int getNeedMigrateParityCodesCount() {
 
+        if (DatabaseDescriptor.getStorageSavingGrade() == 1) {
+            return 0;
+        }
         ColumnFamilyStore cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
 
         int rf = Keyspace.open("ycsb").getAllReplicationFactor();
