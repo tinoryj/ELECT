@@ -416,7 +416,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             }
                         } else {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
-                                    retryCount < ECNetutils.getMigrationRetryCount()) {
+                                    retryCount < 50) {
                                 try {
                                     logger.debug("rymDebug: the sstable ({}) is still downloading!",
                                             sstable.getSSTableHashID());

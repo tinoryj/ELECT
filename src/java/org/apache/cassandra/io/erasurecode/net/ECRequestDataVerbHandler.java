@@ -82,9 +82,9 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                         } else {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())
                                     &&
-                                    retryCount < ECNetutils.getMigrationRetryCount()) {
+                                    retryCount < 50) {
                                 try {
-                                    Thread.sleep(retryCount, 10000);
+                                    Thread.sleep(1000);
                                 } catch (InterruptedException e) {
                                     // TODO Auto-generated catch block
                                     e.printStackTrace();

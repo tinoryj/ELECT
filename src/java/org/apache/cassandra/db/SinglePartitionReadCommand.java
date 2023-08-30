@@ -1123,7 +1123,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                     } else {
                         while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
-                                retryCount < ECNetutils.getMigrationRetryCount()) {
+                                retryCount < 50) {
                             try {
                                 logger.debug("rymDebug: the sstable ({}) is still downloading!",
                                         sstable.getSSTableHashID());
