@@ -248,8 +248,8 @@ public class ECRecovery {
         if (buffers != null) {
             while (!checkCodesAreReady(buffers, k - zeroChunkNum)) {
                 try {
-                    if (retryCount < 5) {
-                        Thread.sleep(1000);
+                    if (retryCount < 50) {
+                        Thread.sleep(100);
                         retryCount++;
                     } else {
                         throw new IllegalStateException(String

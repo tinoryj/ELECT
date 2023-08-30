@@ -393,11 +393,11 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                                 int retryCount = 0;
                                 while (StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())
                                         &&
-                                        retryCount < 120) {
+                                        retryCount < 1000) {
                                     try {
                                         logger.debug("rymDebug: the sstable ({}) is still recovering!",
                                                 sstable.getSSTableHashID());
-                                        Thread.sleep(1000);
+                                        Thread.sleep(100);
                                     } catch (InterruptedException e) {
                                         // TODO Auto-generated catch block
                                         e.printStackTrace();
@@ -434,11 +434,11 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             }
                         } else {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
-                                    retryCount < 120) {
+                                    retryCount < 1000) {
                                 try {
                                     logger.debug("rymDebug: the sstable ({}) is still downloading!",
                                             sstable.getSSTableHashID());
-                                    Thread.sleep(1000);
+                                    Thread.sleep(100);
                                 } catch (InterruptedException e) {
                                     // TODO Auto-generated catch block
                                     e.printStackTrace();

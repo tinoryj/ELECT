@@ -541,8 +541,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         ByteBuffer[] parityCodes = StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTHash);
         if (parityCodes != null) {
             while (!checkParityCodesAreReady(parityCodes)) {
-                if (retryCount < 10) {
-                    Thread.sleep(1000);
+                if (retryCount < 100) {
+                    Thread.sleep(100);
                     retryCount++;
                 } else {
                     throw new FileNotFoundException(String.format(
