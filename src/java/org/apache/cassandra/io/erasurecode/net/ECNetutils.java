@@ -436,7 +436,7 @@ public final class ECNetutils {
             logger.error("[Tinoryj-ERROR] check sstable is downloaded state error, sstable hash is null");
             return false;
         } else {
-            return StorageService.instance.globalDownloadedSSTableMap.contains(sstHash);
+            return StorageService.instance.globalDownloadedSSTableMap.containsKey(sstHash);
         }
     }
 
