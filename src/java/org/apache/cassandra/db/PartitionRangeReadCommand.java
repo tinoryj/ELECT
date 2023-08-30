@@ -393,7 +393,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                                 int retryCount = 0;
                                 while (StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())
                                         &&
-                                        retryCount < 50) {
+                                        retryCount < 120) {
                                     try {
                                         logger.debug("rymDebug: the sstable ({}) is still recovering!",
                                                 sstable.getSSTableHashID());
@@ -434,7 +434,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             }
                         } else {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
-                                    retryCount < 50) {
+                                    retryCount < 120) {
                                 try {
                                     logger.debug("rymDebug: the sstable ({}) is still downloading!",
                                             sstable.getSSTableHashID());

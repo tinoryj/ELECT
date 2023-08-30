@@ -174,6 +174,7 @@ public class ECRecovery {
         // remove the sstHash
         StorageService.instance.globalSSTHashToErasureCodesMap.remove(sstHash);
         logger.debug("rymDebug: recovery for sstHash ({}) is done!", sstHash);
+        StorageService.instance.recoveringSSTables.remove(sstHash);
         latch.countDown();
 
     }

@@ -81,7 +81,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
 
                         } else {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())
-                                    && retryCount < 50) {
+                                    && retryCount < 120) {
                                 try {
                                     logger.debug("rymDebug: [Degraded Read] the sstable ({}) is still downloading!", sstable.getSSTableHashID());
                                     Thread.sleep(1000);

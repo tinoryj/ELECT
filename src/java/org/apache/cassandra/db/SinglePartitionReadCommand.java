@@ -788,7 +788,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 int retryCount = 0;
                                 while (StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())
                                         &&
-                                        retryCount < 50) {
+                                        retryCount < 120) {
                                     try {
                                         logger.debug("rymDebug: the sstable ({}) is still recovering!",
                                                 sstable.getSSTableHashID());
@@ -829,7 +829,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
                         } else {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
-                                    retryCount < 50) {
+                                    retryCount < 120) {
                                 try {
                                     logger.debug("rymDebug: the sstable ({}) is still downloading!",
                                             sstable.getSSTableHashID());
@@ -1118,7 +1118,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         } else {
                             int retryCount = 0;
                             while (StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID()) &&
-                                    retryCount < 50) {
+                                    retryCount < 120) {
                                 try {
                                     logger.debug("rymDebug: the sstable ({}) is still recovering!", sstable.getSSTableHashID());
                                     Thread.sleep(1000);
@@ -1158,7 +1158,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                     } else {
                         while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
-                                retryCount < 50) {
+                                retryCount < 120) {
                             try {
                                 logger.debug("rymDebug: the sstable ({}) is still downloading!",
                                         sstable.getSSTableHashID());
