@@ -573,7 +573,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         if (oldSSTable.getSSTableHashID() == null) {
             logger.error("[Tinoryj-ERROR] Could not get old sstable's hash for reload");
         }
-        newSSTable.SetIsDataMigrateToCloud(false);
+        // newSSTable.SetIsDataMigrateToCloud(false);
         logger.debug(
                 "[Tinoryj] Before insert download SSTable into map success, current map size is ({})",
                 StorageService.instance.globalDownloadedSSTableMap.size());
