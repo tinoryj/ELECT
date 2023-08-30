@@ -590,6 +590,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
         final int MAX_RETRIES = 3; // Set your max retry limit
         int retryCount = 0;
+        StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
 
         while (retryCount < MAX_RETRIES) {
             final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable,
@@ -603,8 +604,6 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                     txn.update(newSSTable, true);
                     txn.checkpoint();
                     Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
-                    StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(),
-                            newSSTable);
 
                     logger.debug(
                             "[Tinoryj] Before insert download SSTable into map success, current map size is ({})",
