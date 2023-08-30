@@ -585,12 +585,13 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         Path path = Paths.get(oldSSTable.getFilename());
         int retryCheckFileCount = 0;
         while (retryCheckFileCount < MAX_RETRY_COUNT) {
-            if (Files.exists(path) && Files.size(path) >= (StorageService.getErasureCodeLength() * 0.9)) {
+            if (Files.exists(path) && Files.size(path) >= (StorageService.getErasureCodeLength() * 0.95)) {
                 break;
             }
             else {
                 try {
                     Thread.sleep(1000);
+                    logger.debug("rymDebug: Check the downloaded file is ready? For sstable ({}), the size is ({})", oldSSTable.getSSTableHashID(), Files.size(path) );
                     retryCheckFileCount++;
                 } catch (InterruptedException e) {
                     // TODO Auto-generated catch block
