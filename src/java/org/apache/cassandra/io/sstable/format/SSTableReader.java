@@ -576,14 +576,20 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         newSSTable.SetIsDataMigrateToCloud(false);
         SSTableReader oldValue = StorageService.instance.globalDownloadedSSTableMap.put(oldSSTable.getSSTableHashID(),
                 newSSTable);
-
-        if (oldValue == null) {
-            logger.debug("[Tinoryj] Insert download SSTable into map success, current map size is ({})",
-                    StorageService.instance.globalDownloadedSSTableMap.size());
+        if (ECNetutils.getIsRecovered(oldSSTable.getSSTableHashID())) {
+            if (oldValue == null) {
+                logger.debug("[Tinoryj] Insert download SSTable into map success, current map size is ({})",
+                        StorageService.instance.globalDownloadedSSTableMap.size());
+            } else {
+                logger.debug(
+                        "[Tinoryj] Replcae download SSTable into map success, current map size is ({}), the original sstable for this hash is ({})",
+                        StorageService.instance.globalDownloadedSSTableMap.size(), oldValue.getFilename());
+            }
         } else {
-            logger.debug(
-                    "[Tinoryj] Replcae download SSTable into map success, current map size is ({}), the original sstable for this hash is ({})",
-                    StorageService.instance.globalDownloadedSSTableMap.size(), oldValue.getFilename());
+            logger.error(
+                    "[Tinoryj-ERROR] Could not insert download SSTable ({}) into map, current map size is ({})",
+                    oldSSTable.getSSTableHashID(),
+                    StorageService.instance.globalDownloadedSSTableMap.size());
         }
         return;
 
