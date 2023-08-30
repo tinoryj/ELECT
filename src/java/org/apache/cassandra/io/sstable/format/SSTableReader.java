@@ -614,8 +614,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         StorageService.instance.globalDownloadedSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
 
         while (retryCount < MAX_RETRIES) {
-            final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable,
-                    OperationType.COMPACTION);
+            final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
             if (txn != null) {
                 logger.debug(
                         "rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})",
@@ -651,9 +650,17 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                     // If we reach here, operation was successful. Break the loop.
                     break;
                 } catch (Exception e) { // Replace with more specific exceptions if needed
-                    logger.error("rymERROR: [Migration Stage] An error occurred. Retrying...Attempt {} of {}",
-                            retryCount + 1, MAX_RETRIES, e);
+                    e.printStackTrace();
+                }
+
+                try {
+                    logger.debug("rymERROR: [Migration Stage] An error occurred. Retrying...Attempt {} of {}",
+                                retryCount + 1, MAX_RETRIES);
                     retryCount++;
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
                 }
             } else {
                 logger.debug("rymDebug: the txn is null for loading migration sstable ({},{})",
