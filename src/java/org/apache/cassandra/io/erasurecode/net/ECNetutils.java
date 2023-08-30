@@ -432,9 +432,12 @@ public final class ECNetutils {
     }
 
     public synchronized static boolean getIsDownloaded(String sstHash) {
-        if (sstHash == null)
+        if (sstHash == null) {
+            logger.error("[Tinoryj-ERROR] check sstable is downloaded state error, sstable hash is null");
             return false;
-        return StorageService.instance.globalDownloadedSSTableMap.contains(sstHash);
+        } else {
+            return StorageService.instance.globalDownloadedSSTableMap.contains(sstHash);
+        }
     }
 
     public static void checkTheReplicaPlanIsEqualsToNaturalEndpoint(ReplicaPlan.ForWrite replicaPlan,

@@ -574,7 +574,17 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             logger.error("[Tinoryj-ERROR] Could not get old sstable's hash for reload");
         }
         newSSTable.SetIsDataMigrateToCloud(false);
-        StorageService.instance.globalDownloadedSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
+        SSTableReader oldValue = StorageService.instance.globalDownloadedSSTableMap.put(oldSSTable.getSSTableHashID(),
+                newSSTable);
+
+        if (oldValue == null) {
+            logger.debug("[Tinoryj] Insert download SSTable into map success, current map size is ({})",
+                    StorageService.instance.globalDownloadedSSTableMap.size());
+        } else {
+            logger.debug(
+                    "[Tinoryj] Replcae download SSTable into map success, current map size is ({}), the original sstable for this hash is ({})",
+                    StorageService.instance.globalDownloadedSSTableMap.size(), oldValue.getFilename());
+        }
         return;
 
         // newSSTable.SetIsDataMigrateToCloud(false);
