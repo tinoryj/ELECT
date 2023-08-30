@@ -420,7 +420,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                                 try {
                                     logger.debug("rymDebug: the sstable ({}) is still downloading!",
                                             sstable.getSSTableHashID());
-                                    Thread.sleep(retryCount, 10000);
+                                    Thread.sleep(1000);
                                 } catch (InterruptedException e) {
                                     // TODO Auto-generated catch block
                                     e.printStackTrace();
