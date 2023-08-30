@@ -20,14 +20,16 @@ package org.apache.cassandra.io.erasurecode.net;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.StorageService;
-
-
+import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,25 +50,54 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
 
         for(int i = 0; i < parityHashList.size(); i++) {
             String parityCodeFileName = localParityCodeDir + parityHashList.get(i);
-            if(StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, firstParityNode)) {
-                byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
-                if(parityCode.length == 0)
-                    throw new IllegalArgumentException(String.format("rymERROR: cannot read data from parity code file (%s)", parityCodeFileName));
 
-                if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) == null) {
-                    // throw new IllegalArgumentException(String.format("rymERROR: The erasure codes for sstHash (%s) is empty", sstHash));
-                    logger.debug("rymDebug: The erasure codes for sstHash (%s) is empty", sstHash);
+            int retryDownloadCount = 0;
+            while (retryDownloadCount < ECNetutils.getMigrationRetryCount()) {
+                if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, firstParityNode)) {
+                    break;
                 }
-
-                if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].position() != 0) {
-                    throw new IllegalArgumentException(String.format("rymERROR: The erasure codes index (%s) for sstHash (%s) is not empty", k + i, sstHash));
-                }
-
-
-                StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].put(parityCode);
-            } else {
-                throw new FileNotFoundException(String.format("rymERROR: cannot download file (%s) from cloud", parityCodeFileName));
+                retryDownloadCount++;
             }
+
+            int MAX_RETRY_COUNT = 5;
+            Path path = Paths.get(parityCodeFileName);
+            int retryCheckFileCount = 0;
+            while (retryCheckFileCount < MAX_RETRY_COUNT) {
+                if (Files.exists(path) && Files.size(path) == (StorageService.getErasureCodeLength())) {
+                    break;
+                }
+                else {
+                    try {
+                        Thread.sleep(1000);
+                        logger.debug("rymDebug: Check the downloaded file is ready? For parity code ({}), the size is ({})", parityCodeFileName, Files.size(path) );
+                        retryCheckFileCount++;
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                        break;
+                    }
+                }
+            }
+
+            // if(StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, firstParityNode)) {
+            byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
+            if(parityCode.length == 0)
+                throw new IllegalArgumentException(String.format("rymERROR: cannot read data from parity code file (%s)", parityCodeFileName));
+
+            if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) == null) {
+                // throw new IllegalArgumentException(String.format("rymERROR: The erasure codes for sstHash (%s) is empty", sstHash));
+                logger.debug("rymDebug: The erasure codes for sstHash (%s) is empty", sstHash);
+            }
+
+            if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].position() != 0) {
+                throw new IllegalArgumentException(String.format("rymERROR: The erasure codes index (%s) for sstHash (%s) is not empty", k + i, sstHash));
+            }
+
+
+            StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].put(parityCode);
+            // } else {
+            //     throw new FileNotFoundException(String.format("rymERROR: cannot download file (%s) from cloud", parityCodeFileName));
+            // }
         }
 
     }
