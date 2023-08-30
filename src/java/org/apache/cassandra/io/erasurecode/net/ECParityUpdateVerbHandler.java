@@ -207,7 +207,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     StorageService.instance.globalReadyECMetadataCount,
                     StorageService.instance.globalBolckedECMetadataCount,
                     StorageService.instance.generatedNormalECMetadata,
-                    StorageService.instance.generatedPaddingZeroECMetadata, 
+                    StorageService.instance.generatedPaddingZeroECMetadata,
                     StorageService.instance.migratedParityCodeCount,
                     StorageService.instance.migratedRawSSTablecount,
                     executeCount);
@@ -463,16 +463,17 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             }
             try {
 
-                if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 && 
-                    ECNetutils.checkIsParityCodeMigrated(parityHashList.get(0))) {
+                if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
+                        ECNetutils.checkIsParityCodeMigrated(parityHashList.get(0))) {
 
-                    for(int i = 0; i < parityCodes.length; i++) {
+                    for (int i = 0; i < parityCodes.length; i++) {
                         String parityCodeFileName = localParityCodeDir + parityHashList.get(i);
-                        
+
                         int retry_count = 0;
 
-                        while(!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, parityNodes.get(0).getHostAddress(false)) &&
-                              retry_count < ECNetutils.getMigrationRetryCount()){
+                        while (!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName,
+                                parityNodes.get(0).getHostAddress(false)) &&
+                                retry_count < ECNetutils.getMigrationRetryCount()) {
                             retry_count++;
                         }
 
@@ -490,7 +491,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     ByteBuffer localParityCode;
                     localParityCode = ByteBuffer.wrap(ECNetutils.readBytesFromFile(parityCodeFileName));
 
-
                     parityCodes[0].put(localParityCode);
                     // parityCodes[0].rewind();
 
@@ -502,11 +502,11 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                     // get the needed parity code remotely, send a parity code request
                     for (int i = 1; i < parityHashList.size(); i++) {
-                        ECRequestParity request = new ECRequestParity(parityHashList.get(i), 
-                                                                      oldSSTHash, 
-                                                                      i, 
-                                                                      false, 
-                                                                      null);
+                        ECRequestParity request = new ECRequestParity(parityHashList.get(i),
+                                oldSSTHash,
+                                i,
+                                false,
+                                null);
                         request.requestParityCode(parityNodes.get(i));
                     }
                     // delete local parity code file
@@ -695,10 +695,11 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             // record first parity code to current node
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             int needMirateParityCodeCount = ECNetutils.getNeedMigrateParityCodesCount();
-            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
-                needMirateParityCodeCount > StorageService.instance.migratedParityCodeCount || DatabaseDescriptor.getStorageSavingGrade() >= 2) {
+            if ((DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
+                    needMirateParityCodeCount > StorageService.instance.migratedParityCodeCount)
+                    || DatabaseDescriptor.getStorageSavingGrade() >= 2) {
 
-                for(int i = 0; i < newParityCodes.length; i++) {
+                for (int i = 0; i < newParityCodes.length; i++) {
 
                     byte[] parityInBytes = new byte[StorageService.getErasureCodeLength()];
                     newParityCodes[i].get(parityInBytes);
@@ -711,7 +712,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         StorageService.instance.migratedParityCodeCount++;
                         StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
                     }
-                    
+
                 }
 
             } else {
@@ -732,7 +733,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 ecParityNode.distributeCodedDataToParityNodes(newParityCodes, parityNodes, parityHashList);
 
             }
-
 
             // update ECMetadata and distribute it
             // get old ECMetadata content

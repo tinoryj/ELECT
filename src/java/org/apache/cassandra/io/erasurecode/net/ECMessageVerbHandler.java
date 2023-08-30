@@ -327,15 +327,17 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             // record first parity code to current node
             String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
             int needMirateParityCodeCount = ECNetutils.getNeedMigrateParityCodesCount();
-            if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
-                needMirateParityCodeCount > StorageService.instance.migratedParityCodeCount || DatabaseDescriptor.getStorageSavingGrade() >= 2) {
+            if ((DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
+                    needMirateParityCodeCount > StorageService.instance.migratedParityCodeCount)
+                    || DatabaseDescriptor.getStorageSavingGrade() >= 2) {
 
-                for(int i = 0; i < parity.length; i++) {
+                for (int i = 0; i < parity.length; i++) {
 
                     byte[] parityInBytes = new byte[codeLength];
                     parity[i].get(parityInBytes);
 
-                    if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(i), parityInBytes)) {
+                    if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(i),
+                            parityInBytes)) {
                         logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
                                 localParityCodeDir + parityHashList.get(i));
                     } else {
@@ -360,10 +362,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                 }
                 // sync encoded data to parity nodes
                 ECParityNode ecParityNode = new ECParityNode(null, null, 0);
-                ecParityNode.distributeCodedDataToParityNodes(parity, messages[0].ecMessageContent.parityNodes, parityHashList);
+                ecParityNode.distributeCodedDataToParityNodes(parity, messages[0].ecMessageContent.parityNodes,
+                        parityHashList);
 
             }
-
 
             // Transform to ECMetadata and dispatch to related nodes
             // ECMetadata ecMetadata = new ECMetadata("", "", "", new
