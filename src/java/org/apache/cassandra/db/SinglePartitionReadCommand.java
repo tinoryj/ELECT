@@ -804,6 +804,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
                             try {
                                 SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                                while (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                                    logger.debug("[Tinoryj] Retry to get the sstable ({},{}) from downloaded map",
+                                            sstable.getFilename(),
+                                            sstable.getSSTableHashID());
+                                }
                                 StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
                                 StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                                 StorageService.instance.migratedRawSSTablecount--;
@@ -823,6 +828,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 retryCount++;
                             }
                         }
+                    } else {
+                        logger.debug("[Tinoryj] The sstable ({},{}) is downloaded", sstable.getFilename(),
+                                sstable.getSSTableHashID());
                     }
                 } else {
                     logger.debug(
@@ -1113,6 +1121,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                         try {
                             SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
+                            while (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                                logger.debug("[Tinoryj] Retry to get the sstable ({},{}) from downloaded map",
+                                        sstable.getFilename(),
+                                        sstable.getSSTableHashID());
+                            }
                             StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
                             StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
                             StorageService.instance.migratedRawSSTablecount--;
@@ -1132,6 +1145,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             retryCount++;
                         }
                     }
+                } else {
+                    logger.debug("[Tinoryj] The sstable ({},{}) is downloaded", sstable.getFilename(),
+                            sstable.getSSTableHashID());
                 }
             } else {
                 logger.debug(
