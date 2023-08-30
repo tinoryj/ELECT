@@ -569,6 +569,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     public static void loadRawDataFromCloud(Descriptor desc, SSTableReader oldSSTable, CountDownLatch latch) throws IOException {
 
+        ECNetutils.deleteFileByName(oldSSTable.getFilename());
+
         // Download raw data from cloud
         int retryDownloadCount = 0;
         while (retryDownloadCount < ECNetutils.getMigrationRetryCount()) {
@@ -577,6 +579,25 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                 break;
             }
             retryDownloadCount++;
+        }
+
+        int MAX_RETRY_COUNT = 5;
+        Path path = Paths.get(oldSSTable.getFilename());
+        int retryCount = 0;
+        while (retryCount < MAX_RETRY_COUNT) {
+            if (Files.exists(path)) {
+                break;
+            }
+            else {
+                try {
+                    Thread.sleep(1000);
+                    retryCount++;
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                    break;
+                }
+            }
         }
 
         // replace the old sstable with a new one
