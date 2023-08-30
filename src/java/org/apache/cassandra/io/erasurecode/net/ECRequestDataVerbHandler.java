@@ -72,6 +72,8 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                             try {
                                 SSTableReader.loadRawDataForMigration(sstable.descriptor, sstable);
                                 StorageService.instance.downloadingSSTables.remove(sstable.getSSTableHashID());
+                                StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
+                                StorageService.instance.migratedRawSSTablecount--;
                             } catch (IOException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
@@ -90,8 +92,6 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                             }
                         }
                     }
-                    StorageService.instance.migratedSStables.remove(sstable.getSSTableHashID());
-                    StorageService.instance.migratedRawSSTablecount--;
                 }
 
                 if (sstable.getColumnFamilyName().equals("usertable0")
