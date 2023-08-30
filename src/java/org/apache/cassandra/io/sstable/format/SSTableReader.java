@@ -648,7 +648,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         }
 
-        while (!ECNetutils.getIsDownloaded(newSSTable.getSSTableHashID())) {
+        if(!ECNetutils.getIsDownloaded(newSSTable.getSSTableHashID())) {
             logger.debug("[Tinoryj] Retry to get the sstable ({},{}) from downloaded map",
                     newSSTable.getFilename(),
                     newSSTable.getSSTableHashID());
