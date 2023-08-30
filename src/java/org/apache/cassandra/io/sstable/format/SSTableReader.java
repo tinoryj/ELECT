@@ -564,6 +564,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         StorageService.instance.globalSSTHashToECSSTableMap.put(oldSSTable.getSSTableHashID(), newSSTable);
         StorageService.instance.globalRecoveredSSTableMap.put(newSSTable.getSSTableHashID(), newSSTable);
+        StorageService.instance.recoveringSSTables.remove(oldSSTable.getSSTableHashID());
 
     }
 

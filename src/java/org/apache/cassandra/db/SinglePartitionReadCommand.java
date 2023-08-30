@@ -764,23 +764,41 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
                                     sstable.getSSTableHashID(), sstable.getFilename());
                         } else {
-                            logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
-                                    sstable.getSSTableHashID(), sstable.getFilename());
-                            // Tinoryj TODO: call recvoery on current sstable.
-                            CountDownLatch recoveryLatch = new CountDownLatch(1);
-                            try {
-                                ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), recoveryLatch);
-                                ECNetutils.setIsRecovered(sstable.getSSTableHashID());
+                            if (!StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())) {
+                                logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
+                                        sstable.getSSTableHashID(), sstable.getFilename());
+                                // Tinoryj TODO: call recvoery on current sstable.
+                                StorageService.instance.recoveringSSTables.add(sstable.getSSTableHashID());
+                                CountDownLatch recoveryLatch = new CountDownLatch(1);
+                                try {
+                                    ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), recoveryLatch);
+                                    ECNetutils.setIsRecovered(sstable.getSSTableHashID());
 
-                            } catch (Exception e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
-                            }
+                                } catch (Exception e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
 
-                            try {
-                                recoveryLatch.await();
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
+                                try {
+                                    recoveryLatch.await();
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                            } else {
+                                int retryCount = 0;
+                                while (StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())
+                                        &&
+                                        retryCount < 50) {
+                                    try {
+                                        logger.debug("rymDebug: the sstable ({}) is still recovering!",
+                                                sstable.getSSTableHashID());
+                                        Thread.sleep(1000);
+                                    } catch (InterruptedException e) {
+                                        // TODO Auto-generated catch block
+                                        e.printStackTrace();
+                                    }
+                                    retryCount++;
+                                }
                             }
                         }
                     }
@@ -798,7 +816,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             CountDownLatch migrationLatch = new CountDownLatch(1);
                             try {
                                 SSTableReader.loadRawDataFromCloud(sstable.descriptor, sstable, migrationLatch);
-                               
+
                             } catch (IOException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
@@ -813,7 +831,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
                                     retryCount < 50) {
                                 try {
-                                    logger.debug("rymDebug: the sstable ({}) is still downloading!", sstable.getSSTableHashID());
+                                    logger.debug("rymDebug: the sstable ({}) is still downloading!",
+                                            sstable.getSSTableHashID());
                                     Thread.sleep(1000);
                                 } catch (InterruptedException e) {
                                     // TODO Auto-generated catch block
@@ -1076,23 +1095,39 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
                     } else {
-                        logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
-                                sstable.getSSTableHashID(), sstable.getFilename());
-                        // Tinoryj TODO: call recvoery on current sstable.
-                        CountDownLatch recoveryLatch = new CountDownLatch(1);
-                        try {
-                            ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), recoveryLatch);
-                            ECNetutils.setIsRecovered(sstable.getSSTableHashID());
+                        if(!StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())) {
+                            logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
+                                    sstable.getSSTableHashID(), sstable.getFilename());
+                            // Tinoryj TODO: call recvoery on current sstable.
+                            StorageService.instance.recoveringSSTables.add(sstable.getSSTableHashID());
+                            CountDownLatch recoveryLatch = new CountDownLatch(1);
+                            try {
+                                ECRecovery.recoveryDataFromErasureCodes(sstable.getSSTableHashID(), recoveryLatch);
+                                ECNetutils.setIsRecovered(sstable.getSSTableHashID());
 
-                        } catch (Exception e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
-                        }
+                            } catch (Exception e) {
+                                // TODO Auto-generated catch block
+                                e.printStackTrace();
+                            }
 
-                        try {
-                            recoveryLatch.await();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            try {
+                                recoveryLatch.await();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        } else {
+                            int retryCount = 0;
+                            while (StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID()) &&
+                                    retryCount < 50) {
+                                try {
+                                    logger.debug("rymDebug: the sstable ({}) is still recovering!", sstable.getSSTableHashID());
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+                                retryCount++;
+                            }
                         }
                     }
                 }
