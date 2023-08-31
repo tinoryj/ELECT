@@ -2069,8 +2069,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         synchronized (tidy.global) {
             logger.debug("rymDebug: set is replication transferred to erasure coding flag for sstable ({})",
                     this.getSSTableHashID());
-            descriptor.getMetadataSerializer().setIsTransferredToErasureCoding(descriptor, this.getSSTableHashID(),
-                    true);
+            descriptor.getMetadataSerializer().setIsTransferredToErasureCoding(descriptor, this.getSSTableHashID(),true);
             reloadSSTableMetadata();
         }
         if (this.sstableMetadata.isReplicationTransferToErasureCoding) {
