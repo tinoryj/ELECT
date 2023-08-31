@@ -518,7 +518,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         }
 
         @Override
-        public void run() {
+        public synchronized void run() {
 
             ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
             try {
