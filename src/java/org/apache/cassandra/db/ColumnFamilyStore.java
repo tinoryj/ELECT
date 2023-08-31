@@ -607,8 +607,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     "rymDebug: get a untransferred sstable ({}), transferred sstable count is ({}), need transferred sstable count is ({})",
                                     sstable.getSSTableHashID(),
                                     StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
-                            if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount && 
-                                StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
+                            if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount) {
                                 logger.debug("[Tinoryj] the transferred SSTable Count is ({}), need transferred sstable count is ({}),return",
                                         StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
                                 return;
@@ -698,8 +697,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     "rymDebug: get a transferred sstable ({}), migrated sstable count is ({}), need migrated sstable count is ({})",
                                     sstable.getSSTableHashID(),
                                     StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
-                            if (StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount && 
-                                StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount) {
+                            if (StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
                                 logger.debug("[Tinoryj] the migrated SSTable Count is ({}), need migrate sstable count is ({}), return",
                                         StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
                                 return;
