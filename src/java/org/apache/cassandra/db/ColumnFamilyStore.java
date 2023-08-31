@@ -607,7 +607,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     "rymDebug: get a untransferred sstable ({}), transferred sstable count is ({}), need transferred sstable count is ({})",
                                     sstable.getSSTableHashID(),
                                     StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
-                            if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount) {
+                            if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount && StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
                                 logger.debug("[Tinoryj] the transferred SSTable Count is ({}), need transferred sstable count is ({}),return",
                                         StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
                                 return;
@@ -700,7 +700,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             if (StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
                                 logger.debug("[Tinoryj] the migrated SSTable Count is ({}), need migrate sstable count is ({}), return",
                                         StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
-                                return;
+                                continue;
                             }
 
                             // migrate the raw data to the cloud (if any)
