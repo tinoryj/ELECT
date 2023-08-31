@@ -557,12 +557,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 needTransferSSTablesCount = sstableCountOfLastLevel;
                 needMigrateRawSSTablesCount = sstableCountOfLastLevel;
             } else {
-                throw new IllegalStateException("");
+                throw new IllegalStateException(String.format("Unknown StorageSavingGrade (%s)!", DatabaseDescriptor.getStorageSavingGrade()));
             }
 
             logger.debug(
-                    "rymDebug: checkout the need transfer sstables count is ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), migrated parity SSTable count ({}), migrated raw SSTable count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})",
-                    needTransferSSTablesCount, needMigrateRawSSTablesCount,
+                    "rymDebug: checkout the need transfer sstables count is ({}), sstable count of last level ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), migrated parity SSTable count ({}), migrated raw SSTable count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})",
+                    needTransferSSTablesCount, sstableCountOfLastLevel, needMigrateRawSSTablesCount,
                     ECNetutils.getNeedMigrateParityCodesCount(),
                     StorageService.instance.transferredSSTableCount,
                     StorageService.instance.migratedParityCodeCount,
@@ -588,6 +588,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     if (sstable.isDataMigrateToCloud())
                         migratedSSTableCnt++;
 
+                    logger.debug("rymDebug: the traverse count is ({})", count);
                     if (count >= MAX_EC_CANDIDATES)
                         return;
 
@@ -596,6 +597,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         if (!sstable.isReplicationTransferredToErasureCoding() // &&!sstable.isSelectedByCompactionOrErasureCoding()
                                                                                // &&
                         ) {
+                            logger.debug("rymDebug: get a untransferred sstable ({}), transferred sstable count is ({}), need transferred sstable count is ({})", sstable.getSSTableHashID(),
+                                            StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);      
                             if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount)
                                 return;
 
@@ -614,8 +617,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             if (duration >= delayMilli
                                     && sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
-                                // logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
-                                // sstable.getSSTableLevel());
+                                logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}", sstable.getSSTableLevel());
 
                                 if (ECNetutils.isSSTableCompactingOrErasureCoding(sstable.getSSTableHashID()))
                                     continue;
