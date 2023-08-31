@@ -593,7 +593,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     logger.debug("rymDebug: the traverse count is ({}), max ec candidates is ({})", sentSSTableCount,
                             MAX_EC_CANDIDATES);
                     if (sentSSTableCount >= MAX_EC_CANDIDATES) {
-                        logger.debug("[Tinoryj] the sent SSTable Count is ({})", sentSSTableCount);
+                        logger.debug("[Tinoryj] the sent SSTable Count is ({}), max send sstable count is ({})", 
+                                     sentSSTableCount, MAX_EC_CANDIDATES);
                         return;
                     }
 
@@ -607,8 +608,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     sstable.getSSTableHashID(),
                                     StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
                             if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount) {
-                                logger.debug("[Tinoryj] the transferred SSTable Count is ({}), return",
-                                        StorageService.instance.transferredSSTableCount);
+                                logger.debug("[Tinoryj] the transferred SSTable Count is ({}), need transferred sstable count is ({}),return",
+                                        StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
                                 return;
                             }
 
@@ -697,8 +698,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     sstable.getSSTableHashID(),
                                     StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
                             if (StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
-                                logger.debug("[Tinoryj] the migrated SSTable Count is ({}), return",
-                                        StorageService.instance.migratedRawSSTablecount);
+                                logger.debug("[Tinoryj] the migrated SSTable Count is ({}), need migrate sstable count is ({}), return",
+                                        StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
                                 return;
                             }
 
