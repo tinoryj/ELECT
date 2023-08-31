@@ -543,7 +543,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0
                         / (rf - ((double) (n * 1.0)) / k)); // parameter a
                 needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf - 1) * sstableCountOfLastLevel); // parameter
-                                                                                                                         // c
             } else if (DatabaseDescriptor.getStorageSavingGrade() == 1) {
                 logger.debug("[Tinoryj] StorageSavingGrade is 1, perform ec to all sstables in the last level");
                 needTransferSSTablesCount = sstableCountOfLastLevel;
@@ -593,8 +592,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     logger.debug("rymDebug: the traverse count is ({}), max ec candidates is ({})", sentSSTableCount,
                             MAX_EC_CANDIDATES);
                     if (sentSSTableCount >= MAX_EC_CANDIDATES) {
-                        logger.debug("[Tinoryj] the sent SSTable Count is ({}), max send sstable count is ({})", 
-                                     sentSSTableCount, MAX_EC_CANDIDATES);
+                        logger.debug("[Tinoryj] the sent SSTable Count is ({}), max send sstable count is ({})",
+                                sentSSTableCount, MAX_EC_CANDIDATES);
                         return;
                     }
 
@@ -607,8 +606,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     "rymDebug: get a untransferred sstable ({}), transferred sstable count is ({}), need transferred sstable count is ({})",
                                     sstable.getSSTableHashID(),
                                     StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
-                            if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount && StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
-                                logger.debug("[Tinoryj] the transferred SSTable Count is ({}), need transferred sstable count is ({}),return",
+                            if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount
+                                    && StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
+                                logger.debug(
+                                        "[Tinoryj] the transferred SSTable Count is ({}), need transferred sstable count is ({}),return",
                                         StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
                                 return;
                             }
@@ -698,7 +699,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     sstable.getSSTableHashID(),
                                     StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
                             if (StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
-                                logger.debug("[Tinoryj] the migrated SSTable Count is ({}), need migrate sstable count is ({}), return",
+                                logger.debug(
+                                        "[Tinoryj] the migrated SSTable Count is ({}), need migrate sstable count is ({}), return",
                                         StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
                                 continue;
                             }
