@@ -58,8 +58,9 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         boolean isFound = false;
         for (SSTableReader sstable : sstables) {
             if (sstable.getSSTableHashID().equals(requestSSTHash)) {
-
+                logger.debug("rymDebug: the requested sstable ({}) is found!", sstable.getSSTableHashID());
                 if (sstable.isDataMigrateToCloud()) {
+                    logger.debug("rymDebug: the requested sstable ({}) is migrated!", sstable.getSSTableHashID());
                     if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
                         long tStart = nanoTime();
                         // reload raw data from cloud
@@ -130,8 +131,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
 
         if (!isFound)
             throw new IllegalStateException(
-                    String.format("rymERROR: cannot find sstable (%s) in usertable0 for recovery/update sstable (%s)",
-                            requestSSTHash, sstHash));
+                    String.format("rymERROR: cannot find sstable (%s) in usertable0 for recovery/update sstable (%s)", requestSSTHash, sstHash));
 
     }
 

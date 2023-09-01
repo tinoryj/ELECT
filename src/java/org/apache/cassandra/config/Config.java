@@ -201,7 +201,9 @@ public class Config {
      *  case 2: Means that on top of case 1, migrate all of the parity codes
      *  case 3: Means that on top of case 1&2, migrate all of the raw sstables  
      */
-    public int storage_saving_grade = 0; 
+    public int storage_saving_grade = 0;
+
+    public int concurrent_recovery = 32;
 
 
     public int concurrent_ec = 3;

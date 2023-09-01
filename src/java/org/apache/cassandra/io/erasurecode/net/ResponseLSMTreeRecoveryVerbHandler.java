@@ -75,11 +75,11 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
                         if(file.isFile() && file.getName().contains("EC.db")) {
                             cnt++;
                             try {
-                                Stage.ERASURECODE.maybeExecuteImmediately(new RecoveryForLSMTreeRunnable(file.getAbsolutePath(), subDir.getAbsolutePath()));
+                                Stage.RECOVERY.maybeExecuteImmediately(new RecoveryForLSMTreeRunnable(file.getAbsolutePath(), subDir.getAbsolutePath()));
                                 // recoveryDataFromErasureCodesForLSMTree(file.getAbsolutePath(), subDir.getAbsolutePath());
-                                if(cnt % 35 == 0) {
-                                    Thread.sleep(1000);
-                                }
+                                // if(cnt % 35 == 0) {
+                                //     Thread.sleep(10000);
+                                // }
                                 // Time.sleep(1, TimeUnit.SECONDS);
                             } catch (Exception e) {
                                 // TODO Auto-generated catch block

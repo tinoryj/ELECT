@@ -2105,6 +2105,18 @@ public class DatabaseDescriptor
         conf.parity_nodes = parityNodes;
     }
 
+    public static int getConcurrentRecovery() {
+        return conf.concurrent_recovery;
+    }
+
+    public static void setConcurrentRecovery(int concurrent_recovery) {
+        if (concurrent_recovery < 0)
+        {
+            throw new IllegalArgumentException("Concurrent reads must be non-negative");
+        }
+        conf.concurrent_recovery = concurrent_recovery;
+    }
+
     public static int getConcurrentErasureCoders() {
         return conf.concurrent_ec;
     }

@@ -17,6 +17,7 @@
  */
 
 package org.apache.cassandra.io.erasurecode.net;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -39,14 +40,11 @@ import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
+public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable> {
     public static final ECSyncSSTableVerbHandler instance = new ECSyncSSTableVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECSyncSSTableVerbHandler.class);
 
     private static AtomicInteger GLOBAL_COUNTER = new AtomicInteger(0);
-
-
 
     public static class DataForRewrite {
         // public final List<DecoratedKey> sourceKeys;
@@ -56,8 +54,8 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         // public final SSTablesInBytes sstInBytes;
         public String fileNamePrefix;
 
-        public DataForRewrite(DecoratedKey firstKey, DecoratedKey lastKey, String fileNamePrefix, 
-                              Map<String, DecoratedKey> sourceKeys) {
+        public DataForRewrite(DecoratedKey firstKey, DecoratedKey lastKey, String fileNamePrefix,
+                Map<String, DecoratedKey> sourceKeys) {
             this.firstKey = firstKey;
             this.lastKey = lastKey;
             // this.sourceKeys = sourceKeys;
@@ -74,21 +72,22 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
             logger.debug("rymDebug: ECSyncSSTableVerbHandler this is a forwarding header, message {} is from {} to {}",
-                            message.payload.sstHashID ,message.from(), forwardTo);
+                    message.payload.sstHashID, message.from(), forwardTo);
             forwardToLocalNodes(message, forwardTo);
         }
-        logger.debug("rymDebug: ECSyncSSTableVerbHandler received {} from {}", 
-                        message.payload.sstHashID, message.from());
+        logger.debug("rymDebug: ECSyncSSTableVerbHandler received {} from {}",
+                message.payload.sstHashID, message.from());
 
         // collect sstcontent
         List<String> allKey = message.payload.allKey;
         SSTablesInBytes sstInBytes = message.payload.sstInBytes;
         String cfName = message.payload.targetCfName;
 
-        // Get all keys 
+        // Get all keys
         Map<String, DecoratedKey> sourceKeys = new HashMap<String, DecoratedKey>();
-        for(String key : allKey) {
-            // sourceKeys.put(key, StorageService.instance.getKeyFromPartition("ycsb", cfName, key));
+        for (String key : allKey) {
+            // sourceKeys.put(key, StorageService.instance.getKeyFromPartition("ycsb",
+            // cfName, key));
             StorageService.instance.globalCachedKeys.put(key, 0);
         }
         // Collections.sort(sourceKeys, new DecoratedKeyComparator());
@@ -96,15 +95,16 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         DecoratedKey lastKey = StorageService.instance.getKeyFromPartition("ycsb", cfName, message.payload.lastKey);
 
         // Get sstales in byte.
-        // TODO: save the recieved data to a certain location based on the keyspace name and cf name
+        // TODO: save the recieved data to a certain location based on the keyspace name
+        // and cf name
         String hostName = InetAddress.getLocalHost().getHostName();
         int fileCount = GLOBAL_COUNTER.getAndIncrement();
         String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
         // the full name is user.dir/data/tmp/${HostName}-${COUNTER}-XXX.db
         String fileNamePrefix = hostName + "-" + String.valueOf(fileCount) + "-";
-        StorageService.instance.globalSSTHashToSyncedFileMap.put(message.payload.sstHashID, 
-                                                         new DataForRewrite(firstKey, lastKey, fileNamePrefix, sourceKeys));
-        
+        StorageService.instance.globalSSTHashToSyncedFileMap.put(message.payload.sstHashID,
+                new DataForRewrite(firstKey, lastKey, fileNamePrefix, sourceKeys));
+
         String tmpFileName = dataForRewriteDir + fileNamePrefix;
         String filterFileName = tmpFileName + "Filter.db";
         ECNetutils.writeBytesToFile(filterFileName, sstInBytes.sstFilter);
@@ -115,17 +115,14 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
         String summaryFileName = tmpFileName + "Summary.db";
         ECNetutils.writeBytesToFile(summaryFileName, sstInBytes.sstSummary);
 
-    
-
-
-        logger.debug("rymDebug: message is from {}, globalSSTHashToSyncedFileMap size is {}, all keys number is ({}), targetCfName is {}, sstHash is {}", 
-                     message.from(),
-                     StorageService.instance.globalSSTHashToSyncedFileMap.size(), 
-                     message.payload.allKey.size(),
-                     message.payload.targetCfName,
-                     message.payload.sstHashID);
+        logger.debug(
+                "rymDebug: message is from {}, globalSSTHashToSyncedFileMap size is {}, all keys number is ({}), targetCfName is {}, sstHash is {}",
+                message.from(),
+                StorageService.instance.globalSSTHashToSyncedFileMap.size(),
+                message.payload.allKey.size(),
+                message.payload.targetCfName,
+                message.payload.sstHashID);
     }
-
 
     private static void forwardToLocalNodes(Message<ECSyncSSTable> originalMessage, ForwardingInfo forwardTo) {
         Message.Builder<ECSyncSSTable> builder = Message.builder(originalMessage)
@@ -142,6 +139,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable>{
             MessagingService.instance().send(useSameMessageID ? message : builder.withId(id).build(), target);
         });
     }
+
     public static void main(String[] args) throws Exception {
         String hostName = InetAddress.getLocalHost().getHostName();
         logger.debug(hostName);

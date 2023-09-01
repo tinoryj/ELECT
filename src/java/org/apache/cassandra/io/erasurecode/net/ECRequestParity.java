@@ -33,8 +33,9 @@ import static org.apache.cassandra.db.TypeSizes.sizeof;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 public class ECRequestParity {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(ECRequestParity.class);
     public static final Serializer serializer = new Serializer();
     public final String parityHash;
@@ -42,7 +43,6 @@ public class ECRequestParity {
     public final int parityIndex;
     public final boolean isRecovery;
     public final String requestNode;
-
 
     public ECRequestParity(String parityHash, String sstHash, int parityIndex, boolean isRecovery, String requestNode) {
         this.parityHash = parityHash;
@@ -54,8 +54,9 @@ public class ECRequestParity {
 
     public void requestParityCode(InetAddressAndPort target) {
         logger.debug("rymDebug: Request parity code {} from {} to update the old sstable {}",
-                        this.parityHash, target, this.sstHash);
-        Message<ECRequestParity> message = Message.outWithFlag(Verb.ECREQUESTPARITY_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
+                this.parityHash, target, this.sstHash);
+        Message<ECRequestParity> message = Message.outWithFlag(Verb.ECREQUESTPARITY_REQ, this,
+                MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, target);
     }
 
@@ -83,14 +84,14 @@ public class ECRequestParity {
         @Override
         public long serializedSize(ECRequestParity t, int version) {
             long size = sizeof(t.parityHash) +
-                        sizeof(t.sstHash) +
-                        sizeof(t.parityIndex) +
-                        sizeof(t.isRecovery) +
-                        sizeof(t.requestNode);
+                    sizeof(t.sstHash) +
+                    sizeof(t.parityIndex) +
+                    sizeof(t.isRecovery) +
+                    sizeof(t.requestNode);
 
             return size;
         }
-        
+
     }
 
 }

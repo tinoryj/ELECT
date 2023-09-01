@@ -25,11 +25,10 @@ import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.StorageService;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ECResponseDataVerbHandler implements IVerbHandler<ECResponseData>{
+public class ECResponseDataVerbHandler implements IVerbHandler<ECResponseData> {
     public static final ECResponseDataVerbHandler instance = new ECResponseDataVerbHandler();
     private static final Logger logger = LoggerFactory.getLogger(ECResponseDataVerbHandler.class);
 
@@ -40,21 +39,29 @@ public class ECResponseDataVerbHandler implements IVerbHandler<ECResponseData>{
         int index = message.payload.index;
 
         // save it to the map
-        if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
-            if(index > -1 && index < DatabaseDescriptor.getEcDataNodes()){
-                if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index] != null &&
-                   StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].remaining() >= rawData.length) {
+        if (StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
+            if (index > -1 && index < DatabaseDescriptor.getEcDataNodes()) {
+                if (StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index] != null &&
+                        StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index]
+                                .remaining() >= rawData.length) {
                     StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].put(rawData);
-                    logger.debug("rymDebug: get raw data from ({}) for sstable hash ({}), index is ({})", message.from(), sstHash, index);
+                    logger.debug("rymDebug: get raw data from ({}) for sstable hash ({}), index is ({})",
+                            message.from(), sstHash, index);
                 } else {
-                    throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s), the size of erasure codes (%s), the size of the buffer (%s), raw data length is (%s)", 
-                                                                    index, sstHash, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash).length, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].position(), rawData.length));
+                    throw new IllegalStateException(String.format(
+                            "rymERROR: get an outbound index (%s) when we recovery sstHash (%s), the size of erasure codes (%s), the size of the buffer (%s), raw data length is (%s)",
+                            index, sstHash, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash).length,
+                            StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].position(),
+                            rawData.length));
                 }
             } else {
-                throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s)", index, sstHash));
+                throw new IllegalStateException(String
+                        .format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s)", index, sstHash));
             }
         } else {
-            throw new NullPointerException(String.format("rymERROR: We cannot find erasure codes for sstable (%s), the request is from (%s)", sstHash, message.from()));
+            throw new NullPointerException(
+                    String.format("rymERROR: We cannot find erasure codes for sstable (%s), the request is from (%s)",
+                            sstHash, message.from()));
         }
 
     }

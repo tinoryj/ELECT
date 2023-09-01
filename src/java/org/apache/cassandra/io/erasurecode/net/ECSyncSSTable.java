@@ -17,6 +17,7 @@
  */
 
 package org.apache.cassandra.io.erasurecode.net;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -45,7 +46,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static org.apache.cassandra.db.TypeSizes.sizeof;
 
-
 public class ECSyncSSTable {
     public static final Serializer serializer = new Serializer();
     public final List<String> allKey;
@@ -53,7 +53,7 @@ public class ECSyncSSTable {
     public final String lastKey;
     public final String sstHashID;
     public final String targetCfName;
-    
+
     public final SSTablesInBytes sstInBytes;
 
     public byte[] sstContent;
@@ -61,18 +61,19 @@ public class ECSyncSSTable {
     public byte[] allKeysInBytes;
     public int allKeysInBytesSize;
 
-    //private static SSTablesInBytesConverter converter = new SSTablesInBytesConverter();
+    // private static SSTablesInBytesConverter converter = new
+    // SSTablesInBytesConverter();
 
-    
-    // public static ByteObjectConversion<List<DecoratedKey>> keyConverter = new ByteObjectConversion<List<DecoratedKey>>();
-    // public static ByteObjectConversion<List<InetAddressAndPort>> ipConverter = new ByteObjectConversion<List<InetAddressAndPort>>();
+    // public static ByteObjectConversion<List<DecoratedKey>> keyConverter = new
+    // ByteObjectConversion<List<DecoratedKey>>();
+    // public static ByteObjectConversion<List<InetAddressAndPort>> ipConverter =
+    // new ByteObjectConversion<List<InetAddressAndPort>>();
 
-    
     public static final Logger logger = LoggerFactory.getLogger(ECMessage.class);
 
     public static class SSTablesInBytes implements Serializable {
         // all keys of Data.db in String
-        //public final List<String> allKey;
+        // public final List<String> allKey;
         // Filter.db in bytes
         public final byte[] sstFilter;
         // Index.db in bytes
@@ -82,9 +83,8 @@ public class ECSyncSSTable {
         // Summary.db in bytes
         public final byte[] sstSummary;
 
-        public SSTablesInBytes(byte[] sstFilter, byte[] sstIndex, byte[] sstStats, byte[] sstSummary) 
-        {
-            //this.allKey = allKey;
+        public SSTablesInBytes(byte[] sstFilter, byte[] sstIndex, byte[] sstStats, byte[] sstSummary) {
+            // this.allKey = allKey;
             this.sstFilter = sstFilter;
             this.sstIndex = sstIndex;
             this.sstStats = sstStats;
@@ -92,8 +92,9 @@ public class ECSyncSSTable {
         }
     };
 
-    public ECSyncSSTable(String sstHashID, String targetCfName, String firstKey, String lastKey, SSTablesInBytes sstInBytes,
-                        List<String> allKey) {
+    public ECSyncSSTable(String sstHashID, String targetCfName, String firstKey, String lastKey,
+            SSTablesInBytes sstInBytes,
+            List<String> allKey) {
         this.sstHashID = sstHashID;
         this.targetCfName = targetCfName;
         this.allKey = new ArrayList<>(allKey);
@@ -108,11 +109,14 @@ public class ECSyncSSTable {
             this.sstSize = this.sstContent.length;
             this.allKeysInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
             this.allKeysInBytesSize = this.allKeysInBytes.length;
-            // logger.debug("rymDebug: try to serialize allKey, allKey num is {}", this.allKey.size());
+            // logger.debug("rymDebug: try to serialize allKey, allKey num is {}",
+            // this.allKey.size());
             // logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
-            //logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}", this.sstContent, this.sstContent.length);
+            // logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}",
+            // this.sstContent, this.sstContent.length);
             if (rpn != null) {
-                Message<ECSyncSSTable> message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
+                Message<ECSyncSSTable> message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this,
+                        MessageFlag.CALL_BACK_ON_FAILURE);
                 MessagingService.instance().sendECNetRequestWithCallback(message, rpn);
             } else {
                 logger.error("rymERROR: replicaNodes is null!!");
@@ -137,7 +141,7 @@ public class ECSyncSSTable {
             out.writeUTF(t.firstKey);
             out.writeUTF(t.lastKey);
         }
-    
+
         @Override
         public ECSyncSSTable deserialize(DataInputPlus in, int version) throws IOException {
             String sstHashID = in.readUTF();
@@ -152,12 +156,12 @@ public class ECSyncSSTable {
             List<String> allKey = new ArrayList<String>();
             String firstKey = in.readUTF();
             String lastKey = in.readUTF();
-           
+
             try {
                 // allKey = keyConverter.fromByteArray(sstContent);
                 allKey = (List<String>) ByteObjectConversion.byteArrayToObject(allKeysInBytes);
                 SSTablesInBytes sstInBytes = (SSTablesInBytes) ByteObjectConversion.byteArrayToObject(sstContent);
-                
+
                 return new ECSyncSSTable(sstHashID, targetCfName, firstKey, lastKey, sstInBytes, allKey);
             } catch (Exception e) {
                 // TODO Auto-generated catch block
@@ -165,25 +169,23 @@ public class ECSyncSSTable {
             }
             // ByteBuffer sstContent = ByteBuffer.wrap(buf);
 
-
-
             return null;
-            
+
         }
-    
+
         @Override
         public long serializedSize(ECSyncSSTable t, int version) {
             long size = t.sstSize +
-                        sizeof(t.sstSize) +
-                        t.allKeysInBytesSize +
-                        sizeof(t.allKeysInBytesSize) +
-                        sizeof(t.firstKey) +
-                        sizeof(t.lastKey) +
-                        sizeof(t.sstHashID) + sizeof(t.targetCfName);
+                    sizeof(t.sstSize) +
+                    t.allKeysInBytesSize +
+                    sizeof(t.allKeysInBytesSize) +
+                    sizeof(t.firstKey) +
+                    sizeof(t.lastKey) +
+                    sizeof(t.sstHashID) + sizeof(t.targetCfName);
             return size;
-    
+
         }
-    
+
     }
 
     // public static void main(String[] args) {
