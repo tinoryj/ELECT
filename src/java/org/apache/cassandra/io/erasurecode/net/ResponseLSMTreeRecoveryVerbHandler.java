@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.io.File;
 
+import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.ErasureCoderOptions;
 import org.apache.cassandra.io.erasurecode.ErasureDecoder;
@@ -74,7 +75,8 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
                         if(file.isFile() && file.getName().contains("EC.db")) {
                             cnt++;
                             try {
-                                recoveryDataFromErasureCodesForLSMTree(file.getAbsolutePath(), subDir.getAbsolutePath());
+                                Stage.ERASURECODE.maybeExecuteImmediately(new RecoveryForLSMTreeRunnable(file.getAbsolutePath(), subDir.getAbsolutePath()));
+                                // recoveryDataFromErasureCodesForLSMTree(file.getAbsolutePath(), subDir.getAbsolutePath());
                                 if(cnt % 35 == 0) {
                                     Thread.sleep(1000);
                                 }
@@ -101,6 +103,28 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         logger.debug("rymDedebug: We recovery the colum family ({}), the retrieve file cost is {}(ms), decode time cost is {}(ms), the decoded sstable count is ({})", 
                      cfName, retrieveFileCost, decodeTimeCost, cnt);
 
+    }
+
+
+    private static class RecoveryForLSMTreeRunnable implements Runnable {
+
+        private final String ecMetadataFile;
+        private final String cfPath;
+
+        public RecoveryForLSMTreeRunnable(String ecMetadataFile, String cfPath) {
+            this.ecMetadataFile = ecMetadataFile;
+            this.cfPath = cfPath;
+        }
+
+        @Override
+        public void run() {
+            try {
+                recoveryDataFromErasureCodesForLSMTree(ecMetadataFile, cfPath);
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
     }
 
 
