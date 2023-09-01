@@ -31,10 +31,12 @@ import org.apache.cassandra.db.compaction.LeveledGenerations;
 import org.apache.cassandra.net.IVerbHandler;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.service.StorageService;
+import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
     public static final ECRequestDataVerbHandler instance = new ECRequestDataVerbHandler();
@@ -59,11 +61,12 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
 
                 if (sstable.isDataMigrateToCloud()) {
                     if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                        long tStart = nanoTime();
                         // reload raw data from cloud
                         int retryCount = 0;
                         if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                             StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
-                            
+
                             CountDownLatch migrationLatch = new CountDownLatch(1);
                             try {
                                 SSTableReader.loadRawDataFromCloud(sstable.descriptor, sstable, migrationLatch);
@@ -83,7 +86,8 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())
                                     && retryCount < 1000) {
                                 try {
-                                    logger.debug("rymDebug: [Degraded Read] the sstable ({}) is still downloading!", sstable.getSSTableHashID());
+                                    logger.debug("rymDebug: [Degraded Read] the sstable ({}) is still downloading!",
+                                            sstable.getSSTableHashID());
                                     Thread.sleep(100);
                                 } catch (InterruptedException e) {
                                     // TODO Auto-generated catch block
@@ -92,6 +96,9 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                                 retryCount++;
                             }
                         }
+                        Tracing.trace("[Tinoryj] Moved SSTable back from cloud {}\u03bcs",
+                                "ECRequestDataVerbHandler",
+                                (nanoTime() - tStart) / 1000);
                     }
                 }
 

@@ -61,6 +61,7 @@ import org.apache.cassandra.service.StorageProxy;
 import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 /**
  * A read command that selects a (part of a) range of partitions.
@@ -369,6 +370,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
                                     sstable.getSSTableHashID(), sstable.getFilename());
                         } else {
+                            long tStart = nanoTime();
                             if (!StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())) {
                                 logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
                                         sstable.getSSTableHashID(), sstable.getFilename());
@@ -405,6 +407,8 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                                     retryCount++;
                                 }
                             }
+                            Tracing.trace("[Tinoryj] Recovery SSTable {}\u03bcs", "PartitionRangeReadCommand",
+                                    (nanoTime() - tStart) / 1000);
                         }
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
@@ -415,6 +419,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                     // Tinoryj TODO: retrive SSTable from cloud.
 
                     if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                        long tStart = nanoTime();
                         int retryCount = 0;
                         if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                             StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
@@ -445,8 +450,10 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                                 }
                                 retryCount++;
                             }
-
                         }
+                        Tracing.trace("[Tinoryj] Moved SSTable back from cloud {}\u03bcs",
+                                "PartitionRangeReadCommand",
+                                (nanoTime() - tStart) / 1000);
                     } else {
                         logger.debug("[Tinoryj] The sstable ({},{}) is downloaded", sstable.getFilename(),
                                 sstable.getSSTableHashID());

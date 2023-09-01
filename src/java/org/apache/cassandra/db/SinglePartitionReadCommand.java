@@ -57,6 +57,7 @@ import org.apache.cassandra.service.*;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.btree.BTreeSet;
+import static org.apache.cassandra.utils.Clock.Global.nanoTime;
 
 /**
  * A read command that selects a (part of a) single partition.
@@ -764,6 +765,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
                                     sstable.getSSTableHashID(), sstable.getFilename());
                         } else {
+                            long tStart = nanoTime();
                             if (!StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())) {
                                 logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
                                         sstable.getSSTableHashID(), sstable.getFilename());
@@ -800,6 +802,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                     retryCount++;
                                 }
                             }
+                            Tracing.trace("[Tinoryj] Recovery SSTable {}\u03bcs", "SinglePartitionReadCommand",
+                                    (nanoTime() - tStart) / 1000);
                         }
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
@@ -810,6 +814,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     // Tinoryj TODO: retrive SSTable from cloud.
 
                     if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                        long tStart = nanoTime();
                         int retryCount = 0;
                         if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                             StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
@@ -840,8 +845,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 }
                                 retryCount++;
                             }
-
                         }
+                        Tracing.trace("[Tinoryj] Moved SSTable back from cloud {}\u03bcs",
+                                "SinglePartitionReadCommand",
+                                (nanoTime() - tStart) / 1000);
                     } else {
                         logger.debug("[Tinoryj] The sstable ({},{}) is downloaded", sstable.getFilename(),
                                 sstable.getSSTableHashID());
@@ -1095,7 +1102,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
                     } else {
-                        if(!StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())) {
+                        long tStart = nanoTime();
+                        if (!StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())) {
                             logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
                                     sstable.getSSTableHashID(), sstable.getFilename());
                             // Tinoryj TODO: call recvoery on current sstable.
@@ -1120,7 +1128,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             while (StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID()) &&
                                     retryCount < 1000) {
                                 try {
-                                    logger.debug("rymDebug: the sstable ({}) is still recovering!", sstable.getSSTableHashID());
+                                    logger.debug("rymDebug: the sstable ({}) is still recovering!",
+                                            sstable.getSSTableHashID());
                                     Thread.sleep(100);
                                 } catch (InterruptedException e) {
                                     // TODO Auto-generated catch block
@@ -1129,6 +1138,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 retryCount++;
                             }
                         }
+                        Tracing.trace("[Tinoryj] Recovery SSTable {}\u03bcs", "SinglePartitionReadCommand",
+                                (nanoTime() - tStart) / 1000);
                     }
                 }
             } else if (sstable.getColumnFamilyName().equals("usertable0") &&
@@ -1139,6 +1150,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // Tinoryj TODO: retrive SSTable from cloud.
 
                 if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                    long tStart = nanoTime();
                     int retryCount = 0;
                     if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                         StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
@@ -1169,8 +1181,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
                             retryCount++;
                         }
-
                     }
+                    Tracing.trace("[Tinoryj] Moved SSTable back from cloud {}\u03bcs", "SinglePartitionReadCommand",
+                            (nanoTime() - tStart) / 1000);
                 } else {
                     logger.debug("[Tinoryj] The sstable ({},{}) is downloaded", sstable.getFilename(),
                             sstable.getSSTableHashID());
