@@ -53,7 +53,7 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
                     List<String> dataDirs = cfs.getDataPaths();
                     for(String dir : dataDirs) {
                         if(dir.contains(targetCfName)) {
-                            String userName = DatabaseDescriptor.getUserName();
+                            String userName = "elect";
                             // String passWd = "yjren";
                             String host = sourceAddress.getHostAddress(false);
                             String targetDir = userName + "@" + host + ":" + rawCfPath;
