@@ -103,8 +103,24 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         // caculate the decode time
         long decodeTimeCost = endDecodeTimeStamp - startDecodeTimeStamp;
         
-        logger.debug("rymDedebug: We recovery the colum family ({}), the retrieve file cost is {}(ms), decode time cost is {}(ms), the decoded sstable count is ({})", 
+        logger.debug("rymDebug: We recovery the colum family ({}), the retrieve file cost is {}(ms), decode time cost is {}(ms), the decoded sstable count is ({})", 
                      cfName, retrieveFileCost, decodeTimeCost, cnt);
+
+        if(cfName.equals("usertable0")) {
+            String data = String.format("TableName: %s\nRetrieve File Cost: %s(ms)\nDecode Time Cost: %s(ms)\nDecode SSTables Count: %s(ms)",
+                                        cfName, retrieveFileCost, decodeTimeCost, cnt);
+            ECNetutils.recordResults(ECNetutils.getFullNodeRecoveryLogFile(), data);
+            LSMTreeRecovery.recoveryLSMTree("ycsb", "usertable1");
+        } else if (cfName.equals("usertable1")) {
+            String data = String.format("TableName: %s\nRetrieve File Cost: %s(ms)\nDecode Time Cost: %s(ms)\nDecode SSTables Count: %s(ms)",
+                                        cfName, retrieveFileCost, decodeTimeCost, cnt);
+            ECNetutils.recordResults(ECNetutils.getFullNodeRecoveryLogFile(), data);
+            LSMTreeRecovery.recoveryLSMTree("ycsb", "usertable2");
+        } else if (cfName.equals("usertable2")) {
+            String data = String.format("TableName: %s\nRetrieve File Cost: %s(ms)\nDecode Time Cost: %s(ms)\nDecode SSTables Count: %s(ms)",
+                                        cfName, retrieveFileCost, decodeTimeCost, cnt);
+            ECNetutils.recordResults(ECNetutils.getFullNodeRecoveryLogFile(), data);
+        }
 
     }
 

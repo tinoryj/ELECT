@@ -19,12 +19,14 @@
 package org.apache.cassandra.io.erasurecode.net;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -87,6 +89,7 @@ public final class ECNetutils {
     private static final String localParityCodeDir = System.getProperty("user.dir") + "/data/localParityHashes/";
     private static final String scriptsDir = System.getProperty("user.dir") + "/scripts/";
     private static final String inMemoryDataBackupDir = System.getProperty("user.dir") + "/data/inMemoryData/";
+    private static final String fullNodeRecoveryLogs = System.getProperty("user.dir") + "/logs/recovery.log";
     private static final int MIGRATION_RETRY_COUNT = 5;
 
     public static class ByteObjectConversion {
@@ -147,10 +150,23 @@ public final class ECNetutils {
     };
 
     public static String getDataForRewriteDir() {
+
+        File dataForRewriteFolder = new File(dataForRewriteDir);
+        if (!dataForRewriteFolder.createDirectoriesIfNotExists()) {
+            logger.error("rymERROR: failed to create file dir ({})", dataForRewriteDir);
+        }
         return dataForRewriteDir;
     }
 
+    public static String getFullNodeRecoveryLogFile() {
+        return fullNodeRecoveryLogs;
+    }
+
     public static String getReceivedParityCodeDir() {
+        File receivedParityCodeFolder = new File(receivedParityCodeDir);
+        if (!receivedParityCodeFolder.createDirectoriesIfNotExists()) {
+            logger.error("rymERROR: failed to create file dir ({})", receivedParityCodeDir);
+        }
         return receivedParityCodeDir;
     }
 
@@ -159,11 +175,27 @@ public final class ECNetutils {
     }
 
     public static String getLocalParityCodeDir() {
+        File localParityCodeFolder = new File(localParityCodeDir);
+        if (!localParityCodeFolder.createDirectoriesIfNotExists()) {
+            logger.error("rymERROR: failed to create file dir ({})", localParityCodeDir);
+        }
         return localParityCodeDir;
     }
 
     public static int getMigrationRetryCount() {
         return MIGRATION_RETRY_COUNT;
+    }
+
+    public static void recordResults(String fileName, String data) {
+        try {
+            FileWriter fileWriter = new FileWriter(fileName, true); 
+            BufferedWriter bufferedWriter = new BufferedWriter(fileWriter); 
+
+            bufferedWriter.write(data); 
+            bufferedWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
