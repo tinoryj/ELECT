@@ -45,7 +45,7 @@ func() {
 
 
     sed -i "s/enable_migration:.*$/enable_migration: ${enable_migration}/" conf/cassandra.yaml
-    sed -i "s/enbale_erasure_coding:.*$/enbale_erasure_coding: ${enbale_erasure_coding}/" conf/cassandra.yaml
+    sed -i "s/enable_erasure_coding:.*$/enable_erasure_coding: ${enable_erasure_coding}/" conf/cassandra.yaml
     sed -i "s/cold_period:.*$/cold_period: ${cold_period}/" conf/cassandra.yaml
     sed -i "s/target_storage_saving:.*$/target_storage_saving: ${target_storage_saving}/" conf/cassandra.yaml
     sed -i "s/seeds:.*$/seeds: \"${seeds}\"/" conf/cassandra.yaml
