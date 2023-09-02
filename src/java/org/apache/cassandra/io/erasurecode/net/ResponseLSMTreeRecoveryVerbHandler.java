@@ -63,36 +63,39 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         // read the ec sstables and perform the recovery
         File dataFolder = new File(rawCfPath);
         int cnt = 0;
+        if(cfName.equals("usertable0")) {
+            if(dataFolder.exists() && dataFolder.isDirectory()) {
+                File[] subDirectories = dataFolder.listFiles(File::isDirectory);
+                if(subDirectories != null) {
 
-        if(dataFolder.exists() && dataFolder.isDirectory()) {
-            File[] subDirectories = dataFolder.listFiles(File::isDirectory);
-            if(subDirectories != null) {
-
-                for(File subDir : subDirectories) {
-                    logger.debug("rymDebug: current dir is ({})", subDir.getAbsolutePath());
-                    File[] files = subDir.listFiles();
-                    for(File file : files) {
-                        if(file.isFile() && file.getName().contains("EC.db")) {
-                            cnt++;
-                            try {
-                                Stage.RECOVERY.maybeExecuteImmediately(new RecoveryForLSMTreeRunnable(file.getAbsolutePath(), subDir.getAbsolutePath()));
-                                // recoveryDataFromErasureCodesForLSMTree(file.getAbsolutePath(), subDir.getAbsolutePath());
-                                // if(cnt % 35 == 0) {
-                                //     Thread.sleep(10000);
-                                // }
-                                // Time.sleep(1, TimeUnit.SECONDS);
-                            } catch (Exception e) {
-                                // TODO Auto-generated catch block
-                                e.printStackTrace();
+                    for(File subDir : subDirectories) {
+                        logger.debug("rymDebug: current dir is ({})", subDir.getAbsolutePath());
+                        File[] files = subDir.listFiles();
+                        for(File file : files) {
+                            if(file.isFile() && file.getName().contains("EC.db")) {
+                                cnt++;
+                                try {
+                                    Stage.RECOVERY.maybeExecuteImmediately(new RecoveryForLSMTreeRunnable(file.getAbsolutePath(), subDir.getAbsolutePath()));
+                                    // recoveryDataFromErasureCodesForLSMTree(file.getAbsolutePath(), subDir.getAbsolutePath());
+                                    // if(cnt % 35 == 0) {
+                                    //     Thread.sleep(10000);
+                                    // }
+                                    // Time.sleep(1, TimeUnit.SECONDS);
+                                } catch (Exception e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
                             }
                         }
                     }
+
                 }
 
+            } else {
+                throw new FileNotFoundException(String.format("rymERROR: Folder for path (%s) does not exists!", rawCfPath));
             }
-
         } else {
-            throw new FileNotFoundException(String.format("rymERROR: Folder for path (%s) does not exists!", rawCfPath));
+            logger.debug("rymDebug: For the secondary LSM-tree ({}), we do not decode them.", cfName);
         }
 
         long endDecodeTimeStamp = currentTimeMillis();
