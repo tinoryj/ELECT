@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.apache.cassandra.net.Message;
+import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.io.IVersionedSerializer;
@@ -74,72 +75,78 @@ public class LSMTreeRecovery {
         //Gossiper.instance.getUnreachableMembers());
         // allHostsIterable.forEach(allHosts::add);
 
-        StorageService.instance.recoveringCFS.put(cfName, currentTimeMillis());
+        if(ColumnFamilyStore.getIfExists(keyspaceName, cfName) != null) {
+            StorageService.instance.recoveringCFS.put(cfName, currentTimeMillis());
 
-        try {
-            if(cfName.equals("usertable0")) {
-                // Recovery usertable0 from the next node's usertable1
-                sendRecoverySignal(keyspaceName, cfName, "usertable1");
+            try {
+                if(cfName.equals("usertable0")) {
+                    // Recovery usertable0 from the next node's usertable1
+                    sendRecoverySignal(keyspaceName, cfName, "usertable1");
 
-            } else if(cfName.equals("usertable1")) {
+                } else if(cfName.equals("usertable1")) {
 
-                // Recovery usertable1 from the next node's usertable2
-                sendRecoverySignal(keyspaceName, cfName, "usertable2");
+                    // Recovery usertable1 from the next node's usertable2
+                    sendRecoverySignal(keyspaceName, cfName, "usertable2");
 
-            } else if(cfName.equals("usertable2")) {
+                } else if(cfName.equals("usertable2")) {
 
-                // Recovery usertable2 from the former node's usertable1
-                sendRecoverySignal(keyspaceName, cfName, "usertable1");
+                    // Recovery usertable2 from the former node's usertable1
+                    sendRecoverySignal(keyspaceName, cfName, "usertable1");
 
+                }
+
+                // if(cfName.equals("usertable0")) {
+
+                //     recoveryLSMTree(keyspaceName, cfName, "usertable1");
+
+                //     // Recovery usertable0 from the next node's usertable1
+                //     String dataDir = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName).getDataPaths().get(0) + "bak/";
+                //     Path path = Paths.get(dataDir);
+                //     PathUtils.createDirectoriesIfNotExists(path);
+                //     logger.debug("rymDebug: data dir is ({})", dataDir);
+
+                //     LSMTreeRecovery msg = new LSMTreeRecovery(dataDir, cfName, "usertable1");
+                //     Message<LSMTreeRecovery> message0 = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
+                //     MessagingService.instance().send(message0, allHosts.get(nextIndex));
+
+                // } else if(cfName.equals("usertable1")) {
+
+                //     // Recovery usertable1 from the next node's usertable2
+                //     recoveryLSMTree(keyspaceName, cfName, "usertable2");
+                //     String dataDir = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName).getDataPaths().get(0) + "bak/";
+                //     Path path = Paths.get(dataDir);
+                //     PathUtils.createDirectoriesIfNotExists(path);
+                //     logger.debug("rymDebug: data dir is ({})", dataDir);
+
+                //     LSMTreeRecovery msg = new LSMTreeRecovery(dataDir, cfName, "usertable2");
+                //     Message<LSMTreeRecovery> message = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
+                //     MessagingService.instance().send(message, allHosts.get(nextIndex));
+
+                // } else if(cfName.equals("usertable2")) {
+
+                //     // Recovery usertable2 from the former node's usertable1
+                //     recoveryLSMTree(keyspaceName, cfName, "usertable1");
+                //     String dataDir = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName).getDataPaths().get(0) + "bak/";
+                //     Path path = Paths.get(dataDir);
+                //     PathUtils.createDirectoriesIfNotExists(path);
+                //     logger.debug("rymDebug: data dir is ({})", dataDir);
+
+                //     LSMTreeRecovery msg = new LSMTreeRecovery(dataDir, cfName, "usertable1");
+                //     Message<LSMTreeRecovery> message = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
+                //     MessagingService.instance().send(message, allHosts.get(formerIndex));
+
+                // }
+
+
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
             }
-
-            // if(cfName.equals("usertable0")) {
-
-            //     recoveryLSMTree(keyspaceName, cfName, "usertable1");
-
-            //     // Recovery usertable0 from the next node's usertable1
-            //     String dataDir = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName).getDataPaths().get(0) + "bak/";
-            //     Path path = Paths.get(dataDir);
-            //     PathUtils.createDirectoriesIfNotExists(path);
-            //     logger.debug("rymDebug: data dir is ({})", dataDir);
-
-            //     LSMTreeRecovery msg = new LSMTreeRecovery(dataDir, cfName, "usertable1");
-            //     Message<LSMTreeRecovery> message0 = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
-            //     MessagingService.instance().send(message0, allHosts.get(nextIndex));
-
-            // } else if(cfName.equals("usertable1")) {
-
-            //     // Recovery usertable1 from the next node's usertable2
-            //     recoveryLSMTree(keyspaceName, cfName, "usertable2");
-            //     String dataDir = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName).getDataPaths().get(0) + "bak/";
-            //     Path path = Paths.get(dataDir);
-            //     PathUtils.createDirectoriesIfNotExists(path);
-            //     logger.debug("rymDebug: data dir is ({})", dataDir);
-
-            //     LSMTreeRecovery msg = new LSMTreeRecovery(dataDir, cfName, "usertable2");
-            //     Message<LSMTreeRecovery> message = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
-            //     MessagingService.instance().send(message, allHosts.get(nextIndex));
-
-            // } else if(cfName.equals("usertable2")) {
-
-            //     // Recovery usertable2 from the former node's usertable1
-            //     recoveryLSMTree(keyspaceName, cfName, "usertable1");
-            //     String dataDir = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName).getDataPaths().get(0) + "bak/";
-            //     Path path = Paths.get(dataDir);
-            //     PathUtils.createDirectoriesIfNotExists(path);
-            //     logger.debug("rymDebug: data dir is ({})", dataDir);
-
-            //     LSMTreeRecovery msg = new LSMTreeRecovery(dataDir, cfName, "usertable1");
-            //     Message<LSMTreeRecovery> message = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
-            //     MessagingService.instance().send(message, allHosts.get(formerIndex));
-
-            // }
-
-
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        } else {
+            logger.debug("rymDebug: the cf ({}) is not existed!", cfName);
         }
+
+
 
     }
 
