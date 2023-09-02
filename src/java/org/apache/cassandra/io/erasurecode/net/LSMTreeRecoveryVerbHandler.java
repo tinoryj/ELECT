@@ -24,6 +24,7 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.List;
 
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -42,15 +43,17 @@ public class LSMTreeRecoveryVerbHandler implements IVerbHandler<LSMTreeRecovery>
         String sourceCfName = message.payload.sourceCfName;
         String targetCfName = message.payload.targetCfName;
         InetAddressAndPort sourceAddress = message.from();
+        logger.debug("rymDebug: Get a recovery LSM tree message, the raw Cf path is ({}), source cf name is ({}), target cf name is ({})",
+                     rawCfPath, sourceCfName, targetCfName);
         for (Keyspace keyspace : Keyspace.all()){
             for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
 
                 if(cfs.getColumnFamilyName().equals(targetCfName)) {
-
+                    logger.debug("rymDebug: got a matched LSM tree ({}) for recovery signal.", targetCfName);
                     List<String> dataDirs = cfs.getDataPaths();
                     for(String dir : dataDirs) {
                         if(dir.contains(targetCfName)) {
-                            String userName = "yjren";
+                            String userName = DatabaseDescriptor.getUserName();
                             // String passWd = "yjren";
                             String host = sourceAddress.getHostAddress(false);
                             String targetDir = userName + "@" + host + ":" + rawCfPath;

@@ -204,6 +204,7 @@ public class Config {
     public int storage_saving_grade = 0;
 
     public int concurrent_recovery = 32;
+    public String user_name = "elect";
 
 
     public int concurrent_ec = 3;

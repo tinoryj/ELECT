@@ -2105,6 +2105,18 @@ public class DatabaseDescriptor
         conf.parity_nodes = parityNodes;
     }
 
+    public static String getUserName() {
+        return conf.user_name;
+    }
+
+    public static void setUserName(String user_name) {
+        // if (concurrent_recovery < 0)
+        // {
+        //     throw new IllegalArgumentException("Concurrent reads must be non-negative");
+        // }
+        conf.user_name = user_name;
+    }
+
     public static int getConcurrentRecovery() {
         return conf.concurrent_recovery;
     }
