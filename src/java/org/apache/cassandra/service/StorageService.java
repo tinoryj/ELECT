@@ -4178,8 +4178,8 @@ public class StorageService extends NotificationBroadcasterSupport
                         "\tMigrate raw SSTable time cost: " + migratedRawSSTableTimeCost + " (ms)\n" +
                         "\tMigrate parity code time cost: " + migratedParityCodeTimeCost + " (ms)\n\n\n" +
                         "Read operations:\n" +
-                        "\tRead index time cost: " + readIndexTime + " (ms)\n" +
-                        "\tRead cache time cost: " + readCacheTime + " (ms)\n" +
+                        "\tRead index time cost: " + readIndexTime + " (ns)\n" +
+                        "\tRead cache time cost: " + readCacheTime + " (ns)\n" +
                         "\tRead memtable time cost: " + readMemtableTime + " (ms)\n" +
                         "\tRead SSTable time cost: " + readSSTableTime + " (ms)\n" +
                         "\tRead migrated raw data time cost: " + readRawDataMigrationTime + " (ms)\n" +

@@ -480,7 +480,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
     private UnfilteredRowIterator getThroughCache(ColumnFamilyStore cfs, ReadExecutionController executionController) {
         assert !cfs.isIndex(); // CASSANDRA-5732
         assert cfs.isRowCacheEnabled() : String.format("Row cache is not enabled on table [%s]", cfs.name);
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
         RowCacheKey key = new RowCacheKey(metadata(), partitionKey());
 
         // Attempt a sentinel-read-cache sequence. if a write invalidates our sentinel,
@@ -494,7 +494,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // read
                 Tracing.trace("Row cache miss (race)");
                 cfs.metric.rowCacheMiss.inc();
-                long cacheTimeCost = System.currentTimeMillis() - startTime;
+                long cacheTimeCost = System.nanoTime() - startTime;
                 StorageService.instance.readCacheTime += cacheTimeCost;
                 return queryMemtableAndDisk(cfs, executionController);
             }
@@ -507,14 +507,14 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 UnfilteredRowIterator unfilteredRowIterator = clusteringIndexFilter()
                         .getUnfilteredRowIterator(columnFilter(), cachedPartition);
                 cfs.metric.updateSSTableIterated(0);
-                long cacheTimeCost = System.currentTimeMillis() - startTime;
+                long cacheTimeCost = System.nanoTime() - startTime;
                 StorageService.instance.readCacheTime += cacheTimeCost;
                 return unfilteredRowIterator;
             }
 
             cfs.metric.rowCacheHitOutOfRange.inc();
             Tracing.trace("Ignoring row cache as cached value could not satisfy query");
-            long cacheTimeCost = System.currentTimeMillis() - startTime;
+            long cacheTimeCost = System.nanoTime() - startTime;
             StorageService.instance.readCacheTime += cacheTimeCost;
             return queryMemtableAndDisk(cfs, executionController);
         }

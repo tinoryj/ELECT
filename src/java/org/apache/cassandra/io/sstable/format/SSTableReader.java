@@ -1690,14 +1690,14 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     protected RowIndexEntry getCachedPosition(KeyCacheKey unifiedKey, boolean updateStats) {
         if (isKeyCacheEnabled()) {
             if (updateStats) {
-                long startTime = System.currentTimeMillis();
+                long startTime = System.nanoTime();
                 RowIndexEntry cachedEntry = keyCache.get(unifiedKey);
                 keyCacheRequest.incrementAndGet();
                 if (cachedEntry != null) {
                     keyCacheHit.incrementAndGet();
                     bloomFilterTracker.addTruePositive();
                 }
-                long cacheCostTime = System.currentTimeMillis() - startTime;
+                long cacheCostTime = System.nanoTime() - startTime;
                 StorageService.instance.readCacheTime += cacheCostTime;
                 return cachedEntry;
             } else {

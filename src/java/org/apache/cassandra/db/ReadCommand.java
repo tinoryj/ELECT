@@ -416,7 +416,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
 
         COMMAND.set(this);
         try {
-            long startIndexTime = System.currentTimeMillis();
+            long startIndexTime = System.nanoTime();
             ColumnFamilyStore cfs = Keyspace.openAndGetStore(metadata());
             Index index = getIndex(cfs);
 
@@ -429,7 +429,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
                 Tracing.trace("Executing read on {}.{} using index {}", cfs.metadata.keyspace, cfs.metadata.name,
                         index.getIndexMetadata().name);
             }
-            long indexTimeCost = System.currentTimeMillis() - startIndexTime;
+            long indexTimeCost = System.nanoTime() - startIndexTime;
             StorageService.instance.readIndexTime = indexTimeCost;
             UnfilteredPartitionIterator iterator = (null == searcher) ? queryStorage(cfs, executionController)
                     : searcher.search(executionController);
