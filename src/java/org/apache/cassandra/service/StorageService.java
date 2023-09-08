@@ -300,6 +300,7 @@ public class StorageService extends NotificationBroadcasterSupport
     public volatile long readRawDataMigrationTime = 0;
 
     // Degraded read
+    public volatile long degradedRetrieveTime = 0;
     public volatile long degradedReadDecodingTime = 0;
     public volatile long readParityMigrationTime = 0;
 
@@ -4166,22 +4167,23 @@ public class StorageService extends NotificationBroadcasterSupport
     public String getBreakdownTime() {
         
         String result = "Write operations:\n" +
-                        "\tMemtable time cost:" + memtableTime + "(ms)\n" +
-                        "\tCommitLog time cost:" + commitLogTime + "(ms)\n" +
-                        "\tFlush time cost:" + flushTime + "(ms)\n" +
-                        "\tCompaction time cost:" + compactionTime + "(ms)\n" +
-                        "\tRewrite time cost:" + rewriteTime + "(ms)\n" +
-                        "\tECSSTable compaction time cost:" + ecSSTableCompactionTime + "(ms)\n" +
-                        "\tEncoding time cost:" + encodingTime + "(ms)\n" +
-                        "\tMigrate raw SSTable time cost:" + migratedRawSSTableTimeCost + "(ms)\n" +
-                        "\tMigrate parity code time cost:" + migratedParityCodeTimeCost + "(ms)\n\n\n" +
+                        "\tMemtable time cost:" + memtableTime + " (ms)\n" +
+                        "\tCommitLog time cost:" + commitLogTime + " (ms)\n" +
+                        "\tFlush time cost:" + flushTime + " (ms)\n" +
+                        "\tCompaction time cost:" + compactionTime + " (ms)\n" +
+                        "\tRewrite time cost:" + rewriteTime + " (ms)\n" +
+                        "\tECSSTable compaction time cost:" + ecSSTableCompactionTime + " (ms)\n" +
+                        "\tEncoding time cost:" + encodingTime + " (ms)\n" +
+                        "\tMigrate raw SSTable time cost:" + migratedRawSSTableTimeCost + " (ms)\n" +
+                        "\tMigrate parity code time cost:" + migratedParityCodeTimeCost + " (ms)\n\n\n" +
                         "Read operations:\n" +
-                        "\tRead cache time cost:" + readCacheTime + "(ms)\n" +
-                        "\tRead memtable time cost:" + readMemtableTime + "(ms)\n" +
-                        "\tRead SSTable time cost:" + readSSTableTime + "(ms)\n" +
-                        "\tRead migrated raw data time cost:" + readRawDataMigrationTime + "(ms)\n" +
-                        "\tDecoding time cost:" + degradedReadDecodingTime + "(ms)\n" +
-                        "\tRead migrated parity time cost:" + readParityMigrationTime + "(ms)\n";
+                        "\tRead cache time cost:" + readCacheTime + " (ms)\n" +
+                        "\tRead memtable time cost:" + readMemtableTime + " (ms)\n" +
+                        "\tRead SSTable time cost:" + readSSTableTime + " (ms)\n" +
+                        "\tRead migrated raw data time cost:" + readRawDataMigrationTime + " (ms)\n" +
+                        "\tRetrieve time cost:" + degradedRetrieveTime + " (ms)\n" +
+                        "\tDecoding time cost:" + degradedReadDecodingTime + " (ms)\n" +
+                        "\tRead migrated parity time cost:" + readParityMigrationTime + " (ms)\n";
 
 
 

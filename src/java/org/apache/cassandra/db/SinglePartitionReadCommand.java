@@ -480,7 +480,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
     private UnfilteredRowIterator getThroughCache(ColumnFamilyStore cfs, ReadExecutionController executionController) {
         assert !cfs.isIndex(); // CASSANDRA-5732
         assert cfs.isRowCacheEnabled() : String.format("Row cache is not enabled on table [%s]", cfs.name);
-
+        long startTime = System.currentTimeMillis();
         RowCacheKey key = new RowCacheKey(metadata(), partitionKey());
 
         // Attempt a sentinel-read-cache sequence. if a write invalidates our sentinel,
@@ -494,6 +494,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // read
                 Tracing.trace("Row cache miss (race)");
                 cfs.metric.rowCacheMiss.inc();
+                long cacheTimeCost = System.currentTimeMillis() - startTime;
+                StorageService.instance.readCacheTime += cacheTimeCost;
                 return queryMemtableAndDisk(cfs, executionController);
             }
 
@@ -505,11 +507,15 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 UnfilteredRowIterator unfilteredRowIterator = clusteringIndexFilter()
                         .getUnfilteredRowIterator(columnFilter(), cachedPartition);
                 cfs.metric.updateSSTableIterated(0);
+                long cacheTimeCost = System.currentTimeMillis() - startTime;
+                StorageService.instance.readCacheTime += cacheTimeCost;
                 return unfilteredRowIterator;
             }
 
             cfs.metric.rowCacheHitOutOfRange.inc();
             Tracing.trace("Ignoring row cache as cached value could not satisfy query");
+            long cacheTimeCost = System.currentTimeMillis() - startTime;
+            StorageService.instance.readCacheTime += cacheTimeCost;
             return queryMemtableAndDisk(cfs, executionController);
         }
 
@@ -744,6 +750,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             // ArrayList<String> readRecoveryedSSTableList = new ArrayList<String>();
             // ArrayList<String> readRecoveryedSSTableHashList = new ArrayList<String>();
             // targetSSTableSetSize = view.sstables.size();
+
+
+            long startSSTableTime = System.currentTimeMillis();
             for (SSTableReader sstable : view.sstables) {
                 // boolean isCurrentSSTableRepaired = false;
                 if (!sstable.getColumnFamilyName().equals("usertable0") &&
@@ -933,6 +942,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 }
             }
 
+            long sstableTimeCost = System.currentTimeMillis() - startSSTableTime;
+            StorageService.instance.readSSTableTime += sstableTimeCost;
+
             if (Tracing.isTracing())
                 Tracing.trace("Skipped {}/{} non-slice-intersecting sstables, included {} due to tombstones",
                         nonIntersectingSSTables, view.sstables.size(), includedDueToTombstones);
@@ -1085,6 +1097,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         // ArrayList<String> readRecoveryedSSTableList = new ArrayList<String>();
         // ArrayList<String> readRecoveryedSSTableHashList = new ArrayList<String>();
         // targetSSTableSetSize = view.sstables.size();
+        long startSSTableTime = System.currentTimeMillis();
         for (SSTableReader sstable : view.sstables) {
             // boolean isCurrentSSTableRepaired = false;
             if (!sstable.getColumnFamilyName().equals("usertable0") &&
@@ -1301,6 +1314,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         controller);
             }
         }
+
+
+
+        long sstableTimeCost = System.currentTimeMillis() - startSSTableTime;
+        StorageService.instance.readSSTableTime += sstableTimeCost;
 
         cfs.metric.updateSSTableIterated(metricsCollector.getMergedSSTables());
 

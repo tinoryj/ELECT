@@ -86,6 +86,7 @@ public class ECRecovery {
         logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadataContent.stripeId,
                 sstHash);
 
+        long startRetrieveTime = System.currentTimeMillis();
         // Step 2: Request the coding blocks from related nodes
         int codeLength = StorageService.getErasureCodeLength();
         logger.debug("rymDebug: [Debug recovery] retrieve chunks for sstable ({})", sstHash);
@@ -104,6 +105,8 @@ public class ECRecovery {
         int[] decodeIndexes = waitUntilRequestCodesReady(
                 StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash), sstHash, k,
                 ecMetadataContent.zeroChunksNum, codeLength);
+        long retrieveTimeCost = System.currentTimeMillis() - startRetrieveTime;
+        StorageService.instance.degradedRetrieveTime += retrieveTimeCost;
 
         int eraseIndex = ecMetadataContent.sstHashIdList.indexOf(sstHash);
         if (eraseIndex == -1)
@@ -116,6 +119,8 @@ public class ECRecovery {
                 "rymDebug: [Debug recovery] When we recovery sstable ({}), the data blocks of strip id ({}) is ready.",
                 sstHash, ecMetadataContent.stripeId);
 
+
+    
         // Step 3: Decode the raw data
 
         long startTime = System.currentTimeMillis();
@@ -145,6 +150,8 @@ public class ECRecovery {
         byte[] sstContent = new byte[dataFileSize];
         output[0].get(sstContent);
         SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
+
+
         long decodeCostTime = System.currentTimeMillis() - startTime;
         StorageService.instance.degradedReadDecodingTime += decodeCostTime;
         // debug
