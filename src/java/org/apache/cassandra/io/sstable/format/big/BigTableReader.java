@@ -169,7 +169,6 @@ public class BigTableReader extends SSTableReader
         if ((op == Operator.EQ || op == Operator.GE) && (key instanceof DecoratedKey))
         {
             DecoratedKey decoratedKey = (DecoratedKey) key;
-            long startTime = System.currentTimeMillis();
             RowIndexEntry cachedPosition = getCachedPosition(decoratedKey, updateCacheAndStats);
             if (cachedPosition != null)
             {
@@ -181,8 +180,6 @@ public class BigTableReader extends SSTableReader
                 // logger.debug("rymDebug: Key cache hit for sstable {}, Is recovered SSTable? ({})", 
                 //                     descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
                 
-                long cacheCostTime = System.currentTimeMillis() - startTime;
-                StorageService.instance.readCacheTime += cacheCostTime;
 
                 return cachedPosition;
             }
