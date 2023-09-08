@@ -295,6 +295,7 @@ public class StorageService extends NotificationBroadcasterSupport
 
     // Normal read
     public volatile long readCacheTime = 0;
+    public volatile long readIndexTime = 0;
     public volatile long readMemtableTime = 0;
     public volatile long readSSTableTime = 0;
     public volatile long readRawDataMigrationTime = 0;
@@ -4177,6 +4178,7 @@ public class StorageService extends NotificationBroadcasterSupport
                         "\tMigrate raw SSTable time cost: " + migratedRawSSTableTimeCost + " (ms)\n" +
                         "\tMigrate parity code time cost: " + migratedParityCodeTimeCost + " (ms)\n\n\n" +
                         "Read operations:\n" +
+                        "\tRead index time cost: " + readIndexTime + " (ms)\n" +
                         "\tRead cache time cost: " + readCacheTime + " (ms)\n" +
                         "\tRead memtable time cost: " + readMemtableTime + " (ms)\n" +
                         "\tRead SSTable time cost: " + readSSTableTime + " (ms)\n" +
