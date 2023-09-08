@@ -118,6 +118,8 @@ public class ECRecovery {
 
         // Step 3: Decode the raw data
 
+        long startTime = System.currentTimeMillis();
+
         ByteBuffer[] recoveryOriginalSrc = new ByteBuffer[k];
 
         for (int i = 0; i < k; i++) {
@@ -143,7 +145,8 @@ public class ECRecovery {
         byte[] sstContent = new byte[dataFileSize];
         output[0].get(sstContent);
         SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
-
+        long decodeCostTime = System.currentTimeMillis() - startTime;
+        StorageService.instance.degradedReadDecodingTime += decodeCostTime;
         // debug
         logger.debug(
                 "rymDebug: Recovery sstHashList is ({}), parity hash list is ({}), stripe id is ({}), sstHash to replica map is ({}), sstable hash is ({}), descriptor is ({}), decode indexes are ({}), erase index is ({}), zero chunks are ({})",

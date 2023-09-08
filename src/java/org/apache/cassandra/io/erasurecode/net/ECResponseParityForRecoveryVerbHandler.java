@@ -52,6 +52,7 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
             String parityCodeFileName = localParityCodeDir + parityHashList.get(i);
 
             int retryDownloadCount = 0;
+            long startDownloadTime = System.currentTimeMillis();
             while (retryDownloadCount < ECNetutils.getMigrationRetryCount()) {
                 if (StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, firstParityNode)) {
                     break;
@@ -78,6 +79,8 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
                     }
                 }
             }
+            long  downloadTimeCost = System.currentTimeMillis() - startDownloadTime;
+            StorageService.instance.readParityMigrationTime = downloadTimeCost;
 
             // if(StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, firstParityNode)) {
             byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);

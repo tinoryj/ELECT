@@ -52,6 +52,7 @@ import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 
 public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
 
@@ -276,6 +277,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             // for (ECMessage msg : messages) {
             // codeLength = codeLength < msg.sstSize? msg.sstSize : codeLength;
             // }
+
+            long startTime = currentTimeMillis();
             ErasureCoderOptions ecOptions = new ErasureCoderOptions(ecDataNum, ecParityNum);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 
@@ -336,13 +339,17 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                     byte[] parityInBytes = new byte[codeLength];
                     parity[i].get(parityInBytes);
 
+                    long startUploadParityTime = System.currentTimeMillis();
                     if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(i),
                             parityInBytes)) {
                         logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
                                 localParityCodeDir + parityHashList.get(i));
                     } else {
+                        long uploadParityTimeCost = System.currentTimeMillis() - startUploadParityTime;
+                        StorageService.instance.migratedParityCodeTimeCost = uploadParityTimeCost;
                         StorageService.instance.migratedParityCodeCount++;
                         StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
+
                     }
 
                 }
@@ -378,6 +385,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                             new ArrayList<InetAddressAndPort>(),
                             new HashMap<String, List<InetAddressAndPort>>(), "", false, 0, zeroChunkNum));
             ecMetadata.generateAndDistributeMetadata(messages, parityHashList);
+            long timeCost = currentTimeMillis() - startTime;
+            StorageService.instance.encodingTime += timeCost;
         }
 
     }

@@ -497,6 +497,11 @@ public interface StorageServiceMBean extends NotificationEmitter {
      */
     public List<String> getSSTableAccessFrequency(String keyspace);
 
+    /**
+     * Get all breakdown time
+     * @return the breakdown time of read/write operations
+     */
+    public String getBreakdownTime();
 
     /**
      * Backup or reload in memory data for cold startup

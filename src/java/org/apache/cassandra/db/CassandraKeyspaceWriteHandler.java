@@ -26,6 +26,7 @@ import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.schema.TableId;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.concurrent.OpOrder;
 
@@ -51,7 +52,10 @@ public class CassandraKeyspaceWriteHandler implements KeyspaceWriteHandler
             CommitLogPosition position = null;
             if (makeDurable)
             {
+                long startCommitLog = System.currentTimeMillis();
                 position = addToCommitLog(mutation);
+                long commitLogTimeCost = System.currentTimeMillis() - startCommitLog;
+                StorageService.instance.commitLogTime += commitLogTimeCost;
             }
             return new CassandraWriteContext(group, position);
         }

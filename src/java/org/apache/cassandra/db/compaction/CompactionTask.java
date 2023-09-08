@@ -462,6 +462,8 @@ public class CompactionTask extends AbstractCompactionTask {
             // update the metrics
             cfs.metric.compactionBytesWritten.inc(endsize);
             logger.debug("Compaction is really done.");
+            long timeCost = currentTimeMillis() - startTime;
+            StorageService.instance.rewriteTime += timeCost;
         }
     }
 
@@ -685,6 +687,8 @@ public class CompactionTask extends AbstractCompactionTask {
 
             // update the metrics
             cfs.metric.compactionBytesWritten.inc(endsize);
+            long timeCost = currentTimeMillis() - startTime;
+            StorageService.instance.ecSSTableCompactionTime += timeCost;
         }
     }
 
@@ -1030,7 +1034,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     startsize, endsize);
 
             logger.info(String.format(
-                    "Compacted (%s) %d sstables to %d [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
+                    "[Raw Compaction] Compacted (%s) %d sstables to %d [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
                     taskId,
                     transaction.originals().size(),
                     newSStables.size(),
@@ -1058,6 +1062,8 @@ public class CompactionTask extends AbstractCompactionTask {
 
             // update the metrics
             cfs.metric.compactionBytesWritten.inc(endsize);
+            long timeCost = currentTimeMillis() - startTime;
+            StorageService.instance.compactionTime += timeCost;
 
             // logger.debug("[Raw compaction strategy]: After update the metrics, the sstables number remained in transaction {} is {}",
             //  transaction.opId(), transaction.originals().size());

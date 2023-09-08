@@ -717,7 +717,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.",
                                             sstable.descriptor, sstable.getSSTableHashID());
                                     StorageService.instance.migratedRawSSTablecount++;
+                                    long startTime = System.currentTimeMillis();
                                     StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
+                                    long timeCost = System.currentTimeMillis() - startTime;
+                                    StorageService.instance.migratedRawSSTableTimeCost += timeCost;
                                     StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
                                     try {
                                         // delete the raw data and create a empty file
@@ -1537,6 +1540,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         }
 
         public void run() {
+
+            // [ELECT] Tracing flush
+            long startFlush = System.currentTimeMillis();
+
             if (logger.isTraceEnabled())
                 logger.trace("Flush task {}@{} starts executing, waiting on barrier", hashCode(), name);
 
@@ -1578,6 +1585,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
             if (logger.isTraceEnabled())
                 logger.trace("Flush task task {}@{} finished", hashCode(), name);
+            long flushTimeCost = System.currentTimeMillis() - startFlush;
+            StorageService.instance.flushTime += flushTimeCost;
         }
 
         public Collection<SSTableReader> flushMemtable(ColumnFamilyStore cfs, Memtable memtable, boolean flushNonCf2i) {
@@ -1771,6 +1780,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
     {
         long start = nanoTime();
+        long startMemTableTime = System.currentTimeMillis();
         try {
             // if (metadata.keyspace.equals("ycsb")) {
             // try {
@@ -1786,8 +1796,13 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             // }
 
             Memtable mt = data.getMemtableFor(opGroup, commitLogPosition);
-
             long timeDelta = mt.put(update, indexer, opGroup);
+            long memtableTimeCost = System.currentTimeMillis() - startMemTableTime;
+            StorageService.instance.memtableTime += memtableTimeCost;
+
+
+
+
             DecoratedKey key = update.partitionKey();
             invalidateCachedPartition(key);
             metric.topWritePartitionFrequency.addSample(key.getKey(), 1);

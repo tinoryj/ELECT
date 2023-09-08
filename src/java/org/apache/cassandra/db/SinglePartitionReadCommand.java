@@ -682,6 +682,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         InputCollector<UnfilteredRowIterator> inputCollector = iteratorsForPartition(view, controller);
         try {
             SSTableReadMetricsCollector metricsCollector = new SSTableReadMetricsCollector();
+            long startTime = System.currentTimeMillis();
             for (Memtable memtable : view.memtables) {
                 @SuppressWarnings("resource") // 'iter' is added to iterators which is closed on exception, or through
                                               // the closing of the final merged iterator
@@ -700,6 +701,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 mostRecentPartitionTombstone = Math.max(mostRecentPartitionTombstone,
                         iter.partitionLevelDeletion().markedForDeleteAt());
             }
+            long memtableTimeCost = System.currentTimeMillis() - startTime;
+            StorageService.instance.readMemtableTime += memtableTimeCost;
 
             /*
              * We can't eliminate full sstables based on the timestamp of what we've already
@@ -1045,6 +1048,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         SSTableReadMetricsCollector metricsCollector = new SSTableReadMetricsCollector();
 
         Tracing.trace("Merging memtable contents");
+        long startMemtableTime = System.currentTimeMillis();
         for (Memtable memtable : view.memtables) {
             try (UnfilteredRowIterator iter = memtable.rowIterator(partitionKey, filter.getSlices(metadata()),
                     columnFilter(), isReversed(), metricsCollector)) {
@@ -1058,6 +1062,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         controller);
             }
         }
+        long memtableTimeCost = System.currentTimeMillis() - startMemtableTime;
+        StorageService.instance.readMemtableTime += memtableTimeCost;
+
 
         /* add the SSTables on disk */
         view.sstables.sort(SSTableReader.maxTimestampDescending);

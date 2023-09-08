@@ -65,6 +65,7 @@ import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.commons.math3.exception.NullArgumentException;
+import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
 
 /**
  * Support parity update operations.
@@ -466,6 +467,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
                         ECNetutils.checkIsParityCodeMigrated(parityHashList.get(0))) {
 
+                    
+                    long start = currentTimeMillis();
                     for (int i = 0; i < parityCodes.length; i++) {
                         String parityCodeFileName = localParityCodeDir + parityHashList.get(i);
 
@@ -476,6 +479,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                                 retry_count < ECNetutils.getMigrationRetryCount()) {
                             retry_count++;
                         }
+                        
 
                         byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
                         parityCodes[i].put(parityCode);
@@ -483,6 +487,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         StorageService.instance.migratedParityCodeCount--;
                         StorageService.instance.migratedParityCodes.remove(parityHashList.get(i));
                     }
+                    long timeCost = currentTimeMillis() - start;
+                    StorageService.instance.migratedParityCodeTimeCost += timeCost;
                     StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
 
                 } else {
@@ -628,7 +634,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
         @Override
         public void run() {
-
+            long startTime = currentTimeMillis();
             ErasureCoderOptions ecOptions = new ErasureCoderOptions(ecDataNum, ecParityNum);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 
@@ -704,6 +710,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     byte[] parityInBytes = new byte[StorageService.getErasureCodeLength()];
                     newParityCodes[i].get(parityInBytes);
 
+                    long startUploadTime = System.currentTimeMillis();
                     if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(i),
                             parityInBytes)) {
                         logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
@@ -711,6 +718,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     } else {
                         StorageService.instance.migratedParityCodeCount++;
                         StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
+                        long uploadTimeCost = System.currentTimeMillis() - startUploadTime;
+                        StorageService.instance.migratedParityCodeTimeCost += uploadTimeCost;
                     }
 
                 }
@@ -748,6 +757,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             // remove the entry to save memory
             StorageService.instance.globalSSTHashToParityCodeMap.remove(oldSSTable.sstHash);
             logger.debug("rymDebug: we remove the parity code for old sstHash ({}) in memory.", oldSSTable.sstHash);
+
+            
+            long timeCost = currentTimeMillis() - startTime;
+            StorageService.instance.encodingTime += timeCost;
 
         }
 

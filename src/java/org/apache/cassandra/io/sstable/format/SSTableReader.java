@@ -571,6 +571,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         ECNetutils.deleteFileByName(oldSSTable.getFilename());
 
+        long start = System.currentTimeMillis();
         // Download raw data from cloud
         int retryDownloadCount = 0;
         while (retryDownloadCount < ECNetutils.getMigrationRetryCount()) {
@@ -600,6 +601,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                 }
             }
         }
+        long timeCost = System.currentTimeMillis() - start;
+        StorageService.instance.readRawDataMigrationTime += timeCost;
 
         // replace the old sstable with a new one
         SSTableReader newSSTable = SSTableReader.open(desc);
