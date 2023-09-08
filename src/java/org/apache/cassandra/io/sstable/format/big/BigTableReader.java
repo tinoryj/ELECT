@@ -42,6 +42,7 @@ import org.apache.cassandra.io.sstable.format.SSTableReadsListener;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener.SelectionReason;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener.SkippingReason;
 import org.apache.cassandra.io.util.FileDataInput;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -168,15 +169,21 @@ public class BigTableReader extends SSTableReader
         if ((op == Operator.EQ || op == Operator.GE) && (key instanceof DecoratedKey))
         {
             DecoratedKey decoratedKey = (DecoratedKey) key;
+            long startTime = System.currentTimeMillis();
             RowIndexEntry cachedPosition = getCachedPosition(decoratedKey, updateCacheAndStats);
             if (cachedPosition != null)
             {
+
                 // we do not need to track "true positive" for Bloom Filter here because it has been already tracked
                 // inside getCachedPosition method
                 listener.onSSTableSelected(this, cachedPosition, SelectionReason.KEY_CACHE_HIT);
                 Tracing.trace("Key cache hit for sstable {}", descriptor.id);
                 // logger.debug("rymDebug: Key cache hit for sstable {}, Is recovered SSTable? ({})", 
                 //                     descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
+                
+                long cacheCostTime = System.currentTimeMillis() - startTime;
+                StorageService.instance.readCacheTime += cacheCostTime;
+
                 return cachedPosition;
             }
         }
