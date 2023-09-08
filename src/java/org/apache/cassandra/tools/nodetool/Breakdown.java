@@ -39,8 +39,8 @@ import org.apache.cassandra.tools.NodeTool.NodeToolCmd;
 public class Breakdown extends NodeToolCmd
 {
 
-    @Arguments(description = "The keyspace name", required = true)
-    String keyspace = EMPTY;
+    // @Arguments(description = "The keyspace name", required = true)
+    // String keyspace = EMPTY;
 
     @Override
     public void execute(NodeProbe probe)
