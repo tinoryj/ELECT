@@ -691,8 +691,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             // sstable.unsetIsSelectedByCompactionOrErasureCoding();
                             ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(sstable.getSSTableHashID());
-                        } else if (DatabaseDescriptor.getEnableMigration()
-                                && DatabaseDescriptor.getTargetStorageSaving() > 0.6) {
+                        } else if (DatabaseDescriptor.getEnableMigration() &&
+                                   DatabaseDescriptor.getTargetStorageSaving() > 0.6 || 
+                                   DatabaseDescriptor.getStorageSavingGrade() == 3) {
 
                             logger.debug(
                                     "rymDebug: get a transferred sstable ({}), migrated sstable count is ({}), need migrated sstable count is ({})",
