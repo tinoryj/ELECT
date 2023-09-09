@@ -301,6 +301,8 @@ public class StorageService extends NotificationBroadcasterSupport
     public volatile long readRawDataMigrationTime = 0;
 
     // Degraded read
+    public volatile long waitMigrationTime = 0;
+    public volatile long waitRecoveryTime = 0;
     public volatile long degradedRetrieveTime = 0;
     public volatile long degradedReadDecodingTime = 0;
     public volatile long readParityMigrationTime = 0;
@@ -4183,6 +4185,8 @@ public class StorageService extends NotificationBroadcasterSupport
                         "\tRead memtable time cost: " + readMemtableTime + " (ms)\n" +
                         "\tRead SSTable time cost: " + readSSTableTime + " (ms)\n" +
                         "\tRead migrated raw data time cost: " + readRawDataMigrationTime + " (ms)\n" +
+                        "\tWait for migration time cost: " + waitMigrationTime + " (us)\n" +
+                        "\tWait for recovery time cost: " + waitRecoveryTime + " (us)\n" +
                         "\tRetrieve time cost: " + degradedRetrieveTime + " (ms)\n" +
                         "\tDecoding time cost: " + degradedReadDecodingTime + " (ms)\n" +
                         "\tRead migrated parity time cost: " + readParityMigrationTime + " (ms)\n";

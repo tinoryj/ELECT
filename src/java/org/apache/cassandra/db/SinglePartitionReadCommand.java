@@ -778,6 +778,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                     sstable.getSSTableHashID(), sstable.getFilename());
                         } else {
                             long tStart = nanoTime();
+                            long recoveryStartTime = System.nanoTime();
                             if (!StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())) {
                                 logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
                                         sstable.getSSTableHashID(), sstable.getFilename());
@@ -814,6 +815,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                     retryCount++;
                                 }
                             }
+                            long recoveryWaitTime = (System.nanoTime() - recoveryStartTime) / 1000;
+                            StorageService.instance.waitRecoveryTime += recoveryWaitTime;
                             Tracing.trace("[Tinoryj] Recovery SSTable {}\u03bcs", "SinglePartitionReadCommand",
                                     (nanoTime() - tStart) / 1000);
                         }
@@ -827,6 +830,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
                     if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
                         long tStart = nanoTime();
+                        long migrationStartTime = System.nanoTime();
                         int retryCount = 0;
                         if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                             StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
@@ -858,6 +862,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 retryCount++;
                             }
                         }
+                        
+                        long migrationWaitTime = (System.nanoTime() - migrationStartTime) / 1000;
+                        StorageService.instance.waitMigrationTime += migrationWaitTime;
                         Tracing.trace("[Tinoryj] Moved SSTable back from cloud {}\u03bcs",
                                 "SinglePartitionReadCommand",
                                 (nanoTime() - tStart) / 1000);
@@ -1123,6 +1130,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 sstable.getSSTableHashID(), sstable.getFilename());
                     } else {
                         long tStart = nanoTime();
+                        long recoveryStartTime = System.nanoTime();
                         if (!StorageService.instance.recoveringSSTables.contains(sstable.getSSTableHashID())) {
                             logger.debug("[Tinoryj] Recovery metadata sstable during read: [{},{}]",
                                     sstable.getSSTableHashID(), sstable.getFilename());
@@ -1158,6 +1166,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 retryCount++;
                             }
                         }
+                        long recoveryWaitTime = (System.nanoTime() - recoveryStartTime) / 1000;
+                        StorageService.instance.waitRecoveryTime += recoveryWaitTime;
                         Tracing.trace("[Tinoryj] Recovery SSTable {}\u03bcs", "SinglePartitionReadCommand",
                                 (nanoTime() - tStart) / 1000);
                     }
@@ -1171,6 +1181,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
                 if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
                     long tStart = nanoTime();
+                    long migrationStartTime = System.nanoTime();
                     int retryCount = 0;
                     if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                         StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
@@ -1202,6 +1213,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             retryCount++;
                         }
                     }
+                    long migrationWaitTime = (System.nanoTime() - migrationStartTime) / 1000;
+                    StorageService.instance.waitMigrationTime += migrationWaitTime;
                     Tracing.trace("[Tinoryj] Moved SSTable back from cloud {}\u03bcs", "SinglePartitionReadCommand",
                             (nanoTime() - tStart) / 1000);
                 } else {
