@@ -320,7 +320,8 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             } catch (IOException e) {
                 logger.error("rymERROR: Perform erasure code error", e);
             }
-
+            long timeCost = currentTimeMillis() - startTime;
+            StorageService.instance.encodingTime += timeCost;
             // generate parity hash code
             List<String> parityHashList = new ArrayList<String>();
             for (ByteBuffer parityCode : parity) {
@@ -349,7 +350,6 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                         StorageService.instance.migratedParityCodeTimeCost = uploadParityTimeCost;
                         StorageService.instance.migratedParityCodeCount++;
                         StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
-
                     }
 
                 }
@@ -385,8 +385,6 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                             new ArrayList<InetAddressAndPort>(),
                             new HashMap<String, List<InetAddressAndPort>>(), "", false, 0, zeroChunkNum));
             ecMetadata.generateAndDistributeMetadata(messages, parityHashList);
-            long timeCost = currentTimeMillis() - startTime;
-            StorageService.instance.encodingTime += timeCost;
         }
 
     }

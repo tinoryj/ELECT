@@ -291,6 +291,7 @@ public class StorageService extends NotificationBroadcasterSupport
     public volatile long ecSSTableCompactionTime = 0;
     public volatile long encodingTime = 0;
     public volatile long migratedRawSSTableTimeCost = 0;
+    public volatile long migratedRawSSTableTimeSendCost = 0;
     public volatile long migratedParityCodeTimeCost = 0;
 
     // Normal read
@@ -4178,6 +4179,7 @@ public class StorageService extends NotificationBroadcasterSupport
                         "\tECSSTable compaction time cost: " + ecSSTableCompactionTime + " (ms)\n" +
                         "\tEncoding time cost: " + encodingTime + " (ms)\n" +
                         "\tMigrate raw SSTable time cost: " + migratedRawSSTableTimeCost + " (ms)\n" +
+                        "\tMigrate raw SSTable send time cost: " + migratedRawSSTableTimeSendCost + " (ms)\n" +
                         "\tMigrate parity code time cost: " + migratedParityCodeTimeCost + " (ms)\n\n\n" +
                         "Read operations:\n" +
                         "\tRead index time cost: " + readIndexTime + " (ns)\n" +

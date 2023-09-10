@@ -467,28 +467,25 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 if (DatabaseDescriptor.getEnableMigration() && DatabaseDescriptor.getTargetStorageSaving() > 0.45 &&
                         ECNetutils.checkIsParityCodeMigrated(parityHashList.get(0))) {
 
-                    
-                    long start = currentTimeMillis();
                     for (int i = 0; i < parityCodes.length; i++) {
                         String parityCodeFileName = localParityCodeDir + parityHashList.get(i);
 
                         int retry_count = 0;
-
+                        long start = currentTimeMillis();
                         while (!StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName,
                                 parityNodes.get(0).getHostAddress(false)) &&
                                 retry_count < ECNetutils.getMigrationRetryCount()) {
                             retry_count++;
                         }
-                        
-
+                        long timeCost = currentTimeMillis() - start;
+                        StorageService.instance.migratedParityCodeTimeCost += timeCost;
                         byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
                         parityCodes[i].put(parityCode);
                         // StorageService.ossAccessObj.deleteSingleFileInOSS(parityCodeFileName);
                         StorageService.instance.migratedParityCodeCount--;
                         StorageService.instance.migratedParityCodes.remove(parityHashList.get(i));
                     }
-                    long timeCost = currentTimeMillis() - start;
-                    StorageService.instance.migratedParityCodeTimeCost += timeCost;
+
                     StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
 
                 } else {
@@ -692,6 +689,8 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 logger.error("rymERROR: Perform erasure code error", e);
             }
 
+            long timeCost = currentTimeMillis() - startTime;
+            StorageService.instance.encodingTime += timeCost;
             // generate parity hash code
             List<String> parityHashList = new ArrayList<String>();
             for (ByteBuffer parityCode : newParityCodes) {
@@ -716,10 +715,11 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
                                 localParityCodeDir + parityHashList.get(i));
                     } else {
-                        StorageService.instance.migratedParityCodeCount++;
-                        StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
                         long uploadTimeCost = System.currentTimeMillis() - startUploadTime;
                         StorageService.instance.migratedParityCodeTimeCost += uploadTimeCost;
+                        StorageService.instance.migratedParityCodeCount++;
+                        StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
+
                     }
 
                 }
@@ -757,11 +757,6 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             // remove the entry to save memory
             StorageService.instance.globalSSTHashToParityCodeMap.remove(oldSSTable.sstHash);
             logger.debug("rymDebug: we remove the parity code for old sstHash ({}) in memory.", oldSSTable.sstHash);
-
-            
-            long timeCost = currentTimeMillis() - startTime;
-            StorageService.instance.encodingTime += timeCost;
-
         }
 
     }

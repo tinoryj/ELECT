@@ -38,6 +38,7 @@ import javax.xml.crypto.Data;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +75,8 @@ public class OSSAccess implements AutoCloseable {
     private static String bucketName = "elect-cloud";
     private static String localIP = FBUtilities.getBroadcastAddressAndPort().toString(false).replace('/', '_');
     private static OSS ossClient;
-    private final int maxConcurrentDownloads = DatabaseDescriptor.getMaxConcurrentDownload();
+    private final int maxConcurrentDownloads = 0;
+    // DatabaseDescriptor.getMaxConcurrentDownload();
     private final Semaphore semaphore = new Semaphore(maxConcurrentDownloads);
 
     public OSSAccess() {
@@ -104,7 +106,10 @@ public class OSSAccess implements AutoCloseable {
             // 创建PutObjectRequest对象。
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName, inputStream);
             // 创建PutObject请求。
+            long startTime = System.currentTimeMillis();
             PutObjectResult result = ossClient.putObject(putObjectRequest);
+            long timeCost = System.currentTimeMillis() - startTime;
+            StorageService.instance.migratedRawSSTableTimeSendCost += timeCost;
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
                     + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
