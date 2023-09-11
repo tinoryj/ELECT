@@ -56,6 +56,8 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         String rawCfPath = message.payload.rawCfPath;
         String cfName = message.payload.cfName;
 
+        logger.debug("rymDebug: We receive a signal from ({}), start to decode the cfname ({})", message.from(), cfName);
+
         // calculate the copy file time
         long retrieveFileCost = currentTimeMillis() - StorageService.instance.recoveringCFS.get(cfName);
 

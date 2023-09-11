@@ -75,8 +75,7 @@ public class OSSAccess implements AutoCloseable {
     private static String bucketName = "elect-cloud";
     private static String localIP = FBUtilities.getBroadcastAddressAndPort().toString(false).replace('/', '_');
     private static OSS ossClient;
-    private final int maxConcurrentDownloads = 0;
-    // DatabaseDescriptor.getMaxConcurrentDownload();
+    private final int maxConcurrentDownloads = DatabaseDescriptor.getMaxConcurrentDownload();
     private final Semaphore semaphore = new Semaphore(maxConcurrentDownloads);
 
     public OSSAccess() {
