@@ -166,6 +166,8 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         String sstHash = ecMetadataContent.sstHashIdList.get(index);       
         int codeLength = StorageService.getErasureCodeLength();
         logger.debug("rymDebug: [Debug recovery] retrieve chunks for sstable ({})", sstHash);
+        
+        long startRetrieveTime = System.currentTimeMillis();
         ECRecovery.retrieveErasureCodesForRecovery(ecMetadataContent, sstHash, codeLength, k, m);
         logger.debug("rymDebug: [Debug recovery] retrieve chunks for ecmetadata ({}) successfully", sstHash);
 
@@ -177,6 +179,9 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
 
         logger.debug("rymDebug: [Debug recovery] wait chunks for sstable ({})", sstHash);
         int[] decodeIndexes = ECRecovery.waitUntilRequestCodesReady(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash), sstHash, k, ecMetadataContent.zeroChunksNum, codeLength);
+
+        long retrieveTimeCost = System.currentTimeMillis() - startRetrieveTime;
+        StorageService.instance.retrieveChunksTimeForLSMTreeRecovery += retrieveTimeCost;
 
         int eraseIndex = ecMetadataContent.sstHashIdList.indexOf(sstHash);
         if(eraseIndex == -1)
