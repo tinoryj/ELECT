@@ -310,6 +310,7 @@ public class StorageService extends NotificationBroadcasterSupport
 
     // recovery
     public volatile long retrieveChunksTimeForLSMTreeRecovery = 0;
+    public volatile long recoveryTimeForLSMTreeRecovery = 0;
 
 
     // [ELECT] Recovery the LSM-tree
@@ -4196,7 +4197,8 @@ public class StorageService extends NotificationBroadcasterSupport
                         "\tDecoding time cost: " + degradedReadDecodingTime + " (ms)\n" +
                         "\tRead migrated parity time cost: " + readParityMigrationTime + " (ms)\n\n\n" +
                         "Recovery operations:\n" +
-                        "\tRetrieve LSM tree time cost: " + retrieveChunksTimeForLSMTreeRecovery + " (ms)\n";
+                        "\tRetrieve LSM tree time cost: " + retrieveChunksTimeForLSMTreeRecovery + " (ms)\n" +
+                        "\tRecovery LSM tree time cost: " + recoveryTimeForLSMTreeRecovery + " (ms)\n";
 
 
 

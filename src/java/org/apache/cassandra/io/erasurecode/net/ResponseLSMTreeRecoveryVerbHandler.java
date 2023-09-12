@@ -156,10 +156,12 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         // Step 1: Get the ECSSTable from global map and get the ecmetadata
         byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
         logger.debug("rymDebug: [Debug recovery] the size of ecMetadataInBytes is ({})", ecMetadataInBytes.length);
+        long startRecoveryTime = System.currentTimeMillis();
         ECMetadataContent ecMetadataContent = (ECMetadataContent) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
         if(ecMetadataContent == null)
             throw new NullPointerException(String.format("rymDebug: [Debug recovery] The ecMetadata for ecMetadataFile ({}) is null!", ecMetadataFile));
 
+        
         // Step 2: Request the coding blocks from related nodes
         InetAddressAndPort localIp = FBUtilities.getBroadcastAddressAndPort();
         int index = ecMetadataContent.primaryNodes.indexOf(localIp);
@@ -251,6 +253,8 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
 
         // TODO: Wait until all data is ready.
         // Thread.sleep(5000);
+        long recoveryTimeCost = System.currentTimeMillis() - startRecoveryTime;
+        StorageService.instance.recoveryTimeForLSMTreeRecovery += recoveryTimeCost;
         logger.debug("rymDebug: recovery for sstHash ({}) is done!", sstHash);
     }
 
