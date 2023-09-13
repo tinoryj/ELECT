@@ -949,7 +949,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             }
 
             long sstableTimeCost = System.currentTimeMillis() - startSSTableTime;
-            if (view.sstables.get(0).getColumnFamilyName().contains("usertable")) {
+            if (!view.sstables.isEmpty() &&
+                view.sstables.get(0).getColumnFamilyName().contains("usertable")) {
                 StorageService.instance.readSSTableTime += sstableTimeCost;
             }
 
@@ -1329,7 +1330,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         }
 
         long sstableTimeCost = System.currentTimeMillis() - startSSTableTime;
-        if (view.sstables.get(0).getColumnFamilyName().contains("usertable")) {
+        if (!view.sstables.isEmpty() &&
+            view.sstables.get(0).getColumnFamilyName().contains("usertable")) {
             StorageService.instance.readSSTableTime += sstableTimeCost;
         }
 
