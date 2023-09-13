@@ -71,7 +71,7 @@ public class OSSAccess implements AutoCloseable {
     private static final Logger logger = LoggerFactory.getLogger(OSSAccess.class);
 
     private static String endpoint = "http://oss-cn-chengdu.aliyuncs.com";
-    private static String bucketName = "elect-pdm";
+    private static String bucketName = "elect-cloud";
     private static String localIP = FBUtilities.getBroadcastAddressAndPort().toString(false).replace('/', '_');
     private static OSS ossClient;
     private final int maxConcurrentDownloads = DatabaseDescriptor.getMaxConcurrentDownload();
@@ -80,8 +80,8 @@ public class OSSAccess implements AutoCloseable {
     public OSSAccess() {
         EnvironmentVariableCredentialsProvider credentialsProvider = new EnvironmentVariableCredentialsProvider();
         ClientBuilderConfiguration conf = new ClientBuilderConfiguration();
-        conf.setProxyHost("proxy.cse.cuhk.edu.hk");
-        conf.setProxyPort(8000);
+        // conf.setProxyHost("proxy.cse.cuhk.edu.hk");
+        // conf.setProxyPort(8000);
         conf.setMaxConnections(200);
         conf.setSocketTimeout(10000);
         conf.setConnectionTimeout(10000);

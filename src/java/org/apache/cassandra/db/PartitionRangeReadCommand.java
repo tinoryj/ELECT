@@ -335,6 +335,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
         InputCollector<UnfilteredPartitionIterator> inputCollector = iteratorsForRange(view, controller);
         try {
             SSTableReadsListener readCountUpdater = newReadCountUpdater();
+            long startMemtableTime = System.currentTimeMillis();
             for (Memtable memtable : view.memtables) {
                 @SuppressWarnings("resource") // We close on exception and on closing the result returned by this
                                               // method
@@ -343,6 +344,10 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 controller.updateMinOldestUnrepairedTombstone(memtable.getMinLocalDeletionTime());
                 inputCollector.addMemtableIterator(
                         RTBoundValidator.validate(iter, RTBoundValidator.Stage.MEMTABLE, false));
+            }
+            if(cfs.getColumnFamilyName().contains("usertable")) {    
+                long memtableTimeCost = System.currentTimeMillis() - startMemtableTime;
+                StorageService.instance.readMemtableTime += memtableTimeCost;
             }
             long startSSTableTime = System.currentTimeMillis();
 
