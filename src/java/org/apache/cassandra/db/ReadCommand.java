@@ -65,6 +65,7 @@ import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.schema.SchemaProvider;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.service.ClientWarn;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.ObjectSizes;
@@ -414,6 +415,8 @@ public abstract class ReadCommand extends AbstractReadQuery {
 
         COMMAND.set(this);
         try {
+            long startIndexTime = System.nanoTime();
+
             ColumnFamilyStore cfs = Keyspace.openAndGetStore(metadata());
             Index index = getIndex(cfs);
 
@@ -426,7 +429,11 @@ public abstract class ReadCommand extends AbstractReadQuery {
                 Tracing.trace("Executing read on {}.{} using index {}", cfs.metadata.keyspace, cfs.metadata.name,
                         index.getIndexMetadata().name);
             }
+            if(cfs.getColumnFamilyName().contains("usertable")) {
 
+                long indexTimeCost = System.nanoTime() - startIndexTime;
+                StorageService.instance.readIndexTime = indexTimeCost;
+            }
             UnfilteredPartitionIterator iterator = (null == searcher) ? queryStorage(cfs, executionController)
                     : searcher.search(executionController);
             iterator = RTBoundValidator.validate(iterator, Stage.MERGED, false);

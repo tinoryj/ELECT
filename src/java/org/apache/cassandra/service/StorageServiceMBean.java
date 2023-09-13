@@ -497,6 +497,7 @@ public interface StorageServiceMBean extends NotificationEmitter {
      */
     public List<String> getSSTableAccessFrequency(String keyspace);
 
+    public String getBreakdownTime();
 
     /**
      * Backup or reload in memory data for cold startup

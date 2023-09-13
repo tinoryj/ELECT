@@ -481,6 +481,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         assert cfs.isRowCacheEnabled() : String.format("Row cache is not enabled on table [%s]", cfs.name);
 
         RowCacheKey key = new RowCacheKey(metadata(), partitionKey());
+        long startTime = System.nanoTime();
 
         // Attempt a sentinel-read-cache sequence. if a write invalidates our sentinel,
         // we'll return our
@@ -493,6 +494,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // read
                 Tracing.trace("Row cache miss (race)");
                 cfs.metric.rowCacheMiss.inc();
+                if(cfs.getColumnFamilyName().contains("usertable")) {    
+                    long cacheTimeCost = System.nanoTime() - startTime;
+                    StorageService.instance.readCacheTime += cacheTimeCost;
+                }
                 return queryMemtableAndDisk(cfs, executionController);
             }
 
@@ -504,11 +509,21 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 UnfilteredRowIterator unfilteredRowIterator = clusteringIndexFilter()
                         .getUnfilteredRowIterator(columnFilter(), cachedPartition);
                 cfs.metric.updateSSTableIterated(0);
+
+                if(cfs.getColumnFamilyName().contains("usertable")) {    
+                    long cacheTimeCost = System.nanoTime() - startTime;
+                    StorageService.instance.readCacheTime += cacheTimeCost;
+                }
                 return unfilteredRowIterator;
             }
 
             cfs.metric.rowCacheHitOutOfRange.inc();
             Tracing.trace("Ignoring row cache as cached value could not satisfy query");
+
+                if(cfs.getColumnFamilyName().contains("usertable")) {    
+                    long cacheTimeCost = System.nanoTime() - startTime;
+                    StorageService.instance.readCacheTime += cacheTimeCost;
+                }
             return queryMemtableAndDisk(cfs, executionController);
         }
 
@@ -681,6 +696,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         InputCollector<UnfilteredRowIterator> inputCollector = iteratorsForPartition(view, controller);
         try {
             SSTableReadMetricsCollector metricsCollector = new SSTableReadMetricsCollector();
+            long startTime = System.currentTimeMillis();
             for (Memtable memtable : view.memtables) {
                 @SuppressWarnings("resource") // 'iter' is added to iterators which is closed on exception, or through
                                               // the closing of the final merged iterator
@@ -698,6 +714,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
                 mostRecentPartitionTombstone = Math.max(mostRecentPartitionTombstone,
                         iter.partitionLevelDeletion().markedForDeleteAt());
+            }
+            if(cfs.getColumnFamilyName().contains("usertable")) {    
+                long memtableTimeCost = System.currentTimeMillis() - startTime;
+                StorageService.instance.readMemtableTime += memtableTimeCost;
             }
 
             /*
@@ -735,7 +755,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
 
             if (controller.isTrackingRepairedStatus())
                 Tracing.trace("Collecting data from sstables and tracking repaired status");
-
+            
+            long startSSTableTime = System.currentTimeMillis();
             // int readRecoveryedSSTableCount = 0, targetSSTableSetSize = 0;
             // ArrayList<String> readRecoveryedSSTableList = new ArrayList<String>();
             // ArrayList<String> readRecoveryedSSTableHashList = new ArrayList<String>();
@@ -760,6 +781,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         // readRecoveryedSSTableCount++;
                         logger.debug("[Tinoryj] Start online recovery for metadata sstable: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
+
+
+                        long recoveryStartTime = System.nanoTime();
                         if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                             logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
                                     sstable.getSSTableHashID(), sstable.getFilename());
@@ -801,6 +825,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 }
                             }
                         }
+                        
+                        long recoveryWaitTime = (System.nanoTime() - recoveryStartTime) / 1000;
+                        StorageService.instance.waitRecoveryTime += recoveryWaitTime;
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                 // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
@@ -808,7 +835,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     logger.debug("[Tinoryj] Start online retrive for data sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
-
+                    long migrationStartTime = System.nanoTime();
                     if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
                         int retryCount = 0;
                         if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
@@ -842,6 +869,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
 
                         }
+
+                        long migrationWaitTime = (System.nanoTime() - migrationStartTime) / 1000;
+                        StorageService.instance.waitMigrationTime += migrationWaitTime;
                     } else {
                         logger.debug("[Tinoryj] The sstable ({},{}) is downloaded", sstable.getFilename(),
                                 sstable.getSSTableHashID());
@@ -921,6 +951,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                     }
                 }
+            }
+            long sstableTimeCost = System.currentTimeMillis() - startSSTableTime;
+            if (!view.sstables.isEmpty() &&
+                view.sstables.get(0).getColumnFamilyName().contains("usertable")) {
+                StorageService.instance.readSSTableTime += sstableTimeCost;
             }
 
             if (Tracing.isTracing())
@@ -1037,6 +1072,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         ImmutableBTreePartition result = null;
         SSTableReadMetricsCollector metricsCollector = new SSTableReadMetricsCollector();
 
+        long startMemtableTime = System.currentTimeMillis();
         Tracing.trace("Merging memtable contents");
         for (Memtable memtable : view.memtables) {
             try (UnfilteredRowIterator iter = memtable.rowIterator(partitionKey, filter.getSlices(metadata()),
@@ -1051,10 +1087,15 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         controller);
             }
         }
+        if(cfs.getColumnFamilyName().contains("usertable")) {    
+            long memtableTimeCost = System.currentTimeMillis() - startMemtableTime;
+            StorageService.instance.readMemtableTime += memtableTimeCost;
+        }
 
         /* add the SSTables on disk */
         view.sstables.sort(SSTableReader.maxTimestampDescending);
         String sstablesHashID = "", sstablesPath = "";
+        long startSSTableTime = System.currentTimeMillis();
         for (SSTableReader sstable : view.sstables) {
             sstablesHashID += ("\t" + sstable.getSSTableHashID());
             sstablesPath += ("\t" + sstable.getFilename());
@@ -1091,6 +1132,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                     // readRecoveryedSSTableCount++;
                     logger.debug("[Tinoryj] Start online recovery for metadata sstable: [{},{}]",
                             sstable.getSSTableHashID(), sstable.getFilename());
+                    long recoveryStartTime = System.nanoTime();
                     if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                         logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
@@ -1130,6 +1172,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
                         }
                     }
+                    
+                    long recoveryWaitTime = (System.nanoTime() - recoveryStartTime) / 1000;
+                    StorageService.instance.waitRecoveryTime += recoveryWaitTime;
                 }
             } else if (sstable.getColumnFamilyName().equals("usertable0") &&
             // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
@@ -1139,6 +1184,8 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                 // Tinoryj TODO: retrive SSTable from cloud.
 
                 if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
+                    long migrationStartTime = System.nanoTime();
+
                     int retryCount = 0;
                     if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
                         StorageService.instance.downloadingSSTables.add(sstable.getSSTableHashID());
@@ -1171,6 +1218,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
 
                     }
+
+
+                    long migrationWaitTime = (System.nanoTime() - migrationStartTime) / 1000;
+                    StorageService.instance.waitMigrationTime += migrationWaitTime;
+
                 } else {
                     logger.debug("[Tinoryj] The sstable ({},{}) is downloaded", sstable.getFilename(),
                             sstable.getSSTableHashID());
@@ -1282,6 +1334,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             }
         }
 
+        long sstableTimeCost = System.currentTimeMillis() - startSSTableTime;
+        if (!view.sstables.isEmpty() &&
+            view.sstables.get(0).getColumnFamilyName().contains("usertable")) {
+            StorageService.instance.readSSTableTime += sstableTimeCost;
+        }
         cfs.metric.updateSSTableIterated(metricsCollector.getMergedSSTables());
 
         // if (readRecoveryedSSTableCount != 0 && (result == null || result.isEmpty()))

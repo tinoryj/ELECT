@@ -571,6 +571,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         ECNetutils.deleteFileByName(oldSSTable.getFilename());
 
+        long start = System.currentTimeMillis();
         // Download raw data from cloud
         int retryDownloadCount = 0;
         while (retryDownloadCount < ECNetutils.getMigrationRetryCount()) {
@@ -601,6 +602,8 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             }
         }
 
+        long timeCost = System.currentTimeMillis() - start;
+        StorageService.instance.readRawDataMigrationTime += timeCost;
         // replace the old sstable with a new one
         SSTableReader newSSTable = SSTableReader.open(desc);
         if (oldSSTable.getSSTableHashID() == null) {
@@ -1687,11 +1690,17 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     protected RowIndexEntry getCachedPosition(KeyCacheKey unifiedKey, boolean updateStats) {
         if (isKeyCacheEnabled()) {
             if (updateStats) {
+                long startTime = System.nanoTime();
                 RowIndexEntry cachedEntry = keyCache.get(unifiedKey);
                 keyCacheRequest.incrementAndGet();
                 if (cachedEntry != null) {
                     keyCacheHit.incrementAndGet();
                     bloomFilterTracker.addTruePositive();
+                }
+                
+                if(metadata().name.contains("usertable")) {    
+                    long cacheTimeCost = System.nanoTime() - startTime;
+                    StorageService.instance.readCacheTime += cacheTimeCost;
                 }
                 return cachedEntry;
             } else {

@@ -88,6 +88,7 @@ public class ECRecovery {
 
         // Step 2: Request the coding blocks from related nodes
         int codeLength = StorageService.getErasureCodeLength();
+        long startRetrieveTime = System.currentTimeMillis();
         logger.debug("rymDebug: [Debug recovery] retrieve chunks for sstable ({})", sstHash);
         retrieveErasureCodesForRecovery(ecMetadataContent, sstHash, codeLength, k, m);
         logger.debug("rymDebug: [Debug recovery] retrieve chunks for ecmetadata ({}) successfully", sstHash);
@@ -105,6 +106,10 @@ public class ECRecovery {
                 StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash), sstHash, k,
                 ecMetadataContent.zeroChunksNum, codeLength);
 
+        
+        long retrieveTimeCost = System.currentTimeMillis() - startRetrieveTime;
+        StorageService.instance.degradedRetrieveTime += retrieveTimeCost;
+
         int eraseIndex = ecMetadataContent.sstHashIdList.indexOf(sstHash);
         if (eraseIndex == -1)
             throw new NullPointerException(
@@ -118,6 +123,7 @@ public class ECRecovery {
 
         // Step 3: Decode the raw data
 
+        long startTime = System.currentTimeMillis();
         ByteBuffer[] recoveryOriginalSrc = new ByteBuffer[k];
 
         for (int i = 0; i < k; i++) {
@@ -144,6 +150,10 @@ public class ECRecovery {
         output[0].get(sstContent);
         SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
 
+
+        
+        long decodeCostTime = System.currentTimeMillis() - startTime;
+        StorageService.instance.degradedReadDecodingTime += decodeCostTime;
         // debug
         logger.debug(
                 "rymDebug: Recovery sstHashList is ({}), parity hash list is ({}), stripe id is ({}), sstHash to replica map is ({}), sstable hash is ({}), descriptor is ({}), decode indexes are ({}), erase index is ({}), zero chunks are ({})",

@@ -466,6 +466,10 @@ public class NodeProbe implements AutoCloseable {
         return ssProxy.getSSTableAccessFrequency(keyspace);
     }
 
+    public String getBreakdownTime() {
+        return ssProxy.getBreakdownTime();
+    }
+
     public void backupImMemoryDataForElectColdStartup() {
         ssProxy.backupImMemoryDataForElectColdStartup();
     }

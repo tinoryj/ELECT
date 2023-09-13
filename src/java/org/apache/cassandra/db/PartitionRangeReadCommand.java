@@ -344,6 +344,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                 inputCollector.addMemtableIterator(
                         RTBoundValidator.validate(iter, RTBoundValidator.Stage.MEMTABLE, false));
             }
+            long startSSTableTime = System.currentTimeMillis();
 
             for (SSTableReader sstable : view.sstables) {
                 // boolean isCurrentSSTableRepaired = false;
@@ -365,6 +366,8 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                         // readRecoveryedSSTableCount++;
                         logger.debug("[Tinoryj] Start online recovery for metadata sstable: [{},{}]",
                                 sstable.getSSTableHashID(), sstable.getFilename());
+
+                        long recoveryStartTime = System.nanoTime();
                         if (ECNetutils.getIsRecovered(sstable.getSSTableHashID())) {
                             logger.debug("[Tinoryj] Read touch recovered metadata sstable: [{},{}]",
                                     sstable.getSSTableHashID(), sstable.getFilename());
@@ -406,6 +409,9 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                                 }
                             }
                         }
+                        
+                        long recoveryWaitTime = (System.nanoTime() - recoveryStartTime) / 1000;
+                        StorageService.instance.waitRecoveryTime += recoveryWaitTime;
                     }
                 } else if (sstable.getColumnFamilyName().equals("usertable0") &&
                 // ECNetutils.getIsMigratedToCloud(sstable.getSSTableHashID())
@@ -414,6 +420,7 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             sstable.getSSTableHashID(), sstable.getFilename());
                     // Tinoryj TODO: retrive SSTable from cloud.
 
+                    long migrationStartTime = System.nanoTime();
                     if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
                         int retryCount = 0;
                         if (!StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())) {
@@ -447,6 +454,9 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
                             }
 
                         }
+                        
+                        long migrationWaitTime = (System.nanoTime() - migrationStartTime) / 1000;
+                        StorageService.instance.waitMigrationTime += migrationWaitTime;
                     } else {
                         logger.debug("[Tinoryj] The sstable ({},{}) is downloaded", sstable.getFilename(),
                                 sstable.getSSTableHashID());
@@ -488,6 +498,13 @@ public class PartitionRangeReadCommand extends ReadCommand implements PartitionR
 
                 if (!sstable.isRepaired())
                     controller.updateMinOldestUnrepairedTombstone(sstable.getMinLocalDeletionTime());
+            }
+
+            
+            long sstableTimeCost = System.currentTimeMillis() - startSSTableTime;
+            if (!view.sstables.isEmpty() &&
+                view.sstables.get(0).getColumnFamilyName().contains("usertable")) {
+                StorageService.instance.readSSTableTime += sstableTimeCost;
             }
             // iterators can be empty for offline tools
             if (inputCollector.isEmpty())
