@@ -751,7 +751,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             // ArrayList<String> readRecoveryedSSTableHashList = new ArrayList<String>();
             // targetSSTableSetSize = view.sstables.size();
 
-
             long startSSTableTime = System.currentTimeMillis();
             for (SSTableReader sstable : view.sstables) {
                 // boolean isCurrentSSTableRepaired = false;
@@ -862,7 +861,7 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                                 retryCount++;
                             }
                         }
-                        
+
                         long migrationWaitTime = (System.nanoTime() - migrationStartTime) / 1000;
                         StorageService.instance.waitMigrationTime += migrationWaitTime;
                         Tracing.trace("[Tinoryj] Moved SSTable back from cloud {}\u03bcs",
@@ -950,7 +949,9 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             }
 
             long sstableTimeCost = System.currentTimeMillis() - startSSTableTime;
-            StorageService.instance.readSSTableTime += sstableTimeCost;
+            if (view.sstables.get(0).getColumnFamilyName().contains("usertable")) {
+                StorageService.instance.readSSTableTime += sstableTimeCost;
+            }
 
             if (Tracing.isTracing())
                 Tracing.trace("Skipped {}/{} non-slice-intersecting sstables, included {} due to tombstones",
@@ -1083,7 +1084,6 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
         }
         long memtableTimeCost = System.currentTimeMillis() - startMemtableTime;
         StorageService.instance.readMemtableTime += memtableTimeCost;
-
 
         /* add the SSTables on disk */
         view.sstables.sort(SSTableReader.maxTimestampDescending);
@@ -1328,10 +1328,10 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
             }
         }
 
-
-
         long sstableTimeCost = System.currentTimeMillis() - startSSTableTime;
-        StorageService.instance.readSSTableTime += sstableTimeCost;
+        if (view.sstables.get(0).getColumnFamilyName().contains("usertable")) {
+            StorageService.instance.readSSTableTime += sstableTimeCost;
+        }
 
         cfs.metric.updateSSTableIterated(metricsCollector.getMergedSSTables());
 

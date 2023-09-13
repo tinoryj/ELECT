@@ -186,7 +186,6 @@ public class ECRecovery {
         logger.debug("rymDebug: recovery for sstHash ({}) is done!", sstHash);
         StorageService.instance.recoveringSSTables.remove(sstHash);
         latch.countDown();
-
     }
 
     /**
