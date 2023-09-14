@@ -57,7 +57,7 @@ public class ValidationTask extends AsyncFuture<TreeResponse> implements Runnabl
      */
     public void run()
     {
-        ECNetutils.printStackTace(String.format("rymDebug: Node (%s) send validation signal to the endpoint(%)s",
+        ECNetutils.printStackTace(String.format("rymDebug: Node (%s) send validation signal to the endpoint (%s)",
                                                  FBUtilities.getBroadcastAddressAndPort(), 
                                                  endpoint.getHostAddressAndPort()));
         RepairMessage.sendMessageWithFailureCB(new ValidationRequest(desc, nowInSec),

@@ -118,7 +118,7 @@ public abstract class SyncTask extends AsyncFuture<SyncStat> implements Runnable
 
     void sendRequest(SyncRequest request, InetAddressAndPort to)
     {
-        ECNetutils.printStackTace(String.format("rymDebug: Node (%s) send sync signal to the endpoint(%)s",
+        ECNetutils.printStackTace(String.format("rymDebug: Node (%s) send sync signal to the endpoint(%s)",
                                                  FBUtilities.getBroadcastAddressAndPort(), 
                                                  to));
         RepairMessage.sendMessageWithFailureCB(request,
