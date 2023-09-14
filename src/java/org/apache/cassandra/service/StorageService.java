@@ -312,6 +312,11 @@ public class StorageService extends NotificationBroadcasterSupport
     public volatile long retrieveChunksTimeForLSMTreeRecovery = 0;
     public volatile long recoveryTimeForLSMTreeRecovery = 0;
 
+    // repair
+    public volatile long createMerkleTreeTime = 0;
+    public volatile long compareMerkleTreeTime = 0;
+    public volatile long repairTime = 0;
+
 
     // [ELECT] Recovery the LSM-tree
     // cfName -> start time.

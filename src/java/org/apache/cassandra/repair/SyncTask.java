@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
+import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.concurrent.AsyncFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,9 +32,11 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.repair.messages.RepairMessage;
 import org.apache.cassandra.repair.messages.SyncRequest;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.tracing.Tracing;
 
@@ -75,11 +78,17 @@ public abstract class SyncTask extends AsyncFuture<SyncStat> implements Runnable
      */
     public final void run()
     {
+
+        ECNetutils.printStackTace(String.format("rymDebug: Start to compare trees and trigger repairs for any ranges that mismatch. (%s)", 
+                                                 FBUtilities.getBroadcastAddressAndPort()));
         startTime = currentTimeMillis();
 
 
         // choose a repair method based on the significance of the difference
         String format = String.format("%s Endpoints %s and %s %%s for %s", previewKind.logPrefix(desc.sessionId), nodePair.coordinator, nodePair.peer, desc.columnFamily);
+        long compareMerkleTreeCost = currentTimeMillis() - startTime;
+        StorageService.instance.compareMerkleTreeTime += compareMerkleTreeCost;
+        logger.debug("rymDebug: compareMerkleTreeCost: {}", compareMerkleTreeCost);
         if (rangesToSync.isEmpty())
         {
             logger.info(String.format(format, "are consistent"));
@@ -109,6 +118,9 @@ public abstract class SyncTask extends AsyncFuture<SyncStat> implements Runnable
 
     void sendRequest(SyncRequest request, InetAddressAndPort to)
     {
+        ECNetutils.printStackTace(String.format("rymDebug: Node (%s) send sync signal to the endpoint(%)s",
+                                                 FBUtilities.getBroadcastAddressAndPort(), 
+                                                 to));
         RepairMessage.sendMessageWithFailureCB(request,
                                                SYNC_REQ,
                                                to,

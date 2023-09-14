@@ -37,6 +37,7 @@ import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.metrics.TableMetrics;
 import org.apache.cassandra.metrics.TopPartitionTracker;
 import org.apache.cassandra.repair.state.ValidationState;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MerkleTree;
 import org.apache.cassandra.utils.MerkleTrees;
@@ -146,6 +147,11 @@ public class ValidationManager
             if (topPartitionCollector != null)
                 cfs.topPartitions.merge(topPartitionCollector);
         }
+
+        long createMerkleTreeTimeCost = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
+        StorageService.instance.createMerkleTreeTime += createMerkleTreeTimeCost;
+        logger.debug("rymDebug: In node ({}), the create merkle tree time cost: {} ms",
+                     FBUtilities.getBroadcastAddressAndPort(), createMerkleTreeTimeCost);
         if (logger.isDebugEnabled())
         {
             long duration = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
