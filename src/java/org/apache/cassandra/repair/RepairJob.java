@@ -215,6 +215,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
 
         List<SyncTask> syncTasks = createStandardSyncTasksWithoutMerkleTree(desc,
                                                            FBUtilities.getLocalAddressAndPort(),
+                                                           allEndpoints,
                                                            this::isTransient,
                                                            session.isIncremental,
                                                            session.pullRepair,
