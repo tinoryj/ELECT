@@ -60,6 +60,7 @@ import org.apache.cassandra.utils.concurrent.FutureCombiner;
 import org.apache.cassandra.utils.concurrent.ImmediateFuture;
 
 import org.apache.cassandra.dht.Murmur3Partitioner.LongToken;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 
 import static org.apache.cassandra.config.DatabaseDescriptor.paxosRepairEnabled;
 import static org.apache.cassandra.service.paxos.Paxos.useV2;
@@ -125,6 +126,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         cfs.metric.repairsStarted.inc();
         List<InetAddressAndPort> allEndpoints = new ArrayList<>(session.state.commonRange.endpoints);
         allEndpoints.add(FBUtilities.getBroadcastAddressAndPort());
+        ECNetutils.printStackTace(String.format("rymDebug: Start a repair job. allEndpoints is ({})", allEndpoints));
 
         // Future<List<TreeResponse>> treeResponses;
         // Future<Void> paxosRepair;
