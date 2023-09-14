@@ -195,7 +195,7 @@ public class RepairMessageVerbHandler implements IVerbHandler<RepairMessage>
 
                         Validator validator = new Validator(vState, validationRequest.nowInSec,
                                                             isIncremental(desc.parentSessionId), previewKind);
-                        ValidationManager.instance.submitValidation(store, validator);
+                        // ValidationManager.instance.submitValidation(store, validator);
                     }
                     catch (Throwable t)
                     {
