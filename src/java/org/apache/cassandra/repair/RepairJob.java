@@ -47,6 +47,7 @@ import org.apache.cassandra.repair.asymmetric.ReduceHelper;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.schema.SystemDistributedKeyspace;
 import org.apache.cassandra.service.ActiveRepairService;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.streaming.PreviewKind;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
@@ -294,33 +295,35 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         long startedAt = currentTimeMillis();
         List<SyncTask> syncTasks = new ArrayList<>();
         List<Range<Token>> differences = new ArrayList<>();
-        Range<Token> range1 = new Range<>( new LongToken(Long.parseLong("-9223372036854775808")) ,  new LongToken(Long.parseLong("-6148914691236517376")));
-        Range<Token> range2 = new Range<>( new LongToken(Long.parseLong("6148914691236515840")) ,  new LongToken(Long.parseLong("-9223372036854775808")));
-        Range<Token> range3 = new Range<>( new LongToken(Long.parseLong("3074457345618257920")) ,  new LongToken(Long.parseLong("6148914691236515840")));
+        // Range<Token> range1 = new Range<>( new LongToken(Long.parseLong("-9223372036854775808")) ,  new LongToken(Long.parseLong("-6148914691236517376")));
+        // Range<Token> range2 = new Range<>( new LongToken(Long.parseLong("6148914691236515840")) ,  new LongToken(Long.parseLong("-9223372036854775808")));
+        // Range<Token> range3 = new Range<>( new LongToken(Long.parseLong("3074457345618257920")) ,  new LongToken(Long.parseLong("6148914691236515840")));
 
         for(InetAddressAndPort remote : allEndpoints) {
             if(remote.equals(FBUtilities.getBroadcastAddressAndPort())) {
                 continue;
             }
-            try {
-                if(allEndpoints.get(0).equals(InetAddressAndPort.getByName("192.168.10.23"))){
-                    differences.add(range1);
-                } else if(allEndpoints.get(0).equals(InetAddressAndPort.getByName("192.168.10.21"))){
-                    differences.add(range2);
-                } else if(allEndpoints.get(0).equals(InetAddressAndPort.getByName("192.168.10.28"))){
-                    differences.add(range3);
-                } 
+            // try {
+                // if(allEndpoints.get(0).equals(InetAddressAndPort.getByName("192.168.10.23"))){
+                //     differences.add(range1);
+                // } else if(allEndpoints.get(0).equals(InetAddressAndPort.getByName("192.168.10.21"))){
+                //     differences.add(range2);
+                // } else if(allEndpoints.get(0).equals(InetAddressAndPort.getByName("192.168.10.28"))){
+                //     differences.add(range3);
+                // } 
 
 
-                logger.debug("rymDebug: create LocalSyncTask: the differences is ({}), preview kind is ({})",  differences, previewKind);
-                SyncTask task = new LocalSyncTask(desc, local, remote, differences, isIncremental ? desc.parentSessionId : null,
-                                                    true, true, previewKind);
+            differences.add(StorageService.instance.getTokenRangeForPrimaryNode(allEndpoints.get(0)));
 
-                syncTasks.add(task);
-            } catch (UnknownHostException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+
+            logger.debug("rymDebug: create LocalSyncTask: The endpoints are ({}), the differences is ({}), preview kind is ({})", allEndpoints, differences, previewKind);
+            SyncTask task = new LocalSyncTask(desc, local, remote, differences, isIncremental ? desc.parentSessionId : null,true, true, previewKind);
+
+            syncTasks.add(task);
+            // } catch (UnknownHostException e) {
+            //     // TODO Auto-generated catch block
+            //     e.printStackTrace();
+            // }
         }
         
         // differences.add(range1);

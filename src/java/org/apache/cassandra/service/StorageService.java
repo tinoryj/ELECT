@@ -4707,6 +4707,22 @@ public class StorageService extends NotificationBroadcasterSupport
 
     }
 
+    public Range<Token> getTokenRangeForPrimaryNode(InetAddressAndPort primaryNode) {
+        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>(Gossiper.getAllNodesBasedOnSeeds());
+
+        int index = 0;
+        Token rightToken=null;
+        for(long token : Gossiper.getTokenRanges()) {
+            if(index == allHosts.indexOf(primaryNode)) {
+                rightToken = getTokenFactory().fromString(String.valueOf(token));
+                break;
+            }
+        }
+        Range<Token> result = tokenMetadata.getPrimaryRangeFor(rightToken);
+
+        return result;
+    }
+
     // [CASSANDRAEC]
     public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode,
             String keyspaceName) {
