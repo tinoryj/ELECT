@@ -284,6 +284,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
     // [ELECT]
     static List<SyncTask> createStandardSyncTasksWithoutMerkleTree(RepairJobDesc desc,
                                                   InetAddressAndPort local,
+                                                  List<InetAddressAndPort> allEndpoints,
                                                   Predicate<InetAddressAndPort> isTransient,
                                                   boolean isIncremental,
                                                   boolean pullRepair,
@@ -296,69 +297,93 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         Range<Token> range2 = new Range<>( new LongToken(Long.parseLong("6148914691236515840")) ,  new LongToken(Long.parseLong("-9223372036854775808")));
         Range<Token> range3 = new Range<>( new LongToken(Long.parseLong("3074457345618257920")) ,  new LongToken(Long.parseLong("6148914691236515840")));
 
-        
-        differences.add(range1);
-        differences.add(range1);
-        differences.add(range2);
-        differences.add(range2);
-        differences.add(range3);
-        differences.add(range3);
-
-        for(int i=0;i<differences.size(); i++) {
-            List<Range<Token>> diffs = new ArrayList<>();
-            diffs.add(differences.get(i));
-            logger.debug("rymDebug: create LocalSyncTask: the differences is ({}), preview kind is ({})",  differences, previewKind);
-            InetAddressAndPort remote = null;
-            if(i==0){
-                try {
-                    remote = InetAddressAndPort.getByName("192.168.10.23");
-                } catch (UnknownHostException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            } else if(i==1) {
-                try {
-                    remote = InetAddressAndPort.getByName("192.168.10.25");
-                } catch (UnknownHostException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            } else if(i==2) {
-                try {
-                    remote = InetAddressAndPort.getByName("192.168.10.21");
-                } catch (UnknownHostException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            } else if(i==3) {
-                try {
-                    remote = InetAddressAndPort.getByName("192.168.10.23");
-                } catch (UnknownHostException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            } else if(i==4) {
-                try {
-                    remote = InetAddressAndPort.getByName("192.168.10.28");
-                } catch (UnknownHostException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            } else if(i==5) {
-                try {
-                    remote = InetAddressAndPort.getByName("192.168.10.21");
-                } catch (UnknownHostException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
+        for(InetAddressAndPort remote : allEndpoints) {
+            if(remote.equals(FBUtilities.getBroadcastAddressAndPort())) {
+                continue;
             }
+            try {
+                if(allEndpoints.get(0).equals(InetAddressAndPort.getByName("192.168.10.23"))){
+                    differences.add(range1);
+                } else if(allEndpoints.get(0).equals(InetAddressAndPort.getByName("192.168.10.21"))){
+                    differences.add(range2);
+                } else if(allEndpoints.get(0).equals(InetAddressAndPort.getByName("192.168.10.28"))){
+                    differences.add(range3);
+                } 
 
-            SyncTask task = new LocalSyncTask(desc, local, remote, diffs, isIncremental ? desc.parentSessionId : null,
+
+                logger.debug("rymDebug: create LocalSyncTask: the differences is ({}), preview kind is ({})",  differences, previewKind);
+                SyncTask task = new LocalSyncTask(desc, local, remote, differences, isIncremental ? desc.parentSessionId : null,
                                                     true, true, previewKind);
 
-            syncTasks.add(task);
-            
+                syncTasks.add(task);
+            } catch (UnknownHostException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
         }
+        
+        // differences.add(range1);
+        // differences.add(range1);
+        // differences.add(range2);
+        // differences.add(range2);
+        // differences.add(range3);
+        // differences.add(range3);
+
+        // for(int i=0;i<differences.size(); i++) {
+        //     List<Range<Token>> diffs = new ArrayList<>();
+        //     diffs.add(differences.get(i));
+        //     logger.debug("rymDebug: create LocalSyncTask: the differences is ({}), preview kind is ({})",  differences, previewKind);
+        //     InetAddressAndPort remote = null;
+        //     if(i==0){
+        //         try {
+        //             remote = InetAddressAndPort.getByName("192.168.10.23");
+        //         } catch (UnknownHostException e) {
+        //             // TODO Auto-generated catch block
+        //             e.printStackTrace();
+        //         }
+        //     } else if(i==1) {
+        //         try {
+        //             remote = InetAddressAndPort.getByName("192.168.10.25");
+        //         } catch (UnknownHostException e) {
+        //             // TODO Auto-generated catch block
+        //             e.printStackTrace();
+        //         }
+        //     } else if(i==2) {
+        //         try {
+        //             remote = InetAddressAndPort.getByName("192.168.10.21");
+        //         } catch (UnknownHostException e) {
+        //             // TODO Auto-generated catch block
+        //             e.printStackTrace();
+        //         }
+        //     } else if(i==3) {
+        //         try {
+        //             remote = InetAddressAndPort.getByName("192.168.10.23");
+        //         } catch (UnknownHostException e) {
+        //             // TODO Auto-generated catch block
+        //             e.printStackTrace();
+        //         }
+        //     } else if(i==4) {
+        //         try {
+        //             remote = InetAddressAndPort.getByName("192.168.10.28");
+        //         } catch (UnknownHostException e) {
+        //             // TODO Auto-generated catch block
+        //             e.printStackTrace();
+        //         }
+        //     } else if(i==5) {
+        //         try {
+        //             remote = InetAddressAndPort.getByName("192.168.10.21");
+        //         } catch (UnknownHostException e) {
+        //             // TODO Auto-generated catch block
+        //             e.printStackTrace();
+        //         }
+        //     }
+
+        //     SyncTask task = new LocalSyncTask(desc, local, remote, diffs, isIncremental ? desc.parentSessionId : null,
+        //                                             true, true, previewKind);
+
+        //     syncTasks.add(task);
+            
+        // }
 
         // for(Range<Token> diff : differences) {
 
