@@ -222,6 +222,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
             List<SyncTask> syncTasks = createStandardSyncTasksWithoutMerkleTree(desc,
                                                             FBUtilities.getLocalAddressAndPort(),
                                                             allEndpoints,
+                                                            new ArrayList<>(session.state.commonRange.ranges),
                                                             this::isTransient,
                                                             session.isIncremental,
                                                             session.pullRepair,
@@ -294,6 +295,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
     static List<SyncTask> createStandardSyncTasksWithoutMerkleTree(RepairJobDesc desc,
                                                   InetAddressAndPort local,
                                                   List<InetAddressAndPort> allEndpoints,
+                                                  List<Range<Token>> fullRanges,
                                                   Predicate<InetAddressAndPort> isTransient,
                                                   boolean isIncremental,
                                                   boolean pullRepair,
@@ -301,7 +303,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
     {
         long startedAt = currentTimeMillis();
         List<SyncTask> syncTasks = new ArrayList<>();
-        List<Range<Token>> differences = new ArrayList<>();
+        // List<Range<Token>> differences = new ArrayList<>();
         // Range<Token> range1 = new Range<>( new LongToken(Long.parseLong("-9223372036854775808")) ,  new LongToken(Long.parseLong("-6148914691236517376")));
         // Range<Token> range2 = new Range<>( new LongToken(Long.parseLong("6148914691236515840")) ,  new LongToken(Long.parseLong("-9223372036854775808")));
         // Range<Token> range3 = new Range<>( new LongToken(Long.parseLong("3074457345618257920")) ,  new LongToken(Long.parseLong("6148914691236515840")));
@@ -321,11 +323,11 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
                 // } 
 
 
-            differences.add(StorageService.instance.getTokenRangeForPrimaryNode(allEndpoints));
+            // differences.add(StorageService.instance.getTokenRangeForPrimaryNode(allEndpoints));
 
 
-            logger.debug("rymDebug: create LocalSyncTask: The endpoints are ({}), the differences is ({}), preview kind is ({})", allEndpoints, differences, previewKind);
-            SyncTask task = new LocalSyncTask(desc, local, remote, differences, isIncremental ? desc.parentSessionId : null,true, true, previewKind);
+            logger.debug("rymDebug: create LocalSyncTask: The endpoints are ({}), the differences is ({}), preview kind is ({})", allEndpoints, fullRanges, previewKind);
+            SyncTask task = new LocalSyncTask(desc, local, remote, fullRanges, isIncremental ? desc.parentSessionId : null,true, true, previewKind);
 
             syncTasks.add(task);
             // } catch (UnknownHostException e) {
