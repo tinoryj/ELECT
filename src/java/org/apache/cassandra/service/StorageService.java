@@ -4707,19 +4707,20 @@ public class StorageService extends NotificationBroadcasterSupport
 
     }
 
-    public Range<Token> getTokenRangeForPrimaryNode(InetAddressAndPort primaryNode) {
+    public Range<Token> getTokenRangeForPrimaryNode(List<InetAddressAndPort> allEndPoints) {
         List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>(Gossiper.getAllNodesBasedOnSeeds());
-
+        InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();   
+        Collections.sort(allEndPoints, comparator);
         int index = 0;
         Token rightToken=null;
         for(long token : Gossiper.getTokenRanges()) {
-            if(index == allHosts.indexOf(primaryNode)) {
+            if(index == allHosts.indexOf(allEndPoints.get(0))) {
                 rightToken = getTokenFactory().fromString(String.valueOf(token));
                 break;
             }
         }
         Range<Token> result = tokenMetadata.getPrimaryRangeFor(rightToken);
-
+        logger.debug("rymDebug: All endpoints are ({}), all tokens are ({}), right token is ({}), result is ({})", allEndPoints, Gossiper.getTokenRanges(), rightToken, result);
         return result;
     }
 

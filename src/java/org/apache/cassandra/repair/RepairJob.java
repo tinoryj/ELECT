@@ -62,6 +62,7 @@ import org.apache.cassandra.utils.concurrent.ImmediateFuture;
 
 import org.apache.cassandra.dht.Murmur3Partitioner.LongToken;
 import org.apache.cassandra.io.erasurecode.net.ECNetutils;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.InetAddressAndPortComparator;
 
 import static org.apache.cassandra.config.DatabaseDescriptor.paxosRepairEnabled;
 import static org.apache.cassandra.service.paxos.Paxos.useV2;
@@ -130,7 +131,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         ECNetutils.printStackTace(String.format("rymDebug: Start a repair job. allEndpoints is (%s)", allEndpoints));
 
         Future<List<SyncStat>> syncResults;
-        
+
         if(DatabaseDescriptor.getEnableMerkleTree()) {            
             Future<List<TreeResponse>> treeResponses;
             Future<Void> paxosRepair;
@@ -305,6 +306,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         // Range<Token> range2 = new Range<>( new LongToken(Long.parseLong("6148914691236515840")) ,  new LongToken(Long.parseLong("-9223372036854775808")));
         // Range<Token> range3 = new Range<>( new LongToken(Long.parseLong("3074457345618257920")) ,  new LongToken(Long.parseLong("6148914691236515840")));
 
+
         for(InetAddressAndPort remote : allEndpoints) {
             if(remote.equals(FBUtilities.getBroadcastAddressAndPort())) {
                 continue;
@@ -319,7 +321,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
                 // } 
 
 
-            differences.add(StorageService.instance.getTokenRangeForPrimaryNode(allEndpoints.get(0)));
+            differences.add(StorageService.instance.getTokenRangeForPrimaryNode(allEndpoints));
 
 
             logger.debug("rymDebug: create LocalSyncTask: The endpoints are ({}), the differences is ({}), preview kind is ({})", allEndpoints, differences, previewKind);
@@ -331,135 +333,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
             //     e.printStackTrace();
             // }
         }
-        
-        // differences.add(range1);
-        // differences.add(range1);
-        // differences.add(range2);
-        // differences.add(range2);
-        // differences.add(range3);
-        // differences.add(range3);
 
-        // for(int i=0;i<differences.size(); i++) {
-        //     List<Range<Token>> diffs = new ArrayList<>();
-        //     diffs.add(differences.get(i));
-        //     logger.debug("rymDebug: create LocalSyncTask: the differences is ({}), preview kind is ({})",  differences, previewKind);
-        //     InetAddressAndPort remote = null;
-        //     if(i==0){
-        //         try {
-        //             remote = InetAddressAndPort.getByName("192.168.10.23");
-        //         } catch (UnknownHostException e) {
-        //             // TODO Auto-generated catch block
-        //             e.printStackTrace();
-        //         }
-        //     } else if(i==1) {
-        //         try {
-        //             remote = InetAddressAndPort.getByName("192.168.10.25");
-        //         } catch (UnknownHostException e) {
-        //             // TODO Auto-generated catch block
-        //             e.printStackTrace();
-        //         }
-        //     } else if(i==2) {
-        //         try {
-        //             remote = InetAddressAndPort.getByName("192.168.10.21");
-        //         } catch (UnknownHostException e) {
-        //             // TODO Auto-generated catch block
-        //             e.printStackTrace();
-        //         }
-        //     } else if(i==3) {
-        //         try {
-        //             remote = InetAddressAndPort.getByName("192.168.10.23");
-        //         } catch (UnknownHostException e) {
-        //             // TODO Auto-generated catch block
-        //             e.printStackTrace();
-        //         }
-        //     } else if(i==4) {
-        //         try {
-        //             remote = InetAddressAndPort.getByName("192.168.10.28");
-        //         } catch (UnknownHostException e) {
-        //             // TODO Auto-generated catch block
-        //             e.printStackTrace();
-        //         }
-        //     } else if(i==5) {
-        //         try {
-        //             remote = InetAddressAndPort.getByName("192.168.10.21");
-        //         } catch (UnknownHostException e) {
-        //             // TODO Auto-generated catch block
-        //             e.printStackTrace();
-        //         }
-        //     }
-
-        //     SyncTask task = new LocalSyncTask(desc, local, remote, diffs, isIncremental ? desc.parentSessionId : null,
-        //                                             true, true, previewKind);
-
-        //     syncTasks.add(task);
-            
-        // }
-
-        // for(Range<Token> diff : differences) {
-
-        //     List<Range<Token>> diffs = new ArrayList<>();
-        //     diffs.add(diff);
-        //     logger.debug("rymDebug: create LocalSyncTask: the differences is ({}), preview kind is ({})",  differences, previewKind);
-        //     SyncTask task = new LocalSyncTask(desc, local, local, diffs, isIncremental ? desc.parentSessionId : null,
-        //                                             true, true, previewKind);
-
-        //     syncTasks.add(task);
-            
-        // }
-        // // We need to difference all trees one against another
-        // for (int i = 0; i < trees.size() - 1; ++i)
-        // {
-        //     TreeResponse r1 = trees.get(i);
-        //     for (int j = i + 1; j < trees.size(); ++j)
-        //     {
-        //         TreeResponse r2 = trees.get(j);
-
-        //         // Avoid streming between two tansient replicas
-        //         if (isTransient.test(r1.endpoint) && isTransient.test(r2.endpoint))
-        //             continue;
-
-        //         List<Range<Token>> differences = MerkleTrees.difference(r1.trees, r2.trees);
-
-        //         // Nothing to do
-        //         if (differences.isEmpty())
-        //             continue;
-
-        //         SyncTask task;
-        //         if (r1.endpoint.equals(local) || r2.endpoint.equals(local))
-        //         {
-        //             TreeResponse self = r1.endpoint.equals(local) ? r1 : r2;
-        //             TreeResponse remote = r2.endpoint.equals(local) ? r1 : r2;
-
-        //             // pull only if local is full
-        //             boolean requestRanges = !isTransient.test(self.endpoint);
-        //             // push only if remote is full; additionally check for pull repair
-        //             boolean transferRanges = !isTransient.test(remote.endpoint) && !pullRepair;
-
-        //             // Nothing to do
-        //             if (!requestRanges && !transferRanges)
-        //                 continue;
-
-        //             task = new LocalSyncTask(desc, self.endpoint, remote.endpoint, differences, isIncremental ? desc.parentSessionId : null,
-        //                                      requestRanges, transferRanges, previewKind);
-        //         }
-        //         else if (isTransient.test(r1.endpoint) || isTransient.test(r2.endpoint))
-        //         {
-        //             // Stream only from transient replica
-        //             TreeResponse streamFrom = isTransient.test(r1.endpoint) ? r1 : r2;
-        //             TreeResponse streamTo = isTransient.test(r1.endpoint) ? r2 : r1;
-        //             task = new AsymmetricRemoteSyncTask(desc, streamTo.endpoint, streamFrom.endpoint, differences, previewKind);
-        //         }
-        //         else
-        //         {
-        //             task = new SymmetricRemoteSyncTask(desc, r1.endpoint, r2.endpoint, differences, previewKind);
-        //         }
-        //         syncTasks.add(task);
-        //     }
-        //     trees.get(i).trees.release();
-        // }
-        // trees.get(trees.size() - 1).trees.release();
-        // logger.info("Created {} sync tasks based on {} merkle tree responses for {} (took: {}ms)",
-        //             syncTasks.size(), trees.size(), desc.parentSessionId, currentTimeMillis() - startedAt);
         return syncTasks;
     }
 
