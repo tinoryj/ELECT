@@ -2048,6 +2048,20 @@ public class DatabaseDescriptor
         conf.enable_erasure_coding = enable_erasure_coding;
     }
 
+    public static boolean getEnableMerkleTree() 
+    {
+        return conf.enable_merkle_tree;
+    }
+
+    public static void setEnableMerkleTree(boolean enable_merkle_tree)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.enable_merkle_tree = enable_merkle_tree;
+    }
+
     public static boolean getEnableMigration() 
     {
         return conf.enable_migration;
