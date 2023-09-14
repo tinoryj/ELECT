@@ -208,6 +208,15 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         // When all validations complete, submit sync tasks
         Future<List<SyncStat>> syncResults = treeResponses.flatMap(session.optimiseStreams && !session.pullRepair ? this::optimisedSyncing : this::standardSyncing, taskExecutor);
 
+        // List<SyncTask> syncTasks = createStandardSyncTasksWithoutMerkleTree(desc,
+        //                                                    FBUtilities.getLocalAddressAndPort(),
+        //                                                    this::isTransient,
+        //                                                    session.isIncremental,
+        //                                                    session.pullRepair,
+        //                                                    session.previewKind);
+        
+        // Future<List<SyncStat>> syncResults = executeTasks(syncTasks);
+        
         // When all sync complete, set the final result
         syncResults.addCallback(new FutureCallback<List<SyncStat>>()
         {
@@ -266,6 +275,75 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         return executeTasks(syncTasks);
     }
 
+
+    // [ELECT]
+    // static List<SyncTask> createStandardSyncTasksWithoutMerkleTree(RepairJobDesc desc,
+    //                                               InetAddressAndPort local,
+    //                                               Predicate<InetAddressAndPort> isTransient,
+    //                                               boolean isIncremental,
+    //                                               boolean pullRepair,
+    //                                               PreviewKind previewKind)
+    // {
+    //     long startedAt = currentTimeMillis();
+    //     List<SyncTask> syncTasks = new ArrayList<>();
+    //     // We need to difference all trees one against another
+    //     for (int i = 0; i < trees.size() - 1; ++i)
+    //     {
+    //         TreeResponse r1 = trees.get(i);
+    //         for (int j = i + 1; j < trees.size(); ++j)
+    //         {
+    //             TreeResponse r2 = trees.get(j);
+
+    //             // Avoid streming between two tansient replicas
+    //             if (isTransient.test(r1.endpoint) && isTransient.test(r2.endpoint))
+    //                 continue;
+
+    //             List<Range<Token>> differences = MerkleTrees.difference(r1.trees, r2.trees);
+
+    //             // Nothing to do
+    //             if (differences.isEmpty())
+    //                 continue;
+
+    //             SyncTask task;
+    //             if (r1.endpoint.equals(local) || r2.endpoint.equals(local))
+    //             {
+    //                 TreeResponse self = r1.endpoint.equals(local) ? r1 : r2;
+    //                 TreeResponse remote = r2.endpoint.equals(local) ? r1 : r2;
+
+    //                 // pull only if local is full
+    //                 boolean requestRanges = !isTransient.test(self.endpoint);
+    //                 // push only if remote is full; additionally check for pull repair
+    //                 boolean transferRanges = !isTransient.test(remote.endpoint) && !pullRepair;
+
+    //                 // Nothing to do
+    //                 if (!requestRanges && !transferRanges)
+    //                     continue;
+
+    //                 task = new LocalSyncTask(desc, self.endpoint, remote.endpoint, differences, isIncremental ? desc.parentSessionId : null,
+    //                                          requestRanges, transferRanges, previewKind);
+    //             }
+    //             else if (isTransient.test(r1.endpoint) || isTransient.test(r2.endpoint))
+    //             {
+    //                 // Stream only from transient replica
+    //                 TreeResponse streamFrom = isTransient.test(r1.endpoint) ? r1 : r2;
+    //                 TreeResponse streamTo = isTransient.test(r1.endpoint) ? r2 : r1;
+    //                 task = new AsymmetricRemoteSyncTask(desc, streamTo.endpoint, streamFrom.endpoint, differences, previewKind);
+    //             }
+    //             else
+    //             {
+    //                 task = new SymmetricRemoteSyncTask(desc, r1.endpoint, r2.endpoint, differences, previewKind);
+    //             }
+    //             syncTasks.add(task);
+    //         }
+    //         trees.get(i).trees.release();
+    //     }
+    //     trees.get(trees.size() - 1).trees.release();
+    //     logger.info("Created {} sync tasks based on {} merkle tree responses for {} (took: {}ms)",
+    //                 syncTasks.size(), trees.size(), desc.parentSessionId, currentTimeMillis() - startedAt);
+    //     return syncTasks;
+    // }
+
+
     static List<SyncTask> createStandardSyncTasks(RepairJobDesc desc,
                                                   List<TreeResponse> trees,
                                                   InetAddressAndPort local,
@@ -308,6 +386,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
                     // Nothing to do
                     if (!requestRanges && !transferRanges)
                         continue;
+                    logger.debug("rymDebug: create LocalSyncTask: requestRanges: {}, transferRanges: {}", requestRanges, transferRanges);
 
                     task = new LocalSyncTask(desc, self.endpoint, remote.endpoint, differences, isIncremental ? desc.parentSessionId : null,
                                              requestRanges, transferRanges, previewKind);
@@ -317,10 +396,12 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
                     // Stream only from transient replica
                     TreeResponse streamFrom = isTransient.test(r1.endpoint) ? r1 : r2;
                     TreeResponse streamTo = isTransient.test(r1.endpoint) ? r2 : r1;
+                    logger.debug("rymDebug: create AsymmetricRemoteSyncTask: streamFrom: {}, streamTo: {}", streamFrom, streamTo);
                     task = new AsymmetricRemoteSyncTask(desc, streamTo.endpoint, streamFrom.endpoint, differences, previewKind);
                 }
                 else
                 {
+                    logger.debug("rymDebug: create SymmetricRemoteSyncTask: r1.endpoint: {}, r2.endpoint: {}", r1.endpoint, r2.endpoint);
                     task = new SymmetricRemoteSyncTask(desc, r1.endpoint, r2.endpoint, differences, previewKind);
                 }
                 syncTasks.add(task);
@@ -427,11 +508,15 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
                     SyncTask task;
                     if (address.equals(local))
                     {
+
+                        logger.debug("rymDebug: create optimised LocalSyncTask: fetchFrom: {}, toFetch: {}", fetchFrom, toFetch);
                         task = new LocalSyncTask(desc, address, fetchFrom, toFetch, isIncremental ? desc.parentSessionId : null,
                                                  true, false, previewKind);
                     }
                     else
                     {
+
+                        logger.debug("rymDebug: create optimised AsymmetricRemoteSyncTask desc: {}, address: {}, fetchFrom: {}, toFetch: {}", desc, address, fetchFrom, toFetch);
                         task = new AsymmetricRemoteSyncTask(desc, address, fetchFrom, toFetch, previewKind);
                     }
                     syncTasks.add(task);
