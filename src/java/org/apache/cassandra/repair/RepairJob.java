@@ -358,17 +358,17 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
             
         }
 
-        for(Range<Token> diff : differences) {
+        // for(Range<Token> diff : differences) {
 
-            List<Range<Token>> diffs = new ArrayList<>();
-            diffs.add(diff);
-            logger.debug("rymDebug: create LocalSyncTask: the differences is ({}), preview kind is ({})",  differences, previewKind);
-            SyncTask task = new LocalSyncTask(desc, local, local, diffs, isIncremental ? desc.parentSessionId : null,
-                                                    true, true, previewKind);
+        //     List<Range<Token>> diffs = new ArrayList<>();
+        //     diffs.add(diff);
+        //     logger.debug("rymDebug: create LocalSyncTask: the differences is ({}), preview kind is ({})",  differences, previewKind);
+        //     SyncTask task = new LocalSyncTask(desc, local, local, diffs, isIncremental ? desc.parentSessionId : null,
+        //                                             true, true, previewKind);
 
-            syncTasks.add(task);
+        //     syncTasks.add(task);
             
-        }
+        // }
         // // We need to difference all trees one against another
         // for (int i = 0; i < trees.size() - 1; ++i)
         // {
