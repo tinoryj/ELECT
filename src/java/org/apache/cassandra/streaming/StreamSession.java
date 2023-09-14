@@ -58,6 +58,7 @@ import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.Replica;
 import org.apache.cassandra.metrics.StreamingMetrics;
 import org.apache.cassandra.schema.TableId;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.streaming.async.StreamingMultiplexedChannel;
 import org.apache.cassandra.streaming.messages.*;
 import org.apache.cassandra.utils.FBUtilities;
@@ -832,6 +833,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber
             long latencyNanos = nanoTime() - receivedStartNanos;
             metrics.incomingProcessTime.update(latencyNanos, TimeUnit.NANOSECONDS);
             long latencyMs = TimeUnit.NANOSECONDS.toMillis(latencyNanos);
+            StorageService.instance.repairTime += latencyMs;
             int timeout = DatabaseDescriptor.getInternodeStreamingTcpUserTimeoutInMS();
             if (timeout > 0 && latencyMs > timeout)
                 NoSpamLogger.log(logger, NoSpamLogger.Level.WARN,

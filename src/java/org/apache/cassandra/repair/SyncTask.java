@@ -88,7 +88,7 @@ public abstract class SyncTask extends AsyncFuture<SyncStat> implements Runnable
         String format = String.format("%s Endpoints %s and %s %%s for %s", previewKind.logPrefix(desc.sessionId), nodePair.coordinator, nodePair.peer, desc.columnFamily);
         long compareMerkleTreeCost = currentTimeMillis() - startTime;
         StorageService.instance.compareMerkleTreeTime += compareMerkleTreeCost;
-        logger.debug("rymDebug: compareMerkleTreeCost: {}, the ranges number that need to be synced is ({})", compareMerkleTreeCost, rangesToSync.size());
+        logger.debug("rymDebug: compareMerkleTreeCost: {}, the ranges number that need to be synced is ({}), ranges are ({})", compareMerkleTreeCost, rangesToSync.size(), rangesToSync);
         if (rangesToSync.isEmpty())
         {
             logger.info(String.format(format, "are consistent"));

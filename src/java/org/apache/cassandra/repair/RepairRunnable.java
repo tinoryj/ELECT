@@ -223,6 +223,12 @@ public class RepairRunnable implements Runnable, ProgressEventNotifier, RepairNo
             String duration = DurationFormatUtils.formatDurationWords(durationMillis, true, true);
             msg = String.format("Repair command #%d finished in %s", state.cmd, duration);
         }
+        logger.debug("rymDebug: The repair task ({}) duration time is ({}), create Merkle tree time cost is ({}), compare Merkle tree time cost is ({}), receive data time cost is ({})",
+                     state.options.getPreviewKind().logPrefix(state.id),
+                     durationMillis,
+                     StorageService.instance.createMerkleTreeTime,
+                     StorageService.instance.compareMerkleTreeTime,
+                     StorageService.instance.repairTime);
 
         fireProgressEvent(jmxEvent(ProgressEventType.COMPLETE, msg));
         logger.info(state.options.getPreviewKind().logPrefix(state.id) + msg);
