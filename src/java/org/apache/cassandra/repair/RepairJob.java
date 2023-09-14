@@ -58,6 +58,8 @@ import org.apache.cassandra.utils.concurrent.Future;
 import org.apache.cassandra.utils.concurrent.FutureCombiner;
 import org.apache.cassandra.utils.concurrent.ImmediateFuture;
 
+import org.apache.cassandra.dht.Murmur3Partitioner.LongToken;
+
 import static org.apache.cassandra.config.DatabaseDescriptor.paxosRepairEnabled;
 import static org.apache.cassandra.service.paxos.Paxos.useV2;
 import static org.apache.cassandra.utils.Clock.Global.currentTimeMillis;
@@ -123,99 +125,99 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         List<InetAddressAndPort> allEndpoints = new ArrayList<>(session.state.commonRange.endpoints);
         allEndpoints.add(FBUtilities.getBroadcastAddressAndPort());
 
-        Future<List<TreeResponse>> treeResponses;
-        Future<Void> paxosRepair;
-        if (paxosRepairEnabled() && ((useV2() && session.repairPaxos) || session.paxosOnly))
-        {
-            logger.info("{} {}.{} starting paxos repair", session.previewKind.logPrefix(session.getId()), desc.keyspace, desc.columnFamily);
-            TableMetadata metadata = Schema.instance.getTableMetadata(desc.keyspace, desc.columnFamily);
-            paxosRepair = PaxosCleanup.cleanup(allEndpoints, metadata, desc.ranges, session.state.commonRange.hasSkippedReplicas, taskExecutor);
-        }
-        else
-        {
-            logger.info("{} {}.{} not running paxos repair", session.previewKind.logPrefix(session.getId()), desc.keyspace, desc.columnFamily);
-            paxosRepair = ImmediateFuture.success(null);
-        }
+        // Future<List<TreeResponse>> treeResponses;
+        // Future<Void> paxosRepair;
+        // if (paxosRepairEnabled() && ((useV2() && session.repairPaxos) || session.paxosOnly))
+        // {
+        //     logger.info("{} {}.{} starting paxos repair", session.previewKind.logPrefix(session.getId()), desc.keyspace, desc.columnFamily);
+        //     TableMetadata metadata = Schema.instance.getTableMetadata(desc.keyspace, desc.columnFamily);
+        //     paxosRepair = PaxosCleanup.cleanup(allEndpoints, metadata, desc.ranges, session.state.commonRange.hasSkippedReplicas, taskExecutor);
+        // }
+        // else
+        // {
+        //     logger.info("{} {}.{} not running paxos repair", session.previewKind.logPrefix(session.getId()), desc.keyspace, desc.columnFamily);
+        //     paxosRepair = ImmediateFuture.success(null);
+        // }
 
-        if (session.paxosOnly)
-        {
-            paxosRepair.addCallback(new FutureCallback<Void>()
-            {
-                public void onSuccess(Void v)
-                {
-                    logger.info("{} {}.{} paxos repair completed", session.previewKind.logPrefix(session.getId()), desc.keyspace, desc.columnFamily);
-                    trySuccess(new RepairResult(desc, Collections.emptyList()));
-                }
+        // if (session.paxosOnly)
+        // {
+        //     paxosRepair.addCallback(new FutureCallback<Void>()
+        //     {
+        //         public void onSuccess(Void v)
+        //         {
+        //             logger.info("{} {}.{} paxos repair completed", session.previewKind.logPrefix(session.getId()), desc.keyspace, desc.columnFamily);
+        //             trySuccess(new RepairResult(desc, Collections.emptyList()));
+        //         }
 
-                /**
-                 * Snapshot, validation and sync failures are all handled here
-                 */
-                public void onFailure(Throwable t)
-                {
-                    logger.warn("{} {}.{} paxos repair failed", session.previewKind.logPrefix(session.getId()), desc.keyspace, desc.columnFamily);
-                    tryFailure(t);
-                }
-            }, taskExecutor);
-            return;
-        }
+        //         /**
+        //          * Snapshot, validation and sync failures are all handled here
+        //          */
+        //         public void onFailure(Throwable t)
+        //         {
+        //             logger.warn("{} {}.{} paxos repair failed", session.previewKind.logPrefix(session.getId()), desc.keyspace, desc.columnFamily);
+        //             tryFailure(t);
+        //         }
+        //     }, taskExecutor);
+        //     return;
+        // }
 
-        // Create a snapshot at all nodes unless we're using pure parallel repairs
-        if (parallelismDegree != RepairParallelism.PARALLEL)
-        {
-            Future<?> allSnapshotTasks;
-            if (session.isIncremental)
-            {
-                // consistent repair does it's own "snapshotting"
-                allSnapshotTasks = paxosRepair.map(input -> allEndpoints);
-            }
-            else
-            {
-                // Request snapshot to all replica
-                allSnapshotTasks = paxosRepair.flatMap(input -> {
-                    List<Future<InetAddressAndPort>> snapshotTasks = new ArrayList<>(allEndpoints.size());
-                    state.phase.snapshotsSubmitted();
-                    for (InetAddressAndPort endpoint : allEndpoints)
-                    {
-                        SnapshotTask snapshotTask = new SnapshotTask(desc, endpoint);
-                        snapshotTasks.add(snapshotTask);
-                        taskExecutor.execute(snapshotTask);
-                    }
-                    return FutureCombiner.allOf(snapshotTasks).map(a -> {
-                        state.phase.snapshotsCompleted();
-                        return a;
-                    });
-                });
-            }
+        // // Create a snapshot at all nodes unless we're using pure parallel repairs
+        // if (parallelismDegree != RepairParallelism.PARALLEL)
+        // {
+        //     Future<?> allSnapshotTasks;
+        //     if (session.isIncremental)
+        //     {
+        //         // consistent repair does it's own "snapshotting"
+        //         allSnapshotTasks = paxosRepair.map(input -> allEndpoints);
+        //     }
+        //     else
+        //     {
+        //         // Request snapshot to all replica
+        //         allSnapshotTasks = paxosRepair.flatMap(input -> {
+        //             List<Future<InetAddressAndPort>> snapshotTasks = new ArrayList<>(allEndpoints.size());
+        //             state.phase.snapshotsSubmitted();
+        //             for (InetAddressAndPort endpoint : allEndpoints)
+        //             {
+        //                 SnapshotTask snapshotTask = new SnapshotTask(desc, endpoint);
+        //                 snapshotTasks.add(snapshotTask);
+        //                 taskExecutor.execute(snapshotTask);
+        //             }
+        //             return FutureCombiner.allOf(snapshotTasks).map(a -> {
+        //                 state.phase.snapshotsCompleted();
+        //                 return a;
+        //             });
+        //         });
+        //     }
 
-            // When all snapshot complete, send validation requests
-            treeResponses = allSnapshotTasks.flatMap(endpoints -> {
-                if (parallelismDegree == RepairParallelism.SEQUENTIAL)
-                    return sendSequentialValidationRequest(allEndpoints);
-                else
-                    return sendDCAwareValidationRequest(allEndpoints);
-                }, taskExecutor);
-        }
-        else
-        {
-            // If not sequential, just send validation request to all replica
-            treeResponses = paxosRepair.flatMap(input -> sendValidationRequest(allEndpoints));
-        }
-        treeResponses = treeResponses.map(a -> {
-            state.phase.validationCompleted();
-            return a;
-        });
+        //     // When all snapshot complete, send validation requests
+        //     treeResponses = allSnapshotTasks.flatMap(endpoints -> {
+        //         if (parallelismDegree == RepairParallelism.SEQUENTIAL)
+        //             return sendSequentialValidationRequest(allEndpoints);
+        //         else
+        //             return sendDCAwareValidationRequest(allEndpoints);
+        //         }, taskExecutor);
+        // }
+        // else
+        // {
+        //     // If not sequential, just send validation request to all replica
+        //     treeResponses = paxosRepair.flatMap(input -> sendValidationRequest(allEndpoints));
+        // }
+        // treeResponses = treeResponses.map(a -> {
+        //     state.phase.validationCompleted();
+        //     return a;
+        // });
 
-        // When all validations complete, submit sync tasks
-        Future<List<SyncStat>> syncResults = treeResponses.flatMap(session.optimiseStreams && !session.pullRepair ? this::optimisedSyncing : this::standardSyncing, taskExecutor);
+        // // When all validations complete, submit sync tasks
+        // Future<List<SyncStat>> syncResults = treeResponses.flatMap(session.optimiseStreams && !session.pullRepair ? this::optimisedSyncing : this::standardSyncing, taskExecutor);
 
-        // List<SyncTask> syncTasks = createStandardSyncTasksWithoutMerkleTree(desc,
-        //                                                    FBUtilities.getLocalAddressAndPort(),
-        //                                                    this::isTransient,
-        //                                                    session.isIncremental,
-        //                                                    session.pullRepair,
-        //                                                    session.previewKind);
+        List<SyncTask> syncTasks = createStandardSyncTasksWithoutMerkleTree(desc,
+                                                           FBUtilities.getLocalAddressAndPort(),
+                                                           this::isTransient,
+                                                           session.isIncremental,
+                                                           session.pullRepair,
+                                                           session.previewKind);
         
-        // Future<List<SyncStat>> syncResults = executeTasks(syncTasks);
+        Future<List<SyncStat>> syncResults = executeTasks(syncTasks);
         
         // When all sync complete, set the final result
         syncResults.addCallback(new FutureCallback<List<SyncStat>>()
@@ -277,71 +279,93 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
 
 
     // [ELECT]
-    // static List<SyncTask> createStandardSyncTasksWithoutMerkleTree(RepairJobDesc desc,
-    //                                               InetAddressAndPort local,
-    //                                               Predicate<InetAddressAndPort> isTransient,
-    //                                               boolean isIncremental,
-    //                                               boolean pullRepair,
-    //                                               PreviewKind previewKind)
-    // {
-    //     long startedAt = currentTimeMillis();
-    //     List<SyncTask> syncTasks = new ArrayList<>();
-    //     // We need to difference all trees one against another
-    //     for (int i = 0; i < trees.size() - 1; ++i)
-    //     {
-    //         TreeResponse r1 = trees.get(i);
-    //         for (int j = i + 1; j < trees.size(); ++j)
-    //         {
-    //             TreeResponse r2 = trees.get(j);
+    static List<SyncTask> createStandardSyncTasksWithoutMerkleTree(RepairJobDesc desc,
+                                                  InetAddressAndPort local,
+                                                  Predicate<InetAddressAndPort> isTransient,
+                                                  boolean isIncremental,
+                                                  boolean pullRepair,
+                                                  PreviewKind previewKind)
+    {
+        long startedAt = currentTimeMillis();
+        List<SyncTask> syncTasks = new ArrayList<>();
+        List<Range<Token>> differences = new ArrayList<>();
+        Range<Token> range1 = new Range<>( new LongToken(Long.parseLong("-9223372036854775808")) ,  new LongToken(Long.parseLong("-6148914691236517376")));
+        Range<Token> range2 = new Range<>( new LongToken(Long.parseLong("3074457345618257920")) ,  new LongToken(Long.parseLong("6148914691236515840")));
+        Range<Token> range3 = new Range<>( new LongToken(Long.parseLong("6148914691236515840")) ,  new LongToken(Long.parseLong("-9223372036854775808")));
 
-    //             // Avoid streming between two tansient replicas
-    //             if (isTransient.test(r1.endpoint) && isTransient.test(r2.endpoint))
-    //                 continue;
+        for(int i=0;i<2;i++) {
+            differences.add(range1);
+            differences.add(range2);
+            differences.add(range3);
+        }
 
-    //             List<Range<Token>> differences = MerkleTrees.difference(r1.trees, r2.trees);
+        for(Range<Token> diff : differences) {
 
-    //             // Nothing to do
-    //             if (differences.isEmpty())
-    //                 continue;
+            List<Range<Token>> diffs = new ArrayList<>();
+            diffs.add(diff);
+            logger.debug("rymDebug: create LocalSyncTask: the differences is ({}), preview kind is ({})",  differences, previewKind);
+            SyncTask task = new LocalSyncTask(desc, local, local, diffs, isIncremental ? desc.parentSessionId : null,
+                                                    true, true, previewKind);
 
-    //             SyncTask task;
-    //             if (r1.endpoint.equals(local) || r2.endpoint.equals(local))
-    //             {
-    //                 TreeResponse self = r1.endpoint.equals(local) ? r1 : r2;
-    //                 TreeResponse remote = r2.endpoint.equals(local) ? r1 : r2;
+            syncTasks.add(task);
+            
+        }
+        // // We need to difference all trees one against another
+        // for (int i = 0; i < trees.size() - 1; ++i)
+        // {
+        //     TreeResponse r1 = trees.get(i);
+        //     for (int j = i + 1; j < trees.size(); ++j)
+        //     {
+        //         TreeResponse r2 = trees.get(j);
 
-    //                 // pull only if local is full
-    //                 boolean requestRanges = !isTransient.test(self.endpoint);
-    //                 // push only if remote is full; additionally check for pull repair
-    //                 boolean transferRanges = !isTransient.test(remote.endpoint) && !pullRepair;
+        //         // Avoid streming between two tansient replicas
+        //         if (isTransient.test(r1.endpoint) && isTransient.test(r2.endpoint))
+        //             continue;
 
-    //                 // Nothing to do
-    //                 if (!requestRanges && !transferRanges)
-    //                     continue;
+        //         List<Range<Token>> differences = MerkleTrees.difference(r1.trees, r2.trees);
 
-    //                 task = new LocalSyncTask(desc, self.endpoint, remote.endpoint, differences, isIncremental ? desc.parentSessionId : null,
-    //                                          requestRanges, transferRanges, previewKind);
-    //             }
-    //             else if (isTransient.test(r1.endpoint) || isTransient.test(r2.endpoint))
-    //             {
-    //                 // Stream only from transient replica
-    //                 TreeResponse streamFrom = isTransient.test(r1.endpoint) ? r1 : r2;
-    //                 TreeResponse streamTo = isTransient.test(r1.endpoint) ? r2 : r1;
-    //                 task = new AsymmetricRemoteSyncTask(desc, streamTo.endpoint, streamFrom.endpoint, differences, previewKind);
-    //             }
-    //             else
-    //             {
-    //                 task = new SymmetricRemoteSyncTask(desc, r1.endpoint, r2.endpoint, differences, previewKind);
-    //             }
-    //             syncTasks.add(task);
-    //         }
-    //         trees.get(i).trees.release();
-    //     }
-    //     trees.get(trees.size() - 1).trees.release();
-    //     logger.info("Created {} sync tasks based on {} merkle tree responses for {} (took: {}ms)",
-    //                 syncTasks.size(), trees.size(), desc.parentSessionId, currentTimeMillis() - startedAt);
-    //     return syncTasks;
-    // }
+        //         // Nothing to do
+        //         if (differences.isEmpty())
+        //             continue;
+
+        //         SyncTask task;
+        //         if (r1.endpoint.equals(local) || r2.endpoint.equals(local))
+        //         {
+        //             TreeResponse self = r1.endpoint.equals(local) ? r1 : r2;
+        //             TreeResponse remote = r2.endpoint.equals(local) ? r1 : r2;
+
+        //             // pull only if local is full
+        //             boolean requestRanges = !isTransient.test(self.endpoint);
+        //             // push only if remote is full; additionally check for pull repair
+        //             boolean transferRanges = !isTransient.test(remote.endpoint) && !pullRepair;
+
+        //             // Nothing to do
+        //             if (!requestRanges && !transferRanges)
+        //                 continue;
+
+        //             task = new LocalSyncTask(desc, self.endpoint, remote.endpoint, differences, isIncremental ? desc.parentSessionId : null,
+        //                                      requestRanges, transferRanges, previewKind);
+        //         }
+        //         else if (isTransient.test(r1.endpoint) || isTransient.test(r2.endpoint))
+        //         {
+        //             // Stream only from transient replica
+        //             TreeResponse streamFrom = isTransient.test(r1.endpoint) ? r1 : r2;
+        //             TreeResponse streamTo = isTransient.test(r1.endpoint) ? r2 : r1;
+        //             task = new AsymmetricRemoteSyncTask(desc, streamTo.endpoint, streamFrom.endpoint, differences, previewKind);
+        //         }
+        //         else
+        //         {
+        //             task = new SymmetricRemoteSyncTask(desc, r1.endpoint, r2.endpoint, differences, previewKind);
+        //         }
+        //         syncTasks.add(task);
+        //     }
+        //     trees.get(i).trees.release();
+        // }
+        // trees.get(trees.size() - 1).trees.release();
+        // logger.info("Created {} sync tasks based on {} merkle tree responses for {} (took: {}ms)",
+        //             syncTasks.size(), trees.size(), desc.parentSessionId, currentTimeMillis() - startedAt);
+        return syncTasks;
+    }
 
 
     static List<SyncTask> createStandardSyncTasks(RepairJobDesc desc,
