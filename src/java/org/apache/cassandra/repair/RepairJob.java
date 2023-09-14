@@ -386,7 +386,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
                     // Nothing to do
                     if (!requestRanges && !transferRanges)
                         continue;
-                    logger.debug("rymDebug: create LocalSyncTask: requestRanges: {}, transferRanges: {}", requestRanges, transferRanges);
+                    logger.debug("rymDebug: create LocalSyncTask: requestRanges: {}, transferRanges: {}, the differences is ({}), preview kind is ({})", requestRanges, transferRanges, differences, previewKind);
 
                     task = new LocalSyncTask(desc, self.endpoint, remote.endpoint, differences, isIncremental ? desc.parentSessionId : null,
                                              requestRanges, transferRanges, previewKind);
