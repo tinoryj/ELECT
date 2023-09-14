@@ -128,7 +128,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         cfs.metric.repairsStarted.inc();
         List<InetAddressAndPort> allEndpoints = new ArrayList<>(session.state.commonRange.endpoints);
         allEndpoints.add(FBUtilities.getBroadcastAddressAndPort());
-        ECNetutils.printStackTace(String.format("rymDebug: Start a repair job. allEndpoints is (%s)", allEndpoints));
+        ECNetutils.printStackTace(String.format("rymDebug: Start a repair job. allEndpoints is (%s), token rages is (%s)", allEndpoints, session.state.commonRange.ranges));
 
         Future<List<SyncStat>> syncResults;
 
