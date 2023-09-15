@@ -194,6 +194,7 @@ public class Config {
     public double target_storage_saving = 0.5;
     public int max_concurrent_download = 16;
     public boolean enable_merkle_tree = false;
+    public boolean enable_proxy = false;
 
     /**
      * This parameter indicates three storage saving levels.

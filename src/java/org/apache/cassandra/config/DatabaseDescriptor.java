@@ -2048,6 +2048,20 @@ public class DatabaseDescriptor
         conf.enable_erasure_coding = enable_erasure_coding;
     }
 
+    public static boolean getEnableProxy() 
+    {
+        return conf.enable_proxy;
+    }
+
+    public static void setEnableProxy(boolean enable_proxy)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.enable_proxy = enable_proxy;
+    }
+    
     public static boolean getEnableMerkleTree() 
     {
         return conf.enable_merkle_tree;
