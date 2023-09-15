@@ -131,12 +131,16 @@ public class OSSAccess implements AutoCloseable {
     public boolean uploadFileToOSS(String targetFilePath, byte[] content) {
         String objectName = targetFilePath.replace('/', '_') + localIP;
 
+        
         try {
+            long startUploadTime = System.currentTimeMillis();
             logger.debug("rymDebug: target file path is ({}), content size is ({}), object name is ({})",
                     targetFilePath, content.length, objectName);
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName,
                     new ByteArrayInputStream(content));
             PutObjectResult result = ossClient.putObject(putObjectRequest);
+            long timeCost = System.currentTimeMillis() - startUploadTime;
+            logger.debug("rymDebug: upload file to OSS cost time is ({}ms), the file size is ({}), file name is ({})", timeCost, content.length, targetFilePath);
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
                     + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
