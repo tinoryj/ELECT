@@ -346,11 +346,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                         logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
                                 localParityCodeDir + parityHashList.get(i));
                     } else {
-                        long uploadParityTimeCost = System.currentTimeMillis() - startUploadParityTime;
-                        StorageService.instance.migratedParityCodeTimeCost = uploadParityTimeCost;
+
                         StorageService.instance.migratedParityCodeCount++;
                         StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
                     }
+                    long uploadParityTimeCost = System.currentTimeMillis() - startUploadParityTime;
+                    StorageService.instance.migratedParityCodeTimeCost = uploadParityTimeCost;
 
                 }
 

@@ -715,12 +715,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
                                 localParityCodeDir + parityHashList.get(i));
                     } else {
-                        long uploadTimeCost = System.currentTimeMillis() - startUploadTime;
-                        StorageService.instance.migratedParityCodeTimeCost += uploadTimeCost;
+
                         StorageService.instance.migratedParityCodeCount++;
                         StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
-
                     }
+                    long uploadTimeCost = System.currentTimeMillis() - startUploadTime;
+                    StorageService.instance.migratedParityCodeTimeCost += uploadTimeCost;
 
                 }
 
