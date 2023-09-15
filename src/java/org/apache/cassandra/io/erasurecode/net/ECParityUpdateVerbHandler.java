@@ -479,6 +479,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         }
                         long timeCost = currentTimeMillis() - start;
                         StorageService.instance.migratedParityCodeTimeCost += timeCost;
+                        logger.debug("The migrate time for {} is {}", parityHashList.get(i), timeCost);
                         byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
                         parityCodes[i].put(parityCode);
                         // StorageService.ossAccessObj.deleteSingleFileInOSS(parityCodeFileName);
@@ -715,12 +716,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
                                 localParityCodeDir + parityHashList.get(i));
                     } else {
-
                         StorageService.instance.migratedParityCodeCount++;
                         StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
                     }
                     long uploadTimeCost = System.currentTimeMillis() - startUploadTime;
                     StorageService.instance.migratedParityCodeTimeCost += uploadTimeCost;
+                    logger.debug("The migrate time for {} is {}", parityHashList.get(i), uploadTimeCost);
 
                 }
 
