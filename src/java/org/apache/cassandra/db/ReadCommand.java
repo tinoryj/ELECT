@@ -430,7 +430,7 @@ public abstract class ReadCommand extends AbstractReadQuery {
                         index.getIndexMetadata().name);
             }
             long indexTimeCost = System.nanoTime() - startIndexTime;
-            StorageService.instance.readIndexTime = indexTimeCost;
+            StorageService.instance.readIndexTime += indexTimeCost;
             UnfilteredPartitionIterator iterator = (null == searcher) ? queryStorage(cfs, executionController)
                     : searcher.search(executionController);
             iterator = RTBoundValidator.validate(iterator, Stage.MERGED, false);

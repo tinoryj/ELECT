@@ -351,7 +351,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                         StorageService.instance.migratedParityCodes.add(parityHashList.get(i));
                     }
                     long uploadParityTimeCost = System.currentTimeMillis() - startUploadParityTime;
-                    StorageService.instance.migratedParityCodeTimeCost = uploadParityTimeCost;
+                    StorageService.instance.migratedParityCodeTimeCost += uploadParityTimeCost;
 
                 }
 

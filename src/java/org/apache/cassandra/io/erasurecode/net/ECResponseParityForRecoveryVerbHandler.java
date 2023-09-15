@@ -80,7 +80,7 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
                 }
             }
             long  downloadTimeCost = System.currentTimeMillis() - startDownloadTime;
-            StorageService.instance.readParityMigrationTime = downloadTimeCost;
+            StorageService.instance.readParityMigrationTime += downloadTimeCost;
 
             // if(StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, firstParityNode)) {
             byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
