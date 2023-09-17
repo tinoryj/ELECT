@@ -849,11 +849,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                             }
                         } else {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
-                                    retryCount < 1000) {
+                                    retryCount < 5000) {
                                 try {
                                     logger.debug("rymDebug: the sstable ({}) is still downloading!",
                                             sstable.getSSTableHashID());
-                                    Thread.sleep(100);
+                                    Thread.sleep(10);
                                 } catch (InterruptedException e) {
                                     // TODO Auto-generated catch block
                                     e.printStackTrace();
@@ -1202,11 +1202,11 @@ public class SinglePartitionReadCommand extends ReadCommand implements SinglePar
                         }
                     } else {
                         while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID()) &&
-                                retryCount < 1000) {
+                                retryCount < 5000) {
                             try {
                                 logger.debug("rymDebug: the sstable ({}) is still downloading!",
                                         sstable.getSSTableHashID());
-                                Thread.sleep(100);
+                                Thread.sleep(10);
                             } catch (InterruptedException e) {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
