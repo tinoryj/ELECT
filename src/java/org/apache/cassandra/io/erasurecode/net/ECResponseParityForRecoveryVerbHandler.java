@@ -99,6 +99,7 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
 
 
             StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].put(parityCode);
+            logger.debug("rymDebug: Put parity code ({}) for sstable ({}), the index is ({})", parityCodeFileName, sstHash, k+i);
             // } else {
             //     throw new FileNotFoundException(String.format("rymERROR: cannot download file (%s) from cloud", parityCodeFileName));
             // }

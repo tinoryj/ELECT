@@ -57,7 +57,7 @@ public class ECRecovery {
     private static final Logger logger = LoggerFactory.getLogger(ECRecovery.class);
     public static final ECRecovery instance = new ECRecovery();
 
-    public synchronized static void recoveryDataFromErasureCodes(final String sstHash, CountDownLatch latch) throws Exception {
+    public static void recoveryDataFromErasureCodes(final String sstHash, CountDownLatch latch) throws Exception {
 
         if(ECNetutils.getIsRecovered(sstHash))
             return;
@@ -255,9 +255,9 @@ public class ECRecovery {
         int retryCount = 0;
         int[] decodeIndexes = new int[k];
         if (buffers != null) {
-            while (!checkCodesAreReady(buffers, k - zeroChunkNum)) {
+            while (!checkCodesAreReady(buffers, k - zeroChunkNum, oldSSTHash)) {
                 try {
-                    if (retryCount < 500) {
+                    if (retryCount < 5000) {
                         Thread.sleep(10);
                         retryCount++;
                     } else {
@@ -299,16 +299,18 @@ public class ECRecovery {
         return decodeIndexes;
     }
 
-    private static boolean checkCodesAreReady(ByteBuffer[] checkBuffers, int chunkNum) {
+    private static boolean checkCodesAreReady(ByteBuffer[] checkBuffers, int chunkNum, String sstHash) {
         int readyBlocks = 0;
         for (ByteBuffer buf : checkBuffers) {
             if (buf.position() != 0) {
                 readyBlocks++;
             }
             if (readyBlocks >= chunkNum) {
+                logger.debug("rymDebug: [Debug recovery] The erasure code for sstable ({}) is ready!", sstHash);
                 return true;
             }
         }
+        logger.debug("rymDebug: [Debug recovery] checkCodesAreReady, ready blocks for sstable ({}) are ({})", sstHash, readyBlocks);
         return false;
     }
 
