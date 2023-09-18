@@ -58,7 +58,7 @@ public class ECRecoveryForSecondary {
 
     public void sendDataToSecondaryNode(InetAddressAndPort target) {
 
-        logger.debug("rymDebug: [Debug recovery] send raw data of sstable ({}) to node ({})", this.sstHash, target);
+        logger.debug("ELECT-Debug: [Debug recovery] send raw data of sstable ({}) to node ({})", this.sstHash, target);
         Message<ECRecoveryForSecondary> message = Message.outWithFlag(Verb.ECRECOVERYDATA_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, target);
     }

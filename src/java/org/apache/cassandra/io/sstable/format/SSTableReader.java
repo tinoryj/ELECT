@@ -424,20 +424,20 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs,
             String fileNamePrefix, TimeUUID txnId) throws IOException {
 
-        logger.debug("rymDebug: this is invoke openECSSTable method, transaction is ({})", txnId);
+        logger.debug("ELECT-Debug: this is invoke openECSSTable method, transaction is ({})", txnId);
         // Get a correct generation id
         SSTableId ecSSTableId = cfs.sstableIdGenerator.get();
         String dataForRewriteDir = ECNetutils.getDataForRewriteDir();
         String dataParentDir = ECNetutils.getDataDir() + "ycsb/";
         Optional<Path> directory = ECNetutils.findDirectoryByPrefix(Paths.get(dataParentDir), cfs.name);
-        logger.debug("rymDebug: Get generation id ({}), transaction is ({})", ecSSTableId, txnId);
+        logger.debug("ELECT-Debug: Get generation id ({}), transaction is ({})", ecSSTableId, txnId);
 
         String dataDir = directory.get().toString();
-        // logger.debug("rymDebug: get data directory {} (by prefix) for cf {}",
+        // logger.debug("ELECT-Debug: get data directory {} (by prefix) for cf {}",
         // dataDir, cfs.name);
 
         List<String> sstableComponents = List.of("Filter.db", "Index.db", "Statistics.db", "Summary.db");
-        // logger.debug("rymDebug: get sstable id {} for ecMetadata!", ecSSTableId);
+        // logger.debug("ELECT-Debug: get sstable id {} for ecMetadata!", ecSSTableId);
         for (String component : sstableComponents) {
             String sourceFileName = dataForRewriteDir + fileNamePrefix + component;
             String destFileName = dataDir + "/nb-" + ecSSTableId + "-big-" + component;
@@ -450,29 +450,29 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             }
 
         }
-        logger.debug("rymDebug: Move the received files ({}) as components, transaction is ({})", ecSSTableId, txnId);
+        logger.debug("ELECT-Debug: Move the received files ({}) as components, transaction is ({})", ecSSTableId, txnId);
 
         // Write a TOC.txt file and rename other files
         String tocFileName = dataDir + "/nb-" + ecSSTableId + "-big-TOC.txt";
         List<String> lines = List.of("Filter.db", "Index.db", "Statistics.db", "TOC.txt", "EC.db", "Summary.db");
         Path tocFile = Paths.get(tocFileName);
         Files.write(tocFile, lines);
-        logger.debug("rymDebug: Write down the toc files, transaction is ({})", txnId);
+        logger.debug("ELECT-Debug: Write down the toc files, transaction is ({})", txnId);
 
         // get descriptor from toc file name
         Descriptor desc = Descriptor.fromFilename(tocFileName);
         // write ECMetadata
-        logger.debug("rymDebug: Load ec metadata ({}) for transaction ({})", sstHash, txnId);
+        logger.debug("ELECT-Debug: Load ec metadata ({}) for transaction ({})", sstHash, txnId);
         loadECMetadata(ecMetadata, desc, txnId);
 
-        logger.debug("rymDebug: open sstable ({}) for transaction ({})", sstHash, txnId);
+        logger.debug("ELECT-Debug: open sstable ({}) for transaction ({})", sstHash, txnId);
         SSTableReader ecSSTable = open(desc);
         if (ecSSTable.getSSTableHashID().equals(sstHash) || sstHash == null) {
             StorageService.instance.globalSSTHashToECSSTableMap.put(ecSSTable.getSSTableHashID(), ecSSTable);
-            logger.debug("rymDebug: [In secondary node] map sstHash ({}) to ecSSTable ({}) for ecMetadata ({})",
+            logger.debug("ELECT-Debug: [In secondary node] map sstHash ({}) to ecSSTable ({}) for ecMetadata ({})",
                     ecSSTable.getSSTableHashID(), ecSSTable.descriptor, ecMetadata.ecMetadataContent.stripeId);
         } else {
-            logger.warn("rymDebug: sstHash ({}) is not equal to ecSSTable ({})", sstHash, ecSSTable.getSSTableHashID());
+            logger.warn("ELECT-Debug: sstHash ({}) is not equal to ecSSTable ({})", sstHash, ecSSTable.getSSTableHashID());
         }
 
         return ecSSTable;
@@ -482,21 +482,21 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
     public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc, TimeUUID txnId)
             throws FileNotFoundException {
 
-        logger.debug("rymDebug: this is loadECMetadata for ({})", txnId);
+        logger.debug("ELECT-Debug: this is loadECMetadata for ({})", txnId);
         File ecMetadataFile = new File(desc.filenameFor(Component.EC_METADATA));
         if (ecMetadataFile.exists())
             FileUtils.deleteWithConfirm(ecMetadataFile);
 
         // else if(ecMetadata.ecMetadataContent.isParityUpdate)
-        // throw new FileNotFoundException(String.format("rymERROR: Cannot found EC
+        // throw new FileNotFoundException(String.format("ELECT-ERROR: Cannot found EC
         // metadata file ({})", desc));
 
         try {
             byte[] buffer = ByteObjectConversion.objectToByteArray((Serializable) ecMetadata.ecMetadataContent);
             ECNetutils.writeBytesToFile(ecMetadataFile.absolutePath(), buffer);
-            logger.debug("rymDebug: load ec metadata for transaction ({})", txnId);
+            logger.debug("ELECT-Debug: load ec metadata for transaction ({})", txnId);
         } catch (IOException e) {
-            logger.error("rymERROR: Cannot save SSTable ecMetadataFile: ", e);
+            logger.error("ELECT-ERROR: Cannot save SSTable ecMetadataFile: ", e);
             if (ecMetadataFile.exists())
                 FileUtils.deleteWithConfirm(ecMetadataFile);
         }
@@ -549,10 +549,10 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         SSTableReader newSSTable = SSTableReader.open(desc);
         ColumnFamilyStore cfs = Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
         final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
-        logger.debug("rymDebug: Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
+        logger.debug("ELECT-Debug: Create a transaction ({}) for loading raw data of sstable ({})", txn.opId(), desc);
         try {
             if (!newSSTable.SetIsReplicationTransferredToErasureCoding()) {
-                logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+                logger.error("ELECT-ERROR: set IsReplicationTransferredToErasureCoding failed!");
             }
 
         } catch (IOException e) {
@@ -592,7 +592,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             else {
                 try {
                     Thread.sleep(1000);
-                    logger.debug("rymDebug: Check the downloaded file is ready? For sstable ({}), the size is ({})", oldSSTable.getSSTableHashID(), Files.size(path) );
+                    logger.debug("ELECT-Debug: Check the downloaded file is ready? For sstable ({}), the size is ({})", oldSSTable.getSSTableHashID(), Files.size(path) );
                     retryCheckFileCount++;
                 } catch (InterruptedException e) {
                     // TODO Auto-generated catch block
@@ -607,7 +607,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // replace the old sstable with a new one
         SSTableReader newSSTable = SSTableReader.open(desc);
         if (oldSSTable.getSSTableHashID() == null) {
-            logger.error("[Tinoryj-ERROR] Could not get old sstable's hash for reload");
+            logger.error("[ELECT-ERROR] Could not get old sstable's hash for reload");
             return;
         }
 
@@ -621,7 +621,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
             final LifecycleTransaction txn = cfs.getTracker().tryModify(oldSSTable, OperationType.COMPACTION);
             if (txn != null) {
                 logger.debug(
-                        "rymDebug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})",
+                        "ELECT-Debug: [Migration Stage] Create a transaction ({}) for loading raw data of sstable ({})",
                         txn.opId(), desc);
 
                 try {
@@ -630,23 +630,23 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                     Throwables.maybeFail(txn.commitEC(null, newSSTable, false));
 
                     logger.debug(
-                            "[Tinoryj] Before insert download SSTable into map success, current map size is ({})",
+                            "[ELECT] Before insert download SSTable into map success, current map size is ({})",
                             StorageService.instance.globalDownloadedSSTableMap.size());
                     SSTableReader oldValue = StorageService.instance.globalDownloadedSSTableMap.put(
                             newSSTable.getSSTableHashID(),
                             newSSTable);
                     if (ECNetutils.getIsDownloaded(newSSTable.getSSTableHashID())) {
                         if (oldValue == null) {
-                            logger.debug("[Tinoryj] Insert download SSTable into map success, current map size is ({})",
+                            logger.debug("[ELECT] Insert download SSTable into map success, current map size is ({})",
                                     StorageService.instance.globalDownloadedSSTableMap.size());
                         } else {
                             logger.debug(
-                                    "[Tinoryj] Replcae download SSTable into map success, current map size is ({}), the original sstable for this hash is ({})",
+                                    "[ELECT] Replcae download SSTable into map success, current map size is ({}), the original sstable for this hash is ({})",
                                     StorageService.instance.globalDownloadedSSTableMap.size(), oldValue.getFilename());
                         }
                     } else {
                         logger.error(
-                                "[Tinoryj-ERROR] Could not insert download SSTable ({}) into map, current map size is ({})",
+                                "[ELECT-ERROR] Could not insert download SSTable ({}) into map, current map size is ({})",
                                 newSSTable.getSSTableHashID(),
                                 StorageService.instance.globalDownloadedSSTableMap.size());
                     }
@@ -658,7 +658,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                 }
 
                 try {
-                    logger.debug("rymERROR: [Migration Stage] An error occurred. Retrying...Attempt {} of {}",
+                    logger.debug("ELECT-ERROR: [Migration Stage] An error occurred. Retrying...Attempt {} of {}",
                                 retryCount + 1, MAX_RETRIES);
                     retryCount++;
                     Thread.sleep(100);
@@ -667,7 +667,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
                     e.printStackTrace();
                 }
             } else {
-                logger.debug("rymDebug: the txn is null for loading migration sstable ({},{})",
+                logger.debug("ELECT-Debug: the txn is null for loading migration sstable ({},{})",
                         newSSTable.getFilename(),
                         newSSTable.getSSTableHashID());
                 // Decide if you want to break or continue here
@@ -676,12 +676,12 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
         // If we've exhausted retries, handle as necessary.
         if (retryCount >= MAX_RETRIES) {
-            logger.error("rymERROR: [Migration Stage] Max retry attempts for update migrated raw sstable reached. Exiting...");
+            logger.error("ELECT-ERROR: [Migration Stage] Max retry attempts for update migrated raw sstable reached. Exiting...");
 
         }
 
         if(!ECNetutils.getIsDownloaded(newSSTable.getSSTableHashID())) {
-            logger.debug("[Tinoryj] Retry to get the sstable ({},{}) from downloaded map",
+            logger.debug("[ELECT] Retry to get the sstable ({},{}) from downloaded map",
                     newSSTable.getFilename(),
                     newSSTable.getSSTableHashID());
         }
@@ -1017,7 +1017,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     public String getSSTableHashID() {
         if (!readAndSetHashIDIfNotExists()) {
-            logger.error("[Tinoryj-ERROR] could not setup hash ID for current sstable = {}",
+            logger.error("[ELECT-ERROR] could not setup hash ID for current sstable = {}",
                     descriptor.filenameFor(Component.DATA));
         }
         return stringToHex(sstableMetadata.hashID());
@@ -1025,7 +1025,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
 
     public long getDataFileSize() {
         if (!readAndSetHashIDIfNotExists()) {
-            logger.error("[Tinoryj-ERROR] could not setup hash ID for current sstable = {}",
+            logger.error("[ELECT-ERROR] could not setup hash ID for current sstable = {}",
                     descriptor.filenameFor(Component.DATA));
         }
         return sstableMetadata.dataFileSize;
@@ -1883,7 +1883,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // final List<IndexesBounds> indexRanges =
         // getSampleIndexesForRanges(indexSummary,
         // Collections.singletonList(fullRange()));
-        // logger.debug("rymDebug: this is get all keys");
+        // logger.debug("ELECT-Debug: this is get all keys");
 
         ISSTableScanner scanner = this.getScanner();
         List<String> allKeys = new ArrayList<String>();
@@ -1893,7 +1893,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         }
         scanner.close();
 
-        // logger.debug("rymDebug: this is get all keys successfully, key number is {}",
+        // logger.debug("ELECT-Debug: this is get all keys successfully, key number is {}",
         // allKeys.size());
         return allKeys;
     }
@@ -1924,7 +1924,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
      */
     public ISSTableScanner getScanner(Range<Token> range) {
 
-        // logger.debug("rymDebug: cfName is {}, sstable level is {},
+        // logger.debug("ELECT-Debug: cfName is {}, sstable level is {},
         // BigTableScanner.getscanner7",
         // this.getColumnFamilyName(), this.getSSTableLevel());
         if (range == null)
@@ -2073,13 +2073,13 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // this.isReplicationTransferredToErasureCoding = true;
         // this.sstableMetadata.setIsReplicationTransferredToErasureCodingFlag(true);
         synchronized (tidy.global) {
-            logger.debug("rymDebug: set is replication transferred to erasure coding flag for sstable ({})",
+            logger.debug("ELECT-Debug: set is replication transferred to erasure coding flag for sstable ({})",
                     this.getSSTableHashID());
             descriptor.getMetadataSerializer().setIsTransferredToErasureCoding(descriptor, this.getSSTableHashID(),true);
             reloadSSTableMetadata();
         }
         if (this.sstableMetadata.isReplicationTransferToErasureCoding) {
-            logger.debug("rymDebug: set sstable ({}) as transferred successfully!", this.getSSTableHashID());
+            logger.debug("ELECT-Debug: set sstable ({}) as transferred successfully!", this.getSSTableHashID());
             return true;
         } else {
             return false;
@@ -2090,7 +2090,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         // this.isDataMigrateToCloud = true;
         // this.sstableMetadata.setIsDataMigrateToCloudFlag(true);
         synchronized (tidy.global) {
-            logger.debug("rymDebug: set is migrated to cloud flag for sstable ({})", this.getSSTableHashID());
+            logger.debug("ELECT-Debug: set is migrated to cloud flag for sstable ({})", this.getSSTableHashID());
             descriptor.getMetadataSerializer().setIsDataMigrateToCloud(descriptor, this.getSSTableHashID(), flag);
             reloadSSTableMetadata();
         }

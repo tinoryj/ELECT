@@ -365,7 +365,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
     public List<SSTableReader> finish()
     {
         // updateState();
-        // logger.debug("rymDebug: updated state is {}", state());
+        // logger.debug("ELECT-Debug: updated state is {}", state());
         super.finish();
         return finished();
     }

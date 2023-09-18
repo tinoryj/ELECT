@@ -4138,7 +4138,7 @@ public class StorageService extends NotificationBroadcasterSupport
             ECNetutils.writeBytesToFile(backupDir + "migratedSStables",  
                                         ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.migratedSStables));
 
-            logger.debug("rymDebug: backup migrated parity codes({}), migrated sstables ({})", StorageService.instance.migratedParityCodes, StorageService.instance.migratedSStables);
+            logger.debug("ELECT-Debug: backup migrated parity codes({}), migrated sstables ({})", StorageService.instance.migratedParityCodes, StorageService.instance.migratedSStables);
 
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -4163,7 +4163,7 @@ public class StorageService extends NotificationBroadcasterSupport
             StorageService.instance.migratedParityCodeCount = migratedParityCodes.size();
             StorageService.instance.migratedRawSSTablecount = migratedSStables.size();
 
-            logger.debug("rymDebug: reload migrated parity codes({}), migrated sstables ({})", StorageService.instance.migratedParityCodes, StorageService.instance.migratedSStables);
+            logger.debug("ELECT-Debug: reload migrated parity codes({}), migrated sstables ({})", StorageService.instance.migratedParityCodes, StorageService.instance.migratedSStables);
 
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -4673,7 +4673,7 @@ public class StorageService extends NotificationBroadcasterSupport
         // allHostsIterable.forEach(allHosts::add);
         // InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
         // Collections.sort(allHosts, comparator);
-        // logger.debug("rymDebug: for token ({}), all hosts number is ({}), hosts are ({})", token,allHosts.size(), allHosts);
+        // logger.debug("ELECT-Debug: for token ({}), all hosts number is ({}), hosts are ({})", token,allHosts.size(), allHosts);
         List<InetAddressAndPort> replicaNodes = new ArrayList<>();
 
         // Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
@@ -4701,7 +4701,7 @@ public class StorageService extends NotificationBroadcasterSupport
             replicaNodes.addAll(allHosts.subList(index, endIndex));
         }
 
-        logger.debug("rymDebug: token is ({}), replica nodes are ({}), all hosts are ({}), token ranges are ({})", token, replicaNodes, allHosts, Gossiper.getTokenRanges());
+        logger.debug("ELECT-Debug: token is ({}), replica nodes are ({}), all hosts are ({}), token ranges are ({})", token, replicaNodes, allHosts, Gossiper.getTokenRanges());
 
         return replicaNodes;
 
@@ -4720,7 +4720,7 @@ public class StorageService extends NotificationBroadcasterSupport
             }
         }
         Range<Token> result = tokenMetadata.getPrimaryRangeFor(rightToken);
-        logger.debug("rymDebug: All endpoints are ({}), all tokens are ({}), right token is ({}), result is ({})", allEndPoints, Gossiper.getTokenRanges(), rightToken, result);
+        logger.debug("ELECT-Debug: All endpoints are ({}), all tokens are ({}), right token is ({}), result is ({})", allEndPoints, Gossiper.getTokenRanges(), rightToken, result);
         return result;
     }
 
@@ -4739,7 +4739,7 @@ public class StorageService extends NotificationBroadcasterSupport
         int startIndex = allHosts.indexOf(primaryNode);
 
         if (startIndex == -1)
-            throw new IllegalStateException(String.format("rymERROR: primary node %s is not in the live member set %s.",
+            throw new IllegalStateException(String.format("ELECT-ERROR: primary node %s is not in the live member set %s.",
                     primaryNode, allHosts));
 
         int endIndex = startIndex + rf;

@@ -152,7 +152,7 @@ public class ECMetadata implements Serializable {
      * @param parityHashes
      */
     public synchronized void generateAndDistributeMetadata(ECMessage[] messages, List<String> parityHashes) {
-        logger.debug("rymDebug: this generateMetadata method");
+        logger.debug("ELECT-Debug: this generateMetadata method");
         // get stripe id, sst content hashes and primary nodes
         String connectedSSTHash = "";
         for (ECMessage msg : messages) {
@@ -196,7 +196,7 @@ public class ECMetadata implements Serializable {
             this.ecMetadataContentBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMetadataContent);
             this.ecMetadataContentBytesSize = this.ecMetadataContentBytes.length;
             if (this.ecMetadataContentBytes.length == 0) {
-                logger.error("rymERROR: no metadata content");
+                logger.error("ELECT-ERROR: no metadata content");
             }
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -232,7 +232,7 @@ public class ECMetadata implements Serializable {
             this.ecMetadataContent.sstHashIdList.set(targetIndex, newSSTHash);
         } else {
             throw new IllegalStateException(String.format(
-                    "rymERROR: Unexpect state, the target index is (%s), but the truely needed index is (%s)",
+                    "ELECT-ERROR: Unexpect state, the target index is (%s), but the truely needed index is (%s)",
                     targetIndex,
                     this.ecMetadataContent.sstHashIdList.indexOf(oldSSTHash)));
         }
@@ -246,7 +246,7 @@ public class ECMetadata implements Serializable {
         this.ecMetadataContent.targetIndex = targetIndex;
 
         if (!oldReplicaNodes.equals(newReplicaNodes)) {
-            logger.warn("rymDebug: new replication nodes {} are different from old replication nodes {}",
+            logger.warn("ELECT-Debug: new replication nodes {} are different from old replication nodes {}",
                     newReplicaNodes, oldReplicaNodes);
             // update primary node list
             this.ecMetadataContent.primaryNodes.set(targetIndex, newReplicaNodes.get(0));
@@ -273,18 +273,18 @@ public class ECMetadata implements Serializable {
         }
         String oldStripId = this.ecMetadataContent.stripeId;
         this.ecMetadataContent.stripeId = ECNetutils.stringToHex(String.valueOf(connectedSSTHash.hashCode()));
-        logger.debug("rymDebug: Update old strip id ({}) with a new one ({})", oldStripId,
+        logger.debug("ELECT-Debug: Update old strip id ({}) with a new one ({})", oldStripId,
                 this.ecMetadataContent.stripeId);
 
         logger.debug(
-                "rymDebug: this update ECMetadata method, we update old sstable ({}) with new sstable ({}) for strip id ({})",
+                "ELECT-Debug: this update ECMetadata method, we update old sstable ({}) with new sstable ({}) for strip id ({})",
                 oldSSTHash, newSSTHash, this.ecMetadataContent.stripeId);
 
         try {
             this.ecMetadataContentBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMetadataContent);
             this.ecMetadataContentBytesSize = this.ecMetadataContentBytes.length;
             if (this.ecMetadataContentBytes.length == 0) {
-                logger.error("rymERROR: no metadata content");
+                logger.error("ELECT-ERROR: no metadata content");
             }
         } catch (IOException e) {
             // TODO Auto-generated catch block
@@ -305,7 +305,7 @@ public class ECMetadata implements Serializable {
 
         // parity update is finished, we update the globalUpdatingStripList
         StorageService.instance.globalUpdatingStripList.remove(oldStripId);
-        logger.debug("rymDebug: We replaced the oldStrip {} with the newStrip {} successfully.", oldStripId,
+        logger.debug("ELECT-Debug: We replaced the oldStrip {} with the newStrip {} successfully.", oldStripId,
                 this.ecMetadataContent.stripeId);
         // StorageService.instance.globalUpdatingStripList.compute(this.stripeId, (key,
         // oldValue) -> oldValue - 1);
@@ -328,7 +328,7 @@ public class ECMetadata implements Serializable {
         boolean isSelectedOneOldSSTable = false;
         for (String sstHash : newSSTHashList) {
             StorageService.instance.globalSSTHashToStripIDMap.put(sstHash, newStripId);
-            logger.debug("rymDebug:[ErasureCoding] In node {}, we map sstHash {} to stripID {}",
+            logger.debug("ELECT-Debug:[ErasureCoding] In node {}, we map sstHash {} to stripID {}",
                     FBUtilities.getBroadcastAddressAndPort(),
                     sstHash,
                     newStripId);
@@ -348,7 +348,7 @@ public class ECMetadata implements Serializable {
             InetAddressAndPort primaryNode = sstHashIdToReplicaMap.get(sstHash).get(0);
             SSTableContentWithHashID oldSSTableForParityUpdate = StorageService.instance.globalPendingOldSSTableForECStripUpdateMap
                     .get(sstHash);
-            logger.debug("rymDebug: We move the old sstable {} from pending list to ready list to update strip {}",
+            logger.debug("ELECT-Debug: We move the old sstable {} from pending list to ready list to update strip {}",
                     sstHash, newStripId);
 
             ECNetutils.addOldSSTableForECStripeUpdateToReadyList(primaryNode, oldSSTableForParityUpdate);
@@ -364,7 +364,7 @@ public class ECMetadata implements Serializable {
      */
     public void distributeECMetadata(ECMetadata ecMetadata) {
         logger.debug(
-                "rymDebug: [In parity node ({})] This distributeEcMetadata method, we should send stripId ({}) with sstables list ({}) to node ({}), the sstHashToRelicaMap is ({}), old sstable hash is ({}). We can check that the primary nodes are ({}), parity nodes are ({})",
+                "ELECT-Debug: [In parity node ({})] This distributeEcMetadata method, we should send stripId ({}) with sstables list ({}) to node ({}), the sstHashToRelicaMap is ({}), old sstable hash is ({}). We can check that the primary nodes are ({}), parity nodes are ({})",
                 FBUtilities.getBroadcastAddressAndPort(), ecMetadata.ecMetadataContent.stripeId,
                 ecMetadata.ecMetadataContent.sstHashIdList, ecMetadata.ecMetadataContent.secondaryNodes,
                 ecMetadata.ecMetadataContent.sstHashIdToReplicaMap, ecMetadata.ecMetadataContent.oldSSTHashForUpdate,
@@ -374,7 +374,7 @@ public class ECMetadata implements Serializable {
 
         // send to secondary nodes
         int rf = 3;
-        logger.debug("rymDebug: For strip id ({}), we should record ecSSTable ({}) times in total",
+        logger.debug("ELECT-Debug: For strip id ({}), we should record ecSSTable ({}) times in total",
                 ecMetadata.ecMetadataContent.stripeId, DatabaseDescriptor.getEcDataNodes() * (rf - 1));
         for (InetAddressAndPort node : ecMetadata.ecMetadataContent.secondaryNodes) {
             MessagingService.instance().send(message, node);
@@ -387,7 +387,7 @@ public class ECMetadata implements Serializable {
         // }
         // }
 
-        logger.debug("rymDebug: store stripID {} in node {}", ecMetadata.ecMetadataContent.stripeId,
+        logger.debug("ELECT-Debug: store stripID {} in node {}", ecMetadata.ecMetadataContent.stripeId,
                 FBUtilities.getBroadcastAddressAndPort());
     }
 
@@ -448,7 +448,7 @@ public class ECMetadata implements Serializable {
     // fileName, offset));
     // }
     // fileStream.close();
-    // logger.debug("rymDebug: read file {} successfully!", fileName);
+    // logger.debug("ELECT-Debug: read file {} successfully!", fileName);
     // return buffer;
     // // return ByteBuffer.wrap(buffer);
     // }
@@ -462,10 +462,10 @@ public class ECMetadata implements Serializable {
     // return obj;
     // }
     public static void main(String[] args) throws Exception {
-        String ecMetadataFile = "/home/rym/nb-627-big-EC.db";
+        String ecMetadataFile = "./nb-627-big-EC.db";
         byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
         ECMetadataContent ecMetadata = (ECMetadataContent) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
-        logger.debug("rymDebug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.stripeId);
+        logger.debug("ELECT-Debug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.stripeId);
 
     }
 

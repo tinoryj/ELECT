@@ -68,7 +68,7 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter {
     @SuppressWarnings("resource")
     public boolean realAppend(UnfilteredRowIterator partition) {
         if(sstableWriter.currentWriter().first != null && sstableWriter.currentWriter().first.compareTo(partition.partitionKey()) >= 0) {
-            logger.error("rymERROR: MajorLeveledCompactionWriter first key {} is larger than right key {}",
+            logger.error("ELECT-ERROR: MajorLeveledCompactionWriter first key {} is larger than right key {}",
                          sstableWriter.currentWriter().first.getToken(),
                          sstableWriter.currentWriter().last.getToken());
         }
@@ -81,11 +81,11 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter {
         if (totalWrittenInCurrentWriter > maxSSTableSize) {
             totalWrittenInLevel += totalWrittenInCurrentWriter;
             sstableWriter.currentWriter().last = partition.partitionKey();
-            logger.debug("rymDebug: MajorLeveledCompactionWriter first key is {}, last key is {}",
+            logger.debug("ELECT-Debug: MajorLeveledCompactionWriter first key is {}, last key is {}",
                          sstableWriter.currentWriter().first, sstableWriter.currentWriter().last);
             if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel, levelFanoutSize, maxSSTableSize)) {
                 totalWrittenInLevel = 0;
-                // logger.debug("[Tinoryj] current total written in level: {}, current level = {}", totalWrittenInLevel, currentLevel);
+                // logger.debug("[ELECT] current total written in level: {}, current level = {}", totalWrittenInLevel, currentLevel);
                 currentLevel++;
             }
             switchCompactionLocation(sstableDirectory);
@@ -101,7 +101,7 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter {
             totalWrittenInLevel += sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten();
             // if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel, levelFanoutSize, maxSSTableSize)) {
             //     totalWrittenInLevel = 0;
-            //     // logger.debug("[Tinoryj] current total written in level: {}, current level = {}", totalWrittenInLevel, currentLevel);
+            //     // logger.debug("[ELECT] current total written in level: {}, current level = {}", totalWrittenInLevel, currentLevel);
             //     currentLevel++;
             // }
             switchCompactionLocation(sstableDirectory);
@@ -114,7 +114,7 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter {
             totalWrittenInLevel += totalWrittenInCurrentWriter;
             if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel, levelFanoutSize, maxSSTableSize)) {
                 totalWrittenInLevel = 0;
-                // logger.debug("[Tinoryj] current total written in level: {}, current level = {}", totalWrittenInLevel, currentLevel);
+                // logger.debug("[ELECT] current total written in level: {}, current level = {}", totalWrittenInLevel, currentLevel);
                 currentLevel++;
             }
             switchCompactionLocation(sstableDirectory);

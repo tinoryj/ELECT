@@ -1240,7 +1240,7 @@ public class DatabaseDescriptor
     {
 
         Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
-        logger.debug("rymDebug: get the token ranges are: {}", tokenRanges);
+        logger.debug("ELECT-Debug: get the token ranges are: {}", tokenRanges);
         if (conf.initial_token != null)
         {
             Collection<String> tokens = tokensFromString(conf.initial_token);

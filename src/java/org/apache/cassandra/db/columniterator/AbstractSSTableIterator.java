@@ -99,14 +99,14 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                     // Not indexed (or is reading static), set to the beginning of the partition and read partition level deletion there
                     if (file == null) {
                         file = sstable.getFileDataInput(indexEntry.position);
-                        // ECNetutils.printStackTace(String.format("rymDebug: The file of sstable %s (hash: %s) is null, the position is %s, is recovered sstable? (%s).", 
+                        // ECNetutils.printStackTace(String.format("ELECT-Debug: The file of sstable %s (hash: %s) is null, the position is %s, is recovered sstable? (%s).", 
                         //                                         sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position, ECNetutils.getIsRecovered(sstable.getSSTableHashID())));
-                        // logger.debug("rymDebug: The file of sstable {} (hash: {}) is null, the position is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position);
+                        // logger.debug("ELECT-Debug: The file of sstable {} (hash: {}) is null, the position is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position);
                     }
                         
                     else{
                         file.seek(indexEntry.position);
-                        // ECNetutils.printStackTace(String.format("rymDebug: The position of sstable %s (hash: %s) is %s, is recovered sstable? (%s).", 
+                        // ECNetutils.printStackTace(String.format("ELECT-Debug: The position of sstable %s (hash: %s) is %s, is recovered sstable? (%s).", 
                         //                                         sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position, ECNetutils.getIsRecovered(sstable.getSSTableHashID())));
                     }
 
@@ -126,7 +126,7 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                     this.reader = createReader(indexEntry, file, shouldCloseFile);
                 }
                 if (!partitionLevelDeletion.validate()){
-                    logger.debug("rymDebug: The partition level deletion is invalid,  the sstable is [{}, {}].", sstable.getFilename(), sstable.getSSTableHashID());
+                    logger.debug("ELECT-Debug: The partition level deletion is invalid,  the sstable is [{}, {}].", sstable.getFilename(), sstable.getSSTableHashID());
                     UnfilteredValidation.handleInvalid(metadata(), key, sstable, "partitionLevelDeletion="+partitionLevelDeletion.toString());
                 }
 
@@ -369,7 +369,7 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                 }
                 sstable.markSuspect();
                 if(ECNetutils.getIsRecovered(sstable.getSSTableHashID()))
-                    logger.debug("rymDebug: Read recovered sstable failed, hash is ({})", sstable.getSSTableHashID());
+                    logger.debug("ELECT-Debug: Read recovered sstable failed, hash is ({})", sstable.getSSTableHashID());
                 throw new CorruptSSTableException(e, reader.file.getPath());
             }
         }

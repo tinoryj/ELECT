@@ -225,7 +225,7 @@ public class View {
      *         for the given @param key, according to the interval tree
      */
     public static Function<View, Iterable<SSTableReader>> select(SSTableSet sstableSet, DecoratedKey key) {
-        // Tinoryj TODO: check if the SSTableSet.LIVE contains the metadata sstables
+        // ELECT TODO: check if the SSTableSet.LIVE contains the metadata sstables
         // that have been rewritten.
         assert sstableSet == SSTableSet.LIVE;
         return (view) -> view.intervalTree.search(key);
@@ -287,7 +287,7 @@ public class View {
                 for (SSTableReader reader : readers){
                     if (view.compacting.contains(reader) || view.sstablesMap.get(reader) != reader || reader.isMarkedCompacted()) {
                         // if (reader.isReplicationTransferredToErasureCoding() && !reader.getColumnFamilyName().equals("usertable0") && view.sstablesMap.get(reader) != reader) {
-                        //     logger.debug("rymDebug: the transferred sstable {} is already marked as compaction! The reason is view.compacting.contains? ({}), view.sstablesMap.get(reader) != reader? ({}), view.sstablesMap.get(reader) ({}) reader.isMarkedCompacted? ({})",
+                        //     logger.debug("ELECT-Debug: the transferred sstable {} is already marked as compaction! The reason is view.compacting.contains? ({}), view.sstablesMap.get(reader) != reader? ({}), view.sstablesMap.get(reader) ({}) reader.isMarkedCompacted? ({})",
                         //             reader.getSSTableHashID(), view.compacting.contains(reader),
                         //             view.sstablesMap.get(reader) != reader, view.sstablesMap.get(reader),
                         //             reader.isMarkedCompacted());

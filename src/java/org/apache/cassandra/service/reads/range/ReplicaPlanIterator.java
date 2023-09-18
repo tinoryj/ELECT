@@ -71,7 +71,7 @@ class ReplicaPlanIterator extends AbstractIterator<ReplicaPlan.ForRangeRead> {
     protected ReplicaPlan.ForRangeRead computeNext() {
         if (!ranges.hasNext())
             return endOfData();
-        logger.debug("[Tinoryj] Compute next replica plan for range read");
+        logger.debug("[ELECT] Compute next replica plan for range read");
         return ReplicaPlans.forRangeRead(keyspace, consistency, ranges.next(), 1);
     }
 

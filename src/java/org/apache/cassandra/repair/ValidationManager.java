@@ -150,7 +150,7 @@ public class ValidationManager
 
         long createMerkleTreeTimeCost = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
         StorageService.instance.createMerkleTreeTime += createMerkleTreeTimeCost;
-        logger.debug("rymDebug: In node ({}), the create merkle tree time cost: {} ms",
+        logger.debug("ELECT-Debug: In node ({}), the create merkle tree time cost: {} ms",
                      FBUtilities.getBroadcastAddressAndPort(), createMerkleTreeTimeCost);
         if (logger.isDebugEnabled())
         {

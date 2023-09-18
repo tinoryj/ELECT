@@ -76,7 +76,7 @@ public class ECRequestParityForRecovery {
         }
 
 
-        logger.debug("rymDebug: Request parity code {} from {} to update the old sstable {}",
+        logger.debug("ELECT-Debug: Request parity code {} from {} to update the old sstable {}",
                         this.parityHashList, target, this.sstHash);
         Message<ECRequestParityForRecovery> message = Message.outWithFlag(Verb.ECREQUESTPARITYFORRECOVERY_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, target);

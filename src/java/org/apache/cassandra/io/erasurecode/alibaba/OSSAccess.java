@@ -103,7 +103,7 @@ public class OSSAccess implements AutoCloseable {
 
     public boolean uploadFileToOSS(String targetFilePath) {
         String objectName = targetFilePath.replace('/', '_') + localIP;
-        logger.debug("rymDebug: target object name is ({})", objectName);
+        logger.debug("ELECT-Debug: target object name is ({})", objectName);
         try {
             InputStream inputStream = new FileInputStream(targetFilePath);
             // 创建PutObjectRequest对象。
@@ -134,13 +134,13 @@ public class OSSAccess implements AutoCloseable {
         
         try {
             long startUploadTime = System.currentTimeMillis();
-            logger.debug("rymDebug: target file path is ({}), content size is ({}), object name is ({})",
+            logger.debug("ELECT-Debug: target file path is ({}), content size is ({}), object name is ({})",
                     targetFilePath, content.length, objectName);
             PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName,
                     new ByteArrayInputStream(content));
             PutObjectResult result = ossClient.putObject(putObjectRequest);
             long timeCost = System.currentTimeMillis() - startUploadTime;
-            logger.debug("rymDebug: upload file to OSS cost time is ({}ms), the file size is ({}), file name is ({})", timeCost, content.length, targetFilePath);
+            logger.debug("ELECT-Debug: upload file to OSS cost time is ({}ms), the file size is ({}), file name is ({})", timeCost, content.length, targetFilePath);
         } catch (OSSException oe) {
             logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
                     + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
@@ -199,23 +199,23 @@ public class OSSAccess implements AutoCloseable {
             } catch (OSSException oe) {
                 logger.error("OSS Error Message:" + oe.getErrorMessage() + "\nError Code:" + oe.getErrorCode()
                         + "\nRequest ID:" + oe.getRequestId() + "\nRequest object key:" + objectName);
-                logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})",
+                logger.error("[ELECT-ERROR]: Download original file from OSS failed, file name is ({})",
                         objectName);
                 return false;
             } catch (ClientException ce) {
                 logger.error("OSS Internet Error Message:" + ce.getMessage());
-                logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})",
+                logger.error("[ELECT-ERROR]: Download original file from OSS failed, file name is ({})",
                         objectName);
                 return false;
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            logger.error("[Tinoryj-ERROR]: Download original file from OSS failed, file name is ({})", objectName);
+            logger.error("[ELECT-ERROR]: Download original file from OSS failed, file name is ({})", objectName);
             return false;
         } finally {
             semaphore.release();
         }
-        logger.debug("rymDebug: Downloaded original file from OSS, file name is ({})", objectName);
+        logger.debug("ELECT-Debug: Downloaded original file from OSS, file name is ({})", objectName);
         return true;
     }
 

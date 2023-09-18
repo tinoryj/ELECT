@@ -64,7 +64,7 @@ public class ECCompaction {
     }
 
     public void synchronizeCompaction(List<InetAddressAndPort> replicaNodes){
-        logger.debug("rymDebug: this synchronizeCompaction method, replicaNodes: {}, local node is {} ",
+        logger.debug("ELECT-Debug: this synchronizeCompaction method, replicaNodes: {}, local node is {} ",
          replicaNodes, FBUtilities.getBroadcastAddressAndPort());
         Message<ECCompaction> message = Message.outWithFlag(Verb.ECCOMPACTION_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         // send compaction request to all secondary nodes

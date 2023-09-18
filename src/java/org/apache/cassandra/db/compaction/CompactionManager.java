@@ -315,7 +315,7 @@ public class CompactionManager implements CompactionManagerMBean {
                     if (DatabaseDescriptor.automaticSSTableUpgrade())
                         ranCompaction = maybeRunUpgradeTask(strategy);
                 } else if (task.isContainReplicationTransferredToErasureCoding) {
-                    logger.debug("rymDebug[transferred]: this task contains transferred sstables.");
+                    logger.debug("ELECT-Debug[transferred]: this task contains transferred sstables.");
                     List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = ((LeveledCompactionTask) task).transferredSSTableKeyRanges;
                     task.execute(active, TransferredSSTableKeyRanges);
                     ranCompaction = true;
@@ -438,7 +438,7 @@ public class CompactionManager implements CompactionManagerMBean {
             final OneSSTableOperation operation,
             OperationType operationType)
             throws ExecutionException, InterruptedException {
-        // logger.info("rymDebug: Starting {} for {}.{}", operationType,
+        // logger.info("ELECT-Debug: Starting {} for {}.{}", operationType,
         // cfs.keyspace.getName(), cfs.getTableName());
         List<LifecycleTransaction> transactions = new ArrayList<>();
         List<Future<?>> futures = new ArrayList<>();
@@ -449,7 +449,7 @@ public class CompactionManager implements CompactionManagerMBean {
             rewriteSSTables = Lists.newArrayList(operation.filterSSTables(txn));
             int originalRewriteSSTablesNum = rewriteSSTables.size();
             if (Iterables.isEmpty(rewriteSSTables)) {
-                // logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(),
+                // logger.info("ELECT-Debug: No sstables to {} for {}.{}", operationType.name(),
                 // cfs.keyspace.getName(), cfs.name);
                 return AllSSTableOpStatus.SUCCESSFUL;
             }
@@ -501,7 +501,7 @@ public class CompactionManager implements CompactionManagerMBean {
             final OneSSTableOperation operation,
             OperationType operationType)
             throws ExecutionException, InterruptedException {
-        // logger.info("rymDebug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
+        // logger.info("ELECT-Debug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
         List<LifecycleTransaction> transactions = new ArrayList<>();
         List<Future<?>> futures = new ArrayList<>();
         try (txn) {
@@ -511,7 +511,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 candidates = Lists.newArrayList(operation.filterSSTables(txn));
             int originalRewriteSSTablesNum = candidates.size();
             if (Iterables.isEmpty(candidates)) {
-                // logger.info("rymDebug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
+                // logger.info("ELECT-Debug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
                 return AllSSTableOpStatus.SUCCESSFUL;
             }
 
@@ -711,13 +711,13 @@ public class CompactionManager implements CompactionManagerMBean {
                         while (iter.hasNext()) {
                             SSTableReader sstable = iter.next();
                             if (!sstableFilter.test(sstable)) {
-                                logger.warn(BLUE + "rymWarning: sstable {} is not qualified, cannot be rewritten!!!",
+                                logger.warn(BLUE + "ELECT-Warn: sstable {} is not qualified, cannot be rewritten!!!",
                                         sstable.getSSTableHashID() + RESET);
                                 transaction.cancel(sstable);
                                 iter.remove();
                             }
                             // else if (compacting.contains(sstable)) {
-                            // logger.warn(BLUE+"rymWarning: sstable {} is compacting, cannot be
+                            // logger.warn(BLUE+"ELECT-Warn: sstable {} is compacting, cannot be
                             // rewritten!!!", sstable.getFilename()+RESET);
                             // transaction.cancel(sstable);
                             // iter.remove();
@@ -735,7 +735,7 @@ public class CompactionManager implements CompactionManagerMBean {
                         task.setCompactionType(OperationType.COMPACTION);
                         // SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, cfs,
                         // fileNamePrefix);
-                        // logger.debug("rymDebug: open ec sstable {} successfully.",
+                        // logger.debug("ELECT-Debug: open ec sstable {} successfully.",
                         // ecSSTable.descriptor);
                         task.execute(active, first, last, ecMetadata, fileNamePrefix, sourceKeys);
                     }
@@ -799,7 +799,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 while (iter.hasNext()) {
                     SSTableReader sstable = iter.next();
                     if (!sstableFilter.test(sstable)) {
-                        logger.warn(BLUE+"rymWarning: sstable {} is not qualified, cannot be rewritten!!!", sstable.getFilename()+RESET);
+                        logger.warn(BLUE+"ELECT-Warn: sstable {} is not qualified, cannot be rewritten!!!", sstable.getFilename()+RESET);
                         transaction.cancel(sstable);
                         iter.remove();
                     }
@@ -821,11 +821,11 @@ public class CompactionManager implements CompactionManagerMBean {
                 if (task == null) {
                     return;
                 } else if(task.isContainECSSTable){
-                    logger.debug("rymDebug[Force compaction for the last level]: this task {} contains EC sstables.", task.transaction.opId());
+                    logger.debug("ELECT-Debug[Force compaction for the last level]: this task {} contains EC sstables.", task.transaction.opId());
                     List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = ((LeveledCompactionTask) task).transferredSSTableKeyRanges;
                     task.execute(active, TransferredSSTableKeyRanges);
                 } else {
-                    logger.debug("rymDebug[Force compaction for the last level]: this task {} not contains EC sstables.", task.transaction.opId());
+                    logger.debug("ELECT-Debug[Force compaction for the last level]: this task {} not contains EC sstables.", task.transaction.opId());
                     task.execute(active);
                 }
             }
@@ -848,7 +848,7 @@ public class CompactionManager implements CompactionManagerMBean {
                     isContainECSSTable = true;
                     TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                     transferredSSTableKeyRanges.add(range);
-                    logger.debug("rymDebug[transferred]: Selected transferred sstable {}, candidate count is {}",
+                    logger.debug("ELECT-Debug[transferred]: Selected transferred sstable {}, candidate count is {}",
                             sstable.descriptor, txn.originals().size());
                 } else if(!sstable.isReplicationTransferredToErasureCoding()) {
                     isContainRawSSTable = true;
@@ -873,7 +873,7 @@ public class CompactionManager implements CompactionManagerMBean {
         }
 
         logger.debug(
-                "rymDebug[transferred]: task {} is contain transferred ({}), isContainReplicationTransferredToErasureCoding is ({})",
+                "ELECT-Debug[transferred]: task {} is contain transferred ({}), isContainReplicationTransferredToErasureCoding is ({})",
                 newTask.transaction.opId(), newTask.isContainECSSTable,
                 isContainECSSTable);
         newTask.setUserDefined(true);

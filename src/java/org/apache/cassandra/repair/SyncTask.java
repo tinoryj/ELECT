@@ -79,7 +79,7 @@ public abstract class SyncTask extends AsyncFuture<SyncStat> implements Runnable
     public final void run()
     {
 
-        ECNetutils.printStackTace(String.format("rymDebug: Start to compare trees and trigger repairs for any ranges that mismatch. (%s)", 
+        ECNetutils.printStackTace(String.format("ELECT-Debug: Start to compare trees and trigger repairs for any ranges that mismatch. (%s)", 
                                                  FBUtilities.getBroadcastAddressAndPort()));
         startTime = currentTimeMillis();
 
@@ -88,7 +88,7 @@ public abstract class SyncTask extends AsyncFuture<SyncStat> implements Runnable
         String format = String.format("%s Endpoints %s and %s %%s for %s", previewKind.logPrefix(desc.sessionId), nodePair.coordinator, nodePair.peer, desc.columnFamily);
         long compareMerkleTreeCost = currentTimeMillis() - startTime;
         StorageService.instance.compareMerkleTreeTime += compareMerkleTreeCost;
-        logger.debug("rymDebug: compareMerkleTreeCost: {}, the ranges number that need to be synced is ({}), ranges are ({})", compareMerkleTreeCost, rangesToSync.size(), rangesToSync);
+        logger.debug("ELECT-Debug: compareMerkleTreeCost: {}, the ranges number that need to be synced is ({}), ranges are ({})", compareMerkleTreeCost, rangesToSync.size(), rangesToSync);
         if (rangesToSync.isEmpty())
         {
             logger.info(String.format(format, "are consistent"));
@@ -100,7 +100,7 @@ public abstract class SyncTask extends AsyncFuture<SyncStat> implements Runnable
         // non-0 difference: perform streaming repair
         logger.info(String.format(format, "have " + rangesToSync.size() + " range(s) out of sync"));
         Tracing.traceRepair("Endpoint {} has {} range(s) out of sync with {} for {}", nodePair.coordinator, rangesToSync.size(), nodePair.peer, desc.columnFamily);
-        logger.debug("rymDebug: Endpoint {} has {} range(s) out of sync with {} for {}", nodePair.coordinator, rangesToSync.size(), nodePair.peer, desc.columnFamily);
+        logger.debug("ELECT-Debug: Endpoint {} has {} range(s) out of sync with {} for {}", nodePair.coordinator, rangesToSync.size(), nodePair.peer, desc.columnFamily);
         startSync();
     }
 
@@ -119,7 +119,7 @@ public abstract class SyncTask extends AsyncFuture<SyncStat> implements Runnable
 
     void sendRequest(SyncRequest request, InetAddressAndPort to)
     {
-        ECNetutils.printStackTace(String.format("rymDebug: Node (%s) send sync signal to the endpoint(%s)",
+        ECNetutils.printStackTace(String.format("ELECT-Debug: Node (%s) send sync signal to the endpoint(%s)",
                                                  FBUtilities.getBroadcastAddressAndPort(), 
                                                  to));
         RepairMessage.sendMessageWithFailureCB(request,

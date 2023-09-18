@@ -147,7 +147,7 @@ public class UnfilteredRowIteratorSerializer
         while (iterator.hasNext()){
             Unfiltered row = iterator.next();
             if(row.kind() == Unfiltered.Kind.RANGE_TOMBSTONE_MARKER && tableName.contains("usertable")) {
-               ECNetutils.printStackTace(String.format("rymDebug: Mark this row as RangeTombStoneMarker", version));
+               ECNetutils.printStackTace(String.format("ELECT-Debug: Mark this row as RangeTombStoneMarker", version));
 
             }
             UnfilteredSerializer.serializer.serialize(row, helper, out, version);

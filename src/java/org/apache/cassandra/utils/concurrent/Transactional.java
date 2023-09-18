@@ -140,10 +140,10 @@ public interface Transactional extends AutoCloseable
             if (state != State.READY_TO_COMMIT) 
                 throw new IllegalStateException(String.format("Cannot commit unless READY_TO_COMMIT; state is {%s}, isRewrite {%s}", state, isRewrite));
 
-            logger.debug("rymDebug: This is commitEC transaction ({})", ecSSTable.getSSTableHashID());
+            logger.debug("ELECT-Debug: This is commitEC transaction ({})", ecSSTable.getSSTableHashID());
             accumulate = doCommit(accumulate, ecSSTable);
             accumulate = doPostCleanup(accumulate, ecSSTable);
-            logger.debug("rymDebug: successful commit ec_metadata {}", ecSSTable.descriptor);
+            logger.debug("ELECT-Debug: successful commit ec_metadata {}", ecSSTable.descriptor);
             state = State.COMMITTED;
             return accumulate;
         }

@@ -221,7 +221,7 @@ public class RangeCommandIterator extends AbstractIterator<RowIterator> implemen
             for (int i = 0; i < concurrencyFactor && replicaPlans.hasNext();) {
                 ReplicaPlan.ForRangeRead replicaPlan = replicaPlans.next();
 
-                logger.debug("[Tinoryj] The next request replica plan is : {}. contacts is {}", replicaPlan,
+                logger.debug("[ELECT] The next request replica plan is : {}. contacts is {}", replicaPlan,
                         replicaPlan.contacts());
                 @SuppressWarnings("resource") // response will be closed by concatAndBlockOnRepair, or in the catch
                                               // block below

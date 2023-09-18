@@ -136,7 +136,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         // boolean noDataResponseFlag = false;
         // for (int i = 0; i < digestIndex; i++) {
         //     // logger.debug(
-        //     // "[Tinoryj] Read operation get digest from {}, digest = {}",
+        //     // "[ELECT] Read operation get digest from {}, digest = {}",
         //     // endpoints.get(i), "0x" + ByteBufferUtil.bytesToHex(digestSet[i]));
         //     String digestStr = "0x" + ByteBufferUtil.bytesToHex(digestSet[i]);
         //     if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
@@ -152,7 +152,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         //         // may remove the data in secondary nodes).
         //         if (noDataCount != snapshot.size()) {
         //             if (noDataResponseFlag) {
-        //                 logger.error("[Tinoryj-ERROR] Read get empty data response from {}.",
+        //                 logger.error("[ELECT-ERROR] Read get empty data response from {}.",
         //                         dataResponseAddress);
         //                 return false;
         //             } else {
@@ -161,7 +161,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         //             }
         //         } else {
         //             logger.error(
-        //                     "[Tinoryj-ERROR] Read operation get no success response.");
+        //                     "[ELECT-ERROR] Read operation get no success response.");
         //             return false;
         //         }
         //     } else {

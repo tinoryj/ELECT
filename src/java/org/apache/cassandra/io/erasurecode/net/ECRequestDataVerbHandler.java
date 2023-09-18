@@ -60,9 +60,9 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
         for (SSTableReader sstable : sstables) {
             traverseCount++;
             if (sstable.getSSTableHashID().equals(requestSSTHash)) {
-                logger.debug("rymDebug: the requested sstable ({}) is found!", sstable.getSSTableHashID());
+                logger.debug("ELECT-Debug: the requested sstable ({}) is found!", sstable.getSSTableHashID());
                 if (sstable.isDataMigrateToCloud()) {
-                    logger.debug("rymDebug: the requested sstable ({}) is migrated!", sstable.getSSTableHashID());
+                    logger.debug("ELECT-Debug: the requested sstable ({}) is migrated!", sstable.getSSTableHashID());
                     if (!ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
                         long tStart = nanoTime();
                         // reload raw data from cloud
@@ -89,7 +89,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                             while (StorageService.instance.downloadingSSTables.contains(sstable.getSSTableHashID())
                                     && retryCount < 1000) {
                                 try {
-                                    logger.debug("rymDebug: [Degraded Read] the sstable ({}) is still downloading!",
+                                    logger.debug("ELECT-Debug: [Degraded Read] the sstable ({}) is still downloading!",
                                             sstable.getSSTableHashID());
                                     Thread.sleep(100);
                                 } catch (InterruptedException e) {
@@ -99,7 +99,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
                                 retryCount++;
                             }
                         }
-                        Tracing.trace("[Tinoryj] Moved SSTable back from cloud {}\u03bcs",
+                        Tracing.trace("[ELECT] Moved SSTable back from cloud {}\u03bcs",
                                 "ECRequestDataVerbHandler",
                                 (nanoTime() - tStart) / 1000);
                     }
@@ -107,7 +107,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
 
                 if (sstable.getColumnFamilyName().equals("usertable0")
                         && ECNetutils.getIsDownloaded(sstable.getSSTableHashID())) {
-                    logger.debug("[Tinoryj] Fetch downloaded sstable for recovery ({}, {})", sstable.getFilename(),
+                    logger.debug("[ELECT] Fetch downloaded sstable for recovery ({}, {})", sstable.getFilename(),
                             sstable.getSSTableHashID());
                     sstable = StorageService.instance.globalDownloadedSSTableMap.get(sstable.getSSTableHashID());
                 }
@@ -133,7 +133,7 @@ public class ECRequestDataVerbHandler implements IVerbHandler<ECRequestData> {
 
         if (!isFound)
             throw new IllegalStateException(
-                    String.format("rymERROR: cannot find sstable (%s) in usertable0 for recovery/update sstable (%s), the traverse count is (%s), sstable count is (%s)",
+                    String.format("ELECT-ERROR: cannot find sstable (%s) in usertable0 for recovery/update sstable (%s), the traverse count is (%s), sstable count is (%s)",
                                   requestSSTHash, sstHash, traverseCount, sstables.size()));
 
     }

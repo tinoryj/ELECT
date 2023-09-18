@@ -101,7 +101,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
             forwardToLocalNodes(message, forwardTo);
-            logger.debug("rymDebug: this is a forwarding header");
+            logger.debug("ELECT-Debug: this is a forwarding header");
         }
 
         ECParityUpdate parityUpdateData = message.payload;
@@ -116,7 +116,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
             globalReceivedOldSSTable++;
 
-            logger.debug("rymDebug: [Parity Update] Get a old sstable ({}) from primary node {}",
+            logger.debug("ELECT-Debug: [Parity Update] Get a old sstable ({}) from primary node {}",
                     parityUpdateData.sstable.sstHash, primaryNode);
 
             String oldSSTHash = parityUpdateData.sstable.sstHash;
@@ -131,7 +131,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         parityUpdateData.sstable);
 
                 logger.debug(
-                        "rymDebug: In node {}, strip id {} for sstHash {} is not ready, so we save it to [pending list],this hash is from primary node {}, the old sstable map is {}, new sstable map is {}",
+                        "ELECT-Debug: In node {}, strip id {} for sstHash {} is not ready, so we save it to [pending list],this hash is from primary node {}, the old sstable map is {}, new sstable map is {}",
                         FBUtilities.getBroadcastAddressAndPort(),
                         stripID,
                         oldSSTHash,
@@ -147,7 +147,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         parityUpdateData.sstable)) {
 
                     logger.debug(
-                            "rymDebug: we need get parity codes for sstable ({}), add it to the ready list, mark strip id {} as updating",
+                            "ELECT-Debug: we need get parity codes for sstable ({}), add it to the ready list, mark strip id {} as updating",
                             oldSSTHash, stripID);
                     StorageService.instance.globalUpdatingStripList.add(stripID);
                     // if(StorageService.instance.globalUpdatingStripList.containsKey(stripID)) {
@@ -169,7 +169,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             }
 
         } else {
-            logger.debug("rymDebug: [Parity Update] Get a new sstable ({}) from primary node {}, add it to ready list",
+            logger.debug("ELECT-Debug: [Parity Update] Get a new sstable ({}) from primary node {}, add it to ready list",
                     parityUpdateData.sstable.sstHash, primaryNode);
             globalReceivedNewSSTable++;
             ECNetutils.addNewSSTableForECStripeUpdateToReadyList(primaryNode, parityUpdateData.sstable);
@@ -198,7 +198,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             executeCount++;
 
             logger.debug(
-                    "rymDebug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({}), total received ec messages are ({}), consumed ec messages are ({}), globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({}), generated normal metadata is ({}), padding zero metadata is ({}), migrated parity code count is ({}), migrated sstable count is ({}) , execute count is ({})",
+                    "ELECT-Debug: the entries of globalPendingOldSSTableForECStripUpdateMap is ({}), the entries of globalReadyOldSSTableForECStripUpdateMap is ({}), traversedSSTables are ({}), received new sstable count is ({}), consumed new sstable count is ({}), received old sstable count is ({}), consumed old sstable count is ({}), total received ec messages are ({}), consumed ec messages are ({}), globalRecvECMetadatas is ({}), global consume ECMetadatas is ({}), global ready ECMetadata count is ({}), global pending ECMetadata count is ({}), generated normal metadata is ({}), padding zero metadata is ({}), migrated parity code count is ({}), migrated sstable count is ({}) , execute count is ({})",
                     StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size(),
                     StorageService.instance.globalReadyOldSSTableForECStripUpdateCount, traversedSSTables,
                     globalReceivedNewSSTable, globalConsumedNewSSTable, globalReceivedOldSSTable,
@@ -229,7 +229,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 ConcurrentLinkedQueue<SSTableContentWithHashID> oldSSTableQueue = entry.getValue();
 
                 // if( oldSSTableQueue.size() < newSSTableQueue.size()) {
-                // logger.error("rymERROR: new sstable count ({}) is more than the old count
+                // logger.error("ELECT-ERROR: new sstable count ({}) is more than the old count
                 // ({})!", newSSTableQueue.size(),
                 // oldSSTableQueue.size());
                 // }
@@ -246,7 +246,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     traversedNewSSTables++;
                     traversedSSTables.add(oldSSTable.sstHash);
 
-                    logger.debug("rymDebug: Parity update case 1, Select a new sstable ({}) and an old sstable ({})",
+                    logger.debug("ELECT-Debug: Parity update case 1, Select a new sstable ({}) and an old sstable ({})",
                             newSSTable.sstHash, oldSSTable.sstHash);
 
                     // if the new obj is consumed, move the same name sstable from cache queue to
@@ -259,7 +259,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                                 .remove(newSSTable.sstHash);
                     }
 
-                    // logger.debug("rymDebug: [Parity update] We check the parity codes for
+                    // logger.debug("ELECT-Debug: [Parity update] We check the parity codes for
                     // replacing a new sstable ({}) with an old sstable ({})", newSSTable.sstHash,
                     // oldSSTable.sstHash);
                     try {
@@ -273,13 +273,13 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 }
 
                 if (!newSSTableQueue.isEmpty()) {
-                    logger.debug("rymDebug: for primary node ({}) new sstable is not completely consumed ({})!",
+                    logger.debug("ELECT-Debug: for primary node ({}) new sstable is not completely consumed ({})!",
                             primaryNode, newSSTableQueue.size(), oldSSTableQueue.size());
                     continue;
                 }
 
                 // if (!newSSTableQueue.isEmpty()) {
-                // logger.error("rymERROR: The new sstables are not completely consumed!!!");
+                // logger.error("ELECT-ERROR: The new sstables are not completely consumed!!!");
                 // }
 
                 // Case2: If old data is not completely consumed, we select sstables from
@@ -295,7 +295,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                         StorageService.instance.globalReadyOldSSTableForECStripUpdateCount--;
                         traversedSSTables.add(oldSSTable.sstHash);
                         logger.debug(
-                                "rymDebug: Parity update case 2, Select a new sstable ({}) and an old sstable ({})",
+                                "ELECT-Debug: Parity update case 2, Select a new sstable ({}) and an old sstable ({})",
                                 newSSTable.sstHash, oldSSTable.sstHash);
 
                         try {
@@ -324,7 +324,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
                     StorageService.instance.globalReadyOldSSTableForECStripUpdateCount--;
 
-                    logger.debug("rymDebug: Parity update case 3, Select a new sstable ({}) and an old sstable ({})",
+                    logger.debug("ELECT-Debug: Parity update case 3, Select a new sstable ({}) and an old sstable ({})",
                             newSSTable.sstHash, oldSSTable.sstHash);
                     try {
                         totalTimeOfRetrievedParityCodes += performECStripUpdate("case 3", oldSSTable, newSSTable,
@@ -337,7 +337,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             }
 
             logger.debug(
-                    "rymDebug: we are going to release NO. ({}) parity update thread, the total consumed time is ({}), this transaction we consumed ({}) old sstables and ({}) new sstables",
+                    "ELECT-Debug: we are going to release NO. ({}) parity update thread, the total consumed time is ({}), this transaction we consumed ({}) old sstables and ({}) new sstables",
                     executeCount, totalTimeOfRetrievedParityCodes, traversedSSTables.size(), traversedNewSSTables);
 
         }
@@ -364,12 +364,12 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             int codeLength,
             List<InetAddressAndPort> oldReplicaNodes) throws FileNotFoundException, InterruptedException {
 
-        logger.debug("rymDebug: [Parity update {}]  We select a new sstable ({}) to update an old sstable ({})",
+        logger.debug("ELECT-Debug: [Parity update {}]  We select a new sstable ({}) to update an old sstable ({})",
                 updateCase, newSSTable.sstHash, oldSSTable.sstHash);
         List<InetAddressAndPort> parityNodes = getParityNodes();
         String oldStripID = StorageService.instance.globalSSTHashToStripIDMap.get(oldSSTable.sstHash);
         if (oldStripID == null) {
-            throw new NullPointerException(String.format("rymERROR: we cannot get strip id (%s) for sstable (%s)",
+            throw new NullPointerException(String.format("ELECT-ERROR: we cannot get strip id (%s) for sstable (%s)",
                     oldStripID, oldSSTable.sstHash));
         }
 
@@ -379,18 +379,18 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             oldSSTable.isRequestParityCode = true;
         }
         int retryTime = waitUntilParityCodesReady(oldSSTable.sstHash, parityNodes);
-        logger.debug("rymDebug: we spend ({}) seconds to get the parity code from peers nodes ({})", retryTime,
+        logger.debug("ELECT-Debug: we spend ({}) seconds to get the parity code from peers nodes ({})", retryTime,
                 parityNodes);
 
         if (StorageService.instance.globalSSTHashToParityCodeMap.get(oldSSTable.sstHash) == null) {
             throw new NullPointerException(
-                    String.format("rymERROR: we cannot get parity codes for sstable (%s)", oldSSTable.sstHash));
+                    String.format("ELECT-ERROR: we cannot get parity codes for sstable (%s)", oldSSTable.sstHash));
         }
 
         if (StorageService.instance.globalStripIdToECMetadataMap.get(oldStripID).sstHashIdList == null ||
                 StorageService.instance.globalStripIdToECMetadataMap.get(oldStripID).sstHashIdList.isEmpty()) {
             throw new NullPointerException(
-                    String.format("rymERROR: we cannot get sstHash list for strip id (%s)", oldStripID));
+                    String.format("ELECT-ERROR: we cannot get sstHash list for strip id (%s)", oldStripID));
         }
 
         // ByteBuffer oldData = oldSSTable.sstContent;
@@ -418,7 +418,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     StorageService.instance.globalPendingNewOldSSTableForECStripUpdateMap.put(oldSSTable.sstHash,
                             oldSSTable);
                     logger.debug(
-                            "rymDebug: For sstable ({}), the new obj is still not consumed, we add the old obj to cache map",
+                            "ELECT-Debug: For sstable ({}), the new obj is still not consumed, we add the old obj to cache map",
                             oldSSTable.sstHash);
                     return true;
                 }
@@ -446,13 +446,13 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
         try {
             parityHashList = StorageService.instance.globalStripIdToECMetadataMap.get(stripID).parityHashList;
         } catch (Exception e) {
-            logger.error("rymERROR: When we are update old sstable ({}), we cannot to get ecMetadata for stripID {}",
+            logger.error("ELECT-ERROR: When we are update old sstable ({}), we cannot to get ecMetadata for stripID {}",
                     oldSSTHash, stripID);
         }
 
         if (parityHashList == null) {
             ECNetutils.printStackTace(String.format(
-                    "rymERROR: When we are update old sstable (%s), we cannot to get ecMetadata for stripID (%s)",
+                    "ELECT-ERROR: When we are update old sstable (%s), we cannot to get ecMetadata for stripID (%s)",
                     oldSSTHash, stripID));
         } else {
             ByteBuffer[] parityCodes = new ByteBuffer[parityHashList.size()];
@@ -501,7 +501,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     // get old parity codes from old sstable hash
                     StorageService.instance.globalSSTHashToParityCodeMap.put(oldSSTHash, parityCodes);
                     logger.debug(
-                            "rymDebug: Perform parity update for old sstable ({}), we are retrieving parity codes for strip id {}, we had read local parity code {}",
+                            "ELECT-Debug: Perform parity update for old sstable ({}), we are retrieving parity codes for strip id {}, we had read local parity code {}",
                             oldSSTHash, stripID, parityCodeFileName);
 
                     // get the needed parity code remotely, send a parity code request
@@ -520,7 +520,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                 // TODO Auto-generated catch block
                 // e.printStackTrace();
                 throw new IllegalAccessError(String.format(
-                        "rymERROR: When we are retrieving parity codes for strip id %s to perform parity update old sstable (%s), cannot read parity code from %s",
+                        "ELECT-ERROR: When we are retrieving parity codes for strip id %s to perform parity update old sstable (%s), cannot read parity code from %s",
                         stripID, oldSSTHash));
             }
 
@@ -550,13 +550,13 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     retryCount++;
                 } else {
                     throw new FileNotFoundException(String.format(
-                            "rymERROR: cannot retrieve the remote parity codes for sstHash (%s) from parity nodes (%s)",
+                            "ELECT-ERROR: cannot retrieve the remote parity codes for sstHash (%s) from parity nodes (%s)",
                             oldSSTHash, parityNodes.subList(1, parityNodes.size())));
                 }
             }
         } else {
             throw new InterruptedException(
-                    String.format("rymERROR: We cannot get parity codes for sstable %s", oldSSTHash));
+                    String.format("ELECT-ERROR: We cannot get parity codes for sstable %s", oldSSTHash));
 
         }
 
@@ -636,7 +636,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             ErasureCoderOptions ecOptions = new ErasureCoderOptions(ecDataNum, ecParityNum);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 
-            logger.debug("rymDebug: let's start computing erasure code");
+            logger.debug("ELECT-Debug: let's start computing erasure code");
 
             // Encoding input and output
             ByteBuffer[] oldData = new ByteBuffer[1];
@@ -687,7 +687,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
             try {
                 encoder.encodeUpdate(dataUpdate, newParityCodes, targetDataIndex);
             } catch (IOException e) {
-                logger.error("rymERROR: Perform erasure code error", e);
+                logger.error("ELECT-ERROR: Perform erasure code error", e);
             }
 
             long timeCost = currentTimeMillis() - startTime;
@@ -713,7 +713,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                     long startUploadTime = System.currentTimeMillis();
                     if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(i),
                             parityInBytes)) {
-                        logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
+                        logger.error("[ELECT]: Could not upload parity SSTable: {}",
                                 localParityCodeDir + parityHashList.get(i));
                     } else {
                         StorageService.instance.migratedParityCodeCount++;
@@ -733,10 +733,10 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
                             StandardOpenOption.CREATE);
                     fileChannel.write(newParityCodes[0]);
                     fileChannel.close();
-                    // logger.debug("rymDebug: parity code file created: {}",
+                    // logger.debug("ELECT-Debug: parity code file created: {}",
                     // parityCodeFile.getName());
                 } catch (IOException e) {
-                    logger.error("rymERROR: Perform erasure code error", e);
+                    logger.error("ELECT-ERROR: Perform erasure code error", e);
                 }
                 // sync encoded data to parity nodes
                 ECParityNode ecParityNode = new ECParityNode(null, null, 0);
@@ -757,7 +757,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
 
             // remove the entry to save memory
             StorageService.instance.globalSSTHashToParityCodeMap.remove(oldSSTable.sstHash);
-            logger.debug("rymDebug: we remove the parity code for old sstHash ({}) in memory.", oldSSTable.sstHash);
+            logger.debug("ELECT-Debug: we remove the parity code for old sstHash ({}) in memory.", oldSSTable.sstHash);
         }
 
     }

@@ -67,7 +67,7 @@ public abstract class ErasureEncoder extends ErasureCoder {
 
         // Perform encoding
         doEncodeUpdate(bbestate, targetDataIndex);
-        // logger.debug("[Tinoryj] perform encode update done.");
+        // logger.debug("[ELECT] perform encode update done.");
     }
 
     /**

@@ -56,7 +56,7 @@ public class ECResponseParity {
 
     public void responseParity(InetAddressAndPort target) {
         
-        logger.debug("rymDebug: We send parity code file {} for sstable {} to {}", this.parityHash, this.sstHash, target);
+        logger.debug("ELECT-Debug: We send parity code file {} for sstable {} to {}", this.parityHash, this.sstHash, target);
         Message<ECResponseParity> message = Message.outWithFlag(Verb.ECRESPONSEPARITY_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, target);
     }

@@ -83,7 +83,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                             .build();
                     command.updateColumnFilter(newColumnFilter);
                     if (command.isDigestQuery() == true) {
-                        logger.error("[Tinoryj-ERROR] Remote Should not perform digest query on the primary lsm-tree");
+                        logger.error("[ELECT-ERROR] Remote Should not perform digest query on the primary lsm-tree");
                     }
                     break;
                 case 1:
@@ -96,7 +96,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     command.updateColumnFilter(newColumnFilter1);
                     if (command.isDigestQuery() == false) {
                         logger.debug(
-                                "[Tinoryj] Remote Should perform online recovery on the secondary lsm-tree usertable 1");
+                                "[ELECT] Remote Should perform online recovery on the secondary lsm-tree usertable 1");
                         command.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
                     break;
@@ -110,20 +110,20 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                     command.updateColumnFilter(newColumnFilter2);
                     if (command.isDigestQuery() == false) {
                         logger.debug(
-                                "[Tinoryj] Remote Should perform online recovery on the secondary lsm-tree usertable 2");
+                                "[ELECT] Remote Should perform online recovery on the secondary lsm-tree usertable 2");
                         command.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
                     break;
                 default:
-                    logger.error("[Tinoryj-ERROR] Not support replication factor larger than 3");
+                    logger.error("[ELECT-ERROR] Not support replication factor larger than 3");
                     break;
             }
-            logger.debug("[Tinoryj] For token = {}, read {} from target table = {}, replication group = {}",
+            logger.debug("[ELECT] For token = {}, read {} from target table = {}, replication group = {}",
                     tokenForRead,
                     command.isDigestQuery() == true ? "digest" : "data",
                     command.metadata().name, sendRequestAddresses);
         }
-        Tracing.trace("[Tinoryj] Executed remote modify read command time {}\u03bcs", "ReadCommandVerbHandler",
+        Tracing.trace("[ELECT] Executed remote modify read command time {}\u03bcs", "ReadCommandVerbHandler",
                 (nanoTime() - tStart) / 1000);
         validateTransientStatus(message);
         MessageParams.reset();
@@ -143,7 +143,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                 // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
                 // false) {
                 // logger.error(
-                // "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler
+                // "[ELECT-ERROR] For token = {}, with data query, ReadCommandVerbHandler
                 // Error to get response from table {}",
                 // tokenForRead,
                 // command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
@@ -157,7 +157,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
                 // String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                 // if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                 // logger.error(
-                // "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler
+                // "[ELECT-ERROR] For token = {}, with data query, ReadCommandVerbHandler
                 // Could not get non-empty response from table {}, address = {}, {}, response =
                 // {}, raw key = {}",
                 // tokenForRead,
@@ -170,7 +170,7 @@ public class ReadCommandVerbHandler implements IVerbHandler<ReadCommand> {
             // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
             // false) {
             // logger.error(
-            // "[Tinoryj-ERROR] For token = {}, with data query, ReadCommandVerbHandler from
+            // "[ELECT-ERROR] For token = {}, with data query, ReadCommandVerbHandler from
             // {}, Read Command target table is {}, target key is {}, meet errors",
             // tokenForRead,
             // message.from(),

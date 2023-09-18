@@ -376,7 +376,7 @@ public class StorageProxy implements StorageProxyMBean {
             long queryStartNanoTime)
             throws UnavailableException, IsBootstrappingException, RequestFailureException, RequestTimeoutException,
             InvalidRequestException {
-        // logger.debug("[Tinoryj] legacyCas read command to column family {}", cfName);
+        // logger.debug("[ELECT] legacyCas read command to column family {}", cfName);
         final long startTimeForMetrics = nanoTime();
         try {
             TableMetadata metadata = Schema.instance.validateTable(keyspaceName, cfName);
@@ -1497,7 +1497,7 @@ public class StorageProxy implements StorageProxyMBean {
 
         List<InetAddressAndPort> backPressureHosts = null;
 
-        // logger.debug(BLUE+"rymDebug: get replica destinations: {}",
+        // logger.debug(BLUE+"ELECT-Debug: get replica destinations: {}",
         // plan.contacts().endpointList()+RESET);
 
         // List<InetAddressAndPort> replicas = plan.contacts().endpointList();
@@ -1512,7 +1512,7 @@ public class StorageProxy implements StorageProxyMBean {
         // mutation.key().getToken());
 
         for (Replica destination : plan.contacts()) {
-            // logger.debug(YELLOW+"rymDebug: get replica destinations: {}",
+            // logger.debug(YELLOW+"ELECT-Debug: get replica destinations: {}",
             // destination.endpoint()+RESET);
             checkHintOverload(destination);
 
@@ -1625,7 +1625,7 @@ public class StorageProxy implements StorageProxyMBean {
                 // upd.metadata().name, key);
                 // if(!eps.contains(destination.endpoint())||eps.indexOf(destination.endpoint())==0)
                 // {
-                // // logger.debug(RED+"rymDebug: destination [{}] is wrong, correct is {} key
+                // // logger.debug(RED+"ELECT-Debug: destination [{}] is wrong, correct is {} key
                 // is {}, local address is {}",
                 // // destination.endpoint()+RESET, eps+RESET, key,
                 // FBUtilities.getBroadcastAddressAndPort()+RESET);
@@ -2109,7 +2109,7 @@ public class StorageProxy implements StorageProxyMBean {
             ConsistencyLevel consistencyLevel, long queryStartNanoTime)
             throws UnavailableException, ReadFailureException, ReadTimeoutException {
         int cmdCount = commands.size();
-        // logger.debug("[Tinoryj] total read command count: {}", cmdCount);
+        // logger.debug("[ELECT] total read command count: {}", cmdCount);
         AbstractReadExecutor[] reads = new AbstractReadExecutor[cmdCount];
 
         // Get the replica locations, sorted by response time according to the snitch,
@@ -2211,7 +2211,7 @@ public class StorageProxy implements StorageProxyMBean {
                         // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
                         // false) {
                         // logger.error(
-                        // "[Tinoryj-ERROR] For key token = {}, with data query, Local Could not get
+                        // "[ELECT-ERROR] For key token = {}, with data query, Local Could not get
                         // response from table {}",
                         // tokenForRead,
                         // command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
@@ -2225,7 +2225,7 @@ public class StorageProxy implements StorageProxyMBean {
                         // String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
                         // if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
                         // logger.error(
-                        // "[Tinoryj-ERROR] For key token = {}, with data query, Local Could not get
+                        // "[ELECT-ERROR] For key token = {}, with data query, Local Could not get
                         // non-empty response from table {}, address = {}, {}, response = {}",
                         // tokenForRead,
                         // command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
@@ -2237,7 +2237,7 @@ public class StorageProxy implements StorageProxyMBean {
                     // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
                     // false) {
                     // logger.error(
-                    // "[Tinoryj-ERROR] For key token = {}, with data query, Local try to read from
+                    // "[ELECT-ERROR] For key token = {}, with data query, Local try to read from
                     // {} in keyspace {}, key not found, created empty response",
                     // tokenForRead,
                     // command.metadata().name, command.metadata().keyspace);

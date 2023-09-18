@@ -128,7 +128,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
         cfs.metric.repairsStarted.inc();
         List<InetAddressAndPort> allEndpoints = new ArrayList<>(session.state.commonRange.endpoints);
         allEndpoints.add(FBUtilities.getBroadcastAddressAndPort());
-        ECNetutils.printStackTace(String.format("rymDebug: Start a repair job. allEndpoints is (%s), token rages is (%s)", allEndpoints, session.state.commonRange.ranges));
+        ECNetutils.printStackTace(String.format("ELECT-Debug: Start a repair job. allEndpoints is (%s), token rages is (%s)", allEndpoints, session.state.commonRange.ranges));
 
         Future<List<SyncStat>> syncResults;
 
@@ -326,7 +326,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
             // differences.add(StorageService.instance.getTokenRangeForPrimaryNode(allEndpoints));
 
 
-            logger.debug("rymDebug: create LocalSyncTask: The endpoints are ({}), the differences is ({}), preview kind is ({})", allEndpoints, fullRanges, previewKind);
+            logger.debug("ELECT-Debug: create LocalSyncTask: The endpoints are ({}), the differences is ({}), preview kind is ({})", allEndpoints, fullRanges, previewKind);
             SyncTask task = new LocalSyncTask(desc, local, remote, fullRanges, isIncremental ? desc.parentSessionId : null,true, true, previewKind);
 
             syncTasks.add(task);
@@ -382,7 +382,7 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
                     // Nothing to do
                     if (!requestRanges && !transferRanges)
                         continue;
-                    logger.debug("rymDebug: create LocalSyncTask: requestRanges: {}, transferRanges: {}, the differences is ({}), self endpoint is ({}), remote endpoint is ({})", requestRanges, transferRanges, differences, self.endpoint, remote.endpoint);
+                    logger.debug("ELECT-Debug: create LocalSyncTask: requestRanges: {}, transferRanges: {}, the differences is ({}), self endpoint is ({}), remote endpoint is ({})", requestRanges, transferRanges, differences, self.endpoint, remote.endpoint);
 
                     task = new LocalSyncTask(desc, self.endpoint, remote.endpoint, differences, isIncremental ? desc.parentSessionId : null,
                                              requestRanges, transferRanges, previewKind);
@@ -392,12 +392,12 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
                     // Stream only from transient replica
                     TreeResponse streamFrom = isTransient.test(r1.endpoint) ? r1 : r2;
                     TreeResponse streamTo = isTransient.test(r1.endpoint) ? r2 : r1;
-                    logger.debug("rymDebug: create AsymmetricRemoteSyncTask: streamFrom: {}, streamTo: {}", streamFrom, streamTo);
+                    logger.debug("ELECT-Debug: create AsymmetricRemoteSyncTask: streamFrom: {}, streamTo: {}", streamFrom, streamTo);
                     task = new AsymmetricRemoteSyncTask(desc, streamTo.endpoint, streamFrom.endpoint, differences, previewKind);
                 }
                 else
                 {
-                    logger.debug("rymDebug: create SymmetricRemoteSyncTask: r1.endpoint: {}, r2.endpoint: {}", r1.endpoint, r2.endpoint);
+                    logger.debug("ELECT-Debug: create SymmetricRemoteSyncTask: r1.endpoint: {}, r2.endpoint: {}", r1.endpoint, r2.endpoint);
                     task = new SymmetricRemoteSyncTask(desc, r1.endpoint, r2.endpoint, differences, previewKind);
                 }
                 syncTasks.add(task);
@@ -505,14 +505,14 @@ public class RepairJob extends AsyncFuture<RepairResult> implements Runnable
                     if (address.equals(local))
                     {
 
-                        logger.debug("rymDebug: create optimised LocalSyncTask: fetchFrom: {}, toFetch: {}", fetchFrom, toFetch);
+                        logger.debug("ELECT-Debug: create optimised LocalSyncTask: fetchFrom: {}, toFetch: {}", fetchFrom, toFetch);
                         task = new LocalSyncTask(desc, address, fetchFrom, toFetch, isIncremental ? desc.parentSessionId : null,
                                                  true, false, previewKind);
                     }
                     else
                     {
 
-                        logger.debug("rymDebug: create optimised AsymmetricRemoteSyncTask desc: {}, address: {}, fetchFrom: {}, toFetch: {}", desc, address, fetchFrom, toFetch);
+                        logger.debug("ELECT-Debug: create optimised AsymmetricRemoteSyncTask desc: {}, address: {}, fetchFrom: {}, toFetch: {}", desc, address, fetchFrom, toFetch);
                         task = new AsymmetricRemoteSyncTask(desc, address, fetchFrom, toFetch, previewKind);
                     }
                     syncTasks.add(task);

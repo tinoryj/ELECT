@@ -487,7 +487,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
      */
 
     public static Runnable getSendSSTRunnable(String keyspaceName, String cfName, int sendSSTLevel, int delay) {
-        logger.debug("rymDebug: This is getSendSSTRunnable");
+        logger.debug("ELECT-Debug: This is getSendSSTRunnable");
         return new SendSSTRunnable(keyspaceName, cfName, sendSSTLevel, delay);
     }
 
@@ -522,7 +522,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
             ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
             try {
-                logger.debug("rymDeug: get cfs path ({})", cfs.getDataPaths());
+                logger.debug("ELECT-Debug: get cfs path ({})", cfs.getDataPaths());
             } catch (IOException e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -544,15 +544,15 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         / (rf - ((double) (n * 1.0)) / k)); // parameter a
                 needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf - 1) * sstableCountOfLastLevel); // parameter
             } else if (DatabaseDescriptor.getStorageSavingGrade() == 1) {
-                logger.debug("[Tinoryj] StorageSavingGrade is 1, perform ec to all sstables in the last level");
+                logger.debug("[ELECT] StorageSavingGrade is 1, perform ec to all sstables in the last level");
                 needTransferSSTablesCount = sstableCountOfLastLevel;
             } else if (DatabaseDescriptor.getStorageSavingGrade() == 2) {
                 logger.debug(
-                        "[Tinoryj] StorageSavingGrade is 2, perform ec to all sstables in the last level, and migrate all parity");
+                        "[ELECT] StorageSavingGrade is 2, perform ec to all sstables in the last level, and migrate all parity");
                 needTransferSSTablesCount = sstableCountOfLastLevel;
             } else if (DatabaseDescriptor.getStorageSavingGrade() == 3) {
                 logger.debug(
-                        "[Tinoryj] StorageSavingGrade is 3, perform ec to all sstables in the last level, and migrate all parity + raw");
+                        "[ELECT] StorageSavingGrade is 3, perform ec to all sstables in the last level, and migrate all parity + raw");
                 needTransferSSTablesCount = sstableCountOfLastLevel;
                 needMigrateRawSSTablesCount = sstableCountOfLastLevel;
             } else {
@@ -561,7 +561,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
 
             logger.debug(
-                    "rymDebug: checkout the need transfer sstables count is ({}), sstable count of last level ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), migrated parity SSTable count ({}), migrated raw SSTable count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})",
+                    "ELECT-Debug: checkout the need transfer sstables count is ({}), sstable count of last level ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), migrated parity SSTable count ({}), migrated raw SSTable count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})",
                     needTransferSSTablesCount, sstableCountOfLastLevel, needMigrateRawSSTablesCount,
                     ECNetutils.getNeedMigrateParityCodesCount(),
                     StorageService.instance.transferredSSTableCount,
@@ -580,7 +580,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             Collections.sort(sstables, new SSTableAccessFrequencyComparator());
 
             if (!sstables.isEmpty()) {
-                logger.debug("rymDebug: get {} sstables from level {}", sstables.size(), level);
+                logger.debug("ELECT-Debug: get {} sstables from level {}", sstables.size(), level);
                 int sentSSTableCount = 0;
                 int migratedSSTableCnt = 0;
                 for (SSTableReader sstable : sstables) {
@@ -589,10 +589,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                         migratedSSTableCnt++;
                     }
 
-                    logger.debug("rymDebug: the traverse count is ({}), max ec candidates is ({})", sentSSTableCount,
+                    logger.debug("ELECT-Debug: the traverse count is ({}), max ec candidates is ({})", sentSSTableCount,
                             MAX_EC_CANDIDATES);
                     if (sentSSTableCount >= MAX_EC_CANDIDATES) {
-                        logger.debug("[Tinoryj] the sent SSTable Count is ({}), max send sstable count is ({})",
+                        logger.debug("[ELECT] the sent SSTable Count is ({}), max send sstable count is ({})",
                                 sentSSTableCount, MAX_EC_CANDIDATES);
                         return;
                     }
@@ -603,19 +603,19 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                                                                // &&
                         ) {
                             logger.debug(
-                                    "rymDebug: get a untransferred sstable ({}), transferred sstable count is ({}), need transferred sstable count is ({})",
+                                    "ELECT-Debug: get a untransferred sstable ({}), transferred sstable count is ({}), need transferred sstable count is ({})",
                                     sstable.getSSTableHashID(),
                                     StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
                             if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount
                                     && StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
                                 logger.debug(
-                                        "[Tinoryj] the transferred SSTable Count is ({}), need transferred sstable count is ({}),return",
+                                        "[ELECT] the transferred SSTable Count is ({}), need transferred sstable count is ({}),return",
                                         StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
                                 return;
                             }
 
                             logger.debug(
-                                    "rymDebug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
+                                    "ELECT-Debug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
                                     sstable.getSSTableHashID(), sstable.getSSTableLevel(),
                                     LeveledGenerations.getMaxLevelCount() - 1,
                                     sstable.descriptor.ksname,
@@ -629,7 +629,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                             if (duration >= delayMilli
                                     && sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
-                                logger.debug("rymDebug: we should send the sstContent!, sstlevel is {}",
+                                logger.debug("ELECT-Debug: we should send the sstContent!, sstlevel is {}",
                                         sstable.getSSTableLevel());
 
                                 if (ECNetutils.isSSTableCompactingOrErasureCoding(sstable.getSSTableHashID())) {
@@ -639,7 +639,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 sentSSTableCount++;
                                 try {
                                     if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
-                                        logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+                                        logger.error("ELECT-ERROR: set IsReplicationTransferredToErasureCoding failed!");
                                     }
                                 } catch (IOException e) {
                                     // TODO Auto-generated catch block
@@ -677,12 +677,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     StorageService.instance.globalSSTHashToParityNodesMap.put(
                                             ecMessage.ecMessageContent.sstHashID,
                                             ecMessage.ecMessageContent.parityNodes);
-                                    logger.debug("rymDebug: we map sstHash ({}) to parity Nodes ({})",
+                                    logger.debug("ELECT-Debug: we map sstHash ({}) to parity Nodes ({})",
                                             ecMessage.ecMessageContent.sstHashID,
                                             ecMessage.ecMessageContent.parityNodes);
 
                                 } catch (IOException e) {
-                                    logger.error("rymERROR: {}", e);
+                                    logger.error("ELECT-ERROR: {}", e);
                                 } catch (Exception e) {
                                     // TODO Auto-generated catch block
                                     e.printStackTrace();
@@ -696,12 +696,12 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                    DatabaseDescriptor.getStorageSavingGrade() == 3) {
 
                             logger.debug(
-                                    "rymDebug: get a transferred sstable ({}), migrated sstable count is ({}), need migrated sstable count is ({})",
+                                    "ELECT-Debug: get a transferred sstable ({}), migrated sstable count is ({}), need migrated sstable count is ({})",
                                     sstable.getSSTableHashID(),
                                     StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
                             if (StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
                                 logger.debug(
-                                        "[Tinoryj] the migrated SSTable Count is ({}), need migrate sstable count is ({}), return",
+                                        "[ELECT] the migrated SSTable Count is ({}), need migrate sstable count is ({}), return",
                                         StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
                                 continue;
                             }
@@ -715,7 +715,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                 if (!sstable.isDataMigrateToCloud() && sstable.isReplicationTransferredToErasureCoding()
                                 // && sstable.getReadMeter().getColdPeriodRate() == 0
                                 ) {
-                                    logger.debug("rymDebug: migrate extremely cold sstable ({}: {}) to cloud.",
+                                    logger.debug("ELECT-Debug: migrate extremely cold sstable ({}: {}) to cloud.",
                                             sstable.descriptor, sstable.getSSTableHashID());
                                     StorageService.instance.migratedRawSSTablecount++;
                                     long startTime = System.currentTimeMillis();
@@ -726,7 +726,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     try {
                                         // delete the raw data and create a empty file
                                         sstable.SetIsDataMigrateToCloud(true);
-                                        logger.debug("rymDebug: set data migration flag for sstable ({}) as ({})",
+                                        logger.debug("ELECT-Debug: set data migration flag for sstable ({}) as ({})",
                                                 sstable.getSSTableHashID(), sstable.isDataMigrateToCloud());
                                         Files.newBufferedWriter(Paths.get(sstable.getFilename()));
                                     } catch (IOException e) {
@@ -735,7 +735,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     }
                                 } else {
                                     logger.debug(
-                                            "rymDebug: The access rate of sstable ({}: {}) within 15 min is ({}), 2 hours is ({}), cold period is ({})",
+                                            "ELECT-Debug: The access rate of sstable ({}: {}) within 15 min is ({}), 2 hours is ({}), cold period is ({})",
                                             sstable.descriptor, sstable.getSSTableHashID(),
                                             sstable.getReadMeter().fifteenMinuteRate(),
                                             sstable.getReadMeter().twoHourRate(),
@@ -744,7 +744,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                             }
 
                         } else {
-                            logger.info("rymDebug: SSTable () is transferred", sstable.getSSTableHashID());
+                            logger.info("ELECT-Debug: SSTable () is transferred", sstable.getSSTableHashID());
                             continue;
                         }
                     } else {
@@ -754,11 +754,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                 }
 
-                logger.debug("rymDebug: migrated sstable count is ({})", migratedSSTableCnt);
+                logger.debug("ELECT-Debug: migrated sstable count is ({})", migratedSSTableCnt);
 
                 // if (count == 0) {
                 // System.out.println(
-                // "rymDebug: All sstables are transferred or it's not time to perform erasure
+                // "ELECT-Debug: All sstables are transferred or it's not time to perform erasure
                 // coding.");
                 // for (Keyspace keyspace : Keyspace.all()) {
                 // for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
@@ -797,11 +797,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 // // keyRanges.add(range);
                 // }
 
-                // // logger.debug("rymDebug: Let's check the key ranges of the sstables in the
+                // // logger.debug("ELECT-Debug: Let's check the key ranges of the sstables in the
                 // // ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
 
                 // logger.debug(
-                // "rymDebug: We insight the sstable count in the last level of ({}) is ({}),
+                // "ELECT-Debug: We insight the sstable count in the last level of ({}) is ({}),
                 // ecSSTable count is ({}), migrated sstable count is ({}), transferred sstable
                 // count is ({}), total number is ({}),the first token is ({}), the last token
                 // is ({})",
@@ -817,7 +817,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 // }
 
             } else {
-                logger.debug("rymDebug: cannot get sstables from level {}", level);
+                logger.debug("ELECT-Debug: cannot get sstables from level {}", level);
             }
         }
 
@@ -2113,7 +2113,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final long skipIfNewerThanTimestamp,
             final boolean skipIfCompressionMatches,
             final int jobs) throws ExecutionException, InterruptedException {
-        logger.debug("rymDebug: this is sstablesRewrite, task id is ({})", txn.opId());
+        logger.debug("ELECT-Debug: this is sstablesRewrite, task id is ({})", txn.opId());
 
         return CompactionManager.instance.performSSTableRewrite(sourceKeys,
                 ColumnFamilyStore.this, first, last, sstables, metadata,
@@ -2142,7 +2142,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         @Override
         public synchronized void run() {
 
-            logger.debug("rymDebug: This is ForceCompactionForTheLastLevelRunnable");
+            logger.debug("ELECT-Debug: This is ForceCompactionForTheLastLevelRunnable");
 
             for (Keyspace keyspace : Keyspace.all()) {
                 for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
@@ -2155,7 +2155,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
                         int maxCompactionThreshold = 32;
                         logger.debug(
-                                "rymDebug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
+                                "ELECT-Debug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
                                 cfs.getColumnFamilyName(), maxCompactionThreshold);
                         // ColumnFamilyStore cfs =
                         // Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
@@ -2236,7 +2236,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                     }
                                 } else {
                                     logger.debug(
-                                            "rymDebug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
+                                            "ELECT-Debug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
                                 }
 
                                 try {
@@ -2271,7 +2271,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final long skipIfNewerThanTimestamp,
             final boolean skipIfCompressionMatches,
             final int jobs) throws ExecutionException, InterruptedException {
-        logger.debug("rymDebug: this is force compaction for the last level, the involved sstables count is ({})",
+        logger.debug("ELECT-Debug: this is force compaction for the last level, the involved sstables count is ({})",
                 candidates.size());
 
         return CompactionManager.instance.performForceCompactionForTheLastLevel(ColumnFamilyStore.this, candidates, txn,
@@ -2285,28 +2285,28 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         // notify sstable changes to view and leveled generation
         // unmark sstable compacting status
 
-        logger.debug("rymDebug: this update EC sstable method, the transaction id is ({})", txn.opId());
+        logger.debug("ELECT-Debug: this update EC sstable method, the transaction id is ({})", txn.opId());
 
         try {
 
             SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, sstHash, cfs, fileNamePrefix, txn.opId());
-            logger.debug("rymDebug: Opened the new ec sstable successfully, the transaction id is ({})",
+            logger.debug("ELECT-Debug: Opened the new ec sstable successfully, the transaction id is ({})",
                     ecSSTable.getSSTableHashID(), txn.opId());
             if (!txn.originals().isEmpty())
-                logger.debug("rymDebug: update old ecSSTable ({}) with new ecSSTable ({})",
+                logger.debug("ELECT-Debug: update old ecSSTable ({}) with new ecSSTable ({})",
                         txn.originals().iterator().next().descriptor, ecSSTable.descriptor);
             if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
-                logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+                logger.error("ELECT-ERROR: set IsReplicationTransferredToErasureCoding failed!");
             }
             logger.debug(
-                    "rymDebug: this is replace SSTable method, replacing SSTable {}, before update the transaction is ({})",
+                    "ELECT-Debug: this is replace SSTable method, replacing SSTable {}, before update the transaction is ({})",
                     ecSSTable.descriptor, txn.opId());
             txn.update(ecSSTable, false);
-            logger.debug("rymDebug: After update, transaction is ({})", txn.opId());
+            logger.debug("ELECT-Debug: After update, transaction is ({})", txn.opId());
             txn.checkpoint();
-            logger.debug("rymDebug: After checkpoint, transaction is ({})", txn.opId());
+            logger.debug("ELECT-Debug: After checkpoint, transaction is ({})", txn.opId());
             maybeFail(txn.commitEC(null, ecSSTable, false));
-            logger.debug("rymDebug: replaced SSTable {} successfully", ecSSTable.descriptor);
+            logger.debug("ELECT-Debug: replaced SSTable {} successfully", ecSSTable.descriptor);
             // move BlockedUpdateECMetadata if necessary
             ECMetadataVerbHandler.checkTheBlockedUpdateECMetadata(ecSSTable);
         } catch (IOException e) {

@@ -94,7 +94,7 @@ public final class ECNetutils {
 
     public static class ByteObjectConversion {
         public static byte[] objectToByteArray(Serializable obj) throws IOException {
-            logger.debug("rymDebug: start to transform");
+            logger.debug("ELECT-Debug: start to transform");
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutputStream oos = new ObjectOutputStream(bos);
             oos.writeObject(obj);
@@ -153,7 +153,7 @@ public final class ECNetutils {
 
         File dataForRewriteFolder = new File(dataForRewriteDir);
         if (!dataForRewriteFolder.createDirectoriesIfNotExists()) {
-            logger.error("rymERROR: failed to create file dir ({})", dataForRewriteDir);
+            logger.error("ELECT-ERROR: failed to create file dir ({})", dataForRewriteDir);
         }
         return dataForRewriteDir;
     }
@@ -165,7 +165,7 @@ public final class ECNetutils {
     public static String getReceivedParityCodeDir() {
         File receivedParityCodeFolder = new File(receivedParityCodeDir);
         if (!receivedParityCodeFolder.createDirectoriesIfNotExists()) {
-            logger.error("rymERROR: failed to create file dir ({})", receivedParityCodeDir);
+            logger.error("ELECT-ERROR: failed to create file dir ({})", receivedParityCodeDir);
         }
         return receivedParityCodeDir;
     }
@@ -177,7 +177,7 @@ public final class ECNetutils {
     public static String getLocalParityCodeDir() {
         File localParityCodeFolder = new File(localParityCodeDir);
         if (!localParityCodeFolder.createDirectoriesIfNotExists()) {
-            logger.error("rymERROR: failed to create file dir ({})", localParityCodeDir);
+            logger.error("ELECT-ERROR: failed to create file dir ({})", localParityCodeDir);
         }
         return localParityCodeDir;
     }
@@ -225,7 +225,7 @@ public final class ECNetutils {
         String lastKey = sstable.last.getRawKey(cfs.metadata());
         InetAddressAndPort locaIP = FBUtilities.getBroadcastAddressAndPort();
 
-        logger.debug("rymDebug: send sstable to secondary nodes, hash id is ({}), descriptor is ({})",
+        logger.debug("ELECT-Debug: send sstable to secondary nodes, hash id is ({}), descriptor is ({})",
                 sstable.getSSTableHashID(), sstable.descriptor);
 
         for (InetAddressAndPort rpn : replicaNodes) {
@@ -239,12 +239,12 @@ public final class ECNetutils {
 
         if (!allKeys.get(0).equals(firstKey) || !allKeys.get(allKeys.size() - 1).equals(lastKey)) {
             logger.debug(
-                    "rymERROR: keys are different, first key is {}, last key is {}, first entry of allKeys {}, last key {}",
+                    "ELECT-ERROR: keys are different, first key is {}, last key is {}, first entry of allKeys {}, last key {}",
                     firstKey, lastKey, allKeys.get(0), allKeys.get(allKeys.size() - 1));
         }
 
         logger.debug(
-                "rymDebug: [{}] send sstables ({}), replicaNodes are {}, row num is {}, all key num is {}, first key is {}, last key is {}, first entry of allKeys {}, last key {}",
+                "ELECT-Debug: [{}] send sstables ({}), replicaNodes are {}, row num is {}, all key num is {}, first key is {}, last key is {}, first entry of allKeys {}, last key {}",
                 operationType,
                 sstHashID,
                 replicaNodes, sstable.getTotalRows(), allKeys.size(),
@@ -270,7 +270,7 @@ public final class ECNetutils {
         // fileName, offset));
         // }
         // fileStream.close();
-        // logger.debug("rymDebug: read file {} successfully!", fileName);
+        // logger.debug("ELECT-Debug: read file {} successfully!", fileName);
         // return buffer;
 
         byte[] byteArray = Files.readAllBytes(Paths.get(fileName));
@@ -285,7 +285,7 @@ public final class ECNetutils {
         // try (FileOutputStream outputStream = new FileOutputStream(fileName)) {
         // outputStream.write(buffer);
         // } catch (Exception e) {
-        // logger.error("rymERROR: failed to write bytes to file, {}", e);
+        // logger.error("ELECT-ERROR: failed to write bytes to file, {}", e);
         // }
     }
 
@@ -310,7 +310,7 @@ public final class ECNetutils {
         Path path = Paths.get(fileName);
         try {
             Files.delete(path);
-            logger.debug("rymDebug: delete file {} successfully", fileName);
+            logger.debug("ELECT-Debug: delete file {} successfully", fileName);
         } catch (IOException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -368,7 +368,7 @@ public final class ECNetutils {
                             Collections.singleton(oldSSTable)));
         }
         StorageService.instance.globalReadyOldSSTableForECStripUpdateCount++;
-        logger.debug("rymDebug: add old sstable ({}) to ready list for primary node ({})", oldSSTable.sstHash,
+        logger.debug("ELECT-Debug: add old sstable ({}) to ready list for primary node ({})", oldSSTable.sstHash,
                 primaryNode);
     }
 
@@ -382,7 +382,7 @@ public final class ECNetutils {
                     new ConcurrentLinkedQueue<SSTableContentWithHashID>(
                             Collections.singleton(newSSTable)));
         }
-        logger.debug("rymDebug: add new sstable ({}) to ready list for primary node ({})", newSSTable.sstHash,
+        logger.debug("ELECT-Debug: add new sstable ({}) to ready list for primary node ({})", newSSTable.sstHash,
                 primaryNode);
     }
 
@@ -422,7 +422,7 @@ public final class ECNetutils {
             StorageService.instance.compactingOrErasureCodingSSTables.remove(sstableHash);
         }
         // else {
-        // logger.error("rymERROR: we can not find the specified stable hash ({})",
+        // logger.error("ELECT-ERROR: we can not find the specified stable hash ({})",
         // sstableHash);
         // }
     }
@@ -465,7 +465,7 @@ public final class ECNetutils {
 
     public synchronized static boolean getIsDownloaded(String sstHash) {
         if (sstHash == null) {
-            logger.error("[Tinoryj-ERROR] check sstable is downloaded state error, sstable hash is null");
+            logger.error("[ELECT-ERROR] check sstable is downloaded state error, sstable hash is null");
             return false;
         } else {
             return StorageService.instance.globalDownloadedSSTableMap.containsKey(sstHash);
@@ -482,7 +482,7 @@ public final class ECNetutils {
         }
         if (isReplicaPlanMatchToNaturalEndpointFlag == false) {
             throw new IllegalStateException(String.format(
-                    "rymERROR: for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
+                    "ELECT-ERROR: for key token = {}, the primary node is not the first node in the natural storage node list. The replication plan for read is {}, natural storage node list = {}",
                     targetReadToken,
                     replicaPlan.contacts().endpointList(),
                     sendRequestAddresses));
@@ -518,7 +518,7 @@ public final class ECNetutils {
 
         File inMemoryDataBackupDirFolder = new File(inMemoryDataBackupDir);
         if (!inMemoryDataBackupDirFolder.createDirectoriesIfNotExists()) {
-            logger.error("rymERROR: failed to create file dir ({})", inMemoryDataBackupDir);
+            logger.error("ELECT-ERROR: failed to create file dir ({})", inMemoryDataBackupDir);
         }
         return inMemoryDataBackupDir;
     }
@@ -582,10 +582,10 @@ public final class ECNetutils {
         try {
             int exitCode = process.waitFor();
             if (exitCode == 0) {
-                logger.debug("rymDebug: Performing rsync script successfully!");
+                logger.debug("ELECT-Debug: Performing rsync script successfully!");
 
             } else {
-                logger.debug("rymDebug: Failed to perform rsync script!");
+                logger.debug("ELECT-Debug: Failed to perform rsync script!");
             }
         } catch (InterruptedException e) {
             // TODO Auto-generated catch block
@@ -637,7 +637,7 @@ public final class ECNetutils {
         // ByteBuffer erasureCodes = ByteBuffer.allocateDirect(100);
         // byte[] data = new byte[10];
         // erasureCodes.put(data);
-        // logger.debug("rymDebug: remaining is ({}), position is ({})",
+        // logger.debug("ELECT-Debug: remaining is ({}), position is ({})",
         // erasureCodes.remaining(), erasureCodes.position());
 
         int rf = 3;
@@ -646,7 +646,7 @@ public final class ECNetutils {
         int n = 6;
         int k = 4;
         int needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0 / (rf - n * 1.0 / k)); // parameter a
-        logger.debug("rymDebug: need transfer sstable count is ({})", needTransferSSTablesCount);
+        logger.debug("ELECT-Debug: need transfer sstable count is ({})", needTransferSSTablesCount);
 
         // try {
         // test();
@@ -675,7 +675,7 @@ public final class ECNetutils {
         // System.out.println(a&&b);
 
         // try {
-        // String file = "/home/rym/test1";
+        // String file = "./test1";
         // FileOutputStream fos = new FileOutputStream(file,true ) ;
         // String str = "Data.db\n";
         // fos.write(str.getBytes()) ;
@@ -690,7 +690,7 @@ public final class ECNetutils {
         // int p1 = 0x01;
         // int p2 = 0x02;
         // int flags = 54;
-        // logger.debug("rymDebug: p1&p1 is ({}), p2 & p2 is ({}), p1 & p2 is ({}), p1 &
+        // logger.debug("ELECT-Debug: p1&p1 is ({}), p2 & p2 is ({}), p1 & p2 is ({}), p1 &
         // flags is ({}), p2 & flags is ({})", p1 & p1, p2 & p2, p1 & p2, p1 & flags, p2
         // & flags);
         // 110110

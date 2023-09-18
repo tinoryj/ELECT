@@ -125,7 +125,7 @@ public class ECMessage implements Serializable {
      *                              2. implement responsehandler
      */
     public void sendSSTableToParity() throws UnknownHostException {
-        logger.debug("rymDebug: this is sendSelectedSSTables");
+        logger.debug("ELECT-Debug: this is sendSelectedSSTables");
 
         // create a Message for sstContent
         Message<ECMessage> message = null;
@@ -138,10 +138,10 @@ public class ECMessage implements Serializable {
             this.ecMessageContentInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.ecMessageContent);
             this.ecMessageContentInBytesSize = this.ecMessageContentInBytes.length;
             
-            // logger.debug("rymDebug: this.ecMessageContentInBytesSize is {}", this.ecMessageContentInBytesSize);
-            // logger.debug("rymDebug: this.ecMessageContentInBytes.length {}", this.ecMessageContentInBytes.length);
+            // logger.debug("ELECT-Debug: this.ecMessageContentInBytesSize is {}", this.ecMessageContentInBytesSize);
+            // logger.debug("ELECT-Debug: this.ecMessageContentInBytes.length {}", this.ecMessageContentInBytes.length);
             if(this.ecMessageContentInBytesSize == 0 || this.ecMessageContentInBytes == null) {
-                logger.error("rymERROR: ecMessageInBytesSize is {}, ecMessageContentInBytes is {}", this.ecMessageContentInBytesSize,
+                logger.error("ELECT-ERROR: ecMessageInBytesSize is {}, ecMessageContentInBytes is {}", this.ecMessageContentInBytesSize,
                                                                                                     this.ecMessageContent); 
             }
         } catch (IOException e) {
@@ -150,13 +150,13 @@ public class ECMessage implements Serializable {
         }
 
         if (this.ecMessageContent.parityNodes != null) {
-            logger.debug("rymDebug: send sstable ({}) to parity node ({}), sstable content size is ({})",
+            logger.debug("ELECT-Debug: send sstable ({}) to parity node ({}), sstable content size is ({})",
                          this.ecMessageContent.sstHashID, this.ecMessageContent.parityNodes.get(0),
                          this.sstContent.length);
             message = Message.outWithFlag(Verb.ERASURECODE_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().sendSSTContentWithoutCallback(message, this.ecMessageContent.parityNodes.get(0));
         } else {
-            logger.error("rymERROR: targetEndpoints is null!");
+            logger.error("ELECT-ERROR: targetEndpoints is null!");
         }
     }
 
@@ -168,8 +168,8 @@ public class ECMessage implements Serializable {
         // get all live nodes
         List<InetAddressAndPort> liveEndpoints = new ArrayList<>(Gossiper.instance.getLiveMembers());
 
-        // logger.debug("rymDebug: All living nodes are {}", liveEndpoints);
-        // logger.debug("rymDebug: ecMessage.replicaNodes is {}", ecMessage.replicaNodes);
+        // logger.debug("ELECT-Debug: All living nodes are {}", liveEndpoints);
+        // logger.debug("ELECT-Debug: ecMessage.replicaNodes is {}", ecMessage.replicaNodes);
 
         // select parity nodes from live nodes, suppose all nodes work healthy
         int n = liveEndpoints.size();
@@ -205,7 +205,7 @@ public class ECMessage implements Serializable {
         //         startIndex++;
         //     }
         // }
-        // logger.debug("rymDebug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
+        // logger.debug("ELECT-Debug: ecMessage.parityNodes is {}", ecMessage.parityNodes);
 
     }
 
@@ -213,8 +213,8 @@ public class ECMessage implements Serializable {
 
         @Override
         public void serialize(ECMessage t, DataOutputPlus out, int version) throws IOException {
-            // logger.debug("rymDebug: t.ecMessageContentInBytesSize is {}", t.ecMessageContentInBytesSize);
-            // logger.debug("rymDebug: t.ecMessageContentInBytes.length {}", t.ecMessageContentInBytes.length);
+            // logger.debug("ELECT-Debug: t.ecMessageContentInBytesSize is {}", t.ecMessageContentInBytesSize);
+            // logger.debug("ELECT-Debug: t.ecMessageContentInBytes.length {}", t.ecMessageContentInBytes.length);
             out.writeInt(t.ecMessageContentInBytesSize);
             out.write(t.ecMessageContentInBytes);
 
@@ -222,13 +222,13 @@ public class ECMessage implements Serializable {
             // byte[] buf = new byte[t.sstSize];
             // t.sstContent.get(buf);
             out.write(t.sstContent);
-            // logger.debug("rymDebug: [serialize] write successfully", buf.length);
+            // logger.debug("ELECT-Debug: [serialize] write successfully", buf.length);
         }
 
         @Override
         public ECMessage deserialize(DataInputPlus in, int version) throws IOException {
 
-            // // logger.debug("rymDebug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
+            // // logger.debug("ELECT-Debug: deserialize.ecMessage.sstHashID is {},ks is: {}, cf is {},repEpString is {},parityNodes are: {}"
             // // , sstHashID,ks, cf,repEpsString,parityNodesString);
 
 

@@ -262,7 +262,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
             SerializationHeader header,
             String hashID,
             long dataFileSize) {
-                // logger.debug("[Tinoryj] new sstable level = {}", sstableLevel);
+                // logger.debug("[ELECT] new sstable level = {}", sstableLevel);
         Preconditions.checkState((minClustering == null && maxClustering == null)
                 || comparator.compare(maxClustering, minClustering) >= 0);
         ByteBuffer[] minValues = minClustering != null ? minClustering.getBufferArray() : EMPTY_CLUSTERING;

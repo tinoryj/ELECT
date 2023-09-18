@@ -455,9 +455,9 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
 
     protected Throwable doCommit(Throwable accumulate) {
         synchronized (lock) {
-            // logger.debug("rymDebug: doCommit ({})", txnFile.id());
+            // logger.debug("ELECT-Debug: doCommit ({})", txnFile.id());
 
-            // ECNetutils.printStackTace(String.format("rymDebug: doCommit (%s)", txnFile.id()));
+            // ECNetutils.printStackTace(String.format("ELECT-Debug: doCommit (%s)", txnFile.id()));
 
             return complete(Throwables.perform(accumulate, txnFile::commit));
         }
@@ -559,7 +559,7 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
     @Override
     protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
         synchronized (lock) {
-            // ECNetutils.printStackTace(String.format("rymDebug: doCommit erasure coding (%s)", txnFile.id()));
+            // ECNetutils.printStackTace(String.format("ELECT-Debug: doCommit erasure coding (%s)", txnFile.id()));
             return complete(Throwables.perform(accumulate, txnFile::commit));
         }
     }

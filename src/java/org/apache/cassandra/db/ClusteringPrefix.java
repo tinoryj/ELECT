@@ -546,14 +546,14 @@ public interface ClusteringPrefix<V> extends IMeasurableMemory, Clusterable<V>
 
             if(nextIsRow){
                 this.nextKind =  Kind.CLUSTERING;
-                // logger.debug("rymDebug: The normal read flag is ({}), extended flag is ({}), comparator size is ({}).", flags, extendedFlags, comparator.size());
+                // logger.debug("ELECT-Debug: The normal read flag is ({}), extended flag is ({}), comparator size is ({}).", flags, extendedFlags, comparator.size());
             } else {
                 int index = in.readByte();
-                // logger.debug("rymDebug: Next is not row, the index is ({}), the flags is ({}), extendedFlags is ({}), comparator size is ({})", index, flags, extendedFlags, comparator.size());
+                // logger.debug("ELECT-Debug: Next is not row, the index is ({}), the flags is ({}), extendedFlags is ({}), comparator size is ({})", index, flags, extendedFlags, comparator.size());
                 // if(index > 8) {
-                //     ECNetutils.printStackTace(String.format("rymERROR: The index (%s) is out of range, the flags is (%s), extendedFlags is (%s)", index, flags, extendedFlags));
+                //     ECNetutils.printStackTace(String.format("ELECT-ERROR: The index (%s) is out of range, the flags is (%s), extendedFlags is (%s)", index, flags, extendedFlags));
                 // } else {
-                //     logger.debug("rymDebug: The index ({}) is not out of range, the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
+                //     logger.debug("ELECT-Debug: The index ({}) is not out of range, the flags is ({}), extendedFlags is ({})", index, flags, extendedFlags);
                 // }
 
                 this.nextKind = ClusteringPrefix.Kind.values()[index];

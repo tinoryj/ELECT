@@ -210,7 +210,7 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
             // .metadata().keyspace,
             // partitionKey.getToken());
             // logger.debug(
-            // "[Tinoryj] add to read repair list, keyspace = {}. colunm name = {},
+            // "[ELECT] add to read repair list, keyspace = {}. colunm name = {},
             // partition key = {}, natural endpoint list = {}",
             // command.metadata().keyspace, command.metadata().name, partitionKey,
             // sendRequestAddresses);
@@ -224,7 +224,7 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
             // .metadata().keyspace,
             // partitionKey.getToken());
             // logger.debug(
-            // "[Tinoryj] add to read repair list, keyspace = {}. colunm name = {},partition
+            // "[ELECT] add to read repair list, keyspace = {}. colunm name = {},partition
             // key = {}, natural endpoint list = {}",
             // command.metadata().keyspace, command.metadata().name, partitionKey,
             // sendRequestAddresses);
@@ -426,7 +426,7 @@ public class RowIteratorMergeListener<E extends Endpoints<E>>
         }
         if (!hasRepairs || command.metadata().keyspace.equals("ycsb"))
             return;
-        // logger.debug("[Tinoryj] during close, read repair is not null, repairs.length
+        // logger.debug("[ELECT] during close, read repair is not null, repairs.length
         // = [{}]", repairs.length);
         // for (int i = 0; i < repairs.length; ++i) {
         // logger.debug("\tRead repair {} is {}", i, repairs[i]);

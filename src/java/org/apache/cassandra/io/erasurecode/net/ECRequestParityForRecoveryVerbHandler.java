@@ -65,7 +65,7 @@ public class ECRequestParityForRecoveryVerbHandler implements IVerbHandler<ECReq
             // first get local parity codes
             try {
                 String parityCodeFileName = localParityCodeDir + parityHashList.get(0);
-                logger.debug("rymDebug: Read parity code ({}) locally for recovery, the file is exists? ({})", parityCodeFileName, Files.exists(Paths.get(parityCodeFileName)));
+                logger.debug("ELECT-Debug: Read parity code ({}) locally for recovery, the file is exists? ({})", parityCodeFileName, Files.exists(Paths.get(parityCodeFileName)));
                 // send back to the requested node
                 byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
                 ECResponseParity response = new ECResponseParity(parityHashList.get(0), sstHash, parityCode, k, true);
@@ -77,9 +77,9 @@ public class ECRequestParityForRecoveryVerbHandler implements IVerbHandler<ECReq
             }
 
             // get the needed parity code remotely, send a parity code request
-            logger.debug("rymDebug: Recovery stage, the parity codes are ({})", parityHashList);
+            logger.debug("ELECT-Debug: Recovery stage, the parity codes are ({})", parityHashList);
             for (int i = 1; i < parityHashList.size(); i++) {
-                logger.debug("rymDebug: Recovery stage, request parity code ({}) for sstable ({}) from parity node ({})", parityHashList.get(i), sstHash, parityNodes.get(i));
+                logger.debug("ELECT-Debug: Recovery stage, request parity code ({}) for sstable ({}) from parity node ({})", parityHashList.get(i), sstHash, parityNodes.get(i));
                 ECRequestParity request = new ECRequestParity(parityHashList.get(i), 
                                                               sstHash, 
                                                               i + k, 
@@ -88,7 +88,7 @@ public class ECRequestParityForRecoveryVerbHandler implements IVerbHandler<ECReq
                 if(parityNodes.get(i) instanceof InetAddressAndPort)
                     request.requestParityCode(parityNodes.get(i));
                 else {
-                    throw new IllegalStateException(String.format("rymERROR: the parity node (%s) is not type of InetAddressAndPort", parityNodes.get(i)));
+                    throw new IllegalStateException(String.format("ELECT-ERROR: the parity node (%s) is not type of InetAddressAndPort", parityNodes.get(i)));
                 }
             }
         }

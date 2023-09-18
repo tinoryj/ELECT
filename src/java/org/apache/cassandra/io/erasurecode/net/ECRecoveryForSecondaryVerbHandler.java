@@ -58,14 +58,14 @@ public class ECRecoveryForSecondaryVerbHandler  implements IVerbHandler<ECRecove
 
         SSTableReader sstable = StorageService.instance.globalSSTHashToECSSTableMap.get(sstHash);
         if(sstable == null) 
-            throw new NullPointerException(String.format("rymERROR: Cannot get ECSSTable (%s)", sstHash));
+            throw new NullPointerException(String.format("ELECT-ERROR: Cannot get ECSSTable (%s)", sstHash));
             
         SSTableReader.loadRawData(message.payload.sstContent, sstable.descriptor, sstable);
         ECNetutils.setIsRecovered(sstable.getSSTableHashID());
 
 
         // if(!isFindSSTable)
-        //     throw new IllegalStateException(String.format("rymERROR:[Recovery signal] we cannot find sstable (%s) in (%s) for recovery signal from (%s)", sstHash, cfName, message.from()));
+        //     throw new IllegalStateException(String.format("ELECT-ERROR:[Recovery signal] we cannot find sstable (%s) in (%s) for recovery signal from (%s)", sstHash, cfName, message.from()));
 
     }
 

@@ -67,15 +67,14 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         // write number of component
         out.writeInt(components.size());
-        // logger.debug("[Tinoryj] write check sum total number = {}",
+        // logger.debug("[ELECT] write check sum total number = {}",
         // components.size());
         updateChecksumInt(crc, components.size());
         maybeWriteChecksum(crc, out, version);
 
         // build and write toc
         int lastPosition = 4 + (8 * sortedComponents.size()) + (checksum ? 2 * CHECKSUM_LENGTH : 0);
-        // Debug-tinoryj
-        // logger.debug("[Tinoryj] gen CRC lastPosition = {}", lastPosition);
+        // logger.debug("[ELECT] gen CRC lastPosition = {}", lastPosition);
         // ----------------
         Map<MetadataType, Integer> sizes = new EnumMap<>(MetadataType.class);
         for (MetadataComponent component : sortedComponents) {
@@ -104,7 +103,7 @@ public class MetadataSerializer implements IMetadataSerializer {
             Boolean isSizeCorrectFlag;
             if (bytes.length != sizes.get(component.getType())) {
                 // logger.debug(
-                // "[Tinoryj] the component = {}, generated serialized size = {}, the actual get
+                // "[ELECT] the component = {}, generated serialized size = {}, the actual get
                 // serialized size = {}",
                 // component.getType(),
                 // sizes.get(component.getType()),
@@ -128,7 +127,7 @@ public class MetadataSerializer implements IMetadataSerializer {
             maybeWriteChecksum(crc, out, version);
             MetadataType type = component.getType();
             // logger.debug(
-            // "[Tinoryj] gen CRC for metadata type = {}, type in int = [{}], crc = [{}],
+            // "[ELECT] gen CRC for metadata type = {}, type in int = [{}], crc = [{}],
             // the serialized size = {}, the generated serialized size = {}",
             // type,
             // type.ordinal(),
@@ -176,7 +175,7 @@ public class MetadataSerializer implements IMetadataSerializer {
         int length = (int) in.bytesRemaining();
 
         int count = in.readInt();
-        // logger.debug("[Tinoryj] read check sum total number = {}, total length is =
+        // logger.debug("[ELECT] read check sum total number = {}, total length is =
         // {}", count, length);
 
         updateChecksumInt(crc, count);
@@ -192,7 +191,7 @@ public class MetadataSerializer implements IMetadataSerializer {
 
             offsets[i] = in.readInt();
             updateChecksumInt(crc, offsets[i]);
-            // logger.debug("[Tinoryj] read check sum ordinals[{}] = {}, offsets[{}] = {}",
+            // logger.debug("[ELECT] read check sum ordinals[{}] = {}, offsets[{}] = {}",
             // i, ordinals[i], i, offsets[i]);
         }
         maybeValidateChecksum(crc, in, descriptor);
@@ -206,7 +205,7 @@ public class MetadataSerializer implements IMetadataSerializer {
          */
 
         MetadataType[] allMetadataTypes = MetadataType.values();
-        // logger.debug("[Tinoryj] Target process metadata type number = {}, include
+        // logger.debug("[ELECT] Target process metadata type number = {}, include
         // {}", allMetadataTypes.length,
         // allMetadataTypes);
         Map<MetadataType, MetadataComponent> components = new EnumMap<>(MetadataType.class);
@@ -218,7 +217,7 @@ public class MetadataSerializer implements IMetadataSerializer {
                 in.skipBytes(lengths[i]);
                 continue;
             }
-            // logger.debug("[Tinoryj] Process metadata type = {}, length = {}", type,
+            // logger.debug("[ELECT] Process metadata type = {}, length = {}", type,
             // isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]);
             byte[] buffer = new byte[isChecksummed ? lengths[i] - CHECKSUM_LENGTH : lengths[i]];
             in.readFully(buffer);
@@ -243,7 +242,7 @@ public class MetadataSerializer implements IMetadataSerializer {
         String filename = descriptor.filenameFor(Component.STATS);
         if (actualChecksum != expectedChecksum) {
             logger.error(
-                    "[Tinoryj-ERROR] get original check sum [{}], the actual check sum is [{}], file name = {}, actual file size = {}",
+                    "[ELECT-ERROR] get original check sum [{}], the actual check sum is [{}], file name = {}, actual file size = {}",
                     expectedChecksum,
                     actualChecksum, filename, (new File(filename)).length());
         }
@@ -266,11 +265,11 @@ public class MetadataSerializer implements IMetadataSerializer {
 
         String filename = descriptor.filenameFor(Component.STATS);
         if (actualChecksum != expectedChecksum) {
-            logger.error("rymERROR: actual checksum is {}, expected checksum is {}, check type is {}, file name is {}",
+            logger.error("ELECT-ERROR: actual checksum is {}, expected checksum is {}, check type is {}, file name is {}",
                     actualChecksum, expectedChecksum, type, filename);
             throw new CorruptSSTableException(new IOException("Checksums do not match for " + filename), filename);
         } else if (!filename.contains("usertable0-")) {
-            // logger.info("rymInfo: file name {} for type {} checksum is correct",
+            // logger.info("ELECT-Info: file name {} for type {} checksum is correct",
             // filename, type);
         }
     }
@@ -347,10 +346,10 @@ public class MetadataSerializer implements IMetadataSerializer {
                                                                     isTransferredToErasureCoding,
                                                                     stats.hashID,
                                                                     stats.dataFileSize));
-        logger.debug("rymDebug: before rewriteSSTableMetadata method, the transferred flag of sstable ({}) is ({}), isTransferredToErasureCoding ({})", 
+        logger.debug("ELECT-Debug: before rewriteSSTableMetadata method, the transferred flag of sstable ({}) is ({}), isTransferredToErasureCoding ({})", 
                             sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isReplicationTransferToErasureCoding, isTransferredToErasureCoding);
         rewriteSSTableMetadata(descriptor, currentComponents);
-        logger.debug("rymDebug: after rewriteSSTableMetadata method, the transferred flag of sstable ({}) is ({})", sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isReplicationTransferToErasureCoding);
+        logger.debug("ELECT-Debug: after rewriteSSTableMetadata method, the transferred flag of sstable ({}) is ({})", sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isReplicationTransferToErasureCoding);
     }
 
     private void mutateMigrationFlag(Descriptor descriptor, String sstHash, boolean migrationFlag) throws IOException {
@@ -384,10 +383,10 @@ public class MetadataSerializer implements IMetadataSerializer {
                                                                     stats.isReplicationTransferToErasureCoding,
                                                                     stats.hashID,
                                                                     stats.dataFileSize));
-        logger.debug("rymDebug: before rewriteSSTableMetadata method, the migrationFlag of sstable ({}) is ({}), migrationFlag ({})", 
+        logger.debug("ELECT-Debug: before rewriteSSTableMetadata method, the migrationFlag of sstable ({}) is ({}), migrationFlag ({})", 
                             sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isDataMigrateToCloud, migrationFlag);
         rewriteSSTableMetadata(descriptor, currentComponents);
-        logger.debug("rymDebug: after rewriteSSTableMetadata method, the migrationFlag of sstable ({}) is ({})", sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isDataMigrateToCloud);
+        logger.debug("ELECT-Debug: after rewriteSSTableMetadata method, the migrationFlag of sstable ({}) is ({})", sstHash, ((StatsMetadata)currentComponents.get(MetadataType.STATS)).isDataMigrateToCloud);
     }
     private void mutate(Descriptor descriptor, UnaryOperator<StatsMetadata> transform) throws IOException {
         Map<MetadataType, MetadataComponent> currentComponents = deserialize(descriptor,

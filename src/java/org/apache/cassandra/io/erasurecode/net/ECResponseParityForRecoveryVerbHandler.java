@@ -45,7 +45,7 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
         String localParityCodeDir = ECNetutils.getLocalParityCodeDir();
         int k = DatabaseDescriptor.getEcDataNodes();
 
-        logger.debug("rymDebug: Get parity code ({}) from ({}) for sstable ({}), the recovery flag is ({})", parityHashList, message.from(), sstHash);
+        logger.debug("ELECT-Debug: Get parity code ({}) from ({}) for sstable ({}), the recovery flag is ({})", parityHashList, message.from(), sstHash);
 
 
         for(int i = 0; i < parityHashList.size(); i++) {
@@ -70,7 +70,7 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
                 else {
                     try {
                         Thread.sleep(1000);
-                        logger.debug("rymDebug: Check the downloaded file is ready? For parity code ({}), the size is ({})", parityCodeFileName, Files.size(path) );
+                        logger.debug("ELECT-Debug: Check the downloaded file is ready? For parity code ({}), the size is ({})", parityCodeFileName, Files.size(path) );
                         retryCheckFileCount++;
                     } catch (InterruptedException e) {
                         // TODO Auto-generated catch block
@@ -85,23 +85,23 @@ public class ECResponseParityForRecoveryVerbHandler implements IVerbHandler<ECRe
             // if(StorageService.ossAccessObj.downloadFileAsByteArrayFromOSS(parityCodeFileName, firstParityNode)) {
             byte[] parityCode = ECNetutils.readBytesFromFile(parityCodeFileName);
             if(parityCode.length == 0)
-                throw new IllegalArgumentException(String.format("rymERROR: cannot read data from parity code file (%s)", parityCodeFileName));
+                throw new IllegalArgumentException(String.format("ELECT-ERROR: cannot read data from parity code file (%s)", parityCodeFileName));
 
             if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) == null) {
-                // throw new IllegalArgumentException(String.format("rymERROR: The erasure codes for sstHash (%s) is empty", sstHash));
-                logger.debug("rymDebug: The erasure codes for sstHash ({}) is empty", sstHash);
+                // throw new IllegalArgumentException(String.format("ELECT-ERROR: The erasure codes for sstHash (%s) is empty", sstHash));
+                logger.debug("ELECT-Debug: The erasure codes for sstHash ({}) is empty", sstHash);
                 return;
             }
 
             if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].position() != 0) {
-                throw new IllegalArgumentException(String.format("rymERROR: The erasure codes index (%s) for sstHash (%s) is not empty", k + i, sstHash));
+                throw new IllegalArgumentException(String.format("ELECT-ERROR: The erasure codes index (%s) for sstHash (%s) is not empty", k + i, sstHash));
             }
 
 
             StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[k + i].put(parityCode);
-            logger.debug("rymDebug: Put parity code ({}) for sstable ({}), the index is ({})", parityCodeFileName, sstHash, k+i);
+            logger.debug("ELECT-Debug: Put parity code ({}) for sstable ({}), the index is ({})", parityCodeFileName, sstHash, k+i);
             // } else {
-            //     throw new FileNotFoundException(String.format("rymERROR: cannot download file (%s) from cloud", parityCodeFileName));
+            //     throw new FileNotFoundException(String.format("ELECT-ERROR: cannot download file (%s) from cloud", parityCodeFileName));
             // }
         }
 

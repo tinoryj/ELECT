@@ -54,10 +54,10 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
             forwardToLocalNodes(message, forwardTo);
-            // logger.debug("rymDebug: this is a forwarding header");
+            // logger.debug("ELECT-Debug: this is a forwarding header");
         }
 
-        logger.debug("rymDebug: Received message: {}", message.payload.parityHash);
+        logger.debug("ELECT-Debug: Received message: {}", message.payload.parityHash);
         String receivedParityCodeDir = ECNetutils.getReceivedParityCodeDir();
 
         // if (DatabaseDescriptor.getEnableMigration()) {
@@ -67,7 +67,7 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
 
         //     if (!StorageService.ossAccessObj.uploadFileToOSS(receivedParityCodeDir + message.payload.parityHash,
         //             parityInBytes)) {
-        //         logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
+        //         logger.error("[ELECT]: Could not upload parity SSTable: {}",
         //                 receivedParityCodeDir + message.payload.parityHash);
         //     }
 
@@ -79,9 +79,9 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
                     StandardOpenOption.CREATE);
             fileChannel.write(message.payload.parityCode);
             fileChannel.close();
-            logger.debug("rymDebug: write the parity code {} successfully!", message.payload.parityHash);
+            logger.debug("ELECT-Debug: write the parity code {} successfully!", message.payload.parityHash);
         } catch (IOException e) {
-            logger.error("rymERROR: Failed to write erasure code ({})", message.payload.parityHash);
+            logger.error("ELECT-ERROR: Failed to write erasure code ({})", message.payload.parityHash);
         }
 
         //}
@@ -116,7 +116,7 @@ public class ECParityNodeVerbHandler implements IVerbHandler<ECParityNode> {
     // e.printStackTrace();
     // }
     // }
-    // logger.debug("rymDebug: parityCodeFile.getName is {}",
+    // logger.debug("ELECT-Debug: parityCodeFile.getName is {}",
     // parityCodeFile.getAbsolutePath());
     // }
 

@@ -457,7 +457,7 @@ public class BigTableWriter extends SSTableWriter {
 
             try (DataInputStream dataFileReadForHash = new DataInputStream(
                     new FileInputStream(descriptor.filenameFor(Component.DATA)))) {
-                // logger.debug("[Tinoryj] Open data file success for SSTable = {}",
+                // logger.debug("[ELECT] Open data file success for SSTable = {}",
                 // descriptor.filenameFor(Component.DATA));
                 dataFileSize = new File(descriptor.filenameFor(Component.DATA)).length();
                 long fileLength = dataFileSize;
@@ -466,14 +466,14 @@ public class BigTableWriter extends SSTableWriter {
                 }
 
                 if(fileLength < 0 || fileLength > Integer.MAX_VALUE) {
-                    throw new IllegalStateException(String.format("rymERROR: The file length of sstable (%s) is negative (%s)", descriptor.filenameFor(Component.DATA), dataFileSize));
+                    throw new IllegalStateException(String.format("ELECT-ERROR: The file length of sstable (%s) is negative (%s)", descriptor.filenameFor(Component.DATA), dataFileSize));
                 }
 
 
                 byte[] bytes = new byte[(int) fileLength];
                 dataFileReadForHash.readFully(bytes);
                 dataFileReadForHash.close();
-                // logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
+                // logger.debug("[ELECT]: Read sstable data size = {}", fileLength);
                 // generate hash based on the bytes buffer
                 try {
                     MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -494,17 +494,17 @@ public class BigTableWriter extends SSTableWriter {
                         hashID = sb.toString();
                     }
 
-                    // logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash length is {}, file length is ({})", 
+                    // logger.debug("[ELECT]: generated hash value for current SSTable is {}, hash length is {}, file length is ({})", 
                     //                 hashID, hashID.length(), dataFileSize);
                 } catch (NoSuchAlgorithmException e) {
                     hashID = null;
-                    logger.error("[Tinoryj-ERROR]: Could not generated hash value for current SSTable = {}",
+                    logger.error("[ELECT-ERROR]: Could not generated hash value for current SSTable = {}",
                             descriptor.filenameFor(Component.DATA));
                     e.printStackTrace();
                 }
             } catch (IOException e) {
                 hashID = null;
-                logger.error("[Tinoryj-ERROR]: Could not read SSTable = {} for hash ID generation",
+                logger.error("[ELECT-ERROR]: Could not read SSTable = {} for hash ID generation",
                         descriptor.filenameFor(Component.DATA));
                 e.printStackTrace();
             }

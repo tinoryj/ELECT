@@ -56,7 +56,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         String rawCfPath = message.payload.rawCfPath;
         String cfName = message.payload.cfName;
 
-        logger.debug("rymDebug: We receive a signal from ({}), start to decode the cfname ({})", message.from(), cfName);
+        logger.debug("ELECT-Debug: We receive a signal from ({}), start to decode the cfname ({})", message.from(), cfName);
 
         // calculate the copy file time
         long retrieveFileCost = currentTimeMillis() - StorageService.instance.recoveringCFS.get(cfName);
@@ -71,7 +71,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
                 if(subDirectories != null) {
 
                     for(File subDir : subDirectories) {
-                        logger.debug("rymDebug: current dir is ({})", subDir.getAbsolutePath());
+                        logger.debug("ELECT-Debug: current dir is ({})", subDir.getAbsolutePath());
                         File[] files = subDir.listFiles();
                         for(File file : files) {
                             if(file.isFile() && file.getName().contains("EC.db")) {
@@ -94,10 +94,10 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
                 }
 
             } else {
-                throw new FileNotFoundException(String.format("rymERROR: Folder for path (%s) does not exists!", rawCfPath));
+                throw new FileNotFoundException(String.format("ELECT-ERROR: Folder for path (%s) does not exists!", rawCfPath));
             }
         } else {
-            logger.debug("rymDebug: For the secondary LSM-tree ({}), we do not decode them.", cfName);
+            logger.debug("ELECT-Debug: For the secondary LSM-tree ({}), we do not decode them.", cfName);
         }
 
         long endDecodeTimeStamp = currentTimeMillis();
@@ -105,7 +105,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         // caculate the decode time
         long decodeTimeCost = endDecodeTimeStamp - startDecodeTimeStamp;
         
-        logger.debug("rymDebug: We recovery the colum family ({}), the retrieve file cost is {}(ms), decode time cost is {}(ms), the decoded sstable count is ({})", 
+        logger.debug("ELECT-Debug: We recovery the colum family ({}), the retrieve file cost is {}(ms), decode time cost is {}(ms), the decoded sstable count is ({})", 
                      cfName, retrieveFileCost, decodeTimeCost, cnt);
 
         if(cfName.equals("usertable0")) {
@@ -152,36 +152,36 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
     private static void recoveryDataFromErasureCodesForLSMTree(String ecMetadataFile, String cfPath) throws Exception {
         int k = DatabaseDescriptor.getEcDataNodes();
         int m = DatabaseDescriptor.getParityNodes();
-        logger.debug("rymDebug: start recovery ecMetadata ({})", ecMetadataFile);
+        logger.debug("ELECT-Debug: start recovery ecMetadata ({})", ecMetadataFile);
         // Step 1: Get the ECSSTable from global map and get the ecmetadata
         byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
-        logger.debug("rymDebug: [Debug recovery] the size of ecMetadataInBytes is ({})", ecMetadataInBytes.length);
+        logger.debug("ELECT-Debug: [Debug recovery] the size of ecMetadataInBytes is ({})", ecMetadataInBytes.length);
         long startRecoveryTime = System.currentTimeMillis();
         ECMetadataContent ecMetadataContent = (ECMetadataContent) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
         if(ecMetadataContent == null)
-            throw new NullPointerException(String.format("rymDebug: [Debug recovery] The ecMetadata for ecMetadataFile ({}) is null!", ecMetadataFile));
+            throw new NullPointerException(String.format("ELECT-Debug: [Debug recovery] The ecMetadata for ecMetadataFile ({}) is null!", ecMetadataFile));
 
         
         // Step 2: Request the coding blocks from related nodes
         InetAddressAndPort localIp = FBUtilities.getBroadcastAddressAndPort();
         int index = ecMetadataContent.primaryNodes.indexOf(localIp);
         if(index == -1)
-            throw new NullPointerException(String.format("rymERROR: we cannot get index from primary node list", ecMetadataContent.primaryNodes));
+            throw new NullPointerException(String.format("ELECT-ERROR: we cannot get index from primary node list", ecMetadataContent.primaryNodes));
         String sstHash = ecMetadataContent.sstHashIdList.get(index);       
         int codeLength = StorageService.getErasureCodeLength();
-        logger.debug("rymDebug: [Debug recovery] retrieve chunks for sstable ({})", sstHash);
+        logger.debug("ELECT-Debug: [Debug recovery] retrieve chunks for sstable ({})", sstHash);
         
         long startRetrieveTime = System.currentTimeMillis();
         ECRecovery.retrieveErasureCodesForRecovery(ecMetadataContent, sstHash, codeLength, k, m);
-        logger.debug("rymDebug: [Debug recovery] retrieve chunks for ecmetadata ({}) successfully", sstHash);
+        logger.debug("ELECT-Debug: [Debug recovery] retrieve chunks for ecmetadata ({}) successfully", sstHash);
 
         // ByteBuffer[] recoveryOriginalSrc = StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash);
 
         if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) == null) {
-            throw new NullPointerException(String.format("rymERROR: we cannot get erasure code for sstable (%s)", sstHash));
+            throw new NullPointerException(String.format("ELECT-ERROR: we cannot get erasure code for sstable (%s)", sstHash));
         }
 
-        logger.debug("rymDebug: [Debug recovery] wait chunks for sstable ({})", sstHash);
+        logger.debug("ELECT-Debug: [Debug recovery] wait chunks for sstable ({})", sstHash);
         int[] decodeIndexes = ECRecovery.waitUntilRequestCodesReady(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash), sstHash, k, ecMetadataContent.zeroChunksNum, codeLength);
 
         long retrieveTimeCost = System.currentTimeMillis() - startRetrieveTime;
@@ -189,10 +189,10 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
 
         int eraseIndex = ecMetadataContent.sstHashIdList.indexOf(sstHash);
         if(eraseIndex == -1)
-            throw new NullPointerException(String.format("rymERROR: we cannot get index for sstable (%s) in ecMetadata, sstHash list is ({})", sstHash, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdList));
+            throw new NullPointerException(String.format("ELECT-ERROR: we cannot get index for sstable (%s) in ecMetadata, sstHash list is ({})", sstHash, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdList));
         int[] eraseIndexes = { eraseIndex };
 
-        logger.debug("rymDebug: [Debug recovery] When we recovery sstable ({}), the data blocks of strip id ({}) is ready.", sstHash, ecMetadataContent.stripeId);
+        logger.debug("ELECT-Debug: [Debug recovery] When we recovery sstable ({}), the data blocks of strip id ({}) is ready.", sstHash, ecMetadataContent.stripeId);
 
 
         // Step 3: Decode the raw data
@@ -212,7 +212,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         output[0] = ByteBuffer.allocateDirect(codeLength);
         decoder.decode(recoveryOriginalSrc, decodeIndexes, eraseIndexes, output);
 
-        logger.debug("rymDebug: [Debug recovery] We recovered the raw data of sstable ({}) successfully.", sstHash);
+        logger.debug("ELECT-Debug: [Debug recovery] We recovered the raw data of sstable ({}) successfully.", sstHash);
 
 
         // Step 4: record the raw data locally
@@ -224,21 +224,21 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         StatsMetadata statsMetadata = (StatsMetadata) ByteObjectConversion.byteArrayToObject(statsMetadatInBytes);
 
         int dataFileSize = (int) statsMetadata.dataFileSize;
-        // logger.debug("rymDebug: [Debug recovery] we load the raw sstable content of ({}), the length of decode data is ({}), sstHash is ({}), the data file size is ({}) ", sstable.descriptor, output[0].remaining(), sstable.getSSTableHashID(), dataFileSize);
+        // logger.debug("ELECT-Debug: [Debug recovery] we load the raw sstable content of ({}), the length of decode data is ({}), sstHash is ({}), the data file size is ({}) ", sstable.descriptor, output[0].remaining(), sstable.getSSTableHashID(), dataFileSize);
         byte[] sstContent = new byte[dataFileSize];
         output[0].get(sstContent);
         ECNetutils.writeBytesToFile(dataFileName, sstContent);
         // SSTableReader.loadRawData(sstContent, sstable.descriptor, sstable);
 
         // debug
-        // logger.debug("rymDebug: Recovery sstHashList is ({}), parity hash list is ({}), stripe id is ({}), sstHash to replica map is ({}), sstable hash is ({}), descriptor is ({}), decode indexes are ({}), erase index is ({}), zero chunks are ({})", 
+        // logger.debug("ELECT-Debug: Recovery sstHashList is ({}), parity hash list is ({}), stripe id is ({}), sstHash to replica map is ({}), sstable hash is ({}), descriptor is ({}), decode indexes are ({}), erase index is ({}), zero chunks are ({})", 
         //              ecMetadataContent.sstHashIdList, ecMetadataContent.parityHashList, ecMetadataContent.stripeId, ecMetadataContent.sstHashIdToReplicaMap, sstable.getSSTableHashID(), sstable.descriptor, decodeIndexes, eraseIndex, ecMetadataContent.zeroChunksNum);
 
 
         // Step 5: send the raw data to the peer secondary nodes
         // List<InetAddressAndPort> replicaNodes = ecMetadataContent.sstHashIdToReplicaMap.get(sstHash);
         // if(replicaNodes == null) {
-        //     throw new NullPointerException(String.format("rymERROR: we cannot get replica nodes for sstable (%s)", sstHash));
+        //     throw new NullPointerException(String.format("ELECT-ERROR: we cannot get replica nodes for sstable (%s)", sstHash));
         // }
 
         // Step 6: send the raw data to the peer secondary nodes
@@ -255,7 +255,7 @@ public class ResponseLSMTreeRecoveryVerbHandler implements IVerbHandler<Response
         // Thread.sleep(5000);
         long recoveryTimeCost = System.currentTimeMillis() - startRecoveryTime;
         StorageService.instance.recoveryTimeForLSMTreeRecovery += recoveryTimeCost;
-        logger.debug("rymDebug: recovery for sstHash ({}) is done!", sstHash);
+        logger.debug("ELECT-Debug: recovery for sstHash ({}) is done!", sstHash);
     }
 
 

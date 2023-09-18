@@ -117,7 +117,7 @@ public class DuplicateRowChecker extends Transformation<BaseRowIterator<?>> {
     public static PartitionIterator duringRead(final PartitionIterator iterator,
             final List<InetAddressAndPort> replicas) {
         if (!DatabaseDescriptor.checkForDuplicateRowsDuringReads()) {
-            logger.debug("[Tinoryj] checkForDuplicateRowsDuringReads is false, skip checking.");
+            logger.debug("[ELECT] checkForDuplicateRowsDuringReads is false, skip checking.");
             return iterator;
         }
         final boolean snapshot = DatabaseDescriptor.snapshotOnDuplicateRowDetection();

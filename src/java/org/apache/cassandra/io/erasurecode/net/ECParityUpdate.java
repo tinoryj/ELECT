@@ -120,12 +120,12 @@ public final class ECParityUpdate implements Serializable {
         }
 
         if (this.parityNodes.get(0).equals(FBUtilities.getBroadcastAddressAndPort())) {
-            logger.error("rymERROR: parity node is equal to primary node, that's illegal!");
+            logger.error("ELECT-ERROR: parity node is equal to primary node, that's illegal!");
         }
 
         Message<ECParityUpdate> message = Message.outWithFlag(Verb.ECPARITYUPDATE_REQ, this,
                 MessageFlag.CALL_BACK_ON_FAILURE);
-        logger.debug("rymDebug: Send sstable ({}) [isOldSSTable: {}] to parity node ({}), the size is ({})",
+        logger.debug("ELECT-Debug: Send sstable ({}) [isOldSSTable: {}] to parity node ({}), the size is ({})",
                 this.sstable.sstHash, this.isOldSSTable, this.parityNodes.get(0), this.sstable.sstContentSize);
         MessagingService.instance().send(message, this.parityNodes.get(0));
     }

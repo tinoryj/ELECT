@@ -445,7 +445,7 @@ public class Keyspace {
 
             if (keyspaceName.equals("ycsb")) {
                 globalNodeIDtoCFIDMap.put(globalNodeIDtoCFIDMap.size(), metadata.id);
-                // logger.debug("rymDebug: globalNodeIDtoCFIDMap is {}", globalNodeIDtoCFIDMap);
+                // logger.debug("ELECT-Debug: globalNodeIDtoCFIDMap is {}", globalNodeIDtoCFIDMap);
             }
 
             // CFS mbean instantiation will error out before we hit this, but in case that
@@ -557,7 +557,7 @@ public class Keyspace {
 
         boolean requiresViewUpdate = updateIndexes
                 && viewManager.updatesAffectView(Collections.singleton(mutation), false);
-        // logger.debug("rymDebug: requiresViewUpdate = {}", requiresViewUpdate);
+        // logger.debug("ELECT-Debug: requiresViewUpdate = {}", requiresViewUpdate);
 
         if (requiresViewUpdate) {
             mutation.viewLockAcquireStart.compareAndSet(0L, currentTimeMillis());
@@ -701,7 +701,7 @@ public class Keyspace {
         if(index != -1)
             replicaUUID = globalNodeIDtoCFIDMap.get(index);
         else
-            throw new IllegalStateException(String.format("rymERROR: the local address (%s) is not belong to the replica nodes (%s)", localAddress, eps));
+            throw new IllegalStateException(String.format("ELECT-ERROR: the local address (%s) is not belong to the replica nodes (%s)", localAddress, eps));
         
         // String fileName = "usertable";
         // if(index!=0) {

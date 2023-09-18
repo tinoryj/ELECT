@@ -137,7 +137,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     {
         try
         {
-            // logger.debug("rymDebug: this is ActiveCompactionTask.execute");
+            // logger.debug("ELECT-Debug: this is ActiveCompactionTask.execute");
 
             return executeInternal(activeCompactions, first, last, ecMetadata, fileNamePrefix, sourceKeys);
         }
@@ -164,7 +164,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     {
         try
         {
-            // logger.debug("rymDebug: this is ActiveCompactionTask.execute");
+            // logger.debug("ELECT-Debug: this is ActiveCompactionTask.execute");
 
             return executeInternal(activeCompactions, TransferredSSTableKeyRanges);
         }

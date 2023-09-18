@@ -301,7 +301,7 @@ public class CompactionTask extends AbstractCompactionTask {
                         traversedKeys++;
                         UnfilteredRowIterator row = ci.next();
                         if(!row.partitionKey().equals(row.partitionKey())) {
-                            logger.debug("rymDebug: Different! row1 is {}, row2 is {}", 
+                            logger.debug("ELECT-Debug: Different! row1 is {}, row2 is {}", 
                                 row.partitionKey().getRawKey(cfs.metadata()), row.partitionKey().getRawKey(cfs.metadata()));
                         }
 
@@ -367,19 +367,19 @@ public class CompactionTask extends AbstractCompactionTask {
                         logger.warn("[Rewrite SSTables]: task {} did not switch writer!", taskId);
                     }
                     
-                    // logger.debug("rymDebug: traversed keys num is {}, totalKeysWritten is {}",traversedKeys, totalKeysWritten);
+                    // logger.debug("ELECT-Debug: traversed keys num is {}, totalKeysWritten is {}",traversedKeys, totalKeysWritten);
                     timeSpentWritingKeys = TimeUnit.NANOSECONDS.toMillis(nanoTime() - start);
 
                     // point of no return
-                    // logger.debug("rymDebug: about writer, capacity is ");
+                    // logger.debug("ELECT-Debug: about writer, capacity is ");
                     // headNewSStables = writer1.finishFirstPhase();
                     // tailNewSStables = writer2.finish();
                     SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, null, cfs, fileNamePrefix, transaction.opId());
 
                     if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
-                        logger.error("rymERROR: set IsReplicationTransferredToErasureCoding failed!");
+                        logger.error("ELECT-ERROR: set IsReplicationTransferredToErasureCoding failed!");
                     }
-                    logger.debug("rymDebug: this is rewrite SSTable method, replacing SSTable {}", ecSSTable.getSSTableHashID());
+                    logger.debug("ELECT-Debug: this is rewrite SSTable method, replacing SSTable {}", ecSSTable.getSSTableHashID());
                     
                     transaction.update(ecSSTable, false);
                     // writer.getSSTableWriter().moveStarts(ecSSTable, ecSSTable.last);
@@ -473,7 +473,7 @@ public class CompactionTask extends AbstractCompactionTask {
     protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) throws Exception {
         // The collection of sstables passed may be empty (but not null); even if
         // it is not empty, it may compact down to nothing if all rows are deleted.
-        logger.info("rymDebug[transferred]: This is runMayThrow for secondary node, as this compaction transaction involves transferred sstables");
+        logger.info("ELECT-Debug[transferred]: This is runMayThrow for secondary node, as this compaction transaction involves transferred sstables");
         assert transaction != null;
         Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
         TimeUUID taskId = transaction.opId();
@@ -535,7 +535,7 @@ public class CompactionTask extends AbstractCompactionTask {
             Set<SSTableReader> transferredSSTables = new HashSet<>();
             for (SSTableReader sstable : actuallyCompact) {
                 if(sstable.isReplicationTransferredToErasureCoding()) {
-                    logger.debug("rymDebug: removing sstable ({}) from actuallyCompact", sstable.descriptor);
+                    logger.debug("ELECT-Debug: removing sstable ({}) from actuallyCompact", sstable.descriptor);
                     transferredSSTables.add(sstable);
                 }
             }
@@ -590,7 +590,7 @@ public class CompactionTask extends AbstractCompactionTask {
                         UnfilteredRowIterator row = ci.next();
                         if(prevRow != null) {
                             if(prevRow.partitionKey().compareTo(row.partitionKey()) > 0) {
-                                logger.error("rymERROR: previous partition key {} is larger than current partition key {}!",
+                                logger.error("ELECT-ERROR: previous partition key {} is larger than current partition key {}!",
                                              prevRow.partitionKey().getToken(), row.partitionKey().getToken());
                             }
                         }
@@ -620,7 +620,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     // for (SSTableReader sst: allSStables) {
-                    //     logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
+                    //     logger.debug(YELLOW+"ELECT-Debug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
                     //      stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
                     //      cfName+RESET, StreamSupport.stream(allSStables.spliterator(), false).count());
                     // }
@@ -717,7 +717,7 @@ public class CompactionTask extends AbstractCompactionTask {
         assert transaction != null;
         Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
         TimeUUID taskId = transaction.opId();
-        // logger.debug("rymDebug:[Raw Compaction Strategy] rewrite {} sstables, original sstbales number is {}, task id is {}",
+        // logger.debug("ELECT-Debug:[Raw Compaction Strategy] rewrite {} sstables, original sstbales number is {}, task id is {}",
         //              sstables.size(), transaction.originals().size(), taskId);
 
         if (transaction.originals().isEmpty())
@@ -792,7 +792,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     }
                 }
                 if(transferredSSTablesNum > DatabaseDescriptor.getMaxStripUpdateSSTables()) {
-                    logger.error("rymERROR: The selected sstable count ({}) is exceed the limit ({})", transferredSSTablesNum, DatabaseDescriptor.getMaxStripUpdateSSTables());
+                    logger.error("ELECT-ERROR: The selected sstable count ({}) is exceed the limit ({})", transferredSSTablesNum, DatabaseDescriptor.getMaxStripUpdateSSTables());
                 }
             }
 
@@ -811,7 +811,7 @@ public class CompactionTask extends AbstractCompactionTask {
                             nowInSec, taskId)) {
 
                 // if (cfs.getColumnFamilyName().contains("usertable")) {
-                //     logger.debug("rymDebug: actually compact sstable count is {}, scanners count is {}, task id is {}",
+                //     logger.debug("ELECT-Debug: actually compact sstable count is {}, scanners count is {}, task id is {}",
                 //             actuallyCompact.size(), scanners.scanners.size(), taskId);
                 // }
                 long lastCheckObsoletion = start;
@@ -840,7 +840,7 @@ public class CompactionTask extends AbstractCompactionTask {
                         UnfilteredRowIterator row = ci.next();
                         if(prevRow != null) {
                             if(prevRow.partitionKey().compareTo(row.partitionKey()) > 0) {
-                                logger.error("rymERROR: previous partition key {} is larger than current partition key {}!",
+                                logger.error("ELECT-ERROR: previous partition key {} is larger than current partition key {}!",
                                              prevRow.partitionKey().getToken(), row.partitionKey().getToken());
                             }
                         }
@@ -868,7 +868,7 @@ public class CompactionTask extends AbstractCompactionTask {
 
                     // Iterable<SSTableReader> allSStables = cfs.getSSTables(SSTableSet.LIVE);
                     // for (SSTableReader sst: allSStables) {
-                    //     logger.debug(YELLOW+"rymDebug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
+                    //     logger.debug(YELLOW+"ELECT-Debug: Compaction is done!!!! sstableHash {}, sstable level {}, sstable name {}, cfName is {}, sstable number is {}",
                     //      stringToHex(sst.getSSTableHashID())+RESET, sst.getSSTableLevel(), sst.getFilename(),
                     //      cfName+RESET, StreamSupport.stream(allSStables.spliterator(), false).count());
                     // }
@@ -903,7 +903,7 @@ public class CompactionTask extends AbstractCompactionTask {
                         target = StorageService.instance.globalSSTHashToParityNodesMap.get(oldSSTHash).get(0);
                         // targets.add(target);
                     } catch (Exception e) {
-                        throw new NullPointerException(String.format("rymERROR: cannot get parity nodes for sstHash (%s)", oldSSTHash));
+                        throw new NullPointerException(String.format("ELECT-ERROR: cannot get parity nodes for sstHash (%s)", oldSSTHash));
                     }
                     // targets.add(target);
                     if(oldSSTables.containsKey(target)){
@@ -942,7 +942,7 @@ public class CompactionTask extends AbstractCompactionTask {
                                 ECNetutils.syncSSTableWithSecondaryNodes(newSSTable, replicaNodes, newSSTable.getSSTableHashID(), "Parity Update", cfs);
                                 StorageService.instance.globalSSTHashToParityNodesMap.put(newSSTable.getSSTableHashID(),
                                                                                           StorageService.instance.globalSSTHashToParityNodesMap.get(entry.getValue().get(0).sstHash));
-                                logger.debug("rymDebug: [Parity Update] we map new sstHash ({}) to parity Nodes ({})",
+                                logger.debug("ELECT-Debug: [Parity Update] we map new sstHash ({}) to parity Nodes ({})",
                                         newSSTable.getSSTableHashID(),
                                         StorageService.instance.globalSSTHashToParityNodesMap
                                                 .get(entry.getValue().get(0).sstHash));
@@ -953,7 +953,7 @@ public class CompactionTask extends AbstractCompactionTask {
                         }
 
                         // Debug: check if the sstables' parity nodes are the same
-                        // String logString = "rymDebug: Check the parity nodes of old sstables, ";
+                        // String logString = "ELECT-Debug: Check the parity nodes of old sstables, ";
                         // for(SSTableContentWithHashID sst : entry.getValue()) {
                         // logString += "the parity nodes of sstable " + sst.sstHash + "is " + StorageService.instance.globalSSTHashToParityNodesMap.get(sst.sstHash) + ",";}
                         // logger.debug(logString);
@@ -965,7 +965,7 @@ public class CompactionTask extends AbstractCompactionTask {
                         
 
                         for (SSTableContentWithHashID newSSTable : newSSTableContentWithHashID) {
-                            logger.debug("rymDebug: send new sstable ({}) to parity node ({})", newSSTable.sstHash, parityNodes.get(0));
+                            logger.debug("ELECT-Debug: send new sstable ({}) to parity node ({})", newSSTable.sstHash, parityNodes.get(0));
                             ECParityUpdate parityUpdate = new ECParityUpdate(newSSTable, false, parityNodes);
                             StorageService.instance.transferredSSTableCount++;
                             parityUpdate.sendParityUpdateSignal();
@@ -985,13 +985,13 @@ public class CompactionTask extends AbstractCompactionTask {
                                                 + ",";
                                     }
 
-                                    throw new IllegalStateException(String.format("rymERROR: The parity nodes are different!!! {%s}", logString));
+                                    throw new IllegalStateException(String.format("ELECT-ERROR: The parity nodes are different!!! {%s}", logString));
                                 }
                             }
                             StorageService.instance.transferredSSTableCount--;
                             ECParityUpdate parityUpdate = new ECParityUpdate(oldSSTable, true, parityNodes);
 
-                            logger.debug("rymDebug: send old sstable ({}) to parity node ({})", oldSSTable.sstHash, parityNodes.get(0));
+                            logger.debug("ELECT-Debug: send old sstable ({}) to parity node ({})", oldSSTable.sstHash, parityNodes.get(0));
                             parityUpdate.sendParityUpdateSignal();
 
                             // remove the entry to save memory
@@ -1000,12 +1000,12 @@ public class CompactionTask extends AbstractCompactionTask {
                         }
 
 
-                        logger.debug("rymDebug: For compaction task ({}), we send ({}) new sstables and ({}) old sstables to parity node ({}), the sstables count before compaction ({}), after compaction ({}), this txn has ({}) transferred sstables.",
+                        logger.debug("ELECT-Debug: For compaction task ({}), we send ({}) new sstables and ({}) old sstables to parity node ({}), the sstables count before compaction ({}), after compaction ({}), this txn has ({}) transferred sstables.",
                                          taskId, newSSTableContentWithHashID.size(), entry.getValue().size(), entry.getKey(), transaction.originals().size(), newSStables.size(), transferredSSTablesNum);
 
 
                         if(newSSTableContentWithHashID.size() > entry.getValue().size()) {
-                            logger.error("rymERROR: New sstables count ({}) is more than old sstables count ({}), check the code.", newSSTableContentWithHashID.size(), entry.getValue().size());
+                            logger.error("ELECT-ERROR: New sstables count ({}) is more than old sstables count ({}), check the code.", newSSTableContentWithHashID.size(), entry.getValue().size());
                         }
 
                     }

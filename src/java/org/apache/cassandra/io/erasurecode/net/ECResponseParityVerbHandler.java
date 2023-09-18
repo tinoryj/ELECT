@@ -41,16 +41,16 @@ public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParit
         int parityIndex = message.payload.parityIndex;
         boolean isRecovery = message.payload.isRecovery;
 
-        logger.debug("rymDebug: Get parity code ({}) from ({}) for sstable ({}), the recovery flag is ({})", parityHash, message.from(), sstHash, isRecovery);
+        logger.debug("ELECT-Debug: Get parity code ({}) from ({}) for sstable ({}), the recovery flag is ({})", parityHash, message.from(), sstHash, isRecovery);
 
         // save it to the map for stripe update
         if(!isRecovery) {
             if(StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash) != null) {
                 StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].put(parityCode);
                 // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
-                logger.debug("rymDebug: Get parity code ({}) from ({}) for update sstable ({})", parityHash, message.from(), sstHash);
+                logger.debug("ELECT-Debug: Get parity code ({}) from ({}) for update sstable ({})", parityHash, message.from(), sstHash);
             } else {
-                throw new NullPointerException(String.format("rymERROR: We receive parity code (%s) from (%s), but cannot find parity codes for sstable (%s)", parityHash, message.from(), sstHash));
+                throw new NullPointerException(String.format("ELECT-ERROR: We receive parity code (%s) from (%s), but cannot find parity codes for sstable (%s)", parityHash, message.from(), sstHash));
             }
         } else {
             if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash) != null) {
@@ -58,17 +58,17 @@ public class ECResponseParityVerbHandler implements IVerbHandler<ECResponseParit
                     if(StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex] != null &&
                        StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].remaining() >= parityCode.length) {
                         StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].put(parityCode);
-                        logger.debug("rymDebug: Get parity code ({}) from ({}) for recovery sstable ({})", parityHash, message.from(), sstHash);
+                        logger.debug("ELECT-Debug: Get parity code ({}) from ({}) for recovery sstable ({})", parityHash, message.from(), sstHash);
                     } else {
-                        throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s), the size of erasure codes (%s), buffer size is (%s), parity code size is (%s)", 
+                        throw new IllegalStateException(String.format("ELECT-ERROR: get an outbound index (%s) when we recovery sstHash (%s), the size of erasure codes (%s), buffer size is (%s), parity code size is (%s)", 
                                                                       parityIndex, sstHash, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash).length, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[parityIndex].position(), parityCode.length));
                     }
                 } else {
-                    throw new IllegalStateException(String.format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s)", parityIndex, sstHash));
+                    throw new IllegalStateException(String.format("ELECT-ERROR: get an outbound index (%s) when we recovery sstHash (%s)", parityIndex, sstHash));
                 }
                 // StorageService.instance.globalSSTHashToParityCodeMap.get(sstHash)[parityIndex].rewind(); 
             } else {
-                throw new NullPointerException(String.format("rymERROR: We receive parity code (%s) from (%s), but cannot find erasure codes for sstable (%s)", parityHash, message.from(), sstHash));
+                throw new NullPointerException(String.format("ELECT-ERROR: We receive parity code (%s) from (%s), but cannot find erasure codes for sstable (%s)", parityHash, message.from(), sstHash));
             }
         }
 

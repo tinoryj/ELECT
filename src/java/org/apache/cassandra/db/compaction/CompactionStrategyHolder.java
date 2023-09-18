@@ -168,7 +168,7 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder {
     @SuppressWarnings("resource")
     public List<ISSTableScanner> getScanners(GroupedSSTableContainer sstables, Collection<Range<Token>> ranges) {
         List<ISSTableScanner> scanners = new ArrayList<>(strategies.size());
-        // logger.debug("rymDebug: CompactionStrategyHolder.getscanner4");
+        // logger.debug("ELECT-Debug: CompactionStrategyHolder.getscanner4");
         for (int i = 0; i < strategies.size(); i++) {
             if (sstables.isGroupEmpty(i))
                 continue;

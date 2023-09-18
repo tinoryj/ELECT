@@ -84,7 +84,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
             forwardToLocalNodes(message, forwardTo);
-            logger.debug("rymDebug: this is a forwarding header");
+            logger.debug("ELECT-Debug: this is a forwarding header");
         }
 
         if (StorageService.instance.globalRecvSSTHashList.contains(message.payload.ecMessageContent.sstHashID)) {
@@ -101,7 +101,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         // }
 
         logger.debug(
-                "rymDebug: get a new sstable ({}) for erasure coding!!! message is from: {}, primaryNode is {}, parityNodes is {}, sstable content size is {}",
+                "ELECT-Debug: get a new sstable ({}) for erasure coding!!! message is from: {}, primaryNode is {}, parityNodes is {}, sstable content size is {}",
                 message.payload.ecMessageContent.sstHashID,
                 message.from(), message.payload.ecMessageContent.replicaNodes.get(0),
                 message.payload.ecMessageContent.parityNodes,
@@ -112,11 +112,11 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         // save the received data to recvQueue
         ECNetutils.saveECMessageToGlobalRecvQueue(primaryNode, message.payload);
 
-        // logger.debug("rymDebug: recvQueues is {}", recvQueues);
+        // logger.debug("ELECT-Debug: recvQueues is {}", recvQueues);
 
         // StorageService.instance.globalRecvQueues.forEach((address, queue) ->
         // System.out.print("Queue length of " + address + " is " + queue.size()));
-        String logString = "rymDebug: Insight the globalRecvQueues";
+        String logString = "ELECT-Debug: Insight the globalRecvQueues";
         for (Map.Entry<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> entry : StorageService.instance.globalRecvQueues
                 .entrySet()) {
             String str = entry.getKey().toString() + " has " + entry.getValue().size() + " elements, ";
@@ -153,12 +153,12 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                         StorageService.instance.globalPendingOldSSTableForECStripUpdateMap.size() < 50 ||
                         StorageService.instance.globalReadyOldSSTableForECStripUpdateCount > 0) {
                     cnt++;
-                    logger.debug("rymDebug: retry to perform erasure coding count is {}", cnt);
+                    logger.debug("ELECT-Debug: retry to perform erasure coding count is {}", cnt);
                 } else {
                     // Padding zero chunk to consume the blocked sstables
                     cnt = 0;
                     logger.debug(
-                            "rymDebug: sstContents is not enough to do erasure coding, we need to padding zero: recvQueues size is {}",
+                            "ELECT-Debug: sstContents is not enough to do erasure coding, we need to padding zero: recvQueues size is {}",
                             StorageService.instance.globalRecvQueues.size());
                     while (StorageService.instance.globalRecvQueues.size() > 0) {
                         ECMessage tmpArray[] = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
@@ -191,7 +191,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                             Stage.ERASURECODE.maybeExecuteImmediately(
                                     new PerformErasureCodeRunnable(tmpArray, codeLength, zeroChunkNum));
                         } else {
-                            logger.debug("rymDebug: Can not get enough data for erasure coding, tmpArray.length is {}.",
+                            logger.debug("ELECT-Debug: Can not get enough data for erasure coding, tmpArray.length is {}.",
                                     count);
                         }
                     }
@@ -200,7 +200,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             } else {
 
                 while (StorageService.instance.globalRecvQueues.size() >= DatabaseDescriptor.getEcDataNodes()) {
-                    logger.debug("rymDebug: sstContents are enough to do erasure coding: recvQueues size is {}",
+                    logger.debug("ELECT-Debug: sstContents are enough to do erasure coding: recvQueues size is {}",
                             StorageService.instance.globalRecvQueues.size());
                     ECMessage[] tmpArray = new ECMessage[DatabaseDescriptor.getEcDataNodes()];
                     // traverse the recvQueues
@@ -217,7 +217,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                         Stage.ERASURECODE
                                 .maybeExecuteImmediately(new PerformErasureCodeRunnable(tmpArray, codeLength, 0));
                     } else {
-                        logger.debug("rymDebug: Can not get enough data for erasure coding, count is {}.", count);
+                        logger.debug("ELECT-Debug: Can not get enough data for erasure coding, count is {}.", count);
                     }
 
                 }
@@ -271,7 +271,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
         @Override
         public synchronized void run() {
             if (messages.length != ecDataNum) {
-                logger.error("rymERROR: message length is not equal to ecDataNum");
+                logger.error("ELECT-ERROR: message length is not equal to ecDataNum");
             }
             // int codeLength = messages[0].sstSize;
             // for (ECMessage msg : messages) {
@@ -282,7 +282,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             ErasureCoderOptions ecOptions = new ErasureCoderOptions(ecDataNum, ecParityNum);
             ErasureEncoder encoder = new NativeRSEncoder(ecOptions);
 
-            logger.debug("rymDebug: let's start computing erasure coding");
+            logger.debug("ELECT-Debug: let's start computing erasure coding");
 
             // Encoding input and output
             ByteBuffer[] data = new ByteBuffer[ecDataNum];
@@ -292,19 +292,19 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             for (int i = 0; i < messages.length; i++) {
                 if (messages[i].sstContent == null || codeLength < messages[i].sstContent.length) {
                     throw new IllegalStateException(String.format(
-                            "rymERROR: sstable (%s) content is illegal, code length is (%s), content length is (%s)",
+                            "ELECT-ERROR: sstable (%s) content is illegal, code length is (%s), content length is (%s)",
                             messages[i].ecMessageContent.sstHashID, codeLength, messages[i].sstContent.length));
                 }
                 data[i] = ByteBuffer.allocateDirect(codeLength);
                 data[i].put(messages[i].sstContent);
-                logger.debug("rymDebug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
+                logger.debug("ELECT-Debug: remaining data is {}, codeLength is {}", data[i].remaining(), codeLength);
                 int remaining = data[i].remaining();
                 if (remaining > 0) {
                     byte[] zeros = new byte[remaining];
                     data[i].put(zeros);
                 }
                 // data[i].put(new byte[data[i].remaining()]);
-                // logger.debug("rymDebug: message[{}].sstconetent {}, data[{}] is: {}",
+                // logger.debug("ELECT-Debug: message[{}].sstconetent {}, data[{}] is: {}",
                 // i, messages[i].sstContent,i, data[i]);
                 data[i].rewind();
             }
@@ -318,7 +318,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
             try {
                 encoder.encode(data, parity);
             } catch (IOException e) {
-                logger.error("rymERROR: Perform erasure code error", e);
+                logger.error("ELECT-ERROR: Perform erasure code error", e);
             }
             long timeCost = currentTimeMillis() - startTime;
             StorageService.instance.encodingTime += timeCost;
@@ -343,7 +343,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                     long startUploadParityTime = System.currentTimeMillis();
                     if (!StorageService.ossAccessObj.uploadFileToOSS(localParityCodeDir + parityHashList.get(i),
                             parityInBytes)) {
-                        logger.error("[Tinoryj]: Could not upload parity SSTable: {}",
+                        logger.error("[ELECT]: Could not upload parity SSTable: {}",
                                 localParityCodeDir + parityHashList.get(i));
                     } else {
 
@@ -363,10 +363,10 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
                             StandardOpenOption.CREATE);
                     fileChannel.write(parity[0]);
                     fileChannel.close();
-                    // logger.debug("rymDebug: parity code file created: {}",
+                    // logger.debug("ELECT-Debug: parity code file created: {}",
                     // parityCodeFile.getName());
                 } catch (IOException e) {
-                    logger.error("rymERROR: Perform erasure code error", e);
+                    logger.error("ELECT-ERROR: Perform erasure code error", e);
                 }
                 // sync encoded data to parity nodes
                 ECParityNode ecParityNode = new ECParityNode(null, null, 0);

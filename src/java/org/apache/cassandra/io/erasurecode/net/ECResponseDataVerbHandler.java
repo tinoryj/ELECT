@@ -45,22 +45,22 @@ public class ECResponseDataVerbHandler implements IVerbHandler<ECResponseData> {
                         StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index]
                                 .remaining() >= rawData.length) {
                     StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].put(rawData);
-                    logger.debug("rymDebug: get raw data from ({}) for sstable hash ({}), index is ({})",
+                    logger.debug("ELECT-Debug: get raw data from ({}) for sstable hash ({}), index is ({})",
                             message.from(), sstHash, index);
                 } else {
                     throw new IllegalStateException(String.format(
-                            "rymERROR: get an outbound index (%s) when we recovery sstHash (%s), the size of erasure codes (%s), the size of the buffer (%s), raw data length is (%s)",
+                            "ELECT-ERROR: get an outbound index (%s) when we recovery sstHash (%s), the size of erasure codes (%s), the size of the buffer (%s), raw data length is (%s)",
                             index, sstHash, StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash).length,
                             StorageService.instance.globalSSTHashToErasureCodesMap.get(sstHash)[index].position(),
                             rawData.length));
                 }
             } else {
                 throw new IllegalStateException(String
-                        .format("rymERROR: get an outbound index (%s) when we recovery sstHash (%s)", index, sstHash));
+                        .format("ELECT-ERROR: get an outbound index (%s) when we recovery sstHash (%s)", index, sstHash));
             }
         } else {
             throw new NullPointerException(
-                    String.format("rymERROR: We cannot find erasure codes for sstable (%s), the request is from (%s)",
+                    String.format("ELECT-ERROR: We cannot find erasure codes for sstable (%s), the request is from (%s)",
                             sstHash, message.from()));
         }
 

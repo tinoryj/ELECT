@@ -53,7 +53,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
 
         byte[] parityCode;
 
-        logger.debug("rymDebug: get a request parity code ({}) message from node ({})", parityHash, message.from());
+        logger.debug("ELECT-Debug: get a request parity code ({}) message from node ({})", parityHash, message.from());
         // String filePath = "/path/to/file.txt";
         Path path = Paths.get(filePath);
         int retryCount = 0;
@@ -79,14 +79,14 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
         // }
         // if (DatabaseDescriptor.getEnableMigration()) {
         //     if (!StorageService.ossAccessObj.downloadFileFromOSS(filePath, filePath)) {
-        //         logger.error("[Tinoryj]: Could not download parity SSTable: {}",
+        //         logger.error("[ELECT]: Could not download parity SSTable: {}",
         //                 filePath);
         //     }
         // }
 
         if (!Files.exists(path)) {
             throw new IllegalStateException(String.format(
-                    "rymERROR: we cannot find parity code file %s requested from %s", filePath, message.from()));
+                    "ELECT-ERROR: we cannot find parity code file %s requested from %s", filePath, message.from()));
         }
 
         try {
@@ -104,7 +104,7 @@ public class ECRequestParityVerbHandler implements IVerbHandler<ECRequestParity>
                 ECNetutils.deleteFileByName(filePath);
         } catch (IOException e) {
             // TODO Auto-generated catch block
-            logger.error("rymERROR: failed to find parity code file {} requested from {}", filePath, message.from());
+            logger.error("ELECT-ERROR: failed to find parity code file {} requested from {}", filePath, message.from());
             e.printStackTrace();
         }
 

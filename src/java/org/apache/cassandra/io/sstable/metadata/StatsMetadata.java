@@ -161,7 +161,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 byte[] bytes = new byte[(int) this.dataFileSize];
                 dataFileReadForHash.readFully(bytes);
                 dataFileReadForHash.close();
-                // logger.debug("[Tinoryj]: Read sstable data size = {}", fileLength);
+                // logger.debug("[ELECT]: Read sstable data size = {}", fileLength);
                 // generate hash based on the bytes buffer
                 try {
                     MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -181,16 +181,16 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                         this.hashID = sb.toString();
                     }
 
-                    logger.debug("[Tinoryj]: generated hash value for current SSTable is {}, hash length is {}", this.hashID, this.hashID.length());
+                    logger.debug("[ELECT]: generated hash value for current SSTable is {}, hash length is {}", this.hashID, this.hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
-                    // logger.debug("[Tinoryj]: Could not generated hash value for current SSTable =
+                    // logger.debug("[ELECT]: Could not generated hash value for current SSTable =
                     // {}", fileName);
                     e.printStackTrace();
                 }
             } catch (IOException e) {
                 this.hashID = null;
-                // logger.debug("[Tinoryj]: Could not read SSTable {}", fileName);
+                // logger.debug("[ELECT]: Could not read SSTable {}", fileName);
                 e.printStackTrace();
                 return false;
             }
@@ -231,7 +231,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
     }
 
     public StatsMetadata mutateLevel(int newLevel) {
-        logger.debug("rymDebug: set the new level is ({})", newLevel);
+        logger.debug("ELECT-Debug: set the new level is ({})", newLevel);
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
@@ -262,7 +262,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
 
     public StatsMetadata setIsTransferredToErasureCoding(final boolean newIsReplicationTransferToErasureCoding) {
 
-        logger.debug("rymDebug: setIsTransferredToErasureCoding is StatsMetadata ({})", newIsReplicationTransferToErasureCoding);
+        logger.debug("ELECT-Debug: setIsTransferredToErasureCoding is StatsMetadata ({})", newIsReplicationTransferToErasureCoding);
 
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
@@ -294,7 +294,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
 
     public StatsMetadata setIsDataMigrateToCloud(boolean newIsDataMigrateToCloud) {
 
-        logger.debug("rymDebug: newIsDataMigrateToCloud is StatsMetadata ({})", newIsDataMigrateToCloud);
+        logger.debug("ELECT-Debug: newIsDataMigrateToCloud is StatsMetadata ({})", newIsDataMigrateToCloud);
 
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
@@ -519,13 +519,13 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
 
             out.writeBoolean(component.isDataMigrateToCloud);
             if (component.isDataMigrateToCloud == true) {
-                logger.debug("[Tinoryj] Write isDataMigrateToCloud {}",
+                logger.debug("[ELECT] Write isDataMigrateToCloud {}",
                         component.isDataMigrateToCloud ? "true" : "false");
             }
 
             out.writeBoolean(component.isReplicationTransferToErasureCoding);
             if (component.isReplicationTransferToErasureCoding == true) {
-                logger.debug("[Tinoryj] Write isReplicationTransferToErasureCoding {}",
+                logger.debug("[ELECT] Write isReplicationTransferToErasureCoding {}",
                         component.isReplicationTransferToErasureCoding ? "true" : "false");
             }
 
@@ -540,13 +540,13 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
 
             if (version.hasHashID() && component.hashID != null) {
                 out.writeBytes(component.hashID);
-                // logger.debug("[Tinoryj] Write real HashID {}", component.hashID);
+                // logger.debug("[ELECT] Write real HashID {}", component.hashID);
             } else {
                 byte[] placeHolder = new byte[32];
                 Arrays.fill(placeHolder, (byte) 0);
                 String placeHolderStr = placeHolder.toString();
                 out.writeBytes(placeHolderStr);
-                // logger.debug("[Tinoryj] Write fake HashID place holder");
+                // logger.debug("[ELECT] Write fake HashID place holder");
             }
 
             out.writeLong(component.dataFileSize);
@@ -630,13 +630,13 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
             boolean isDataMigrateToCloud = in.readBoolean();
 
             if (isDataMigrateToCloud == true) {
-                logger.debug("[Tinoryj] Read isDataMigrateToCloud which has been set to true");
+                logger.debug("[ELECT] Read isDataMigrateToCloud which has been set to true");
             }
 
             boolean isReplicationTransferredToErasureCoding = in.readBoolean();
 
             if (isReplicationTransferredToErasureCoding == true) {
-                logger.debug("[Tinoryj] Read isReplicationTransferredToErasureCoding which has been set to true");
+                logger.debug("[ELECT] Read isReplicationTransferredToErasureCoding which has been set to true");
             }
 
             UUID originatingHostId = null;
@@ -650,7 +650,7 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 buf[i] = in.readByte();
             }
             hashIDRawStr = new String(buf);
-            // logger.debug("[Tinoryj]: read hashID from the sstable success, hashID =
+            // logger.debug("[ELECT]: read hashID from the sstable success, hashID =
             // {}!!!", hashIDRawStr);
             // in.skipBytes(32);
 

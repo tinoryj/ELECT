@@ -77,7 +77,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
         int configuredLevelFanoutSize = DEFAULT_LEVEL_FANOUT_SIZE;
         boolean configuredSingleSSTableUplevel = false;
         SizeTieredCompactionStrategyOptions localOptions = new SizeTieredCompactionStrategyOptions(options);
-        // logger.debug("rymDebug: SizeTieredCompaction Strategy Options is: {}, localoption is: {}", options, localOptions);
+        // logger.debug("ELECT-Debug: SizeTieredCompaction Strategy Options is: {}, localoption is: {}", options, localOptions);
         if (options != null) {
             if (options.containsKey(SSTABLE_SIZE_OPTION)) {
                 configuredMaxSSTableSize = Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));
@@ -85,7 +85,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                 // [CASSANDRAEC]
                 if(cfs.getColumnFamilyName().equals("usertable0")) {
                     StorageService.setErasureCodeLength(configuredMaxSSTableSize);
-                    logger.debug("rymDebug: set erasure code length based on sstable_size_in_mb ({}),", configuredMaxSSTableSize);
+                    logger.debug("ELECT-Debug: set erasure code length based on sstable_size_in_mb ({}),", configuredMaxSSTableSize);
                 }
 
 
@@ -187,7 +187,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                         isContainReplicationTransferredToErasureCoding = true;
                         TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
                         transferredSSTableKeyRanges.add(range);
-                        logger.debug("rymDebug[transferred]: Selected transferred sstable {}, candidate count is {}",
+                        logger.debug("ELECT-Debug[transferred]: Selected transferred sstable {}, candidate count is {}",
                                      sstable.descriptor, candidate.sstables.size());
                     } else{
                         isContainRawSStable = true;
@@ -219,13 +219,13 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
                 if(isContainReplicationTransferredToErasureCoding == true) {
                     newTask.isContainReplicationTransferredToErasureCoding = true;
                 }
-                logger.debug("rymDebug[transferred]: task {} is contain transferred ({}), isContainReplicationTransferredToErasureCoding is ({})",
+                logger.debug("ELECT-Debug[transferred]: task {} is contain transferred ({}), isContainReplicationTransferredToErasureCoding is ({})",
                              newTask.transaction.opId(), newTask.isContainReplicationTransferredToErasureCoding, isContainReplicationTransferredToErasureCoding);
 
                 newTask.setCompactionType(op);
                 return newTask;
             } else {
-                logger.debug("rymDebug: cannot create compaction task, please retry... contain transferred sstable ({}), candidates size is {}",
+                logger.debug("ELECT-Debug: cannot create compaction task, please retry... contain transferred sstable ({}), candidates size is {}",
                              isContainReplicationTransferredToErasureCoding, candidate.sstables.size());
             }
             previousCandidate = candidate.sstables;
@@ -396,7 +396,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
     public ScannerList getScanners(Collection<SSTableReader> sstables, Collection<Range<Token>> ranges) {
         Set<SSTableReader>[] sstablesPerLevel = manifest.getSStablesPerLevelSnapshot();
         
-        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner5",
+        // logger.debug("ELECT-Debug: cfName is {}, sstable level is {}, BigTableScanner.getscanner5",
         //              sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
 
         Multimap<Integer, SSTableReader> byLevel = ArrayListMultimap.create();
@@ -529,7 +529,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             assert sstableIterator.hasNext(); // caller should check intersecting first
             SSTableReader currentSSTable = sstableIterator.next();
             currentScanner = currentSSTable.getScanner(ranges);
-            // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner6",
+            // logger.debug("ELECT-Debug: cfName is {}, sstable level is {}, BigTableScanner.getscanner6",
             //          sstables.iterator().next().getColumnFamilyName(), sstables.iterator().next().getSSTableLevel());
 
         }

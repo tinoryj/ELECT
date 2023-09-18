@@ -212,9 +212,9 @@ public abstract class UnfilteredRowIterators {
      */
     public static void digest(UnfilteredRowIterator iterator, Digest digest, int version) {
         digest.update(iterator.partitionKey().getKey());
-        // iterator.partitionLevelDeletion().digest(digest); // Tinoryj: Remove
+        // iterator.partitionLevelDeletion().digest(digest); // ELECT: Remove
         // DeletionTime from digest.
-        // iterator.columns().regulars.digest(digest); // Tinoryj: Remove columns name
+        // iterator.columns().regulars.digest(digest); // ELECT: Remove columns name
         // from the digest.
         // When serializing an iterator, we skip the static columns if the iterator has
         // not static row, even if the
@@ -235,7 +235,7 @@ public abstract class UnfilteredRowIterators {
         // different), but removing them entirely is stricly speaking a breaking change
         // (it would create mismatches on
         // upgrade) so we can only do on the next protocol version bump.
-        // Tinoryj: remove static columns (Include column family name) from digest.
+        // ELECT: remove static columns (Include column family name) from digest.
         // if (iterator.staticRow() != Rows.EMPTY_STATIC_ROW) {
         // iterator.columns().statics.digest(digest);
         // }
@@ -247,7 +247,7 @@ public abstract class UnfilteredRowIterators {
             Unfiltered unfiltered = iterator.next();
             unfiltered.digest(digest);
         }
-        // logger.debug("[Tinoryj] cauclate digest for iterator token = {}, on node {}",
+        // logger.debug("[ELECT] cauclate digest for iterator token = {}, on node {}",
         // iterator.partitionKey().getToken(),
         // FBUtilities.getBroadcastAddressAndPort());
     }

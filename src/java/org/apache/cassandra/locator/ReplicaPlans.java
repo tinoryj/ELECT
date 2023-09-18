@@ -637,7 +637,7 @@ public class ReplicaPlans {
                 ReplicaLayout.forRangeReadLiveSorted(replicationStrategy, range).natural());
         EndpointsForRange contacts = contactForRead(replicationStrategy, consistencyLevel, false, candidates);
         if (keyspace.getName().equals("ycsb")) {
-            logger.debug("[Tinoryj] For key token right = {}, left = {}, range query candidates: {}, contacts: {}",
+            logger.debug("[ELECT] For key token right = {}, left = {}, range query candidates: {}, contacts: {}",
                     range.right.getToken(), range.left.getToken(), candidates, contacts);
             // ECNetutils.printStackTace("forRangeRead");
         }

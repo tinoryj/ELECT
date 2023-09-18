@@ -65,15 +65,15 @@ public class ECCompactionVerbHandler implements IVerbHandler<ECCompaction> {
         String endToken = message.payload.endToken;
         InetAddressAndPort localAddress = FBUtilities.getBroadcastAddressAndPort();
         List<InetAddressAndPort> replicaNodes = StorageService.instance.getReplicaNodesWithPort(ksName, cfName, key);
-        logger.debug("rymDebug: compaction handler, localAddress is {}, replicaNodes is {}", localAddress, replicaNodes);
+        logger.debug("ELECT-Debug: compaction handler, localAddress is {}, replicaNodes is {}", localAddress, replicaNodes);
         int index = replicaNodes.indexOf(localAddress);
-        logger.debug("rymDebug: Received compaction request for {}/{}/{}/{}",
+        logger.debug("ELECT-Debug: Received compaction request for {}/{}/{}/{}",
          sstHash, ksName, message.payload.cfName, String.valueOf(index));
         
 
         //TODO: get sstContent and do compaction
         ColumnFamilyStore cfs = Keyspace.open(ksName).getColumnFamilyStore(cfName + String.valueOf(index));
-        logger.debug("rymDebug: received startToken is {}, endToken is {}, but current startToken is {}, endToken is {]}",
+        logger.debug("ELECT-Debug: received startToken is {}, endToken is {}, but current startToken is {}, endToken is {]}",
                             startToken, endToken, cfs.getPartitioner().getMinimumToken(), cfs.getPartitioner().getMaximumToken());
         // cfs.forceCompactionForKey(null);
         

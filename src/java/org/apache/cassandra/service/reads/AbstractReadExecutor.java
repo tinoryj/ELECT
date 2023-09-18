@@ -101,7 +101,7 @@ public abstract class AbstractReadExecutor {
         this.traceState = Tracing.instance.get();
         this.queryStartNanoTime = queryStartNanoTime;
 
-        // Tinoryj TODO, change to use natural nodes
+        // ELECT TODO, change to use natural nodes
         long tStart = nanoTime();
         if (command.metadata().keyspace.equals("ycsb")) {
             Token tokenForRead = (command instanceof SinglePartitionReadCommand
@@ -110,14 +110,14 @@ public abstract class AbstractReadExecutor {
             this.sendRequestAddresses = StorageService.instance
                     .getReplicaNodesWithPortFromTokenForDegradeRead(this.cfs.keyspace.getName(), tokenForRead);
             if(!sendRequestAddresses.get(0).equals(replicaPlan.contacts().endpoints().iterator().next())) {
-                logger.debug("[Tinoryj] For token = {}, sendRequestAddresses = {}, replica plan = {}",
+                logger.debug("[ELECT] For token = {}, sendRequestAddresses = {}, replica plan = {}",
                         tokenForRead,
                         sendRequestAddresses, replicaPlan.contacts().endpoints());
             }
         } else {
             this.sendRequestAddresses = replicaPlan.contacts().endpointList();
         }
-        Tracing.trace("[Tinoryj] Executed get send target list time {}\u03bcs", "AbstractReadExecutor",
+        Tracing.trace("[ELECT] Executed get send target list time {}\u03bcs", "AbstractReadExecutor",
                 (nanoTime() - tStart) / 1000);
         // Set the digest version (if we request some digests). This is the smallest
         // version amongst all our target replicas since new nodes
@@ -194,7 +194,7 @@ public abstract class AbstractReadExecutor {
         for (InetAddressAndPort endpoint : sendRequestAddresses) {
             usedAddressNumber++;
             if (!replicaPlan().contacts().contains(endpoint)) {
-                logger.debug("[Tinoryj] target node {} is not in the replica plan, may failed, skip", endpoint);
+                logger.debug("[ELECT] target node {} is not in the replica plan, may failed, skip", endpoint);
                 continue;
             }
             if (traceState != null)
@@ -208,7 +208,7 @@ public abstract class AbstractReadExecutor {
             }
             break;
         }
-        Tracing.trace("[Tinoryj] Executed data send request time {}\u03bcs", "makeDataRequestsForELECT",
+        Tracing.trace("[ELECT] Executed data send request time {}\u03bcs", "makeDataRequestsForELECT",
                 (nanoTime() - tStart1) / 1000);
         // We delay the local (potentially blocking) read till the end to avoid stalling
         // remote requests.
@@ -227,7 +227,7 @@ public abstract class AbstractReadExecutor {
                     this.command = readCommand;
                     this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
                     if (readCommand.isDigestQuery() == true) {
-                        logger.error("[Tinoryj-ERROR] Local Should not perform digest query on the primary lsm-tree");
+                        logger.error("[ELECT-ERROR] Local Should not perform digest query on the primary lsm-tree");
                     }
                     break;
                 case 1:
@@ -241,7 +241,7 @@ public abstract class AbstractReadExecutor {
                     this.command = readCommand;
                     this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
                     logger.debug(
-                            "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
+                            "[ELECT] Local Should perform online recovery on the secondary lsm-tree usertable 1");
                     readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
                     break;
                 case 2:
@@ -255,18 +255,18 @@ public abstract class AbstractReadExecutor {
                     this.command = readCommand;
                     this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
                     logger.debug(
-                            "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
+                            "[ELECT] Local Should perform online recovery on the secondary lsm-tree usertable 2");
                     readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
                     break;
                 default:
-                    logger.error("[Tinoryj-ERROR] Not support replication factor larger than 3");
+                    logger.error("[ELECT-ERROR] Not support replication factor larger than 3");
                     break;
             }
-            Tracing.trace("[Tinoryj] Executed local data read time {}\u03bcs", "makeDataRequestsForELECT",
+            Tracing.trace("[ELECT] Executed local data read time {}\u03bcs", "makeDataRequestsForELECT",
                     (nanoTime() - tStart) / 1000);
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
         } else {
-            logger.debug("[Tinoryj] No local endpoint, skip local read");
+            logger.debug("[ELECT] No local endpoint, skip local read");
         }
         return usedAddressNumber;
     }
@@ -279,7 +279,7 @@ public abstract class AbstractReadExecutor {
         for (int i = usedAddressNumber; i < sendRequestAddresses.size(); i++) {
             InetAddressAndPort endpoint = sendRequestAddresses.get(i);
             if (!replicaPlan().contacts().contains(endpoint)) {
-                logger.debug("[Tinoryj] target node {} is not in the replica plan, may failed, skip", endpoint);
+                logger.debug("[ELECT] target node {} is not in the replica plan, may failed, skip", endpoint);
                 continue;
             }
             if (traceState != null)
@@ -292,7 +292,7 @@ public abstract class AbstractReadExecutor {
             }
             MessagingService.instance().sendWithCallback(messageForDigestRequest, endpoint, handler);
         }
-        Tracing.trace("[Tinoryj] Executed digest send request time {}\u03bcs", "makeDigestRequestsForELECT",
+        Tracing.trace("[ELECT] Executed digest send request time {}\u03bcs", "makeDigestRequestsForELECT",
                 (nanoTime() - tStart1) / 1000);
         // We delay the local (potentially blocking) read till the end to avoid stalling
         // remote requests.
@@ -311,7 +311,7 @@ public abstract class AbstractReadExecutor {
                     this.command = readCommand;
                     this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable0");
                     if (readCommand.isDigestQuery() == true) {
-                        logger.error("[Tinoryj-ERROR] Local Should not perform digest query on the primary lsm-tree");
+                        logger.error("[ELECT-ERROR] Local Should not perform digest query on the primary lsm-tree");
                     }
                     break;
                 case 1:
@@ -326,7 +326,7 @@ public abstract class AbstractReadExecutor {
                     this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable1");
                     if (readCommand.isDigestQuery() == false) {
                         logger.debug(
-                                "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 1");
+                                "[ELECT] Local Should perform online recovery on the secondary lsm-tree usertable 1");
                         readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
                     break;
@@ -342,19 +342,19 @@ public abstract class AbstractReadExecutor {
                     this.cfs = Keyspace.open("ycsb").getColumnFamilyStore("usertable2");
                     if (readCommand.isDigestQuery() == false) {
                         logger.debug(
-                                "[Tinoryj] Local Should perform online recovery on the secondary lsm-tree usertable 2");
+                                "[ELECT] Local Should perform online recovery on the secondary lsm-tree usertable 2");
                         readCommand.setShouldPerformOnlineRecoveryDuringRead(true);
                     }
                     break;
                 default:
-                    logger.error("[Tinoryj-ERROR] Not support replication factor larger than 3");
+                    logger.error("[ELECT-ERROR] Not support replication factor larger than 3");
                     break;
             }
-            Tracing.trace("[Tinoryj] Executed local digest read time {}\u03bcs", "makeDigestRequestsForELECT",
+            Tracing.trace("[ELECT] Executed local digest read time {}\u03bcs", "makeDigestRequestsForELECT",
                     (nanoTime() - tStart) / 1000);
             Stage.READ.maybeExecuteImmediately(new LocalReadRunnable(readCommand, handler));
         } else {
-            logger.debug("[Tinoryj] No local endpoint, skip local digest read");
+            logger.debug("[ELECT] No local endpoint, skip local digest read");
         }
     }
 
@@ -374,9 +374,9 @@ public abstract class AbstractReadExecutor {
      */
     public void executeAsync() {
         if (this.command.metadata().keyspace.equals("ycsb")) {
-            // logger.debug("[Tinoryj] makeRequestsForELECT in use");
+            // logger.debug("[ELECT] makeRequestsForELECT in use");
             int usedAddressNumber = makeDataRequestsForELECT(command);
-            // logger.debug("[Tinoryj] After data request, used node number = {}",
+            // logger.debug("[ELECT] After data request, used node number = {}",
             // usedAddressNumber);
             if (usedAddressNumber != sendRequestAddresses.size()) {
                 makeDigestRequestsForELECT(command.copyAsDigestQuery(), usedAddressNumber);
@@ -385,9 +385,9 @@ public abstract class AbstractReadExecutor {
             EndpointsForToken selected = replicaPlan().contacts();
             // Normal read path for Cassandra system tables.
             EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-            makeFullDataRequests(fullDataRequests); // Tinoryj-> to read the primary replica.
+            makeFullDataRequests(fullDataRequests); // ELECT-> to read the primary replica.
             makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-            // Tinoryj-> to read the possible secondary replica.
+            // ELECT-> to read the possible secondary replica.
             makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
         }
     }
@@ -408,7 +408,7 @@ public abstract class AbstractReadExecutor {
         // 11980: Disable speculative retry if using EACH_QUORUM in order to prevent
         // miscounting DC responses
         if (retry.equals(NeverSpeculativeRetryPolicy.INSTANCE) || consistencyLevel == ConsistencyLevel.EACH_QUORUM) {
-            // logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
+            // logger.debug("[ELECT] NeverSpeculatingReadExecutor is in use");
             return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime, false);
         }
 
@@ -419,18 +419,18 @@ public abstract class AbstractReadExecutor {
 
         {
             boolean recordFailedSpeculation = consistencyLevel != ConsistencyLevel.ALL;
-            // logger.debug("[Tinoryj] NeverSpeculatingReadExecutor is in use");
+            // logger.debug("[ELECT] NeverSpeculatingReadExecutor is in use");
             return new NeverSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime,
                     recordFailedSpeculation);
         }
 
         if (retry.equals(AlwaysSpeculativeRetryPolicy.INSTANCE)) {
-            // logger.debug("[Tinoryj] AlwaysSpeculatingReadExecutor is in use");
+            // logger.debug("[ELECT] AlwaysSpeculatingReadExecutor is in use");
             return new AlwaysSpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime);
         } else {
             // PERCENTILE
             // or
-            // logger.debug("[Tinoryj] SpeculatingReadExecutor is in use");
+            // logger.debug("[ELECT] SpeculatingReadExecutor is in use");
             // CUSTOM.
             return new SpeculatingReadExecutor(cfs, command, replicaPlan, queryStartNanoTime);
         }
@@ -622,7 +622,7 @@ public abstract class AbstractReadExecutor {
             setResult(digestResolver.getData());
         } else {
             logger.debug(
-                    "[Tinoryj] ReadExecutor awaitResponses() digest mismatch, starting read repair for key {}",
+                    "[ELECT] ReadExecutor awaitResponses() digest mismatch, starting read repair for key {}",
                     getKey());
             if (!command.metadata().keyspace.equals("ycsb")) {
                 readRepair.startRepair(digestResolver, this::setResult);

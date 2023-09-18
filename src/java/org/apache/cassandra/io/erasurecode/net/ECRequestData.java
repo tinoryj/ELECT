@@ -50,7 +50,7 @@ public class ECRequestData {
     }
 
     public void requestData(InetAddressAndPort target) {
-        logger.debug("rymDebug: Request raw data {} from {} for the old sstable {}, index is ({})", this.requestSSTHash, target, this.sstHash, this.index);
+        logger.debug("ELECT-Debug: Request raw data {} from {} for the old sstable {}, index is ({})", this.requestSSTHash, target, this.sstHash, this.index);
         Message<ECRequestData> message = Message.outWithFlag(Verb.ECREQUESTDATA_REQ, this, MessageFlag.CALL_BACK_ON_FAILURE);
         MessagingService.instance().send(message, target);
     }

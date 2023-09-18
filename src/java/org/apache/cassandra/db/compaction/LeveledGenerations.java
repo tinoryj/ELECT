@@ -180,16 +180,16 @@ public class LeveledGenerations {
                     // sstable.getColumnFamilyName().equals("usertable")
                     ) {
                 // if(sstable.getColumnFamilyName().contains("usertable")) {
-                //     logger.debug("rymDebug: sstable {}, level is {}, task id is  need to be sent to L0",
+                //     logger.debug("ELECT-Debug: sstable {}, level is {}, task id is  need to be sent to L0",
                 //         sstable.getFilename(), sstable.getSSTableLevel());
                 // } else {
-                //     logger.debug("rymDebug: no-usertable {} also need to be sent to L0", sstable.getColumnFamilyName());
+                //     logger.debug("ELECT-Debug: no-usertable {} also need to be sent to L0", sstable.getColumnFamilyName());
                 // }
                 if(!sstable.getColumnFamilyName().contains("usertable"))
                     sendToL0(sstable);
                 else {
                     level.add(sstable);
-                    logger.debug("rymDebug: sstable {}, overlapped with its neighbors, but we still add it to level {}",
+                    logger.debug("ELECT-Debug: sstable {}, overlapped with its neighbors, but we still add it to level {}",
                         sstable.getFilename(), sstable.getSSTableLevel());
                 }
                     

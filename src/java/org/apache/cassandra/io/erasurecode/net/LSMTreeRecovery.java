@@ -103,7 +103,7 @@ public class LSMTreeRecovery {
                 //     String dataDir = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName).getDataPaths().get(0) + "bak/";
                 //     Path path = Paths.get(dataDir);
                 //     PathUtils.createDirectoriesIfNotExists(path);
-                //     logger.debug("rymDebug: data dir is ({})", dataDir);
+                //     logger.debug("ELECT-Debug: data dir is ({})", dataDir);
 
                 //     LSMTreeRecovery msg = new LSMTreeRecovery(dataDir, cfName, "usertable1");
                 //     Message<LSMTreeRecovery> message0 = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
@@ -116,7 +116,7 @@ public class LSMTreeRecovery {
                 //     String dataDir = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName).getDataPaths().get(0) + "bak/";
                 //     Path path = Paths.get(dataDir);
                 //     PathUtils.createDirectoriesIfNotExists(path);
-                //     logger.debug("rymDebug: data dir is ({})", dataDir);
+                //     logger.debug("ELECT-Debug: data dir is ({})", dataDir);
 
                 //     LSMTreeRecovery msg = new LSMTreeRecovery(dataDir, cfName, "usertable2");
                 //     Message<LSMTreeRecovery> message = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
@@ -129,7 +129,7 @@ public class LSMTreeRecovery {
                 //     String dataDir = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName).getDataPaths().get(0) + "bak/";
                 //     Path path = Paths.get(dataDir);
                 //     PathUtils.createDirectoriesIfNotExists(path);
-                //     logger.debug("rymDebug: data dir is ({})", dataDir);
+                //     logger.debug("ELECT-Debug: data dir is ({})", dataDir);
 
                 //     LSMTreeRecovery msg = new LSMTreeRecovery(dataDir, cfName, "usertable1");
                 //     Message<LSMTreeRecovery> message = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);
@@ -143,7 +143,7 @@ public class LSMTreeRecovery {
                 e.printStackTrace();
             }
         } else {
-            logger.debug("rymDebug: the cf ({}) is not existed!", cfName);
+            logger.debug("ELECT-Debug: the cf ({}) is not existed!", cfName);
         }
 
 
@@ -175,7 +175,7 @@ public class LSMTreeRecovery {
         String dataDir = Keyspace.open(keyspaceName).getColumnFamilyStore(sourceCfName).getDataPaths().get(0) + "bak/";
         Path path = Paths.get(dataDir);
         PathUtils.createDirectoriesIfNotExists(path);
-        logger.debug("rymDebug: send recovery request to node ({}), data raw dir is ({}), source cf name ({}), target cf name is ({}) ", targetNode, dataDir, sourceCfName, targetCfName);
+        logger.debug("ELECT-Debug: send recovery request to node ({}), data raw dir is ({}), source cf name ({}), target cf name is ({}) ", targetNode, dataDir, sourceCfName, targetCfName);
 
         LSMTreeRecovery msg = new LSMTreeRecovery(dataDir, sourceCfName, targetCfName);
         Message<LSMTreeRecovery> message = Message.outWithFlag(Verb.LSMTREERECOVERY_REQ, msg, MessageFlag.CALL_BACK_ON_FAILURE);

@@ -324,9 +324,9 @@ public class CompactionStrategyManager implements INotificationConsumer {
             fanout = (repaired.first() instanceof LeveledCompactionStrategy)
                     ? ((LeveledCompactionStrategy) repaired.first()).getLevelFanoutSize()
                     : LeveledCompactionStrategy.DEFAULT_LEVEL_FANOUT_SIZE;
-            // logger.debug("[Tinoryj] Compaction strategy fanout is {}", fanout);
+            // logger.debug("[ELECT] Compaction strategy fanout is {}", fanout);
             maxSSTableSizeBytes = repaired.first().getMaxSSTableBytes();
-            // logger.debug("[Tinoryj] Compaction strategy maxSSTableSizeBytes is {}", maxSSTableSizeBytes);
+            // logger.debug("[ELECT] Compaction strategy maxSSTableSizeBytes is {}", maxSSTableSizeBytes);
             name = repaired.first().getName();
         } finally {
             writeLock.unlock();
@@ -806,7 +806,7 @@ public class CompactionStrategyManager implements INotificationConsumer {
         maybeReloadDiskBoundaries();
         List<ISSTableScanner> scanners = new ArrayList<>(sstables.size());
         readLock.lock();
-        // logger.debug("rymDebug: cfName is {}, sstable level is {},
+        // logger.debug("ELECT-Debug: cfName is {}, sstable level is {},
         // BigTableScanner.getscanner3",
         // sstables.iterator().next().getColumnFamilyName(),
         // sstables.iterator().next().getSSTableLevel());
@@ -824,7 +824,7 @@ public class CompactionStrategyManager implements INotificationConsumer {
             // logger.debug("holder is {}, group.sstable num is {}",
             // holders.get(i).getClass(), sstableGroups.get(i).groups[0].size());
             // }
-            // logger.debug("rymDebug: sstableGroups num is {}, sstables num is {}, scanner
+            // logger.debug("ELECT-Debug: sstableGroups num is {}, sstables num is {}, scanner
             // num is {}", sstableGroups.size(), sstables.size(), scanners.size());
             // }
 
@@ -840,7 +840,7 @@ public class CompactionStrategyManager implements INotificationConsumer {
             Collection<Range<Token>> ranges) {
         while (true) {
             try {
-                // logger.debug("rymDebug: cfName is {}, sstable level is {},
+                // logger.debug("ELECT-Debug: cfName is {}, sstable level is {},
                 // BigTableScanner.getscanner2",
                 // sstables.iterator().next().getColumnFamilyName(),
                 // sstables.iterator().next().getSSTableLevel());
@@ -852,7 +852,7 @@ public class CompactionStrategyManager implements INotificationConsumer {
     }
 
     public AbstractCompactionStrategy.ScannerList getScanners(Collection<SSTableReader> sstables) {
-        // logger.debug("rymDebug: cfName is {}, sstable level is {},
+        // logger.debug("ELECT-Debug: cfName is {}, sstable level is {},
         // BigTableScanner.getscanner1",
         // sstables.iterator().next().getColumnFamilyName(),
         // sstables.iterator().next().getSSTableLevel());

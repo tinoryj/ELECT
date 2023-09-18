@@ -81,7 +81,7 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
 
         // if(!sstableWriter.currentWriter().isOverlapped && sstableWriter.currentWriter().first != null &&
         //      sstableWriter.currentWriter().first.compareTo(partition.partitionKey()) >= 0) {
-        //     logger.error("rymERROR: MaxSSTableSizeWriter first key {} is larger than right key {}, key count is {}",
+        //     logger.error("ELECT-ERROR: MaxSSTableSizeWriter first key {} is larger than right key {}, key count is {}",
         //                  sstableWriter.currentWriter().first.getToken(),
         //                  sstableWriter.currentWriter().last.getToken(),
         //                  sstableWriter.currentWriter().currentKeyCount);
@@ -98,11 +98,11 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
         if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize) {
             // sstableWriter.currentWriter().last = partition.partitionKey();
             // if(sstableWriter.currentWriter().first.compareTo(sstableWriter.currentWriter().last) >= 0) {
-            //     logger.error("rymERROR: MaxSSTableSizeWriter first key {} is larger than last key {}",
+            //     logger.error("ELECT-ERROR: MaxSSTableSizeWriter first key {} is larger than last key {}",
             //                  sstableWriter.currentWriter().first.getToken(),
             //                  sstableWriter.currentWriter().last.getToken());
             // }
-            // logger.debug("rymDebug: MaxSSTableSizeWriter first key is {}, last key is {}",
+            // logger.debug("ELECT-Debug: MaxSSTableSizeWriter first key is {}, last key is {}",
             //              sstableWriter.currentWriter().first.getToken(), sstableWriter.currentWriter().last.getToken());
             switchCompactionLocation(sstableDirectory);
             // sstableWriter.currentWriter().isOverlapped = false;

@@ -130,7 +130,7 @@ public class LeveledManifest {
                     modificationTime = ssTableReader.getCreationTimeFor(Component.EC_METADATA);
                 } else {
                     modificationTime = 0;
-                    // logger.debug("[Tinoryj] could not found both EC metadata and data, set modify time to 0");
+                    // logger.debug("[ELECT] could not found both EC metadata and data, set modify time to 0");
                 }
 
                 if (modificationTime >= maxModificationTime) {
@@ -189,7 +189,7 @@ public class LeveledManifest {
         if (level == 0)
             return 4L * maxSSTableSizeInBytes;
         double bytes = Math.pow(levelFanoutSize, level) * maxSSTableSizeInBytes;
-        // logger.debug("[Tinoryj] generate new level size for level = {}, new size =
+        // logger.debug("[ELECT] generate new level size for level = {}, new size =
         // {}", level, bytes/1024/1024);
         if (bytes > Long.MAX_VALUE)
             throw new RuntimeException("At most " + Long.MAX_VALUE
@@ -490,11 +490,11 @@ public class LeveledManifest {
 
                 // if((pair.getKey().isReplicationTransferredToErasureCoding() &&
                 //     pair.getKey().getColumnFamilyName().equals("usertable0"))){
-                //     logger.debug("rymDebug: we cannot select sstable {}", pair.getKey().descriptor);
+                //     logger.debug("ELECT-Debug: we cannot select sstable {}", pair.getKey().descriptor);
                 // } else {
                 //     overlapped.add(pair.getKey());
                 //     if(pair.getKey().isReplicationTransferredToErasureCoding()) {
-                //         logger.debug("rymDebug[transferred]: select a transferred sstable {}", pair.getKey().descriptor);
+                //         logger.debug("ELECT-Debug[transferred]: select a transferred sstable {}", pair.getKey().descriptor);
                 //     }
                 // }
 

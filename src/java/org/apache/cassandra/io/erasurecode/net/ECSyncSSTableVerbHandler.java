@@ -67,15 +67,15 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable> {
 
     @Override
     public void doVerb(Message<ECSyncSSTable> message) throws IOException {
-        // logger.debug("rymDebug: this is ECSyncSSTableVerbHandler");
+        // logger.debug("ELECT-Debug: this is ECSyncSSTableVerbHandler");
         // Check if there were any forwarding headers in this message
         ForwardingInfo forwardTo = message.forwardTo();
         if (forwardTo != null) {
-            logger.debug("rymDebug: ECSyncSSTableVerbHandler this is a forwarding header, message {} is from {} to {}",
+            logger.debug("ELECT-Debug: ECSyncSSTableVerbHandler this is a forwarding header, message {} is from {} to {}",
                     message.payload.sstHashID, message.from(), forwardTo);
             forwardToLocalNodes(message, forwardTo);
         }
-        logger.debug("rymDebug: ECSyncSSTableVerbHandler received {} from {}",
+        logger.debug("ELECT-Debug: ECSyncSSTableVerbHandler received {} from {}",
                 message.payload.sstHashID, message.from());
 
         // collect sstcontent
@@ -116,7 +116,7 @@ public class ECSyncSSTableVerbHandler implements IVerbHandler<ECSyncSSTable> {
         ECNetutils.writeBytesToFile(summaryFileName, sstInBytes.sstSummary);
 
         logger.debug(
-                "rymDebug: message is from {}, globalSSTHashToSyncedFileMap size is {}, all keys number is ({}), targetCfName is {}, sstHash is {}",
+                "ELECT-Debug: message is from {}, globalSSTHashToSyncedFileMap size is {}, all keys number is ({}), targetCfName is {}, sstHash is {}",
                 message.from(),
                 StorageService.instance.globalSSTHashToSyncedFileMap.size(),
                 message.payload.allKey.size(),

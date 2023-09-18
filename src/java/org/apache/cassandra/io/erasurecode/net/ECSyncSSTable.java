@@ -109,22 +109,22 @@ public class ECSyncSSTable {
             this.sstSize = this.sstContent.length;
             this.allKeysInBytes = ByteObjectConversion.objectToByteArray((Serializable) this.allKey);
             this.allKeysInBytesSize = this.allKeysInBytes.length;
-            // logger.debug("rymDebug: try to serialize allKey, allKey num is {}",
+            // logger.debug("ELECT-Debug: try to serialize allKey, allKey num is {}",
             // this.allKey.size());
-            // logger.debug("rymDebug: ECSyncSSTable size is {}",this.sstSize);
-            // logger.debug("rymDebug: ECSyncSSTable sstContent is {}, size is {}",
+            // logger.debug("ELECT-Debug: ECSyncSSTable size is {}",this.sstSize);
+            // logger.debug("ELECT-Debug: ECSyncSSTable sstContent is {}, size is {}",
             // this.sstContent, this.sstContent.length);
             if (rpn != null) {
                 Message<ECSyncSSTable> message = Message.outWithFlag(Verb.ECSYNCSSTABLE_REQ, this,
                         MessageFlag.CALL_BACK_ON_FAILURE);
                 MessagingService.instance().sendECNetRequestWithCallback(message, rpn);
             } else {
-                logger.error("rymERROR: replicaNodes is null!!");
+                logger.error("ELECT-ERROR: replicaNodes is null!!");
             }
-            logger.debug("rymDebug: ECSyncSSTable send sstable {} to {}", this.sstHashID, rpn);
+            logger.debug("ELECT-Debug: ECSyncSSTable send sstable {} to {}", this.sstHashID, rpn);
 
         } catch (Exception e) {
-            logger.error("rymERROR: cannot get the bytes array from key!!!, error info {}", e);
+            logger.error("ELECT-ERROR: cannot get the bytes array from key!!!, error info {}", e);
         }
     }
 
@@ -199,9 +199,9 @@ public class ECSyncSSTable {
     //     try {
     //         // res = converter.toByteArray(test);
     //         res = ByteObjectConversion.objectToByteArray((Serializable) test);
-    //         logger.info("rymDebug: res length is {}", res.length);
+    //         logger.info("ELECT-Debug: res length is {}", res.length);
     //         SSTablesInBytes sstInBytes = (SSTablesInBytes) ByteObjectConversion.byteArrayToObject(res);
-    //         logger.info("rymDebug: sstable in bytes filter {}, index {}, statistics {}", sstInBytes.sstFilter, sstInBytes.sstIndex, sstInBytes.sstStats);
+    //         logger.info("ELECT-Debug: sstable in bytes filter {}, index {}, statistics {}", sstInBytes.sstFilter, sstInBytes.sstIndex, sstInBytes.sstStats);
     //     } catch (IOException e) {
     //         // TODO Auto-generated catch block
     //         logger.error("error info : {}", e);

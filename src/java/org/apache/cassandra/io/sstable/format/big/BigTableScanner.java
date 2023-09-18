@@ -77,7 +77,7 @@ public class BigTableScanner implements ISSTableScanner
     // Full scan of the sstables
     public static ISSTableScanner getScanner(SSTableReader sstable)
     {
-        // logger.debug("rymDebug: cfName is {}, sstable level is {}, BigTableScanner.getscanner9",
+        // logger.debug("ELECT-Debug: cfName is {}, sstable level is {}, BigTableScanner.getscanner9",
         //              sstable.getColumnFamilyName(), sstable.getSSTableLevel());
         // if(sstable.getColumnFamilyName().contains("usertable")){
         //     throw new IllegalStateException("debug for scanner");
