@@ -81,12 +81,10 @@ public class OSSAccess implements AutoCloseable {
     public OSSAccess() {
         EnvironmentVariableCredentialsProvider credentialsProvider = new EnvironmentVariableCredentialsProvider();
         ClientBuilderConfiguration conf = new ClientBuilderConfiguration();
-
         if(DatabaseDescriptor.getEnableProxy()) {            
             conf.setProxyHost("proxy.cse.cuhk.edu.hk");
             conf.setProxyPort(8000);
         }
-
         conf.setMaxConnections(200);
         conf.setSocketTimeout(10000);
         conf.setConnectionTimeout(10000);

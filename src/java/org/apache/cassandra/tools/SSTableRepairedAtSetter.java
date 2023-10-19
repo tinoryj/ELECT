@@ -94,7 +94,7 @@ public class SSTableRepairedAtSetter {
                             .getLastModifiedTime(new File(descriptor.filenameFor(Component.EC_METADATA)).toPath());
                     descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false);
                 }else {
-                    logger.debug("[Tinoryi] Could not find both EC metadata and data");
+                    logger.debug("[ELECT] Could not find both EC metadata and data");
                 }
 
             } else {
