@@ -17,6 +17,7 @@
  */
 package org.apache.cassandra.db;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.List;
@@ -128,6 +129,13 @@ public abstract class DecoratedKey implements PartitionPosition, FilterKey
     {
         String keystring = getKey() == null ? "null" : ByteBufferUtil.bytesToHex(getKey());
         return "DecoratedKey(" + getToken() + ", " + keystring + ")";
+    }
+
+    public String getRawKey(TableMetadata metadata) {
+        List<ColumnMetadata> columns = metadata.partitionKeyColumns();
+        String cqlString = columns.get(0).type.toCQLString(getKey());
+
+        return cqlString.substring(1, cqlString.length()-1);
     }
 
     /**

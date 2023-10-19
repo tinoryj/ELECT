@@ -139,7 +139,7 @@ public class IndexSummaryManagerTest
     private static List<SSTableReader> resetSummaries(ColumnFamilyStore cfs, List<SSTableReader> sstables, long originalOffHeapSize) throws IOException
     {
         for (SSTableReader sstable : sstables)
-            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0));
+            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0, 100.0));
 
         try (LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.UNKNOWN))
         {
@@ -222,7 +222,7 @@ public class IndexSummaryManagerTest
 
         List<SSTableReader> sstables = new ArrayList<>(cfs.getLiveSSTables());
         for (SSTableReader sstable : sstables)
-            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0));
+            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0, 100.0));
 
         for (SSTableReader sstable : sstables)
             assertEquals(cfs.metadata().params.minIndexInterval, sstable.getEffectiveIndexInterval(), 0.001);
@@ -307,7 +307,7 @@ public class IndexSummaryManagerTest
 
         List<SSTableReader> sstables = new ArrayList<>(cfs.getLiveSSTables());
         for (SSTableReader sstable : sstables)
-            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0));
+            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0, 100.0));
 
         try (LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.UNKNOWN))
         {
@@ -358,7 +358,7 @@ public class IndexSummaryManagerTest
 
         List<SSTableReader> sstables = new ArrayList<>(cfs.getLiveSSTables());
         for (SSTableReader sstable : sstables)
-            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0));
+            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0, 100.0));
 
         long singleSummaryOffHeapSpace = sstables.get(0).getIndexSummaryOffHeapSize();
 
@@ -412,8 +412,8 @@ public class IndexSummaryManagerTest
 
         // make two of the four sstables cold, only leave enough space for three full index summaries,
         // so the two cold sstables should get downsampled to be half of their original size
-        sstables.get(0).overrideReadMeter(new RestorableMeter(50.0, 50.0));
-        sstables.get(1).overrideReadMeter(new RestorableMeter(50.0, 50.0));
+        sstables.get(0).overrideReadMeter(new RestorableMeter(50.0, 50.0, 50.0));
+        sstables.get(1).overrideReadMeter(new RestorableMeter(50.0, 50.0, 50.0));
         try (LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.UNKNOWN))
         {
             sstables = redistributeSummaries(Collections.EMPTY_LIST, of(cfs.metadata.id, txn), (singleSummaryOffHeapSpace * 3));
@@ -428,8 +428,9 @@ public class IndexSummaryManagerTest
         // small increases or decreases in the read rate don't result in downsampling or upsampling
         double lowerRate = 50.0 * (DOWNSAMPLE_THESHOLD + (DOWNSAMPLE_THESHOLD * 0.10));
         double higherRate = 50.0 * (UPSAMPLE_THRESHOLD - (UPSAMPLE_THRESHOLD * 0.10));
-        sstables.get(0).overrideReadMeter(new RestorableMeter(lowerRate, lowerRate));
-        sstables.get(1).overrideReadMeter(new RestorableMeter(higherRate, higherRate));
+        // double clodPeriodRate = 50.0 * (UPSAMPLE_THRESHOLD - (UPSAMPLE_THRESHOLD * 0.10));
+        sstables.get(0).overrideReadMeter(new RestorableMeter(lowerRate, lowerRate, 0.0));
+        sstables.get(1).overrideReadMeter(new RestorableMeter(higherRate, higherRate, 0.0));
         try (LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.UNKNOWN))
         {
             sstables = redistributeSummaries(Collections.EMPTY_LIST, of(cfs.metadata.id, txn), (singleSummaryOffHeapSpace * 3));
@@ -443,10 +444,10 @@ public class IndexSummaryManagerTest
 
         // reset, and then this time, leave enough space for one of the cold sstables to not get downsampled
         sstables = resetSummaries(cfs, sstables, singleSummaryOffHeapSpace);
-        sstables.get(0).overrideReadMeter(new RestorableMeter(1.0, 1.0));
-        sstables.get(1).overrideReadMeter(new RestorableMeter(2.0, 2.0));
-        sstables.get(2).overrideReadMeter(new RestorableMeter(1000.0, 1000.0));
-        sstables.get(3).overrideReadMeter(new RestorableMeter(1000.0, 1000.0));
+        sstables.get(0).overrideReadMeter(new RestorableMeter(1.0, 1.0,1.0));
+        sstables.get(1).overrideReadMeter(new RestorableMeter(2.0, 2.0, 2.0));
+        sstables.get(2).overrideReadMeter(new RestorableMeter(1000.0, 1000.0, 1000.0));
+        sstables.get(3).overrideReadMeter(new RestorableMeter(1000.0, 1000.0, 1000.0));
 
         try (LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.UNKNOWN))
         {
@@ -468,10 +469,10 @@ public class IndexSummaryManagerTest
         // coldest sstables will get downsampled to 4/128 of their size, leaving us with 1 and 92/128th index
         // summaries worth of space.  The hottest sstable should get a full index summary, and the one in the middle
         // should get the remainder.
-        sstables.get(0).overrideReadMeter(new RestorableMeter(0.0, 0.0));
-        sstables.get(1).overrideReadMeter(new RestorableMeter(0.0, 0.0));
-        sstables.get(2).overrideReadMeter(new RestorableMeter(92, 92));
-        sstables.get(3).overrideReadMeter(new RestorableMeter(128.0, 128.0));
+        sstables.get(0).overrideReadMeter(new RestorableMeter(0.0, 0.0, 0.0));
+        sstables.get(1).overrideReadMeter(new RestorableMeter(0.0, 0.0, 0.0));
+        sstables.get(2).overrideReadMeter(new RestorableMeter(92, 92, 92));
+        sstables.get(3).overrideReadMeter(new RestorableMeter(128.0, 128.0, 128.0));
         try (LifecycleTransaction txn = cfs.getTracker().tryModify(sstables, OperationType.UNKNOWN))
         {
             sstables = redistributeSummaries(Collections.EMPTY_LIST, of(cfs.metadata.id, txn), (long) (singleSummaryOffHeapSpace + (singleSummaryOffHeapSpace * (92.0 / BASE_SAMPLING_LEVEL))));
@@ -633,7 +634,7 @@ public class IndexSummaryManagerTest
         List<SSTableReader> compacting = allSSTables.subList(4, 8);
 
         for (SSTableReader sstable : sstables)
-            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0));
+            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0, 100.0));
 
         final long singleSummaryOffHeapSpace = sstables.get(0).getIndexSummaryOffHeapSize();
 
@@ -724,7 +725,7 @@ public class IndexSummaryManagerTest
 
         List<SSTableReader> sstables = new ArrayList<>(cfs.getLiveSSTables());
         for (SSTableReader sstable : sstables)
-            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0));
+            sstable.overrideReadMeter(new RestorableMeter(100.0, 100.0, 100.0));
 
         long singleSummaryOffHeapSpace = sstables.get(0).getIndexSummaryOffHeapSize();
 

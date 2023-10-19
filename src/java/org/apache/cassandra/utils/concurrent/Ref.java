@@ -41,6 +41,7 @@ import org.apache.cassandra.concurrent.Shutdownable;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Keyspace;
 import org.apache.cassandra.db.lifecycle.View;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.Memory;
 import org.apache.cassandra.io.util.SafeMemory;
@@ -48,6 +49,7 @@ import org.apache.cassandra.utils.ExecutorUtils;
 import org.apache.cassandra.utils.NoSpamLogger;
 import org.apache.cassandra.utils.Pair;
 import org.apache.cassandra.utils.Shared;
+
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 
@@ -109,12 +111,18 @@ public final class Ref<T> implements RefCounted<T>
     {
         this.state = new State(new GlobalState(tidy), this, referenceQueue);
         this.referent = referent;
+        if(referent instanceof SSTableReader) {
+            // ECNetutils.printStackTace(String.format("New a reference %s for %s",this.state.globalState.toString() ,((SSTableReader)referent).descriptor ));
+        }
     }
 
     Ref(T referent, GlobalState state)
     {
         this.state = new State(state, this, referenceQueue);
         this.referent = referent;
+        if(referent instanceof SSTableReader) {
+            // ECNetutils.printStackTace(String.format("Add a reference %s for %s", this.state.globalState.toString(), ((SSTableReader)referent).descriptor ));
+        }
     }
 
     /**
@@ -234,12 +242,17 @@ public final class Ref<T> implements RefCounted<T>
             if (leak)
             {
                 String id = this.toString();
-                logger.error("LEAK DETECTED: a reference ({}) to {} was not released before the reference was garbage collected", id, globalState);
+                if(id.contains("usertable1") || id.contains("usertable2")) {
+                    logger.error("LEAK DETECTED IN SECONDARY NODE: a reference ({}) to {} was not released before the reference was garbage collected", id, globalState);
+                } else {
+                    logger.error("LEAK DETECTED: a reference ({}) to {} was not released before the reference was garbage collected", id, globalState);
+                }
                 if (DEBUG_ENABLED)
                     debug.log(id);
                 OnLeak onLeak = ON_LEAK;
                 if (onLeak != null)
                     onLeak.onLeak(this);
+                // throw new IllegalStateException(String.format("LEAK DETECTED: a reference ({}) to {} was not released before the reference was garbage collected", id, globalState));
             }
             else if (DEBUG_ENABLED)
             {
@@ -325,14 +338,16 @@ public final class Ref<T> implements RefCounted<T>
                 int cur = counts.get();
                 if (cur < 0)
                     return false;
-                if (counts.compareAndSet(cur, cur + 1))
+                if (counts.compareAndSet(cur, cur + 1)) {
                     return true;
+                }
             }
         }
 
         // release a single reference, and cleanup if no more are extant
         Throwable release(Ref.State ref, Throwable accumulate)
         {
+            // ECNetutils.printStackTace(String.format("ELECT-Debug: release a reference %s", this.toString()));
             locallyExtant.remove(ref);
             if (-1 == counts.decrementAndGet())
             {

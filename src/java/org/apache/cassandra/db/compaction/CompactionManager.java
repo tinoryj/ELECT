@@ -18,6 +18,8 @@
 package org.apache.cassandra.db.compaction;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -54,6 +56,7 @@ import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.compaction.CompactionInfo.Holder;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.lifecycle.ILifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.lifecycle.SSTableIntervalTree;
@@ -66,6 +69,7 @@ import org.apache.cassandra.dht.Bounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.index.SecondaryIndexBuilder;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
@@ -116,6 +120,19 @@ public class CompactionManager implements CompactionManagerMBean {
 
     public static final int NO_GC = Integer.MIN_VALUE;
     public static final int GC_ALL = Integer.MAX_VALUE;
+
+    // Reset
+    public static final String RESET = "\033[0m"; // Text Reset
+
+    // Regular Colors
+    public static final String WHITE = "\033[0;30m"; // WHITE
+    public static final String RED = "\033[0;31m"; // RED
+    public static final String GREEN = "\033[0;32m"; // GREEN
+    public static final String YELLOW = "\033[0;33m"; // YELLOW
+    public static final String BLUE = "\033[0;34m"; // BLUE
+    public static final String PURPLE = "\033[0;35m"; // PURPLE
+    public static final String CYAN = "\033[0;36m"; // CYAN
+    public static final String GREY = "\033[0;37m"; // GREY
 
     static {
         instance = new CompactionManager();
@@ -297,6 +314,11 @@ public class CompactionManager implements CompactionManagerMBean {
                 if (task == null) {
                     if (DatabaseDescriptor.automaticSSTableUpgrade())
                         ranCompaction = maybeRunUpgradeTask(strategy);
+                } else if (task.isContainReplicationTransferredToErasureCoding) {
+                    logger.debug("ELECT-Debug[transferred]: this task contains transferred sstables.");
+                    List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = ((LeveledCompactionTask) task).transferredSSTableKeyRanges;
+                    task.execute(active, TransferredSSTableKeyRanges);
+                    ranCompaction = true;
                 } else {
                     task.execute(active);
                     ranCompaction = true;
@@ -304,9 +326,10 @@ public class CompactionManager implements CompactionManagerMBean {
             } finally {
                 compactingCF.remove(cfs);
             }
-            if (ranCompaction) // only submit background if we actually ran a compaction - otherwise we end up
-                               // in an infinite loop submitting noop background tasks
+            if (ranCompaction) { // only submit background if we actually ran a compaction - otherwise we end up
+                // in an infinite loop submitting noop background tasks
                 submitBackground(cfs);
+            }
         }
 
         boolean maybeRunUpgradeTask(CompactionStrategyManager strategy) {
@@ -402,6 +425,137 @@ public class CompactionManager implements CompactionManagerMBean {
         }
     }
 
+    // [CASSANDRAEC]
+    private AllSSTableOpStatus rewriteSSTables(
+            final Map<String, DecoratedKey> sourceKeys,
+            final ColumnFamilyStore cfs,
+            final DecoratedKey first,
+            final DecoratedKey last,
+            List<SSTableReader> rewriteSSTables,
+            // SSTableReader ecSSTable,
+            ECMetadata ecMetadata, String fileNamePrefix,
+            final LifecycleTransaction txn,
+            final OneSSTableOperation operation,
+            OperationType operationType)
+            throws ExecutionException, InterruptedException {
+        // logger.info("ELECT-Debug: Starting {} for {}.{}", operationType,
+        // cfs.keyspace.getName(), cfs.getTableName());
+        List<LifecycleTransaction> transactions = new ArrayList<>();
+        List<Future<?>> futures = new ArrayList<>();
+        try (txn) {
+            if (txn == null)
+                return AllSSTableOpStatus.UNABLE_TO_CANCEL;
+
+            rewriteSSTables = Lists.newArrayList(operation.filterSSTables(txn));
+            int originalRewriteSSTablesNum = rewriteSSTables.size();
+            if (Iterables.isEmpty(rewriteSSTables)) {
+                // logger.info("ELECT-Debug: No sstables to {} for {}.{}", operationType.name(),
+                // cfs.keyspace.getName(), cfs.name);
+                return AllSSTableOpStatus.SUCCESSFUL;
+            }
+
+            transactions.add(txn);
+            Callable<Object> callable = new Callable<Object>() {
+                @Override
+                public Object call() throws Exception {
+                    operation.execute(txn);
+                    return this;
+                }
+            };
+            Future<?> fut = executor.submitIfRunning(callable, "rewrite sstables");
+            if (!fut.isCancelled())
+                futures.add(fut);
+            else
+                return AllSSTableOpStatus.ABORTED;
+
+            FBUtilities.waitOnFutures(futures);
+            if (txn.originals().isEmpty()) {
+                logger.info("Finished rewrite {} sstables successfully!", originalRewriteSSTablesNum);
+            } else {
+                logger.warn("Still remaining {} sstables in this transaction {}, original sstables number is {}",
+                        txn.originals().size(), txn.opId(), rewriteSSTables.size());
+                txn.removeAll(rewriteSSTables);
+            }
+            return AllSSTableOpStatus.SUCCESSFUL;
+
+        } finally {
+            // wait on any unfinished futures to make sure we don't close an ongoing
+            // transaction
+            try {
+                FBUtilities.waitOnFutures(futures);
+            } catch (Throwable t) {
+                // these are handled/logged in CompactionExecutor#afterExecute
+            }
+            Throwable fail = Throwables.close(null, transactions);
+            if (fail != null)
+                logger.error("Failed to cleanup lifecycle transactions ({} for {}.{})", operationType,
+                        cfs.keyspace.getName(), cfs.getTableName(), fail);
+        }
+    }
+
+
+    // [CASSANDRAEC]
+    private AllSSTableOpStatus forceCompactionForTheLastLevel(final ColumnFamilyStore cfs, 
+            List<SSTableReader> candidates,
+            final LifecycleTransaction txn,
+            final OneSSTableOperation operation,
+            OperationType operationType)
+            throws ExecutionException, InterruptedException {
+        // logger.info("ELECT-Debug: Starting {} for {}.{}", operationType, cfs.keyspace.getName(), cfs.getTableName());
+        List<LifecycleTransaction> transactions = new ArrayList<>();
+        List<Future<?>> futures = new ArrayList<>();
+        try (txn) {
+            if (txn == null)
+                return AllSSTableOpStatus.UNABLE_TO_CANCEL;
+
+                candidates = Lists.newArrayList(operation.filterSSTables(txn));
+            int originalRewriteSSTablesNum = candidates.size();
+            if (Iterables.isEmpty(candidates)) {
+                // logger.info("ELECT-Debug: No sstables to {} for {}.{}", operationType.name(), cfs.keyspace.getName(), cfs.name);
+                return AllSSTableOpStatus.SUCCESSFUL;
+            }
+
+            transactions.add(txn);
+            Callable<Object> callable = new Callable<Object>() {
+                @Override
+                public Object call() throws Exception
+                {
+                    operation.execute(txn);
+                    return this;
+                }
+            };
+            Future<?> fut = executor.submitIfRunning(callable, "rewrite sstables");
+            if (!fut.isCancelled())
+                futures.add(fut);
+            else
+                return AllSSTableOpStatus.ABORTED;
+
+            FBUtilities.waitOnFutures(futures);
+            if(txn.originals().isEmpty()) {
+                logger.info("Finished Last Level Compaction {} sstables successfully!", originalRewriteSSTablesNum);
+            } else {
+                logger.warn("Still remaining {} sstables in this transaction {}, original sstables number is {}",
+                 txn.originals().size(), txn.opId(), candidates.size());
+                txn.removeAll(candidates);                
+            }
+            return AllSSTableOpStatus.SUCCESSFUL;
+
+        } finally {
+            // wait on any unfinished futures to make sure we don't close an ongoing
+            // transaction
+            try {
+                FBUtilities.waitOnFutures(futures);
+            } catch (Throwable t) {
+                // these are handled/logged in CompactionExecutor#afterExecute
+            }
+            Throwable fail = Throwables.close(null, transactions);
+            if (fail != null)
+                logger.error("Failed to cleanup lifecycle transactions ({} for {}.{})", operationType,
+                        cfs.keyspace.getName(), cfs.getTableName(), fail);
+        }
+    }
+
+
     private static interface OneSSTableOperation {
         Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction);
 
@@ -487,6 +641,245 @@ public class CompactionManager implements CompactionManagerMBean {
 
             return true;
         }, jobs);
+    }
+
+    // [CASSANDRAEC] rewrite sstables based source decorated keys
+    public AllSSTableOpStatus performSSTableRewrite(
+            final Map<String, DecoratedKey> sourceKeys,
+            final ColumnFamilyStore cfs,
+            final DecoratedKey first,
+            final DecoratedKey last,
+            List<SSTableReader> sstables,
+            // SSTableReader ecSSTable,
+            ECMetadata ecMetadata, String fileNamePrefix,
+            final LifecycleTransaction txn,
+            final boolean skipIfCurrentVersion,
+            final long skipIfOlderThanTimestamp,
+            final boolean skipIfCompressionMatches,
+            int jobs) throws InterruptedException, ExecutionException {
+        return performSSTableRewrite(sourceKeys, cfs, first, last, sstables, ecMetadata, fileNamePrefix, txn, (sstable) -> {
+            // TODO: check this filter
+
+            // Skip if descriptor version matches current version
+            if (skipIfCurrentVersion
+                    && sstable.descriptor.version.equals(sstable.descriptor.getFormat().getLatestVersion()))
+                return false;
+
+            // Skip if SSTable creation time is past given timestamp
+            if (sstable.getCreationTimeFor(Component.DATA) > skipIfOlderThanTimestamp || sstable
+                    .getCreationTimeFor(Component.EC_METADATA) > skipIfOlderThanTimestamp) {
+                return false;
+            }
+
+            TableMetadata metadata = cfs.metadata.get();
+            // Skip if SSTable compression parameters match current ones
+            if (skipIfCompressionMatches &&
+                    ((!sstable.compression && !metadata.params.compression.isEnabled()) ||
+                            (sstable.compression && metadata.params.compression
+                                    .equals(sstable.getCompressionMetadata().parameters))))
+                return false;
+
+            // Skip if sstable contain EC_Metadata
+            if (Files.exists(Paths.get(sstable.descriptor.filenameFor(Component.EC_METADATA))))
+                return false;
+
+            return true;
+        }, jobs);
+    }
+
+    // [CASSANDRAEC]
+    public AllSSTableOpStatus performSSTableRewrite(
+            final Map<String, DecoratedKey> sourceKeys,
+            final ColumnFamilyStore cfs,
+            final DecoratedKey first,
+            final DecoratedKey last,
+            List<SSTableReader> sstables,
+            // SSTableReader ecSSTable,
+            ECMetadata ecMetadata, String fileNamePrefix,
+            final LifecycleTransaction updateTxn,
+            Predicate<SSTableReader> sstableFilter,
+            int jobs) throws InterruptedException, ExecutionException {
+        // return rewriteSSTables(cfs, sourceKeys, sstables, OperationType.COMPACTION);
+        return rewriteSSTables(sourceKeys, cfs, first, last, sstables, ecMetadata, fileNamePrefix, updateTxn,
+                new OneSSTableOperation() {
+                    @Override
+                    public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
+                        List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
+                        Collections.sort(sortedSSTables, SSTableReader.sizeComparator.reversed());
+                        Iterator<SSTableReader> iter = sortedSSTables.iterator();
+                        // final Set<SSTableReader> compacting = cfs.getTracker().getCompacting();
+                        while (iter.hasNext()) {
+                            SSTableReader sstable = iter.next();
+                            if (!sstableFilter.test(sstable)) {
+                                logger.warn(BLUE + "ELECT-Warn: sstable {} is not qualified, cannot be rewritten!!!",
+                                        sstable.getSSTableHashID() + RESET);
+                                transaction.cancel(sstable);
+                                iter.remove();
+                            }
+                            // else if (compacting.contains(sstable)) {
+                            // logger.warn(BLUE+"ELECT-Warn: sstable {} is compacting, cannot be
+                            // rewritten!!!", sstable.getFilename()+RESET);
+                            // transaction.cancel(sstable);
+                            // iter.remove();
+                            // }
+                        }
+                        return sortedSSTables;
+                    }
+
+                    @Override
+                    public void execute(LifecycleTransaction txn) {
+
+                        AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC,
+                                Long.MAX_VALUE);
+                        task.setUserDefined(true);
+                        task.setCompactionType(OperationType.COMPACTION);
+                        // SSTableReader ecSSTable = SSTableReader.openECSSTable(ecMetadata, cfs,
+                        // fileNamePrefix);
+                        // logger.debug("ELECT-Debug: open ec sstable {} successfully.",
+                        // ecSSTable.descriptor);
+                        task.execute(active, first, last, ecMetadata, fileNamePrefix, sourceKeys);
+                    }
+                }, OperationType.COMPACTION);
+    }
+
+    // [CASSANDRAEC] rewrite sstables based source decorated keys
+    public AllSSTableOpStatus performForceCompactionForTheLastLevel(final ColumnFamilyStore cfs,
+            List<SSTableReader> sstables,
+            // SSTableReader ecSSTable,
+            final LifecycleTransaction txn,
+            final boolean skipIfCurrentVersion,
+            final long skipIfOlderThanTimestamp,
+            final boolean skipIfCompressionMatches,
+            int jobs) throws InterruptedException, ExecutionException {
+        return performForceCompactionForTheLastLevel(cfs, sstables, txn, (sstable) -> {
+            // TODO: check this filter
+
+            // Skip if descriptor version matches current version
+            if (skipIfCurrentVersion
+                    && sstable.descriptor.version.equals(sstable.descriptor.getFormat().getLatestVersion()))
+                return false;
+
+            // Skip if SSTable creation time is past given timestamp
+            if (sstable.getCreationTimeFor(Component.DATA) > skipIfOlderThanTimestamp || sstable
+                    .getCreationTimeFor(Component.EC_METADATA) > skipIfOlderThanTimestamp) {
+                return false;
+            }
+
+            TableMetadata metadata = cfs.metadata.get();
+            // Skip if SSTable compression parameters match current ones
+            if (skipIfCompressionMatches &&
+                    ((!sstable.compression && !metadata.params.compression.isEnabled()) ||
+                            (sstable.compression && metadata.params.compression
+                                    .equals(sstable.getCompressionMetadata().parameters))))
+                return false;
+
+            // Skip if sstable contain EC_Metadata
+            // if (Files.exists(Paths.get(sstable.descriptor.filenameFor(Component.EC_METADATA))))
+            //     return false;
+
+            return true;
+        }, jobs);
+    }
+
+    // [CASSANDRAEC]
+    public AllSSTableOpStatus performForceCompactionForTheLastLevel(final ColumnFamilyStore cfs,
+            List<SSTableReader> sstables, 
+            // SSTableReader ecSSTable,
+            final LifecycleTransaction updateTxn,
+            Predicate<SSTableReader> sstableFilter,
+            int jobs) throws InterruptedException, ExecutionException {
+        // return rewriteSSTables(cfs, sourceKeys, sstables, OperationType.COMPACTION);
+        return forceCompactionForTheLastLevel(cfs, sstables, updateTxn, new OneSSTableOperation() {
+            @Override
+            public Iterable<SSTableReader> filterSSTables(LifecycleTransaction transaction) {
+                List<SSTableReader> sortedSSTables = Lists.newArrayList(transaction.originals());
+                Collections.sort(sortedSSTables, SSTableReader.sizeComparator.reversed());
+                Iterator<SSTableReader> iter = sortedSSTables.iterator();
+                // final Set<SSTableReader> compacting = cfs.getTracker().getCompacting();
+                while (iter.hasNext()) {
+                    SSTableReader sstable = iter.next();
+                    if (!sstableFilter.test(sstable)) {
+                        logger.warn(BLUE+"ELECT-Warn: sstable {} is not qualified, cannot be rewritten!!!", sstable.getFilename()+RESET);
+                        transaction.cancel(sstable);
+                        iter.remove();
+                    }
+                }
+                return sortedSSTables;
+            }
+
+            @Override
+            public void execute(LifecycleTransaction txn) {
+                
+                // TODO: we should check if there are transferred sstables, so that we can select different compaction strategies
+
+
+                // AbstractCompactionTask task = cfs.getCompactionStrategyManager().getCompactionTask(txn, NO_GC, Long.MAX_VALUE);
+                // task.setUserDefined(true);
+                // task.setCompactionType(OperationType.COMPACTION);
+                AbstractCompactionTask task = getCompactionTaskForForceCompaction(cfs, txn);
+
+                if (task == null) {
+                    return;
+                } else if(task.isContainECSSTable){
+                    logger.debug("ELECT-Debug[Force compaction for the last level]: this task {} contains EC sstables.", task.transaction.opId());
+                    List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges = ((LeveledCompactionTask) task).transferredSSTableKeyRanges;
+                    task.execute(active, TransferredSSTableKeyRanges);
+                } else {
+                    logger.debug("ELECT-Debug[Force compaction for the last level]: this task {} not contains EC sstables.", task.transaction.opId());
+                    task.execute(active);
+                }
+            }
+        }, OperationType.COMPACTION);
+    }
+
+    // [CASSANDRAEC]
+    private static AbstractCompactionTask getCompactionTaskForForceCompaction(ColumnFamilyStore cfs, LifecycleTransaction txn) {
+        boolean isContainECSSTable = false;
+        boolean isContainRawSSTable = false;
+        List<TransferredSSTableKeyRange> transferredSSTableKeyRanges = new ArrayList<>();
+
+        AbstractCompactionTask newTask = null;
+        if (!cfs.getColumnFamilyName().equals("usertable0") && cfs.getColumnFamilyName().contains("usertable")) {
+
+            // for secondary node
+            for (SSTableReader sstable : txn.originals()) {
+                if (sstable.isReplicationTransferredToErasureCoding()
+                        && !sstable.getColumnFamilyName().equals("usertable0")) {
+                    isContainECSSTable = true;
+                    TransferredSSTableKeyRange range = new TransferredSSTableKeyRange(sstable.first, sstable.last);
+                    transferredSSTableKeyRanges.add(range);
+                    logger.debug("ELECT-Debug[transferred]: Selected transferred sstable {}, candidate count is {}",
+                            sstable.descriptor, txn.originals().size());
+                } else if(!sstable.isReplicationTransferredToErasureCoding()) {
+                    isContainRawSSTable = true;
+                }
+            }
+
+            if (txn.originals().size() == 1 || !isContainRawSSTable) {
+                return newTask;
+            }
+        }
+
+        int level = LeveledGenerations.getMaxLevelCount() - 1; // target level is last level
+        long maxSSTableBytes = cfs.getCompactionStrategyManager().getMaxSSTableBytes();
+        if (txn.originals().size() > 1)
+            newTask = new LeveledCompactionTask(cfs, txn, level,
+                    getDefaultGcBefore(cfs, FBUtilities.nowInSeconds()), maxSSTableBytes,
+                    false, transferredSSTableKeyRanges);
+        else
+            newTask = new SingleSSTableLCSTask(cfs, txn, level);
+        if (isContainECSSTable == true) {
+            newTask.isContainECSSTable = true;
+        }
+
+        logger.debug(
+                "ELECT-Debug[transferred]: task {} is contain transferred ({}), isContainReplicationTransferredToErasureCoding is ({})",
+                newTask.transaction.opId(), newTask.isContainECSSTable,
+                isContainECSSTable);
+        newTask.setUserDefined(true);
+        newTask.setCompactionType(OperationType.COMPACTION);
+
+        return newTask;
     }
 
     /**
@@ -704,6 +1097,26 @@ public class CompactionManager implements CompactionManagerMBean {
                     performAnticompaction(cfs, tokenRanges, sstables, txn, sessionId, isCancelled);
                 }
             }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                    throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
         };
 
         Future<Void> task = null;
@@ -729,7 +1142,7 @@ public class CompactionManager implements CompactionManagerMBean {
             Collection<Range<Token>> ranges,
             LifecycleTransaction txn,
             TimeUUID sessionID,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException {
+            boolean isTransient) throws IOException {
         if (ranges.isEmpty())
             return;
 
@@ -740,7 +1153,7 @@ public class CompactionManager implements CompactionManagerMBean {
 
         cfs.metric.bytesMutatedAnticompaction.inc(SSTableReader.getTotalBytes(fullyContainedSSTables));
         cfs.getCompactionStrategyManager().mutateRepaired(fullyContainedSSTables, UNREPAIRED_SSTABLE, sessionID,
-                isTransient, isReplicationTransferredToErasureCoding);
+                isTransient);
         // since we're just re-writing the sstable metdata for the fully contained
         // sstables, we don't want
         // them obsoleted when the anti-compaction is complete. So they're removed from
@@ -793,9 +1206,9 @@ public class CompactionManager implements CompactionManagerMBean {
             Set<SSTableReader> sstables = new HashSet<>(validatedForRepair);
             validateSSTableBoundsForAnticompaction(sessionID, sstables, replicas);
             mutateFullyContainedSSTables(cfs, validatedForRepair, sstables.iterator(), replicas.onlyFull().ranges(),
-                    txn, sessionID, false, false);
+                    txn, sessionID, false);
             mutateFullyContainedSSTables(cfs, validatedForRepair, sstables.iterator(),
-                    replicas.onlyTransient().ranges(), txn, sessionID, true, false);
+                    replicas.onlyTransient().ranges(), txn, sessionID, true);
 
             assert txn.originals().equals(sstables);
             if (!sstables.isEmpty())
@@ -887,6 +1300,27 @@ public class CompactionManager implements CompactionManagerMBean {
                 protected void runMayThrow() {
                     task.execute(active);
                 }
+
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                        throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
+                        throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                        String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
             };
 
             Future<?> fut = executor.submitIfRunning(runnable, "maximal task");
@@ -925,6 +1359,27 @@ public class CompactionManager implements CompactionManagerMBean {
                     for (AbstractCompactionTask task : tasks)
                         if (task != null)
                             task.execute(active);
+                }
+
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                        throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
+                        throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                        String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
                 }
             };
 
@@ -1100,6 +1555,26 @@ public class CompactionManager implements CompactionManagerMBean {
                     }
                 }
             }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                    throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
         };
 
         return executor.submitIfRunning(runnable, "user defined task");
@@ -1263,7 +1738,7 @@ public class CompactionManager implements CompactionManagerMBean {
                         Collections.singletonList(scanner), controller, nowInSec, nextTimeUUID(), active, null)) {
             StatsMetadata metadata = sstable.getSSTableMetadata();
             writer.switchWriter(createWriter(cfs, compactionFileLocation, expectedBloomFilterSize, metadata.repairedAt,
-                    metadata.pendingRepair, metadata.isTransient, metadata.isReplicationTransferredToErasureCoding,
+                    metadata.pendingRepair, metadata.isTransient,
                     sstable, txn));
             long lastBytesScanned = 0;
 
@@ -1412,7 +1887,6 @@ public class CompactionManager implements CompactionManagerMBean {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            Boolean isReplicationTransferredToErasureCoding,
             SSTableReader sstable,
             LifecycleTransaction txn) {
         FileUtils.createDirectory(compactionFileLocation);
@@ -1423,7 +1897,6 @@ public class CompactionManager implements CompactionManagerMBean {
                 repairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 sstable.getSSTableLevel(),
                 sstable.header,
                 cfs.indexManager.listIndexes(),
@@ -1436,7 +1909,6 @@ public class CompactionManager implements CompactionManagerMBean {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            Boolean isReplicationTransferredToErasureCoding,
             Collection<SSTableReader> sstables,
             ILifecycleTransaction txn) {
         FileUtils.createDirectory(compactionFileLocation);
@@ -1461,7 +1933,6 @@ public class CompactionManager implements CompactionManagerMBean {
                 repairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 cfs.metadata,
                 new MetadataCollector(sstables, cfs.metadata().comparator, minLevel),
                 SerializationHeader.make(cfs.metadata(), sstables),
@@ -1631,13 +2102,13 @@ public class CompactionManager implements CompactionManagerMBean {
                     (int) (SSTableReader.getApproximateKeyCount(sstableAsSet)));
 
             fullWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, false, false,
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, false,
                     sstableAsSet, txn));
             transWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, true, false,
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, pendingRepair, true,
                     sstableAsSet, txn));
             unrepairedWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs, destination,
-                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false, false,
+                    expectedBloomFilterSize, UNREPAIRED_SSTABLE, NO_PENDING_REPAIR, false,
                     sstableAsSet, txn));
 
             Predicate<Token> fullChecker = !ranges.onlyFull().isEmpty()
@@ -2038,6 +2509,15 @@ public class CompactionManager implements CompactionManagerMBean {
 
     public int getMaximumCompactorThreads() {
         return executor.getMaximumPoolSize();
+    }
+
+    // [CASSANDRAEC]
+    public int getActiveTaskCount() {
+        return executor.getActiveTaskCount();
+    }
+
+    public long getCompletedTaskCount() {
+        return executor.getCompletedTaskCount();
     }
 
     public void setMaximumCompactorThreads(int number) {

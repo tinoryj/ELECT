@@ -92,11 +92,11 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
 
     @SuppressWarnings("resource") // log and writer closed during doPostCleanup
     public static SSTableTxnWriter create(ColumnFamilyStore cfs, Descriptor descriptor, long keyCount, long repairedAt,
-            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            TimeUUID pendingRepair, boolean isTransient,
             int sstableLevel, SerializationHeader header) {
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE);
         SSTableMultiWriter writer = cfs.createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair,
-                isTransient, isReplicationTransferredToErasureCoding, sstableLevel, header, txn);
+                isTransient, sstableLevel, header, txn);
         return new SSTableTxnWriter(txn, writer);
     }
 
@@ -106,7 +106,6 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             SSTableFormat.Type type,
             int sstableLevel,
             SerializationHeader header) {
@@ -116,7 +115,7 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
         SSTableMultiWriter writer;
         try {
             writer = new RangeAwareSSTableWriter(cfs, keyCount, repairedAt, pendingRepair, isTransient,
-                    isReplicationTransferredToErasureCoding, type,
+                    type,
                     sstableLevel, 0, txn, header);
         } catch (IOException e) {
             // We don't know the total size so this should never happen
@@ -134,7 +133,6 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             int sstableLevel,
             SerializationHeader header,
             Collection<Index> indexes) {
@@ -143,14 +141,26 @@ public class SSTableTxnWriter extends Transactional.AbstractTransactional implem
         LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.WRITE);
         MetadataCollector collector = new MetadataCollector(metadata.get().comparator).sstableLevel(sstableLevel);
         SSTableMultiWriter writer = SimpleSSTableMultiWriter.create(descriptor, keyCount, repairedAt, pendingRepair,
-                isTransient, isReplicationTransferredToErasureCoding, metadata, collector, header, indexes, txn);
+                isTransient, metadata, collector, header, indexes, txn);
         return new SSTableTxnWriter(txn, writer);
     }
 
     public static SSTableTxnWriter create(ColumnFamilyStore cfs, Descriptor desc, long keyCount, long repairedAt,
-            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            TimeUUID pendingRepair, boolean isTransient,
             SerializationHeader header) {
         return create(cfs, desc, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, 0, header);
+                 0, header);
+    }
+
+    @Override
+    protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
+    }
+
+    @Override
+    protected void doPrepare(SSTableReader ecSSTable) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'doPrepare'");
     }
 }

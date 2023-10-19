@@ -1238,6 +1238,9 @@ public class DatabaseDescriptor
 
     static void applyTokensConfig(Config conf)
     {
+
+        Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
+        logger.debug("ELECT-Debug: get the token ranges are: {}", tokenRanges);
         if (conf.initial_token != null)
         {
             Collection<String> tokens = tokensFromString(conf.initial_token);
@@ -1700,6 +1703,10 @@ public class DatabaseDescriptor
         return tokensFromString(System.getProperty(Config.PROPERTY_PREFIX + "initial_token", conf.initial_token));
     }
 
+    public static Collection<String> getTokenRanges() {
+        return tokensFromString(conf.token_ranges);
+    }
+
     public static String getAllocateTokensForKeyspace()
     {
         return System.getProperty(Config.PROPERTY_PREFIX + "allocate_tokens_for_keyspace", conf.allocate_tokens_for_keyspace);
@@ -1904,19 +1911,199 @@ public class DatabaseDescriptor
         conf.phi_convict_threshold = phiConvictThreshold;
     }
 
-    public static int getCompactionThreshold() 
+    public static int getMaxLevelCount() 
     {
-        return conf.compaction_threshold;
+        return conf.max_level_count;
     }
 
-    public static void setCompactionThreshold(int compaction_threshold)
+    public static void setMaxLevelCount(int max_level_count)
     {
-        if (compaction_threshold < 0)
+        if (max_level_count < 0)
         {
-            throw new IllegalArgumentException("Parity nodes must be non-negative");
+            throw new IllegalArgumentException("Compaction threshold nodes must be non-negative");
         }
-        conf.compaction_threshold = compaction_threshold;
+        conf.max_level_count = max_level_count;
     }
+
+    
+    public static int getInitialDelay() 
+    {
+        return conf.initial_delay;
+    }
+
+    public static void setInitialDelay(int initial_delay)
+    {
+        if (initial_delay < 0)
+        {
+            throw new IllegalArgumentException("Initial delay must be non-negative");
+        }
+        conf.initial_delay = initial_delay;
+    }
+
+    public static int getMaxStripUpdateSSTables() {
+        return conf.max_stripe_update_sstable;
+    }
+
+    public static void setMaxStripUpdateSSTable(int max_stripe_update_sstable) {
+        if (max_stripe_update_sstable < 0)
+        {
+            throw new IllegalArgumentException("Max send sstables must be non-negative");
+        }
+        conf.max_stripe_update_sstable = max_stripe_update_sstable;
+    }
+
+    public static int getMaxSendSSTables() {
+        return conf.max_send_sstables;
+    }
+
+    public static void setMaxSendSSTables(int max_send_sstables) {
+        if (max_send_sstables < 0)
+        {
+            throw new IllegalArgumentException("Max send sstables must be non-negative");
+        }
+        conf.max_send_sstables = max_send_sstables;
+    }
+
+    public static int getUpdateFrequency() {
+        return conf.stripe_update_frequency;
+    }
+
+    public static void setUpdateFrequency(int stripe_update_frequency)
+    {
+        if (stripe_update_frequency < 0)
+        {
+            throw new IllegalArgumentException("Stripe update frequency must be non-negative");
+        }
+        conf.stripe_update_frequency = stripe_update_frequency;
+    }
+
+
+    public static int getTaskDelay() 
+    {
+        return conf.task_delay;
+    }
+
+    public static void setTaskDelay(int task_delay)
+    {
+        if (task_delay < 0)
+        {
+            throw new IllegalArgumentException("Task delay must be non-negative");
+        }
+        conf.task_delay = task_delay;
+    }
+
+    public static int getMaxConcurrentDownload() 
+    {
+        return conf.max_concurrent_download;
+    }
+
+    public static void setMaxConcurrentDownload(int max_concurrent_download)
+    {
+        if (max_concurrent_download < 0)
+        {
+            throw new IllegalArgumentException("Concurrent download must be non-negative");
+        }
+        conf.max_concurrent_download = max_concurrent_download;
+    }
+
+    public static double getTargetStorageSaving() 
+    {
+        return conf.target_storage_saving;
+    }
+
+    public static void setTargetStorageSaving(double target_storage_saving)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.target_storage_saving = target_storage_saving;
+    }
+
+    public static int getColdPeriod() 
+    {
+        return conf.cold_period;
+    }
+
+    public static void setColdPeriod(int cold_period)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.cold_period = cold_period;
+    }
+
+    public static boolean getEnableErasureCoding() 
+    {
+        return conf.enable_erasure_coding;
+    }
+
+    public static void setEnableErasureCoding(boolean enable_erasure_coding)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.enable_erasure_coding = enable_erasure_coding;
+    }
+
+    public static boolean getEnableProxy() 
+    {
+        return conf.enable_proxy;
+    }
+
+    public static void setEnableProxy(boolean enable_proxy)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.enable_proxy = enable_proxy;
+    }
+    
+    public static boolean getEnableMerkleTree() 
+    {
+        return conf.enable_merkle_tree;
+    }
+
+    public static void setEnableMerkleTree(boolean enable_merkle_tree)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.enable_merkle_tree = enable_merkle_tree;
+    }
+
+    public static boolean getEnableMigration() 
+    {
+        return conf.enable_migration;
+    }
+
+    public static void setEnableMigration(boolean enable_migration)
+    {
+        // if (ecDataNodes < 0)
+        // {
+        //     throw new IllegalArgumentException("Data nodes num must be non-negative");
+        // }
+        conf.enable_migration = enable_migration;
+    }
+
+    public static int getStorageSavingGrade() 
+    {
+        return conf.storage_saving_grade;
+    }
+
+    public static void setStorageSavingGrade(int storage_saving_grade)
+    {
+        if (storage_saving_grade < 0)
+        {
+            throw new IllegalArgumentException("Data nodes num must be non-negative");
+        }
+        conf.storage_saving_grade = storage_saving_grade;
+    }
+
 
     public static int getEcDataNodes() 
     {
@@ -1927,7 +2114,7 @@ public class DatabaseDescriptor
     {
         if (ecDataNodes < 0)
         {
-            throw new IllegalArgumentException("Parity nodes must be non-negative");
+            throw new IllegalArgumentException("Data nodes num must be non-negative");
         }
         conf.ec_data_nodes = ecDataNodes;
     }
@@ -1944,6 +2131,30 @@ public class DatabaseDescriptor
             throw new IllegalArgumentException("Parity nodes must be non-negative");
         }
         conf.parity_nodes = parityNodes;
+    }
+
+    public static String getUserName() {
+        return conf.user_name;
+    }
+
+    public static void setUserName(String user_name) {
+        // if (concurrent_recovery < 0)
+        // {
+        //     throw new IllegalArgumentException("Concurrent reads must be non-negative");
+        // }
+        conf.user_name = user_name;
+    }
+
+    public static int getConcurrentRecovery() {
+        return conf.concurrent_recovery;
+    }
+
+    public static void setConcurrentRecovery(int concurrent_recovery) {
+        if (concurrent_recovery < 0)
+        {
+            throw new IllegalArgumentException("Concurrent reads must be non-negative");
+        }
+        conf.concurrent_recovery = concurrent_recovery;
     }
 
     public static int getConcurrentErasureCoders() {

@@ -66,13 +66,17 @@ public class NativeRSEncoder extends ErasureEncoder {
         }
     }
 
-    protected void doEncode(ByteArrayEncodingState baeState) throws IOException {
-        ByteBufferEncodingState bbeState = baeState.convertToByteBufferState();
-        doEncode(bbeState);
-
-        for (int i = 0; i < baeState.outputs.length; i++) {
-            bbeState.outputs[i].get(baeState.outputs[i], baeState.outputOffsets[i],
-                    baeState.encodeLength);
+    protected void doEncodeUpdate(ByteBufferEncodingState bbeState, int targetDataIndex) throws IOException {
+        encoderLock.readLock().lock();
+        try {
+            if (nativeCoder == 0) {
+                throw new IOException(String.format("%s closed", getClass().getSimpleName()));
+            }
+            encodeUpdateImpl(bbeState.inputs, bbeState.inputOffsets, bbeState.encodeLength, targetDataIndex,
+                    bbeState.outputs, bbeState.outputOffsets);
+            logger.debug("NativeRSEncoder - doEncodeUpdate called");
+        } finally {
+            encoderLock.readLock().unlock();
         }
     }
 
@@ -93,6 +97,9 @@ public class NativeRSEncoder extends ErasureEncoder {
     private native void initImpl(int numDataUnits, int numParityUnits);
 
     private native void encodeImpl(ByteBuffer[] inputs, int[] inputOffsets, int dataLen,
+            ByteBuffer[] outputs, int[] outputOffsets) throws IOException;
+
+    private native void encodeUpdateImpl(ByteBuffer[] inputs, int[] inputOffsets, int dataLen, int targetDataIndex,
             ByteBuffer[] outputs, int[] outputOffsets) throws IOException;
 
     private native void destroyImpl();

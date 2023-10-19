@@ -53,6 +53,7 @@ import org.apache.cassandra.io.sstable.metadata.StatsMetadata;
 import org.apache.cassandra.io.util.*;
 import org.apache.cassandra.schema.CompressionParams;
 import org.apache.cassandra.schema.TableMetadataRef;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.concurrent.SharedCloseableImpl;
 import org.apache.cassandra.utils.concurrent.Transactional;
@@ -81,14 +82,13 @@ public class BigTableWriter extends SSTableWriter {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             TableMetadataRef metadata,
             MetadataCollector metadataCollector,
             SerializationHeader header,
             Collection<SSTableFlushObserver> observers,
             LifecycleNewTracker lifecycleNewTracker) {
         super(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, metadata, metadataCollector, header,
+                metadata, metadataCollector, header,
                 observers);
         lifecycleNewTracker.trackNew(this); // must track before any files are created
 
@@ -107,13 +107,9 @@ public class BigTableWriter extends SSTableWriter {
                     new File(descriptor.filenameFor(Component.DIGEST)),
                     writerOption);
         }
-        if (isReplicationTransferredToErasureCoding) {
-            dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.EC_METADATA)).compressed(false)
-                    .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
-        } else {
-            dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA)).compressed(compression)
-                    .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
-        }
+
+        dbuilder = new FileHandle.Builder(descriptor.filenameFor(Component.DATA)).compressed(compression)
+                .mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
 
         chunkCache.ifPresent(dbuilder::withChunkCache);
         iwriter = new IndexWriter(keyCount);
@@ -180,9 +176,10 @@ public class BigTableWriter extends SSTableWriter {
      */
     protected long beforeAppend(DecoratedKey decoratedKey) {
         assert decoratedKey != null : "Keys must not be null"; // empty keys ARE allowed b/c of indexed column values
-        if (lastWrittenKey != null && lastWrittenKey.compareTo(decoratedKey) >= 0)
-            throw new RuntimeException("Last written key " + lastWrittenKey + " >= current key " + decoratedKey
-                    + " writing into " + getFilename());
+        // if (lastWrittenKey != null && lastWrittenKey.compareTo(decoratedKey) >= 0)
+        // throw new RuntimeException("Last written key " + lastWrittenKey + " >=
+        // current key " + decoratedKey
+        // + " writing into " + getFilename());
         return (lastWrittenKey == null) ? 0 : dataFile.position();
     }
 
@@ -450,6 +447,7 @@ public class BigTableWriter extends SSTableWriter {
 
     class TransactionalProxy extends SSTableWriter.TransactionalProxy {
         // finalise our state on disk, including renaming
+        private static final int contentSizeForGeneratingHash = 4 * 1024 * 1024;
         protected void doPrepare() {
             iwriter.prepareToCommit();
 
@@ -459,20 +457,55 @@ public class BigTableWriter extends SSTableWriter {
 
             try (DataInputStream dataFileReadForHash = new DataInputStream(
                     new FileInputStream(descriptor.filenameFor(Component.DATA)))) {
-                long fileLength = new File(descriptor.filenameFor(Component.DATA)).length();
+                // logger.debug("[ELECT] Open data file success for SSTable = {}",
+                // descriptor.filenameFor(Component.DATA));
+                dataFileSize = new File(descriptor.filenameFor(Component.DATA)).length();
+                long fileLength = dataFileSize;
+                if(dataFileSize > contentSizeForGeneratingHash) {
+                    fileLength = contentSizeForGeneratingHash;
+                }
+
+                if(fileLength < 0 || fileLength > Integer.MAX_VALUE) {
+                    throw new IllegalStateException(String.format("ELECT-ERROR: The file length of sstable (%s) is negative (%s)", descriptor.filenameFor(Component.DATA), dataFileSize));
+                }
+
+
                 byte[] bytes = new byte[(int) fileLength];
                 dataFileReadForHash.readFully(bytes);
                 dataFileReadForHash.close();
+                // logger.debug("[ELECT]: Read sstable data size = {}", fileLength);
                 // generate hash based on the bytes buffer
                 try {
                     MessageDigest digest = MessageDigest.getInstance("SHA-256");
                     byte[] hash = digest.digest(bytes);
-                    hashID = new String(hash);
-                    logger.debug("[Tinoryj]: generated hash value for current SSTable is {}", hashID);
+                    // hashID = new String(hash);
+
+                    int hashSize = 32;
+                    StringBuilder sb = new StringBuilder();
+                    for (byte b : hash) {
+                        sb.append(String.format("%02x", b));
+                    }
+                    if (sb.length() > hashSize) {
+                        hashID = sb.substring(0, hashSize);
+                    } else {
+                        while (sb.length() < hashSize) {
+                            sb.append("0");
+                        }
+                        hashID = sb.toString();
+                    }
+
+                    // logger.debug("[ELECT]: generated hash value for current SSTable is {}, hash length is {}, file length is ({})", 
+                    //                 hashID, hashID.length(), dataFileSize);
                 } catch (NoSuchAlgorithmException e) {
+                    hashID = null;
+                    logger.error("[ELECT-ERROR]: Could not generated hash value for current SSTable = {}",
+                            descriptor.filenameFor(Component.DATA));
                     e.printStackTrace();
                 }
             } catch (IOException e) {
+                hashID = null;
+                logger.error("[ELECT-ERROR]: Could not read SSTable = {} for hash ID generation",
+                        descriptor.filenameFor(Component.DATA));
                 e.printStackTrace();
             }
 
@@ -501,6 +534,18 @@ public class BigTableWriter extends SSTableWriter {
             accumulate = iwriter.abort(accumulate);
             accumulate = dataFile.abort(accumulate);
             return accumulate;
+        }
+
+        @Override
+        protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
+        }
+
+        @Override
+        protected void doPrepare(SSTableReader ecSSTable) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'doPrepare'");
         }
     }
 
@@ -635,5 +680,24 @@ public class BigTableWriter extends SSTableWriter {
             accumulate = builder.close(accumulate);
             return accumulate;
         }
+
+        @Override
+        protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
+        }
+
+        @Override
+        protected void doPrepare(SSTableReader ecSSTable) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'doPrepare'");
+        }
     }
+
+    // @Override
+    // public void updateState() {
+    // // TODO Auto-generated method stub
+    // throw new UnsupportedOperationException("Unimplemented method
+    // 'updateState'");
+    // }
 }

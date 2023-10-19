@@ -69,10 +69,8 @@ import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
 
-public class NodeTool
-{
-    static
-    {
+public class NodeTool {
+    static {
         FBUtilities.preventIllegalAccessWarnings();
     }
 
@@ -81,20 +79,20 @@ public class NodeTool
     private final INodeProbeFactory nodeProbeFactory;
     private final Output output;
 
-    public static void main(String... args)
-    {
+    public static void main(String... args) {
         System.exit(new NodeTool(new NodeProbeFactory(), Output.CONSOLE).execute(args));
     }
 
-    public NodeTool(INodeProbeFactory nodeProbeFactory, Output output)
-    {
+    public NodeTool(INodeProbeFactory nodeProbeFactory, Output output) {
         this.nodeProbeFactory = nodeProbeFactory;
         this.output = output;
     }
 
-    public int execute(String... args)
-    {
+    public int execute(String... args) {
         List<Class<? extends NodeToolCmdRunnable>> commands = newArrayList(
+                Breakdown.class,
+                AccessFrequency.class,
+                ColdStartup.class,
                 Assassinate.class,
                 CassHelp.class,
                 CfHistograms.class,
@@ -228,14 +226,14 @@ public class NodeTool
                 UpgradeSSTable.class,
                 Verify.class,
                 Version.class,
-                ViewBuildStatus.class
-        );
+                ViewBuildStatus.class,
+                RecoveryELECT.class);
 
         Cli.CliBuilder<NodeToolCmdRunnable> builder = Cli.builder("nodetool");
 
         builder.withDescription("Manage your Cassandra cluster")
-                 .withDefaultCommand(CassHelp.class)
-                 .withCommands(commands);
+                .withDefaultCommand(CassHelp.class)
+                .withCommands(commands);
 
         // bootstrap commands
         builder.withGroup("bootstrap")
@@ -244,36 +242,28 @@ public class NodeTool
                 .withCommand(BootstrapResume.class);
 
         builder.withGroup("repair_admin")
-               .withDescription("list and fail incremental repair sessions")
-               .withDefaultCommand(RepairAdmin.ListCmd.class)
-               .withCommand(RepairAdmin.ListCmd.class)
-               .withCommand(RepairAdmin.CancelCmd.class)
-               .withCommand(RepairAdmin.CleanupDataCmd.class)
-               .withCommand(RepairAdmin.SummarizePendingCmd.class)
-               .withCommand(RepairAdmin.SummarizeRepairedCmd.class);
+                .withDescription("list and fail incremental repair sessions")
+                .withDefaultCommand(RepairAdmin.ListCmd.class)
+                .withCommand(RepairAdmin.ListCmd.class)
+                .withCommand(RepairAdmin.CancelCmd.class)
+                .withCommand(RepairAdmin.CleanupDataCmd.class)
+                .withCommand(RepairAdmin.SummarizePendingCmd.class)
+                .withCommand(RepairAdmin.SummarizeRepairedCmd.class);
 
         Cli<NodeToolCmdRunnable> parser = builder.build();
 
         int status = 0;
-        try
-        {
+        try {
             NodeToolCmdRunnable parse = parser.parse(args);
             printHistory(args);
             parse.run(nodeProbeFactory, output);
-        } catch (IllegalArgumentException |
-                IllegalStateException |
-                ParseArgumentsMissingException |
-                ParseArgumentsUnexpectedException |
-                ParseOptionConversionException |
-                ParseOptionMissingException |
-                ParseOptionMissingValueException |
-                ParseCommandMissingException |
-                ParseCommandUnrecognizedException e)
-        {
+        } catch (IllegalArgumentException | IllegalStateException | ParseArgumentsMissingException
+                | ParseArgumentsUnexpectedException | ParseOptionConversionException | ParseOptionMissingException
+                | ParseOptionMissingValueException | ParseCommandMissingException
+                | ParseCommandUnrecognizedException e) {
             badUse(e);
             status = 1;
-        } catch (Throwable throwable)
-        {
+        } catch (Throwable throwable) {
             err(Throwables.getRootCause(throwable));
             status = 2;
         }
@@ -281,86 +271,77 @@ public class NodeTool
         return status;
     }
 
-    private static void printHistory(String... args)
-    {
-        //don't bother to print if no args passed (meaning, nodetool is just printing out the sub-commands list)
+    private static void printHistory(String... args) {
+        // don't bother to print if no args passed (meaning, nodetool is just printing
+        // out the sub-commands list)
         if (args.length == 0)
             return;
 
         String cmdLine = Joiner.on(" ").skipNulls().join(args);
         cmdLine = cmdLine.replaceFirst("(?<=(-pw|--password))\\s+\\S+", " <hidden>");
 
-        try (FileWriter writer = new File(FBUtilities.getToolsOutputDirectory(), HISTORYFILE).newWriter(APPEND))
-        {
+        try (FileWriter writer = new File(FBUtilities.getToolsOutputDirectory(), HISTORYFILE).newWriter(APPEND)) {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS");
             writer.append(sdf.format(new Date())).append(": ").append(cmdLine).append(System.lineSeparator());
-        }
-        catch (IOException | IOError ioe)
-        {
-            //quietly ignore any errors about not being able to write out history
+        } catch (IOException | IOError ioe) {
+            // quietly ignore any errors about not being able to write out history
         }
     }
 
-    protected void badUse(Exception e)
-    {
+    protected void badUse(Exception e) {
         output.out.println("nodetool: " + e.getMessage());
         output.out.println("See 'nodetool help' or 'nodetool help <command>'.");
     }
 
-    protected void err(Throwable e)
-    {
+    protected void err(Throwable e) {
         output.err.println("error: " + e.getMessage());
         output.err.println("-- StackTrace --");
         output.err.println(getStackTraceAsString(e));
     }
 
-    public static class CassHelp extends Help implements NodeToolCmdRunnable
-    {
-        public void run(INodeProbeFactory nodeProbeFactory, Output output)
-        {
+    public static class CassHelp extends Help implements NodeToolCmdRunnable {
+        public void run(INodeProbeFactory nodeProbeFactory, Output output) {
             run();
         }
     }
 
-    interface NodeToolCmdRunnable
-    {
+    interface NodeToolCmdRunnable {
         void run(INodeProbeFactory nodeProbeFactory, Output output);
     }
 
-    public static abstract class NodeToolCmd implements NodeToolCmdRunnable
-    {
+    public static abstract class NodeToolCmd implements NodeToolCmdRunnable {
 
-        @Option(type = OptionType.GLOBAL, name = {"-h", "--host"}, description = "Node hostname or ip address")
+        @Option(type = OptionType.GLOBAL, name = { "-h", "--host" }, description = "Node hostname or ip address")
         private String host = "127.0.0.1";
 
-        @Option(type = OptionType.GLOBAL, name = {"-p", "--port"}, description = "Remote jmx agent port number")
+        @Option(type = OptionType.GLOBAL, name = { "-p", "--port" }, description = "Remote jmx agent port number")
         private String port = "7199";
 
-        @Option(type = OptionType.GLOBAL, name = {"-u", "--username"}, description = "Remote jmx agent username")
+        @Option(type = OptionType.GLOBAL, name = { "-u", "--username" }, description = "Remote jmx agent username")
         private String username = EMPTY;
 
-        @Option(type = OptionType.GLOBAL, name = {"-pw", "--password"}, description = "Remote jmx agent password")
+        @Option(type = OptionType.GLOBAL, name = { "-pw", "--password" }, description = "Remote jmx agent password")
         private String password = EMPTY;
 
-        @Option(type = OptionType.GLOBAL, name = {"-pwf", "--password-file"}, description = "Path to the JMX password file")
+        @Option(type = OptionType.GLOBAL, name = { "-pwf",
+                "--password-file" }, description = "Path to the JMX password file")
         private String passwordFilePath = EMPTY;
 
-        @Option(type = OptionType.GLOBAL, name = { "-pp", "--print-port"}, description = "Operate in 4.0 mode with hosts disambiguated by port number", arity = 0)
+        @Option(type = OptionType.GLOBAL, name = { "-pp",
+                "--print-port" }, description = "Operate in 4.0 mode with hosts disambiguated by port number", arity = 0)
         protected boolean printPort = false;
 
         private INodeProbeFactory nodeProbeFactory;
         protected Output output;
 
         @Override
-        public void run(INodeProbeFactory nodeProbeFactory, Output output)
-        {
+        public void run(INodeProbeFactory nodeProbeFactory, Output output) {
             this.nodeProbeFactory = nodeProbeFactory;
             this.output = output;
             runInternal();
         }
 
-        public void runInternal()
-        {
+        public void runInternal() {
             if (isNotEmpty(username)) {
                 if (isNotEmpty(passwordFilePath))
                     password = readUserPasswordFromFile(username, passwordFilePath);
@@ -369,14 +350,11 @@ public class NodeTool
                     password = promptAndReadPassword();
             }
 
-            try (NodeProbe probe = connect())
-            {
+            try (NodeProbe probe = connect()) {
                 execute(probe);
                 if (probe.isFailed())
                     throw new RuntimeException("nodetool failed, check server logs");
-            }
-            catch (IOException e)
-            {
+            } catch (IOException e) {
                 throw new RuntimeException("Error while closing JMX connection", e);
             }
 
@@ -386,32 +364,25 @@ public class NodeTool
             String password = EMPTY;
 
             File passwordFile = new File(passwordFilePath);
-            try (Scanner scanner = new Scanner(passwordFile.toJavaIOFile()).useDelimiter("\\s+"))
-            {
-                while (scanner.hasNextLine())
-                {
-                    if (scanner.hasNext())
-                    {
+            try (Scanner scanner = new Scanner(passwordFile.toJavaIOFile()).useDelimiter("\\s+")) {
+                while (scanner.hasNextLine()) {
+                    if (scanner.hasNext()) {
                         String jmxRole = scanner.next();
-                        if (jmxRole.equals(username) && scanner.hasNext())
-                        {
+                        if (jmxRole.equals(username) && scanner.hasNext()) {
                             password = scanner.next();
                             break;
                         }
                     }
                     scanner.nextLine();
                 }
-            }
-            catch (FileNotFoundException e)
-            {
+            } catch (FileNotFoundException e) {
                 throw new RuntimeException(e);
             }
 
             return password;
         }
 
-        private String promptAndReadPassword()
-        {
+        private String promptAndReadPassword() {
             String password = EMPTY;
 
             Console console = System.console();
@@ -423,59 +394,50 @@ public class NodeTool
 
         protected abstract void execute(NodeProbe probe);
 
-        private NodeProbe connect()
-        {
+        private NodeProbe connect() {
             NodeProbe nodeClient = null;
 
-            try
-            {
+            try {
                 if (username.isEmpty())
                     nodeClient = nodeProbeFactory.create(host, parseInt(port));
                 else
                     nodeClient = nodeProbeFactory.create(host, parseInt(port), username, password);
 
                 nodeClient.setOutput(output);
-            } catch (IOException | SecurityException e)
-            {
+            } catch (IOException | SecurityException e) {
                 Throwable rootCause = Throwables.getRootCause(e);
-                output.err.println(format("nodetool: Failed to connect to '%s:%s' - %s: '%s'.", host, port, rootCause.getClass().getSimpleName(), rootCause.getMessage()));
+                output.err.println(format("nodetool: Failed to connect to '%s:%s' - %s: '%s'.", host, port,
+                        rootCause.getClass().getSimpleName(), rootCause.getMessage()));
                 System.exit(1);
             }
 
             return nodeClient;
         }
 
-        protected enum KeyspaceSet
-        {
+        protected enum KeyspaceSet {
             ALL, NON_SYSTEM, NON_LOCAL_STRATEGY
         }
 
-        protected List<String> parseOptionalKeyspace(List<String> cmdArgs, NodeProbe nodeProbe)
-        {
+        protected List<String> parseOptionalKeyspace(List<String> cmdArgs, NodeProbe nodeProbe) {
             return parseOptionalKeyspace(cmdArgs, nodeProbe, KeyspaceSet.ALL);
         }
 
-        protected List<String> parseOptionalKeyspace(List<String> cmdArgs, NodeProbe nodeProbe, KeyspaceSet defaultKeyspaceSet)
-        {
+        protected List<String> parseOptionalKeyspace(List<String> cmdArgs, NodeProbe nodeProbe,
+                KeyspaceSet defaultKeyspaceSet) {
             List<String> keyspaces = new ArrayList<>();
 
-
-            if (cmdArgs == null || cmdArgs.isEmpty())
-            {
+            if (cmdArgs == null || cmdArgs.isEmpty()) {
                 if (defaultKeyspaceSet == KeyspaceSet.NON_LOCAL_STRATEGY)
                     keyspaces.addAll(keyspaces = nodeProbe.getNonLocalStrategyKeyspaces());
                 else if (defaultKeyspaceSet == KeyspaceSet.NON_SYSTEM)
                     keyspaces.addAll(keyspaces = nodeProbe.getNonSystemKeyspaces());
                 else
                     keyspaces.addAll(nodeProbe.getKeyspaces());
-            }
-            else
-            {
+            } else {
                 keyspaces.add(cmdArgs.get(0));
             }
 
-            for (String keyspace : keyspaces)
-            {
+            for (String keyspace : keyspaces) {
                 if (!nodeProbe.getKeyspaces().contains(keyspace))
                     throw new IllegalArgumentException("Keyspace [" + keyspace + "] does not exist.");
             }
@@ -483,47 +445,43 @@ public class NodeTool
             return Collections.unmodifiableList(keyspaces);
         }
 
-        protected String[] parseOptionalTables(List<String> cmdArgs)
-        {
+        protected String[] parseOptionalTables(List<String> cmdArgs) {
             return cmdArgs.size() <= 1 ? EMPTY_STRING_ARRAY : toArray(cmdArgs.subList(1, cmdArgs.size()), String.class);
         }
     }
 
     public static SortedMap<String, SetHostStatWithPort> getOwnershipByDcWithPort(NodeProbe probe, boolean resolveIp,
-                                                                  Map<String, String> tokenToEndpoint,
-                                                                  Map<String, Float> ownerships)
-    {
+            Map<String, String> tokenToEndpoint,
+            Map<String, Float> ownerships) {
         SortedMap<String, SetHostStatWithPort> ownershipByDc = Maps.newTreeMap();
         EndpointSnitchInfoMBean epSnitchInfo = probe.getEndpointSnitchInfoProxy();
-        try
-        {
-            for (Entry<String, String> tokenAndEndPoint : tokenToEndpoint.entrySet())
-            {
+        try {
+            for (Entry<String, String> tokenAndEndPoint : tokenToEndpoint.entrySet()) {
                 String dc = epSnitchInfo.getDatacenter(tokenAndEndPoint.getValue());
                 if (!ownershipByDc.containsKey(dc))
                     ownershipByDc.put(dc, new SetHostStatWithPort(resolveIp));
                 ownershipByDc.get(dc).add(tokenAndEndPoint.getKey(), tokenAndEndPoint.getValue(), ownerships);
             }
-        }
-        catch (UnknownHostException e)
-        {
+        } catch (UnknownHostException e) {
             throw new RuntimeException(e);
         }
         return ownershipByDc;
     }
-    
-    public static SortedMap<String, SortedMap<String, InetAddressAndPort>> getEndpointByDcWithPort(NodeProbe probe, Map<String, String> tokenToEndpoint) {
+
+    public static SortedMap<String, SortedMap<String, InetAddressAndPort>> getEndpointByDcWithPort(NodeProbe probe,
+            Map<String, String> tokenToEndpoint) {
         SortedMap<String, SortedMap<String, InetAddressAndPort>> endpointByDc = Maps.newTreeMap();
         EndpointSnitchInfoMBean epSnitchInfo = probe.getEndpointSnitchInfoProxy();
         try {
             for (Entry<String, String> tokenAndEndPoint : tokenToEndpoint.entrySet()) {
                 String dc = epSnitchInfo.getDatacenter(tokenAndEndPoint.getValue());
-                if(!endpointByDc.containsKey(dc)) {
+                if (!endpointByDc.containsKey(dc)) {
                     SortedMap<String, InetAddressAndPort> tokenToEp = Maps.newTreeMap();
                     tokenToEp.put(tokenAndEndPoint.getKey(), InetAddressAndPort.getByName(tokenAndEndPoint.getValue()));
                     endpointByDc.put(dc, tokenToEp);
                 }
-                endpointByDc.get(dc).put(tokenAndEndPoint.getKey(), InetAddressAndPort.getByName(tokenAndEndPoint.getValue()));
+                endpointByDc.get(dc).put(tokenAndEndPoint.getKey(),
+                        InetAddressAndPort.getByName(tokenAndEndPoint.getValue()));
             }
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);

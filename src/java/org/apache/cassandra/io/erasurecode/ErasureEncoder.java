@@ -21,11 +21,11 @@ package org.apache.cassandra.io.erasurecode;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.antlr.runtime.tree.Tree;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class ErasureEncoder extends ErasureCoder
-{
+public abstract class ErasureEncoder extends ErasureCoder {
     private static Logger logger = LoggerFactory.getLogger(ErasureEncoder.class.getName());
 
     public ErasureEncoder(ErasureCoderOptions coderOptions) {
@@ -36,58 +36,55 @@ public abstract class ErasureEncoder extends ErasureCoder
      * Encode with inputs and generates outputs
      */
     public void encode(ByteBuffer[] inputs, ByteBuffer[] outputs)
-    throws IOException {
-        ByteBufferEncodingState bbestate = new ByteBufferEncodingState(this, inputs, outputs);
-        boolean usingDirectBuffer = bbestate.usingDirectBuffer;
+            throws IOException {
+        ByteBufferEncodingState bbestate = new ByteBufferEncodingState(this, inputs, outputs, false);
+        int dataLen = bbestate.encodeLength;
+        if (dataLen == 0) {
+            return;
+        }
+        // Perform encoding
+        doEncode(bbestate);
+    }
+
+    /**
+     * Encode with inputs and generates outputs
+     * 
+     * @param inputs          the new data for parity update
+     * @param outputs         outputs is old parity code when first call this
+     *                        method, after execute this method, outputs is new
+     *                        parity code
+     * @param targetDataIndex the index of the inputs in the coding blocks
+     */
+    public void encodeUpdate(ByteBuffer[] targetCodingBlock, ByteBuffer[] parityBuffers, int targetDataIndex)
+            throws IOException {
+        ByteBufferEncodingState bbestate = new ByteBufferEncodingState(this, targetCodingBlock, parityBuffers,
+                false);
+
         int dataLen = bbestate.encodeLength;
         if (dataLen == 0) {
             return;
         }
 
-        // Figure out inputs' position
-        int[] inputPositions = new int[inputs.length];
-        for (int i = 0; i < inputPositions.length; i++) {
-            if (inputs[i] != null) {
-                inputPositions[i] = inputs[i].position();
-            }
-        }
-
         // Perform encoding
-        if (usingDirectBuffer) {
-            doEncode(bbestate);
-        } else {
-            ByteArrayEncodingState baeState = bbestate.convertToByteArrayState();
-            doEncode(baeState);
-        }
-
-        for (int i = 0; i < inputs.length; i++) {
-            if (inputs[i] != null) {
-                // update inputs' positon with the amount of bytes consumed
-                inputs[i].position(inputPositions[i] + dataLen);
-            }
-        }
-    }
-
-    public void encode(byte[][] inputs, byte[][] outputs) throws IOException {
-        ByteArrayEncodingState baeState = new ByteArrayEncodingState(this, inputs, outputs);
-        if (baeState.encodeLength == 0) {
-            return;
-        }
-
-        doEncode(baeState);
+        doEncodeUpdate(bbestate, targetDataIndex);
+        // logger.debug("[ELECT] perform encode update done.");
     }
 
     /**
      * Perform the real encoding using direct bytebuffer.
+     * 
      * @param encodingState, the encoding state.
      * @throws IOException
      */
     protected abstract void doEncode(ByteBufferEncodingState encodingState) throws IOException;
 
     /**
-     * Perform the real encoding using byte array, supporting offsets and lengths.
+     * Perform the real encoding using direct bytebuffer.
+     * 
      * @param encodingState, the encoding state.
      * @throws IOException
      */
-    protected abstract void doEncode(ByteArrayEncodingState encodingState) throws IOException;
+    protected abstract void doEncodeUpdate(ByteBufferEncodingState encodingState, int targetDataIndex)
+            throws IOException;
+
 }

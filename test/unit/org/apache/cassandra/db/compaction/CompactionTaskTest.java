@@ -93,9 +93,9 @@ public class CompactionTaskTest {
     }
 
     private static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException {
+            boolean isTransient) throws IOException {
         sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, repairedAt, pendingRepair,
-                isTransient, isReplicationTransferredToErasureCoding);
+                isTransient);
         sstable.reloadSSTableMetadata();
     }
 
@@ -123,9 +123,9 @@ public class CompactionTaskTest {
         SSTableReader pending1 = sstables.get(2);
         SSTableReader pending2 = sstables.get(3);
 
-        mutateRepaired(repaired, FBUtilities.nowInSeconds(), ActiveRepairService.NO_PENDING_REPAIR, false, false);
-        mutateRepaired(pending1, UNREPAIRED_SSTABLE, nextTimeUUID(), false, false);
-        mutateRepaired(pending2, UNREPAIRED_SSTABLE, nextTimeUUID(), false, false);
+        mutateRepaired(repaired, FBUtilities.nowInSeconds(), ActiveRepairService.NO_PENDING_REPAIR, false);
+        mutateRepaired(pending1, UNREPAIRED_SSTABLE, nextTimeUUID(), false);
+        mutateRepaired(pending2, UNREPAIRED_SSTABLE, nextTimeUUID(), false);
 
         LifecycleTransaction txn = null;
         List<SSTableReader> toCompact = new ArrayList<>(sstables);

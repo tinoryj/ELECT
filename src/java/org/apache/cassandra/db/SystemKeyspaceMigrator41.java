@@ -149,13 +149,15 @@ public class SystemKeyspaceMigrator41
         migrateTable(CassandraVersion.CASSANDRA_4_1.compareTo(prevVersion) > 0,
                      SystemKeyspace.LEGACY_SSTABLE_ACTIVITY,
                      SystemKeyspace.SSTABLE_ACTIVITY_V2,
-                     new String[]{ "keyspace_name", "table_name", "id", "rate_120m", "rate_15m" },
+                     new String[]{ "keyspace_name", "table_name", "id", "rate_120m", "rate_15m", "rate_cold_period" },
                      row ->
                      Collections.singletonList(new Object[]{ row.getString("keyspace_name"),
                                                              row.getString("columnfamily_name"),
                                                              new SequenceBasedSSTableId(row.getInt("generation")).toString(),
                                                              row.has("rate_120m") ? row.getDouble("rate_120m") : null,
-                                                             row.has("rate_15m") ? row.getDouble("rate_15m") : null
+                                                             row.has("rate_15m") ? row.getDouble("rate_15m") : null,
+                                                             row.has("rate_cold_period") ? row.getDouble("rate_cold_period") : null
+
                      })
         );
     }

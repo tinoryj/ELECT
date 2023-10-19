@@ -364,7 +364,7 @@ public class LeveledCompactionStrategyTest {
         SSTableReader sstable2 = unrepaired.manifest.getLevel(1).iterator().next();
 
         sstable1.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable1.descriptor,
-                System.currentTimeMillis(), null, false, false);
+                System.currentTimeMillis(), null, false);
         sstable1.reloadSSTableMetadata();
         assertTrue(sstable1.isRepaired());
 
@@ -888,7 +888,7 @@ public class LeveledCompactionStrategyTest {
         try (LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.COMPACTION,
                 Iterables.concat(l0sstables, l1sstables))) {
             Set<SSTableReader> nonExpired = Sets.difference(txn.originals(), Collections.emptySet());
-            CompactionTask task = new LeveledCompactionTask(cfs, txn, 1, 0, 1024 * 1024, false);
+            CompactionTask task = new LeveledCompactionTask(cfs, txn, 1, 0, 1024 * 1024, false, null);
             SSTableReader lastRemoved = null;
             boolean removed = true;
             for (int i = 0; i < l0sstables.size(); i++) {
@@ -926,7 +926,7 @@ public class LeveledCompactionStrategyTest {
             l0sstables.add(MockSchema.sstable(i, (i + 1) * 1024 * 1024, cfs));
 
         try (LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.COMPACTION, l0sstables)) {
-            CompactionTask task = new LeveledCompactionTask(cfs, txn, 0, 0, 1024 * 1024, false);
+            CompactionTask task = new LeveledCompactionTask(cfs, txn, 0, 0, 1024 * 1024, false, null);
 
             SSTableReader lastRemoved = null;
             boolean removed = true;
@@ -969,7 +969,7 @@ public class LeveledCompactionStrategyTest {
             sstables.add(sstable);
         }
         try (LifecycleTransaction txn = LifecycleTransaction.offline(OperationType.COMPACTION, sstables)) {
-            CompactionTask task = new LeveledCompactionTask(cfs, txn, 0, 0, 1024 * 1024, false);
+            CompactionTask task = new LeveledCompactionTask(cfs, txn, 0, 0, 1024 * 1024, false, null);
             assertFalse(task.reduceScopeForLimitedSpace(Sets.newHashSet(sstables), 0));
             assertEquals(Sets.newHashSet(sstables), txn.originals());
         }

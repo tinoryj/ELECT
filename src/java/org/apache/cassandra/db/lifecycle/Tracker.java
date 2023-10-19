@@ -188,6 +188,59 @@ public class Tracker
         return accumulate;
     }
 
+    // [CASSANDRAEC]
+    Throwable updateSizeTracking(Iterable<SSTableReader> oldSSTables, Iterable<SSTableReader> newSSTables, Throwable accumulate, SSTableReader ecSSTable)
+    {
+        if (isDummy())
+            return accumulate;
+
+        long add = 0;
+        for (SSTableReader sstable : newSSTables)
+        {
+            if (logger.isTraceEnabled())
+                logger.trace("adding {} to list of files tracked for {}.{}", sstable.descriptor, cfstore.keyspace.getName(), cfstore.name);
+            try
+            {
+                add += sstable.bytesOnDisk();
+            }
+            catch (Throwable t)
+            {
+                accumulate = merge(accumulate, t);
+            }
+        }
+
+        if (logger.isTraceEnabled())
+            logger.trace("adding {} to list of files tracked for {}.{}", ecSSTable.descriptor, cfstore.keyspace.getName(),
+                    cfstore.name);
+        try {
+            add += ecSSTable.bytesOnDisk();
+        } catch (Throwable t) {
+            accumulate = merge(accumulate, t);
+        }
+
+        long subtract = 0;
+        for (SSTableReader sstable : oldSSTables)
+        {
+            if (logger.isTraceEnabled())
+                logger.trace("removing {} from list of files tracked for {}.{}", sstable.descriptor, cfstore.keyspace.getName(), cfstore.name);
+            try
+            {
+                subtract += sstable.bytesOnDisk();
+            }
+            catch (Throwable t)
+            {
+                accumulate = merge(accumulate, t);
+            }
+        }
+
+        StorageMetrics.load.inc(add - subtract);
+        cfstore.metric.liveDiskSpaceUsed.inc(add - subtract);
+
+        // we don't subtract from total until the sstable is deleted, see TransactionLogs.SSTableTidier
+        cfstore.metric.totalDiskSpaceUsed.inc(add);
+        return accumulate;
+    }
+
     // SETUP / CLEANUP
 
     public void addInitialSSTables(Iterable<SSTableReader> sstables)
@@ -422,6 +475,25 @@ public class Tracker
 
     Throwable notifySSTablesChanged(Collection<SSTableReader> removed, Collection<SSTableReader> added, OperationType compactionType, Throwable accumulate)
     {
+        INotification notification = new SSTableListChangedNotification(added, removed, compactionType);
+        for (INotificationConsumer subscriber : subscribers)
+        {
+            try
+            {
+                subscriber.handleNotification(notification, this);
+            }
+            catch (Throwable t)
+            {
+                accumulate = merge(accumulate, t);
+            }
+        }
+        return accumulate;
+    }
+
+    // [CASSANDRAEC]
+    Throwable notifySSTablesChanged(Collection<SSTableReader> removed, Collection<SSTableReader> added, OperationType compactionType, Throwable accumulate, SSTableReader ecSStable)
+    {
+        added.add(ecSStable);
         INotification notification = new SSTableListChangedNotification(added, removed, compactionType);
         for (INotificationConsumer subscriber : subscribers)
         {

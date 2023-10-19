@@ -24,6 +24,7 @@ import java.nio.file.StandardOpenOption;
 
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.SyncUtil;
 import org.apache.cassandra.utils.concurrent.Transactional;
 
@@ -96,6 +97,18 @@ public class SequentialWriter extends BufferedDataOutputStreamPlus implements Tr
         protected Throwable doAbort(Throwable accumulate)
         {
             return accumulate;
+        }
+
+        @Override
+        protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
+        }
+
+        @Override
+        protected void doPrepare(SSTableReader ecSSTable) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'doPrepare'");
         }
     }
 
@@ -428,4 +441,16 @@ public class SequentialWriter extends BufferedDataOutputStreamPlus implements Tr
             this.pointer = pointer;
         }
     }
+
+    @Override
+    public Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'commitEC'");
+    }
+
+    // @Override
+    // public void updateState() {
+    //     // TODO Auto-generated method stub
+    //     throw new UnsupportedOperationException("Unimplemented method 'updateState'");
+    // }
 }

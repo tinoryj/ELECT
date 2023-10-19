@@ -28,6 +28,10 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static org.apache.cassandra.utils.Throwables.maybeFail;
 import static org.apache.cassandra.utils.Throwables.merge;
 
@@ -40,6 +44,7 @@ import static org.apache.cassandra.utils.Throwables.merge;
  */
 public final class Refs<T extends RefCounted<T>> extends AbstractCollection<T> implements AutoCloseable
 {
+    protected static final Logger logger = LoggerFactory.getLogger(Refs.class);
     private final Map<T, Ref<T>> references;
 
     public Refs()
@@ -212,9 +217,12 @@ public final class Refs<T extends RefCounted<T>> extends AbstractCollection<T> i
             Ref<T> ref = rc.tryRef();
             if (ref == null)
             {
+                // logger.error("ELECT-ERROR: cannot get reference for {}.", rc);
+                ECNetutils.printStackTace(String.format("ELECT-ERROR: cannot get reference for %s.", rc));
                 release(refs.values());
                 return null;
             }
+            // ECNetutils.printStackTace(String.format("ELECT-Debug: get reference %s for %s", ref, rc));
             refs.put(rc, ref);
         }
         return new Refs<T>(refs);
@@ -225,7 +233,7 @@ public final class Refs<T extends RefCounted<T>> extends AbstractCollection<T> i
         Refs<T> refs = tryRef(reference);
         if (refs != null)
             return refs;
-        throw new IllegalStateException();
+        throw new IllegalStateException(String.format("Cannot get references for %s", reference));
     }
 
     public static void release(Iterable<? extends Ref<?>> refs)
@@ -238,6 +246,7 @@ public final class Refs<T extends RefCounted<T>> extends AbstractCollection<T> i
         {
             try
             {
+                // ECNetutils.printStackTace(String.format("ELECT-Debug: release reference for (%s)", ref));
                 ref.release();
             }
             catch (Throwable t)

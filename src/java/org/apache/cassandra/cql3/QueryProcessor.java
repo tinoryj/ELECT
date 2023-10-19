@@ -13,7 +13,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License.
+* limitations under the License
  */
 package org.apache.cassandra.cql3;
 
@@ -40,11 +40,13 @@ import org.apache.cassandra.concurrent.ScheduledExecutors;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterators;
 import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.ReplicationFactor;
 import org.apache.cassandra.metrics.ClientRequestMetrics;
 import org.apache.cassandra.metrics.ClientRequestsMetricsHolder;
 import org.apache.cassandra.net.Message;
 import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.schema.KeyspaceMetadata;
+import org.apache.cassandra.schema.ReplicationParams;
 import org.apache.cassandra.schema.Schema;
 import org.apache.cassandra.schema.SchemaChangeListener;
 import org.apache.cassandra.schema.SchemaConstants;
@@ -55,6 +57,7 @@ import org.apache.cassandra.cql3.functions.Function;
 import org.apache.cassandra.cql3.functions.FunctionName;
 import org.apache.cassandra.cql3.selection.ResultSetBuilder;
 import org.apache.cassandra.cql3.statements.*;
+import org.apache.cassandra.cql3.statements.schema.CreateTableStatement;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.rows.Row;
 import org.apache.cassandra.db.rows.RowIterator;
@@ -252,11 +255,38 @@ public class QueryProcessor implements QueryHandler
         ClientState clientState = queryState.getClientState();
         statement.authorize(clientState);
         statement.validate(clientState);
+        //logger.debug("ELECT-Debug: the query statement is {}", statement);
 
         ResultMessage result = options.getConsistency() == ConsistencyLevel.NODE_LOCAL
                              ? processNodeLocalStatement(statement, queryState, options)
                              : statement.execute(queryState, options, queryStartNanoTime);
-
+        
+        if(CreateTableStatement.class.isInstance(statement)) {
+            CreateTableStatement tableStatement = (CreateTableStatement) statement;
+            String ks = tableStatement.keyspace();
+            String tn = tableStatement.tableName.substring(0, tableStatement.tableName.length() - 1);
+            logger.debug("ELECT-Debug: create table-> the table name is {}, the keyspace name is {}", tn, ks);
+            if(ks.equals("ycsb")) {
+                // logger.debug("ELECT-Debug: this CreateTableStatement is belong to ks ycsb");
+                if(options.getConsistency() == ConsistencyLevel.NODE_LOCAL) {
+                    // logger.debug("ELECT-Debug: consistency level is equal to local, use processNodeLocalStatement()");
+                } else {
+                    // logger.debug("ELECT-Debug: consistency level is node equal, use statement.execute()");
+                    // int rf = Keyspace.open(tableStatement.keyspace()).getMetadata().params.replication.getReplicationFactor();
+                    int rf = Keyspace.open(tableStatement.keyspace()).getAllReplicationFactor();
+                    // logger.debug("ELECT-Debug: replica factor is {}", rf);
+                    for(int i=1; i < rf; i++) {
+                        String tableName = tn + Integer.toString(i);
+                        CreateTableStatement ts = tableStatement.copyObjects(tableName);
+                        // logger.debug("ELECT-Debug: create table {}, new table statement is {}", tableName, ts);
+                        ResultMessage rs = ts.execute(queryState, options, queryStartNanoTime);
+                        // logger.debug("ELECT-Debug: create new table {}, result is {}", tableName, rs);
+                    }
+                }
+            } else {
+                // logger.debug("ELECT-Debug: this CreateTableStatement is not belong to ycsb, it belongs to {}", ks);
+            }
+        }
         return result == null ? new ResultMessage.Void() : result;
     }
 
@@ -527,6 +557,7 @@ public class QueryProcessor implements QueryHandler
     {
         try
         {
+            // logger.debug("ELECT-Debug: the query string is {}", query);
             Prepared prepared = prepareInternal(query);
             ResultMessage result = prepared.statement.execute(state, makeInternalOptionsWithNowInSec(prepared.statement, state.getNowInSeconds(), values, cl), nanoTime());
             if (result instanceof ResultMessage.Rows)

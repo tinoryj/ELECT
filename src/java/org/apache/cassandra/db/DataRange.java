@@ -42,7 +42,7 @@ public class DataRange
 {
     public static final Serializer serializer = new Serializer();
 
-    protected final AbstractBounds<PartitionPosition> keyRange;
+    public final AbstractBounds<PartitionPosition> keyRange;
     protected final ClusteringIndexFilter clusteringIndexFilter;
 
     /**

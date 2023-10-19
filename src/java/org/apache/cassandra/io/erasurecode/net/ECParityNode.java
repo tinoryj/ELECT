@@ -41,22 +41,22 @@ public class ECParityNode {
     public static final Serializer serializer = new Serializer();
 
     public final ByteBuffer parityCode;
-    public final String hashCode;
-    public final int parityCodeSize;
+    public final String parityHash;
+    public final int paritySize;
 
-    public ECParityNode(ByteBuffer parityCode, String hashCode, int parityCodeSize) {
+    public ECParityNode(ByteBuffer parityCode, String parityHash, int paritySize) {
         this.parityCode = parityCode;
-        this.hashCode = hashCode;
-        this.parityCodeSize = parityCodeSize;
+        this.parityHash = parityHash;
+        this.paritySize = paritySize;
     }
 
 
-    public void distributeEcDataToParityNodes(ByteBuffer[] parity, List<InetAddressAndPort> parityNodes, List<String> parityHash) {
-        logger.debug("rymDebug: distribute ec data to parity nodes");
+    public void distributeCodedDataToParityNodes(ByteBuffer[] parity, List<InetAddressAndPort> parityNodes, List<String> parityHashList) {
+        logger.debug("ELECT-Debug: distribute parity codes ({}) to parity nodes ({})", parityHashList, parityNodes);
         Message<ECParityNode> message = null;
         for (int i = 1; i < parityNodes.size(); i++) {
             message = Message.outWithFlag(Verb.ECPARITYNODE_REQ, 
-            new ECParityNode(parityCode, parityHash.get(i), parityCode.capacity()), MessageFlag.CALL_BACK_ON_FAILURE);
+            new ECParityNode(parity[i], parityHashList.get(i), parity[i].capacity()), MessageFlag.CALL_BACK_ON_FAILURE);
             MessagingService.instance().send(message, parityNodes.get(i));
         }
         
@@ -66,23 +66,31 @@ public class ECParityNode {
 
         @Override
         public void serialize(ECParityNode t, DataOutputPlus out, int version) throws IOException {
-            out.write(t.parityCode);
-            out.writeUTF(t.hashCode);
+            out.writeUTF(t.parityHash);
+
+            out.writeInt(t.paritySize);
+            byte[] buf = new byte[t.paritySize];
+            t.parityCode.get(buf);
+            out.write(buf);
         }
 
         @Override
         public ECParityNode deserialize(DataInputPlus in, int version) throws IOException {
-            int parityCodeSize = in.readInt();
-            byte[] bytes = new byte[parityCodeSize];
-            in.readFully(bytes);
-            String hashCode = in.readUTF();
-            return new ECParityNode(ByteBuffer.wrap(bytes), hashCode, parityCodeSize);
+            String parityHash = in.readUTF();
+
+            int paritySize = in.readInt();
+            byte[] buf = new byte[paritySize];
+            in.readFully(buf);
+            ByteBuffer parityCode = ByteBuffer.wrap(buf);
+
+            return new ECParityNode(parityCode, parityHash, paritySize);
         }
 
         @Override
         public long serializedSize(ECParityNode t, int version) {
-            long size = Integer.SIZE;
-            size += t.parityCode.capacity() + sizeof(t.hashCode);
+            long size = sizeof(t.paritySize) +
+                        t.paritySize + 
+                        sizeof(t.parityHash);
             return size;
         }
     }

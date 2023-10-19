@@ -17,12 +17,17 @@
  */
 package org.apache.cassandra.db;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.rmi.server.Operation;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,6 +53,8 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
@@ -67,9 +74,13 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.RateLimiter;
+
+import ch.qos.logback.core.pattern.parser.Node;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,6 +90,7 @@ import org.apache.cassandra.cache.RowCacheKey;
 import org.apache.cassandra.cache.RowCacheSentinel;
 import org.apache.cassandra.concurrent.ExecutorPlus;
 import org.apache.cassandra.concurrent.FutureTask;
+import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.config.DurationSpec;
 import org.apache.cassandra.db.commitlog.CommitLog;
@@ -86,8 +98,12 @@ import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.compaction.AbstractCompactionStrategy;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.CompactionStrategyManager;
+import org.apache.cassandra.db.compaction.LeveledGenerations;
+import org.apache.cassandra.db.compaction.LeveledManifest;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.compaction.Verifier;
+import org.apache.cassandra.db.compaction.CompactionManager.AllSSTableOpStatus;
 import org.apache.cassandra.db.filter.ClusteringIndexFilter;
 import org.apache.cassandra.db.filter.DataLimits;
 import org.apache.cassandra.db.memtable.Flushing;
@@ -117,6 +133,15 @@ import org.apache.cassandra.index.internal.CassandraIndex;
 import org.apache.cassandra.index.transactions.UpdateTransaction;
 import org.apache.cassandra.io.FSReadError;
 import org.apache.cassandra.io.FSWriteError;
+import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
+import org.apache.cassandra.io.erasurecode.net.ECMessage.ECMessageContent;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.SSTableAccessFrequencyComparator;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.SSTableReaderComparator;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable.SSTablesInBytes;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTable;
@@ -126,13 +151,19 @@ import org.apache.cassandra.io.sstable.SSTableMultiWriter;
 import org.apache.cassandra.io.sstable.format.SSTableFormat;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.Version;
+import org.apache.cassandra.io.sstable.format.big.BigFormat;
 import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileOutputStreamPlus;
 import org.apache.cassandra.io.util.FileUtils;
+import org.apache.cassandra.locator.AbstractReplicationStrategy;
+import org.apache.cassandra.locator.InetAddressAndPort;
+import org.apache.cassandra.locator.ReplicaPlan;
+import org.apache.cassandra.locator.ReplicaPlans;
 import org.apache.cassandra.metrics.Sampler;
 import org.apache.cassandra.metrics.Sampler.Sample;
 import org.apache.cassandra.metrics.Sampler.SamplerType;
+import org.apache.cassandra.net.LatencyConsumer;
 import org.apache.cassandra.metrics.TableMetrics;
 import org.apache.cassandra.metrics.TopPartitionTracker;
 import org.apache.cassandra.repair.TableRepairManager;
@@ -279,6 +310,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     private final String oldMBeanName;
     private volatile boolean valid = true;
     public final boolean isPrimaryCFFlag;
+    public volatile boolean isPerformForceCompactionLastLevel = false;
 
     private volatile Memtable.Factory memtableFactory;
 
@@ -297,7 +329,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     public final OpOrder readOrdering = new OpOrder();
 
     /* This is used to generate the next index for a SSTable */
-    private final Supplier<? extends SSTableId> sstableIdGenerator;
+    public final Supplier<? extends SSTableId> sstableIdGenerator;
 
     public final SecondaryIndexManager indexManager;
     public final TableViews viewManager;
@@ -390,8 +422,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     public static Runnable getBackgroundCompactionTaskSubmitter() {
         return () -> {
             for (Keyspace keyspace : Keyspace.all())
-                for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
+                for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
                     CompactionManager.instance.submitBackground(cfs);
+                }
+
         };
     }
 
@@ -440,6 +474,363 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
     public void setCompressionParametersJson(String options) {
         setCompressionParameters(FBUtilities.fromJsonMap(options));
+    }
+
+    /**
+     * Get scheduled tasks for sending SSTables to do erasure coding.
+     * 
+     * @param keyspaceName
+     * @param cfName
+     * @param sendSSTLevel
+     * @param delay        the selected SSTable's age must >= this value
+     * 
+     */
+
+    public static Runnable getSendSSTRunnable(String keyspaceName, String cfName, int sendSSTLevel, int delay) {
+        logger.debug("ELECT-Debug: This is getSendSSTRunnable");
+        return new SendSSTRunnable(keyspaceName, cfName, sendSSTLevel, delay);
+    }
+
+    private static class SendSSTRunnable implements Runnable {
+        private final String keyspaceName;
+        private final String cfName;
+        private final int level;
+        private final int delay; // in minutes
+        private static final int MAX_EC_CANDIDATES = DatabaseDescriptor.getMaxSendSSTables();
+
+        SendSSTRunnable(String keyspaceName, String cfName, int level, int delay) {
+            this.keyspaceName = keyspaceName;
+            this.cfName = cfName;
+            this.level = level;
+            this.delay = delay;
+        }
+
+        private static class KeyRangeOfSSTable {
+            Token firstToken;
+            Token lastToken;
+            Boolean isTransferredSSTable = false;
+
+            KeyRangeOfSSTable(Token firstToken, Token lastToken, Boolean isTransferredSSTable) {
+                this.firstToken = firstToken;
+                this.lastToken = lastToken;
+                this.isTransferredSSTable = isTransferredSSTable;
+            }
+        }
+
+        @Override
+        public synchronized void run() {
+
+            ColumnFamilyStore cfs = Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
+            try {
+                logger.debug("ELECT-Debug: get cfs path ({})", cfs.getDataPaths());
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            List<SSTableReader> sstables = new ArrayList<SSTableReader>(cfs.getSSTableForLevel(level));
+
+            int sstableCountOfLastLevel = sstables.size();
+            int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
+            int k = DatabaseDescriptor.getEcDataNodes();
+            int n = k + DatabaseDescriptor.getParityNodes();
+            int totalSSTableCount = cfs.getTracker().getView().liveSSTables().size();
+            double tss = DatabaseDescriptor.getTargetStorageSaving();
+
+            int needTransferSSTablesCount = 0;
+            int needMigrateRawSSTablesCount = 0;
+
+            if (DatabaseDescriptor.getStorageSavingGrade() == 0) {
+                needTransferSSTablesCount = (int) (rf * totalSSTableCount * tss * 1.0
+                        / (rf - ((double) (n * 1.0)) / k)); // parameter a
+                needMigrateRawSSTablesCount = (int) (totalSSTableCount * rf * tss - (rf - 1) * sstableCountOfLastLevel); // parameter
+            } else if (DatabaseDescriptor.getStorageSavingGrade() == 1) {
+                logger.debug("[ELECT] StorageSavingGrade is 1, perform ec to all sstables in the last level");
+                needTransferSSTablesCount = sstableCountOfLastLevel;
+            } else if (DatabaseDescriptor.getStorageSavingGrade() == 2) {
+                logger.debug(
+                        "[ELECT] StorageSavingGrade is 2, perform ec to all sstables in the last level, and migrate all parity");
+                needTransferSSTablesCount = sstableCountOfLastLevel;
+            } else if (DatabaseDescriptor.getStorageSavingGrade() == 3) {
+                logger.debug(
+                        "[ELECT] StorageSavingGrade is 3, perform ec to all sstables in the last level, and migrate all parity + raw");
+                needTransferSSTablesCount = sstableCountOfLastLevel;
+                needMigrateRawSSTablesCount = sstableCountOfLastLevel;
+            } else {
+                throw new IllegalStateException(
+                        String.format("Unknown StorageSavingGrade (%s)!", DatabaseDescriptor.getStorageSavingGrade()));
+            }
+
+            logger.debug(
+                    "ELECT-Debug: checkout the need transfer sstables count is ({}), sstable count of last level ({}), need migrate raw SSTables count is ({}), need migrate parity code count is ({}), transferred sstables count ({}), migrated parity SSTable count ({}), migrated raw SSTable count ({}), total sstable count is ({}), k is ({}), n is ({}), tss is ({})",
+                    needTransferSSTablesCount, sstableCountOfLastLevel, needMigrateRawSSTablesCount,
+                    ECNetutils.getNeedMigrateParityCodesCount(),
+                    StorageService.instance.transferredSSTableCount,
+                    StorageService.instance.migratedParityCodeCount,
+                    StorageService.instance.migratedRawSSTablecount, totalSSTableCount, k, n, tss);
+
+            // if(DatabaseDescriptor.getEnableMigration()) {
+            // neededTransferredSSTablesCount = (int) (1.5 * (1 -
+            // DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
+            // } else {
+            // neededTransferredSSTablesCount = (int) (2 * (1 -
+            // DatabaseDescriptor.getTargetStorageSaving()) * sstables.size());
+            // }
+
+            // sort the sstables based on the access rate.
+            Collections.sort(sstables, new SSTableAccessFrequencyComparator());
+
+            if (!sstables.isEmpty()) {
+                logger.debug("ELECT-Debug: get {} sstables from level {}", sstables.size(), level);
+                int sentSSTableCount = 0;
+                int migratedSSTableCnt = 0;
+                for (SSTableReader sstable : sstables) {
+
+                    if (sstable.isDataMigrateToCloud()) {
+                        migratedSSTableCnt++;
+                    }
+
+                    logger.debug("ELECT-Debug: the traverse count is ({}), max ec candidates is ({})", sentSSTableCount,
+                            MAX_EC_CANDIDATES);
+                    if (sentSSTableCount >= MAX_EC_CANDIDATES) {
+                        logger.debug("[ELECT] the sent SSTable Count is ({}), max send sstable count is ({})",
+                                sentSSTableCount, MAX_EC_CANDIDATES);
+                        return;
+                    }
+
+                    if (sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
+
+                        if (!sstable.isReplicationTransferredToErasureCoding() // &&!sstable.isSelectedByCompactionOrErasureCoding()
+                                                                               // &&
+                        ) {
+                            logger.debug(
+                                    "ELECT-Debug: get a untransferred sstable ({}), transferred sstable count is ({}), need transferred sstable count is ({})",
+                                    sstable.getSSTableHashID(),
+                                    StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
+                            if (StorageService.instance.transferredSSTableCount >= needTransferSSTablesCount
+                                    && StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
+                                logger.debug(
+                                        "[ELECT] the transferred SSTable Count is ({}), need transferred sstable count is ({}),return",
+                                        StorageService.instance.transferredSSTableCount, needTransferSSTablesCount);
+                                return;
+                            }
+
+                            logger.debug(
+                                    "ELECT-Debug: Current sstable name = {}, level = {}, threshold = {}, desc ks name is {}, desc cfname is {}, desc version is {}, desc id is {}, desc is {}",
+                                    sstable.getSSTableHashID(), sstable.getSSTableLevel(),
+                                    LeveledGenerations.getMaxLevelCount() - 1,
+                                    sstable.descriptor.ksname,
+                                    sstable.descriptor.cfname,
+                                    sstable.descriptor.version,
+                                    sstable.descriptor.id,
+                                    sstable.descriptor);
+                            long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+
+                            long delayMilli = delay * 60 * 1000;
+
+                            if (duration >= delayMilli
+                                    && sstable.getSSTableLevel() >= LeveledGenerations.getMaxLevelCount() - 1) {
+                                logger.debug("ELECT-Debug: we should send the sstContent!, sstlevel is {}",
+                                        sstable.getSSTableLevel());
+
+                                if (ECNetutils.isSSTableCompactingOrErasureCoding(sstable.getSSTableHashID())) {
+                                    continue;
+                                }
+
+                                sentSSTableCount++;
+                                try {
+                                    if (!sstable.SetIsReplicationTransferredToErasureCoding()) {
+                                        logger.error("ELECT-ERROR: set IsReplicationTransferredToErasureCoding failed!");
+                                    }
+                                } catch (IOException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+
+                                StorageService.instance.transferredSSTableCount++;
+                                String key = sstable.first.getRawKey(sstable.metadata());
+                                try {
+                                    byte[] sstContent = sstable.getSSTContent();
+                                    String sstHashID = sstable.getSSTableHashID();
+                                    List<InetAddressAndPort> replicaNodes = StorageService.instance
+                                            .getReplicaNodesWithPort(keyspaceName, cfName, key);
+
+                                    // Token tk = sstable.first.getToken();
+                                    // ReplicaPlan.ForWrite replicaPlan =
+                                    // ReplicaPlans.forWrite(Keyspace.open(keyspaceName), ConsistencyLevel.ALL, tk,
+                                    // ReplicaPlans.writeNormal);
+                                    // List<InetAddressAndPort> address =
+                                    // StorageService.instance.getReplicaNodesWithPortFromTokenForDegradeRead(keyspaceName,
+                                    // tk);
+                                    // ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(replicaPlan, address,
+                                    // tk);
+
+                                    // AbstractReplicationStrategy rs = replicaPlan.replicationStrategy();
+
+                                    // Sync sstable with secondary nodes for rewrite
+                                    ECNetutils.syncSSTableWithSecondaryNodes(sstable, replicaNodes, sstHashID,
+                                            "Erasure Coding", cfs);
+
+                                    // Send selected sstable for perform erasure coding.
+                                    ECMessage ecMessage = new ECMessage(sstContent,
+                                            new ECMessageContent(sstHashID, keyspaceName, cfName, replicaNodes));
+                                    ecMessage.sendSSTableToParity();
+                                    StorageService.instance.globalSSTHashToParityNodesMap.put(
+                                            ecMessage.ecMessageContent.sstHashID,
+                                            ecMessage.ecMessageContent.parityNodes);
+                                    logger.debug("ELECT-Debug: we map sstHash ({}) to parity Nodes ({})",
+                                            ecMessage.ecMessageContent.sstHashID,
+                                            ecMessage.ecMessageContent.parityNodes);
+
+                                } catch (IOException e) {
+                                    logger.error("ELECT-ERROR: {}", e);
+                                } catch (Exception e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+                            }
+
+                            // sstable.unsetIsSelectedByCompactionOrErasureCoding();
+                            ECNetutils.unsetIsSelectedByCompactionOrErasureCodingSSTables(sstable.getSSTableHashID());
+                        } else if (DatabaseDescriptor.getEnableMigration() &&
+                                   DatabaseDescriptor.getTargetStorageSaving() > 0.6 || 
+                                   DatabaseDescriptor.getStorageSavingGrade() == 3) {
+
+                            logger.debug(
+                                    "ELECT-Debug: get a transferred sstable ({}), migrated sstable count is ({}), need migrated sstable count is ({})",
+                                    sstable.getSSTableHashID(),
+                                    StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
+                            if (StorageService.instance.migratedRawSSTablecount >= needMigrateRawSSTablesCount) {
+                                logger.debug(
+                                        "[ELECT] the migrated SSTable Count is ({}), need migrate sstable count is ({}), return",
+                                        StorageService.instance.migratedRawSSTablecount, needMigrateRawSSTablesCount);
+                                continue;
+                            }
+
+                            // migrate the raw data to the cloud (if any)
+                            long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
+
+                            long coldDelayMilli = DatabaseDescriptor.getColdPeriod() * 60 * 1000;
+                            if (duration >= coldDelayMilli) {
+
+                                if (!sstable.isDataMigrateToCloud() && sstable.isReplicationTransferredToErasureCoding()
+                                // && sstable.getReadMeter().getColdPeriodRate() == 0
+                                ) {
+                                    logger.debug("ELECT-Debug: migrate extremely cold sstable ({}: {}) to cloud.",
+                                            sstable.descriptor, sstable.getSSTableHashID());
+                                    StorageService.instance.migratedRawSSTablecount++;
+                                    long startTime = System.currentTimeMillis();
+                                    StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
+                                    long timeCost = System.currentTimeMillis() - startTime;
+                                    StorageService.instance.migratedRawSSTableTimeCost += timeCost;
+                                    StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
+                                    try {
+                                        // delete the raw data and create a empty file
+                                        sstable.SetIsDataMigrateToCloud(true);
+                                        logger.debug("ELECT-Debug: set data migration flag for sstable ({}) as ({})",
+                                                sstable.getSSTableHashID(), sstable.isDataMigrateToCloud());
+                                        Files.newBufferedWriter(Paths.get(sstable.getFilename()));
+                                    } catch (IOException e) {
+                                        // TODO Auto-generated catch block
+                                        e.printStackTrace();
+                                    }
+                                } else {
+                                    logger.debug(
+                                            "ELECT-Debug: The access rate of sstable ({}: {}) within 15 min is ({}), 2 hours is ({}), cold period is ({})",
+                                            sstable.descriptor, sstable.getSSTableHashID(),
+                                            sstable.getReadMeter().fifteenMinuteRate(),
+                                            sstable.getReadMeter().twoHourRate(),
+                                            sstable.getReadMeter().getColdPeriodRate());
+                                }
+                            }
+
+                        } else {
+                            logger.info("ELECT-Debug: SSTable () is transferred", sstable.getSSTableHashID());
+                            continue;
+                        }
+                    } else {
+                        throw new IllegalStateException(
+                                "The method of getting sstables from a certain level is error!");
+                    }
+
+                }
+
+                logger.debug("ELECT-Debug: migrated sstable count is ({})", migratedSSTableCnt);
+
+                // if (count == 0) {
+                // System.out.println(
+                // "ELECT-Debug: All sstables are transferred or it's not time to perform erasure
+                // coding.");
+                // for (Keyspace keyspace : Keyspace.all()) {
+                // for (ColumnFamilyStore cfs1 : keyspace.getColumnFamilyStores()) {
+                // if (cfs1.getColumnFamilyName().equals("usertable0")) {
+                // List<SSTableReader> sstables1 = new
+                // ArrayList<>(cfs1.getSSTableForLevel(level));
+                // if (sstables1.isEmpty())
+                // continue;
+                // // Collections.sort(sstables1, new SSTableReaderComparator());
+
+                // // List<String> keyRanges = new ArrayList<>();
+                // int ecSSTableCnt = 0;
+                // int migratedCnt = 0;
+                // int transferredCnt = 0;
+                // for (SSTableReader sst : sstables1) {
+                // if
+                // (SSTableReader.componentsFor(sst.descriptor).contains(Component.EC_METADATA))
+                // {
+                // ecSSTableCnt++;
+                // }
+
+                // if (sst.isReplicationTransferredToErasureCoding())
+                // transferredCnt++;
+                // if (sst.isDataMigrateToCloud())
+                // migratedCnt++;
+
+                // // if(sst.isReplicationTransferredToErasureCoding())
+                // // transferredCnt++;
+                // // String range = String.format("SSTable (%s), first token is (%s), last
+                // token
+                // // is (%s), isTransferred (%s), isECSSTable (%s) \n",
+                // // sst.descriptor.filenameFor(Component.EC_METADATA), sst.first.getToken(),
+                // // sst.last.getToken(), sst.isReplicationTransferredToErasureCoding(),
+                // //
+                // SSTableReader.discoverComponentsFor(sst.descriptor).contains(Component.EC_METADATA));
+                // // keyRanges.add(range);
+                // }
+
+                // // logger.debug("ELECT-Debug: Let's check the key ranges of the sstables in the
+                // // ({}) last level. ({})", cfs1.getColumnFamilyName(), keyRanges);
+
+                // logger.debug(
+                // "ELECT-Debug: We insight the sstable count in the last level of ({}) is ({}),
+                // ecSSTable count is ({}), migrated sstable count is ({}), transferred sstable
+                // count is ({}), total number is ({}),the first token is ({}), the last token
+                // is ({})",
+                // cfs1.getColumnFamilyName(), sstables1.size(), ecSSTableCnt, migratedCnt,
+                // transferredCnt, cfs1.getTracker().getView().liveSSTables().size(),
+                // sstables1.get(0).first.getToken(),
+                // sstables1.get(sstables1.size() - 1).last.getToken());
+                // }
+
+                // }
+                // }
+
+                // }
+
+            } else {
+                logger.debug("ELECT-Debug: cannot get sstables from level {}", level);
+            }
+        }
+
+        public static String stringToHex(String str) {
+            byte[] bytes = str.getBytes();
+            StringBuilder hex = new StringBuilder(bytes.length * 2);
+            for (byte b : bytes) {
+                hex.append(Character.forDigit((b >> 4) & 0xF, 16))
+                        .append(Character.forDigit((b & 0xF), 16));
+            }
+            return hex.toString();
+        }
+
     }
 
     @VisibleForTesting
@@ -610,21 +1001,21 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
     }
 
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt,
-            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            TimeUUID pendingRepair, boolean isTransient,
             int sstableLevel, SerializationHeader header,
             LifecycleNewTracker lifecycleNewTracker) {
         MetadataCollector collector = new MetadataCollector(metadata().comparator).sstableLevel(sstableLevel);
         return createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, collector, header,
+                collector, header,
                 lifecycleNewTracker);
     }
 
     public SSTableMultiWriter createSSTableMultiWriter(Descriptor descriptor, long keyCount, long repairedAt,
-            TimeUUID pendingRepair, boolean isTransient, boolean isReplicationTransferredToErasureCoding,
+            TimeUUID pendingRepair, boolean isTransient,
             MetadataCollector metadataCollector,
             SerializationHeader header, LifecycleNewTracker lifecycleNewTracker) {
         return getCompactionStrategyManager().createSSTableMultiWriter(descriptor, keyCount, repairedAt, pendingRepair,
-                isTransient, isReplicationTransferredToErasureCoding, metadataCollector, header,
+                isTransient, metadataCollector, header,
                 indexManager.listIndexes(), lifecycleNewTracker);
     }
 
@@ -759,7 +1150,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             }
 
             File dataFile = new File(desc.filenameFor(Component.DATA));
-            if ((components.contains(Component.DATA) && dataFile.length() > 0)
+            if ((components.contains(Component.DATA))
                     || components.contains(Component.EC_METADATA))
                 // everything appears to be in order... moving on.
                 continue;
@@ -1150,6 +1541,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         }
 
         public void run() {
+
+            // [ELECT] Tracing flush
+            long startFlush = System.currentTimeMillis();
+
             if (logger.isTraceEnabled())
                 logger.trace("Flush task {}@{} starts executing, waiting on barrier", hashCode(), name);
 
@@ -1191,6 +1586,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
             if (logger.isTraceEnabled())
                 logger.trace("Flush task task {}@{} finished", hashCode(), name);
+            long flushTimeCost = System.currentTimeMillis() - startFlush;
+            StorageService.instance.flushTime += flushTimeCost;
         }
 
         public Collection<SSTableReader> flushMemtable(ColumnFamilyStore cfs, Memtable memtable, boolean flushNonCf2i) {
@@ -1300,6 +1697,27 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                     readBarrier.await();
                     memtable.discard();
                 }
+
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                        throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
+                        throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
+
+                @Override
+                protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                        String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                }
             }, reclaimExecutor);
         }
 
@@ -1363,9 +1781,29 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
     {
         long start = nanoTime();
+        long startMemTableTime = System.currentTimeMillis();
         try {
+            // if (metadata.keyspace.equals("ycsb")) {
+            // try {
+            // FileWriter writer = new FileWriter("logs/" + metadata.name, true);
+            // BufferedWriter buffer = new BufferedWriter(writer);
+            // buffer.write("key="+update.partitionKey().getRawKey(update.metadata()) + ",
+            // token="+update.partitionKey().getToken()+"\n");
+            // buffer.close();
+            // } catch (IOException e) {
+            // // TODO Auto-generated catch block
+            // e.printStackTrace();
+            // }
+            // }
+
             Memtable mt = data.getMemtableFor(opGroup, commitLogPosition);
             long timeDelta = mt.put(update, indexer, opGroup);
+            long memtableTimeCost = System.currentTimeMillis() - startMemTableTime;
+            StorageService.instance.memtableTime += memtableTimeCost;
+
+
+
+
             DecoratedKey key = update.partitionKey();
             invalidateCachedPartition(key);
             metric.topWritePartitionFrequency.addSample(key.getKey(), 1);
@@ -1491,10 +1929,22 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
      */
     public Refs<SSTableReader> getAndReferenceOverlappingLiveSSTables(Iterable<SSTableReader> sstables) {
         while (true) {
-            Iterable<SSTableReader> overlapped = getOverlappingLiveSSTables(sstables);
+            Collection<SSTableReader> overlapped = getOverlappingLiveSSTables(sstables);
+
+            // [CASSANDRAEC]
+            // List<SSTableReader> resultOverlapped = new ArrayList<>();
+            // for(SSTableReader sstable : overlapped) {
+            // if(!sstable.isReplicationTransferredToErasureCoding() ||
+            // sstable.getColumnFamilyName().equals("usertable")) {
+            // resultOverlapped.add(sstable);
+            // }
+            // }
+
             Refs<SSTableReader> refs = Refs.tryRef(overlapped);
             if (refs != null)
                 return refs;
+            else
+                return null;
         }
     }
 
@@ -1649,6 +2099,221 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
             final int jobs) throws ExecutionException, InterruptedException {
         return CompactionManager.instance.performSSTableRewrite(ColumnFamilyStore.this, skipIfCurrentVersion,
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
+    }
+
+    // [CASSANDRAEC] rewrite the sstables based on the source decorated keys
+    public CompactionManager.AllSSTableOpStatus sstablesRewrite(
+            final Map<String, DecoratedKey> sourceKeys,
+            final DecoratedKey first,
+            final DecoratedKey last,
+            List<SSTableReader> sstables,
+            ECMetadata metadata, String fileNamePrefix,
+            final LifecycleTransaction txn,
+            final boolean skipIfCurrentVersion,
+            final long skipIfNewerThanTimestamp,
+            final boolean skipIfCompressionMatches,
+            final int jobs) throws ExecutionException, InterruptedException {
+        logger.debug("ELECT-Debug: this is sstablesRewrite, task id is ({})", txn.opId());
+
+        return CompactionManager.instance.performSSTableRewrite(sourceKeys,
+                ColumnFamilyStore.this, first, last, sstables, metadata,
+                fileNamePrefix, txn,
+                skipIfCurrentVersion,
+                skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
+    }
+
+    public static Runnable getForceCompactionForTheLastLevelRunnable() {
+        return new ForceCompactionForTheLastLevelRunnable();
+    }
+
+    private static class ForceCompactionForTheLastLevelRunnable implements Runnable {
+
+        private static class ForceCompactionCandidates {
+            List<SSTableReader> selectedSSTables;
+            List<SSTableReader> suspectedSSTables;
+
+            ForceCompactionCandidates() {
+                this.selectedSSTables = new ArrayList<SSTableReader>();
+                this.suspectedSSTables = new ArrayList<SSTableReader>();
+            }
+
+        }
+
+        @Override
+        public synchronized void run() {
+
+            logger.debug("ELECT-Debug: This is ForceCompactionForTheLastLevelRunnable");
+
+            for (Keyspace keyspace : Keyspace.all()) {
+                for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
+                    if (cfs.getColumnFamilyName().contains("usertable")
+                            || cfs.getColumnFamilyName().equals("usertable0") // &&
+                    // !cfs.isPerformForceCompactionLastLevel
+                    ) {
+
+                        // cfs.isPerformForceCompactionLastLevel = true;
+
+                        int maxCompactionThreshold = 32;
+                        logger.debug(
+                                "ELECT-Debug: perform force compaction in cfs ({}), the max compaction threshold is ({})",
+                                cfs.getColumnFamilyName(), maxCompactionThreshold);
+                        // ColumnFamilyStore cfs =
+                        // Keyspace.open(keyspaceName).getColumnFamilyStore(cfName);
+                        int level = LeveledGenerations.getMaxLevelCount() - 1;
+                        List<SSTableReader> sstables = new ArrayList<>(cfs.getSSTableForLevel(level));
+                        if (sstables.isEmpty())
+                            return;
+
+                        Collections.sort(sstables, new SSTableReaderComparator());
+
+                        SSTableReader lastSSTable = null;
+                        // List<SSTableReader> candidates = new ArrayList<SSTableReader>();
+                        ForceCompactionCandidates candidates = new ForceCompactionCandidates();
+
+                        for (int i = 0; i < sstables.size(); i++) {
+
+                            if (candidates.selectedSSTables.isEmpty()) {
+                                lastSSTable = sstables.get(i);
+                                candidates.selectedSSTables.add(lastSSTable);
+                                continue;
+                            }
+
+                            if (lastSSTable.last.compareTo(sstables.get(i).first) >= 0
+                                    && !(lastSSTable.isReplicationTransferredToErasureCoding() &&
+                                            sstables.get(i).isReplicationTransferredToErasureCoding())) {
+
+                                candidates.selectedSSTables.add(sstables.get(i));
+                                if (!candidates.selectedSSTables.contains(lastSSTable)) {
+                                    candidates.selectedSSTables.add(lastSSTable);
+                                }
+
+                            } else {
+                                candidates.suspectedSSTables.add(sstables.get(i));
+                            }
+
+                            lastSSTable = sstables.get(i);
+
+                            if (candidates.selectedSSTables.size() >= maxCompactionThreshold
+                                    || (i == sstables.size() - 1) && candidates.selectedSSTables.size() > 1) {
+
+                                // TODO: select from the lower level.
+                                List<SSTableReader> lowerLevelSSTables = new ArrayList<>(
+                                        cfs.getSSTableForLevel(level - 1));
+
+                                Token startSelectedToken = candidates.selectedSSTables.get(0).first.getToken();
+                                Token endSelectedToken = candidates.selectedSSTables
+                                        .get(candidates.selectedSSTables.size() - 1).last.getToken();
+                                List<SSTableReader> overlappedSSTables = new ArrayList<>(LeveledManifest
+                                        .overlapping(startSelectedToken, endSelectedToken, lowerLevelSSTables));
+                                candidates.selectedSSTables.addAll(overlappedSSTables);
+
+                                // Token startSuspectedToken =
+                                // candidates.suspectedSSTables.get(0).first.getToken();
+                                // Token endSuspectedToken =
+                                // candidates.suspectedSSTables.get(candidates.suspectedSSTables.size() -
+                                // 1).last.getToken();
+                                // List<SSTableReader> overlappedSSTablesForSuspected = new
+                                // ArrayList<>(LeveledManifest.overlapping(startSuspectedToken,
+                                // endSuspectedToken, lowerLevelSSTables));
+                                // if(!overlappedSSTablesForSuspected.isEmpty()) {
+                                // candidates.selectedSSTables.addAll(overlappedSSTablesForSuspected);
+                                // candidates.selectedSSTables.addAll(candidates.suspectedSSTables);
+                                // }
+
+                                final LifecycleTransaction txn = cfs.getTracker().tryModify(candidates.selectedSSTables,
+                                        OperationType.COMPACTION);
+                                if (txn != null) {
+                                    try {
+                                        AllSSTableOpStatus status = cfs.forceCompactionForTheLastLevel(
+                                                candidates.selectedSSTables, txn,
+                                                false,
+                                                Long.MAX_VALUE, false, 1);
+                                        if (status != AllSSTableOpStatus.SUCCESSFUL)
+                                            ECNetutils.printStatusCode(status.statusCode, cfs.getColumnFamilyName());
+                                    } catch (ExecutionException | InterruptedException e) {
+                                        // TODO Auto-generated catch block
+                                        e.printStackTrace();
+                                    }
+                                } else {
+                                    logger.debug(
+                                            "ELECT-Debug: cannot get transaction for task ForceCompactionForTheLastLevelRunnable");
+                                }
+
+                                try {
+                                    Thread.sleep(20000);
+                                } catch (InterruptedException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
+                                candidates.selectedSSTables.clear();
+                                candidates.suspectedSSTables.clear();
+                            }
+
+                        }
+
+                    }
+                }
+            }
+
+        }
+    }
+
+    public static boolean isOverlappedWithLowerLevelSSTables(SSTableReader sstable) {
+
+        return false;
+    }
+
+    // [CASSANDRAEC] rewrite the sstables based on the source decorated keys
+    public CompactionManager.AllSSTableOpStatus forceCompactionForTheLastLevel(
+            List<SSTableReader> candidates,
+            final LifecycleTransaction txn,
+            final boolean skipIfCurrentVersion,
+            final long skipIfNewerThanTimestamp,
+            final boolean skipIfCompressionMatches,
+            final int jobs) throws ExecutionException, InterruptedException {
+        logger.debug("ELECT-Debug: this is force compaction for the last level, the involved sstables count is ({})",
+                candidates.size());
+
+        return CompactionManager.instance.performForceCompactionForTheLastLevel(ColumnFamilyStore.this, candidates, txn,
+                skipIfCurrentVersion,
+                skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
+    }
+
+    // [CASSANDRAEC]
+    public void updateECSSTable(ECMetadata metadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix,
+            final LifecycleTransaction txn) {
+        // notify sstable changes to view and leveled generation
+        // unmark sstable compacting status
+
+        logger.debug("ELECT-Debug: this update EC sstable method, the transaction id is ({})", txn.opId());
+
+        try {
+
+            SSTableReader ecSSTable = SSTableReader.openECSSTable(metadata, sstHash, cfs, fileNamePrefix, txn.opId());
+            logger.debug("ELECT-Debug: Opened the new ec sstable successfully, the transaction id is ({})",
+                    ecSSTable.getSSTableHashID(), txn.opId());
+            if (!txn.originals().isEmpty())
+                logger.debug("ELECT-Debug: update old ecSSTable ({}) with new ecSSTable ({})",
+                        txn.originals().iterator().next().descriptor, ecSSTable.descriptor);
+            if (!ecSSTable.SetIsReplicationTransferredToErasureCoding()) {
+                logger.error("ELECT-ERROR: set IsReplicationTransferredToErasureCoding failed!");
+            }
+            logger.debug(
+                    "ELECT-Debug: this is replace SSTable method, replacing SSTable {}, before update the transaction is ({})",
+                    ecSSTable.descriptor, txn.opId());
+            txn.update(ecSSTable, false);
+            logger.debug("ELECT-Debug: After update, transaction is ({})", txn.opId());
+            txn.checkpoint();
+            logger.debug("ELECT-Debug: After checkpoint, transaction is ({})", txn.opId());
+            maybeFail(txn.commitEC(null, ecSSTable, false));
+            logger.debug("ELECT-Debug: replaced SSTable {} successfully", ecSSTable.descriptor);
+            // move BlockedUpdateECMetadata if necessary
+            ECMetadataVerbHandler.checkTheBlockedUpdateECMetadata(ecSSTable);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
     }
 
     public CompactionManager.AllSSTableOpStatus relocateSSTables(int jobs)
@@ -2371,7 +3036,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 0,
                 repairSessionID,
                 false,
-                false,
                 0,
                 new SerializationHeader(true,
                         firstDataSet.metadata(),
@@ -2639,6 +3303,20 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         return runWithCompactionsDisabled(callable, false, false);
     }
 
+    public LifecycleTransaction markRewriteSSTableCompacting(Iterable<SSTableReader> sstables,
+            final OperationType operationType) {
+        Callable<LifecycleTransaction> callable = () -> {
+            assert data.getCompacting().isEmpty() : data.getCompacting();
+            // Iterable<SSTableReader> sstables = getLiveSSTables();
+            Iterable<SSTableReader> fileteredSSTables = AbstractCompactionStrategy.filterSuspectSSTables(sstables);
+            LifecycleTransaction modifier = data.tryModify(fileteredSSTables, operationType);
+            assert modifier != null : "something marked things compacting while compactions are disabled";
+            return modifier;
+        };
+
+        return runWithCompactionsDisabled(callable, false, false);
+    }
+
     @Override
     public String toString() {
         return "CFS(" +
@@ -2673,6 +3351,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
     public boolean isAutoCompactionDisabled() {
         return !this.compactionStrategyManager.isEnabled();
+
     }
 
     /*
@@ -2823,6 +3502,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
 
     public int getLevelFanoutSize() {
         return compactionStrategyManager.getLevelFanoutSize();
+    }
+
+    public Set<SSTableReader> getSSTableForLevel(int sstLevel) {
+        return compactionStrategyManager.getSSTableForLevel(sstLevel);
     }
 
     public static class ViewFragment {

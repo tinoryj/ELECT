@@ -86,7 +86,6 @@ public class BigFormat implements SSTableFormat {
                 long repairedAt,
                 TimeUUID pendingRepair,
                 boolean isTransient,
-                boolean isReplicationTransferredToErasureCoding,
                 TableMetadataRef metadata,
                 MetadataCollector metadataCollector,
                 SerializationHeader header,
@@ -94,7 +93,7 @@ public class BigFormat implements SSTableFormat {
                 LifecycleNewTracker lifecycleNewTracker) {
             SSTable.validateRepairedMetadata(repairedAt, pendingRepair, isTransient);
             return new BigTableWriter(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                    isReplicationTransferredToErasureCoding, metadata,
+                    metadata,
                     metadataCollector, header, observers, lifecycleNewTracker);
         }
     }
@@ -144,6 +143,7 @@ public class BigFormat implements SSTableFormat {
         private final boolean hasMetadataChecksum;
         private final boolean hasIsTransient;
         private final boolean hasIsReplicationTransferredToErasureCoding;
+        private final boolean hasIsDataMigrateToCloud;
         private final boolean hasHashID;
 
         /**
@@ -168,8 +168,10 @@ public class BigFormat implements SSTableFormat {
             hasPendingRepair = version.compareTo("na") >= 0;
             hasIsTransient = version.compareTo("na") >= 0;
             hasIsReplicationTransferredToErasureCoding = version.compareTo("na") >= 0;
+            hasIsDataMigrateToCloud = version.compareTo("na") >= 0;
             hasHashID = version.compareTo("na") >= 0;
             hasMetadataChecksum = version.compareTo("na") >= 0;
+            // hasMetadataChecksum = false;
             hasOldBfFormat = version.compareTo("na") < 0;
         }
 
@@ -200,6 +202,11 @@ public class BigFormat implements SSTableFormat {
         @Override
         public boolean hasIsReplicationTransferredToErasureCoding() {
             return hasIsReplicationTransferredToErasureCoding;
+        }
+
+        @Override
+        public boolean hasIsDataMigrateToCloud() {
+            return hasIsDataMigrateToCloud;
         }
 
         @Override

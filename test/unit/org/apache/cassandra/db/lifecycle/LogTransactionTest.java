@@ -150,6 +150,18 @@ public class LogTransactionTest extends AbstractTransactionalTest {
             void assertCommitted() throws Exception {
                 assertFiles(dataFolder.path(), new HashSet<>(sstableNew.getAllFilePaths()));
             }
+
+            @Override
+            protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'doCommit'");
+            }
+
+            @Override
+            protected void doPrepare(SSTableReader ecSSTable) {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'doPrepare'");
+            }
         }
 
         final Transaction txn;
@@ -1205,7 +1217,8 @@ public class LogTransactionTest extends AbstractTransactionalTest {
         SerializationHeader header = SerializationHeader.make(cfs.metadata(), Collections.emptyList());
         StatsMetadata metadata = (StatsMetadata) new MetadataCollector(cfs.metadata().comparator)
                 .finalizeMetadata(cfs.metadata().partitioner.getClass().getCanonicalName(), 0.01f, -1, null, false,
-                        false, header, null)
+                        false, false,
+                        header, null, 0)
                 .get(MetadataType.STATS);
         SSTableReader reader = SSTableReader.internalOpen(descriptor,
                 components,

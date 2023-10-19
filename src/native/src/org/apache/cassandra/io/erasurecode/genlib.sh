@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
+export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which javac))))
 export PATH=$JAVA_HOME/bin:$PATH
 
 # Generate libec.so
@@ -25,3 +25,12 @@ gcc -I ${JAVA_HOME}/include/linux/ -I ${JAVA_HOME}/include/ -I /usr/includ \
     NativeRSEncoder.c NativeRSDecoder.c \
     -L/usr/lib -lisal
 echo "Complete generating libec.so!"
+
+# exit
+
+sudo mkdir -p /usr/lib
+sudo rm -rf /usr/lib/libec.so
+sudo cp libec.so /usr/lib
+ls /usr/lib | grep libec.so
+echo "Complete copy libec.so!"
+# g++ -I /usr/includ -Wall -g -fPIC -o test main.cpp erasure_coder.c dump.c NativeRSEncoder.c NativeRSDecoder.c -L/usr/lib -lisal

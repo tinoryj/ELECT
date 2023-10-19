@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -61,13 +62,18 @@ import org.apache.cassandra.db.SizeEstimatesRecorder;
 import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.SystemKeyspaceMigrator41;
 import org.apache.cassandra.db.commitlog.CommitLog;
+import org.apache.cassandra.db.compaction.LeveledGenerations;
 import org.apache.cassandra.db.virtual.SystemViewsKeyspace;
 import org.apache.cassandra.db.virtual.VirtualKeyspaceRegistry;
 import org.apache.cassandra.db.virtual.VirtualSchemaKeyspace;
 import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.exceptions.StartupException;
 import org.apache.cassandra.gms.Gossiper;
+import org.apache.cassandra.io.erasurecode.net.ECMessageVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdateVerbHandler;
 import org.apache.cassandra.io.sstable.SSTableHeaderFix;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -432,6 +438,47 @@ public class CassandraDaemon {
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
                 ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(), 5, 1, TimeUnit.MINUTES);
 
+        
+        if(DatabaseDescriptor.getEnableErasureCoding()) {
+            // schedule periodic send sstable content task submission
+            ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(
+                ColumnFamilyStore.getSendSSTRunnable("ycsb", "usertable0", LeveledGenerations.getMaxLevelCount() - 1, DatabaseDescriptor.getTaskDelay()),
+                                                    DatabaseDescriptor.getInitialDelay(),
+                                                    1,
+                                                    TimeUnit.MINUTES);
+
+            // schedule periodical tasks of erasure coding
+            // We could set this task delay relatively low.
+            ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMessageVerbHandler.getErasureCodingRunable(),
+                                                                    DatabaseDescriptor.getInitialDelay(),
+                                                                    1,
+                                                                    // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
+                                                                    TimeUnit.MINUTES);
+
+            // schedule periodical tasks of consume blocked ecMetadata
+            // We could set this task delay relatively low.
+            ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECMetadataVerbHandler.getConsumeBlockedECMetadataRunnable(),
+                                                                    DatabaseDescriptor.getInitialDelay(),
+                                                                    1,
+                                                                    // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
+                                                                    TimeUnit.MINUTES);
+
+            // schedule periodical tasks of ec strip update
+            // We could set this task delay relatively low.
+            ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ECParityUpdateVerbHandler.getParityUpdateRunnable(),
+                                                                    DatabaseDescriptor.getInitialDelay(),
+                                                                    1,
+                                                                    // (long) (DatabaseDescriptor.getTaskDelay() * 0.8),
+                                                                    TimeUnit.MINUTES);
+
+            // schedule periodical tasks of force compaction the last level
+            // ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ColumnFamilyStore.getForceCompactionForTheLastLevelRunnable(),
+            //                                                         DatabaseDescriptor.getInitialDelay() + 30,
+            //                                                         5,
+            //                                                         TimeUnit.MINUTES);
+        }
+
+
         // schedule periodic recomputation of speculative retry thresholds
         ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(SPECULATION_THRESHOLD_UPDATER,
                 DatabaseDescriptor.getReadRpcTimeout(NANOSECONDS),
@@ -685,9 +732,15 @@ public class CassandraDaemon {
         try {
             applyConfig(); // apply cnfigures in cassandra.yaml
 
-            registerNativeAccess(); 
+            registerNativeAccess();
 
             setup(); // loading ssts, etc.
+
+
+            // [ELECT]
+            reloadMetadataForELECT();
+
+
 
             String pidFile = CASSANDRA_PID_FILE.getString();
 
@@ -724,6 +777,43 @@ public class CassandraDaemon {
                 exitOrFail(3, "Exception encountered during startup: " + e.getMessage());
             }
         }
+    }
+
+    public void reloadMetadataForELECT() {
+
+
+        Gossiper.buildNodeAndTokenList();
+
+        // reload ec sstables
+        for(Keyspace keyspace : Keyspace.all()) {
+            if(keyspace.getName().equals("ycsb")) {
+            
+                for(ColumnFamilyStore cfs : keyspace.getColumnFamilyStores()) {
+                    if(cfs.getColumnFamilyName().equals("usertable0")) {
+                        for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                            if(sstable.isReplicationTransferredToErasureCoding()) {
+                                StorageService.instance.transferredSSTableCount++;
+                            }
+
+                            if(sstable.isDataMigrateToCloud()) {
+                                StorageService.instance.migratedRawSSTablecount++;
+                            }
+
+                        }
+                    } else if (cfs.getColumnFamilyName().contains("usertable")) {
+                        for(SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                            if(sstable.isReplicationTransferredToErasureCoding()) {
+                                StorageService.instance.globalSSTHashToECSSTableMap.put(sstable.getSSTableHashID(), sstable);
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
+
+
     }
 
     @VisibleForTesting

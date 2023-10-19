@@ -41,6 +41,7 @@ import org.apache.cassandra.db.SystemKeyspace;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.lifecycle.LogRecord.Type;
 import org.apache.cassandra.io.FSWriteError;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.sstable.SSTable;
@@ -287,6 +288,7 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
                 // or if the transaction journal was never properly created in the first place
                 if (!data.completed()) {
                     logger.error("{} was not completed, trying to abort it now", data);
+                    ECNetutils.printStackTace(String.format("%s was not completed, trying to abort it now", data));
 
                     Throwable err = Throwables.perform((Throwable) null, data::abort);
                     if (err != null)
@@ -453,6 +455,10 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
 
     protected Throwable doCommit(Throwable accumulate) {
         synchronized (lock) {
+            // logger.debug("ELECT-Debug: doCommit ({})", txnFile.id());
+
+            // ECNetutils.printStackTace(String.format("ELECT-Debug: doCommit (%s)", txnFile.id()));
+
             return complete(Throwables.perform(accumulate, txnFile::commit));
         }
     }
@@ -548,5 +554,19 @@ class LogTransaction extends Transactional.AbstractTransactional implements Tran
                 }
             }
         }
+    }
+
+    @Override
+    protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+        synchronized (lock) {
+            // ECNetutils.printStackTace(String.format("ELECT-Debug: doCommit erasure coding (%s)", txnFile.id()));
+            return complete(Throwables.perform(accumulate, txnFile::commit));
+        }
+    }
+
+    @Override
+    protected void doPrepare(SSTableReader ecSSTable) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'doPrepare'");
     }
 }

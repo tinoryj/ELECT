@@ -1,0 +1,332 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+- name: Rebuild and start Cassandra servers
+  hosts: cassandra_servers
+  become: true
+  become_user: yjren
+  tasks:
+  - name: Execute script start-server.sh
+    shell: |
+      . /etc/profile &&
+      export project_base_dir="/mnt/ssd/Test/CassandraEC" &&
+      export branch_name="yuanming" &&
+      export ec_data_nodes=4 &&
+      export parity_nodes=2 &&
+      export max_level_count=4 &&
+      export concurrent_ec=64 &&
+      export initial_delay=300 &&
+      export task_delay=1 &&
+      export stripe_update_frequency=10 &&
+      export max_send_sstables=24 &&
+      export max_stripe_update_sstable=8 &&
+      export enable_migration=true &&
+      export enbale_erasure_coding=true &&
+      export cold_period=60 &&
+      export target_storage_saving=0.5 &&
+      export seeds="192.168.10.21,192.168.10.22,192.168.10.23,192.168.10.25,192.168.10.26,192.168.10.28" &&
+      export memtale_heap_space="1024MiB" &&
+      export internode_max_message_size="32MiB" &&
+      export internode_application_send_queue_capacity="256MiB" &&
+      export internode_application_send_queue_reserve_endpoint_capacity="512MiB" &&
+      export internode_application_send_queue_reserve_global_capacity="2048MiB" &&
+      export internode_application_receive_queue_capacity="256MiB" &&
+      export internode_application_receive_queue_reserve_endpoint_capacity="512MiB" &&
+      export internode_application_receive_queue_reserve_global_capacity="2048MiB" &&
+      bash /mnt/ssd/Test/CassandraEC/scripts/start-server.sh
+
+    register: command_result
+    ignore_errors: True
+#
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  - name: Wait until all nodes are ready
+    pause:
+      seconds: 50
+
+- name: CPU&Memory Monitor
+  hosts:  cassandra_servers
+  become: true
+  become_user: yjren
+  gather_facts: false
+  tasks:
+  - name: CPU&Memory Monitor
+    shell: |
+      . /etc/profile &&
+      kill -9 $(ps aux | grep "stats.sh" | grep -v grep | awk 'NR == 1'  | awk {'print $2'}) &&
+      nohup bash /mnt/ssd/Test/CassandraEC/scripts/stats.sh {{ exp_name }} &
+    vars:
+      exp_name: "EXP#1"
+    register: command_result
+    ignore_errors: true
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  
+
+- name: Setup log levels
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: Setup log levels
+    shell: |
+      . /etc/profile && cd /mnt/ssd/Test/CassandraEC && bin/nodetool setlogginglevel org.apache.cassandra debug && bin/nodetool setlogginglevel ROOT debug
+    register: command_result
+    ignore_errors: true
+
+
+- name: Prepare keyspace and tables for evaluation
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute script start-client.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/start-client.sh {{ coordinator }} {{ sstable_size_in_mb }} {{ fanout_size }} {{ file_dir }}
+    vars:
+      coordinator: "192.168.10.21"
+      sstable_size_in_mb: 4
+      fanout_size: 10
+      file_dir: "/home/yjren/cassandra"
+    register: command_result
+    ignore_errors: True
+
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+
+
+
+- name: Net&Disk Monitor
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: Net&Disk Monitor
+    shell: |
+      . /etc/profile && 
+      (nohup bash /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} & nohup bash /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }} &) &
+    vars:
+      exp_name: "EXP#1"
+    register: command_result
+    ignore_errors: true
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  
+
+- name: Load data
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute script load.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/load.sh {{ coordinator }} {{ record_count }} {{ filed_length }} {{ threads }} {{ file_dir }} {{ workload }} {{ expName }}
+    vars:
+      coordinator: "192.168.10.21"
+      record_count: 100000000
+      filed_length: 1024
+      threads: 16
+      file_dir: "/home/yjren/ycsb-0.17.0/"
+      workload: "workloads/workload_template"
+      expName: "Exp#1"
+    register: command_result
+    ignore_errors: True
+
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+  - name: Wait until insertion is done
+    pause:
+      seconds: 60
+
+- name: Force flush
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: Force flush
+    shell: |
+      . /etc/profile && cd /mnt/ssd/Test/CassandraEC && bin/nodetool flush
+    register: command_result
+    ignore_errors: true
+
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+  - name: Wait until erasure coding is done
+    pause:
+      seconds: 40000
+
+  
+
+
+- name: Net&Disk Monitor
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: Net&Disk Monitor
+    shell: |
+      . /etc/profile && 
+      (nohup bash /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} & nohup bash /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }} &) &
+    vars:
+      exp_name: "EXP#1"
+    register: command_result
+    ignore_errors: true
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  
+  
+  
+
+    
+- name: Backup data file for cold startup
+  hosts: cassandra_servers
+  tasks:
+  - name: Copy files
+    command: . /etc/profile && cp -r {{ sourceFileDir }} {{ targetFileDir }}
+    vars:
+      sourceFileDir: "/mnt/ssd/"
+      targetFileDir: "~/"
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  - name: Wait until normal read is done
+    pause:
+      seconds: 30
+
+- name: Run Normal Read
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute run.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }} {{ workload }} {{ expName }}
+    vars:
+      coordinator: "192.168.10.21"
+      operation_count: 10000000
+      threads: 16
+      consistency: ONE
+      file_dir: "/home/yjren/ycsb-0.17.0/"
+      workload: "workloads/workload_template"
+      expName: "Exp#1"
+      register: command_result
+      ignore_errors: true
+
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  - name: Wait until normal read is done
+    pause:
+      seconds: 180
+
+
+
+
+- name: Net&Disk Monitor
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: Net&Disk Monitor
+    shell: |
+      . /etc/profile && 
+      (nohup bash /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} & nohup bash /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }} &) &
+    vars:
+      exp_name: "EXP#1"
+    register: command_result
+    ignore_errors: true
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  
+  
+
+- name: Test recovery
+  hosts: failure_nodes
+
+  tasks:
+  - name: crush a server node
+    shell: |
+      . /etc/profile && kill -9 $(ps aux | grep cassandra| grep -v grep | awk 'NR == 1'  | awk {'print $2'})
+    register: command_result
+    ignore_errors: true
+
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+  - name: Wait until killed server is found
+    pause:
+      seconds: 60
+
+
+
+- name: Net&Disk Monitor
+  hosts:  cassandra_servers
+
+  tasks:
+  - name: Net&Disk Monitor
+    shell: |
+      . /etc/profile && 
+      (nohup bash /mnt/ssd/Test/CassandraEC/scripts/netCapture.sh {{ exp_name }} & nohup bash /mnt/ssd/Test/CassandraEC/scripts/diskCapture.sh {{ exp_name }} &) &
+    vars:
+      exp_name: "EXP#1"
+    register: command_result
+    ignore_errors: true
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+  
+
+- name: Run Degraded Read
+  hosts: cassandra_client
+
+  tasks:
+  - name: Execute run.sh
+    command: sh /mnt/ssd/Test/CassandraEC/scripts/run.sh {{ coordinator }} {{ operation_count }} {{ threads }} {{ consistency }} {{ file_dir }} {{ workload }} {{ expName }}
+    vars:
+      coordinator: "192.168.10.21"
+      operation_count: 10000000
+      threads: 16
+      consistency: ONE
+      file_dir: "/home/yjren/ycsb-0.17.0/"
+      workload: "workloads/workload_template"
+      expName: "Exp#1"
+      register: command_result
+      ignore_errors: true
+
+  - name: Fail the play if the previous command did not succeed
+    fail: msg="the command failed"
+    when: "'FAILED' in command_result.stderr"
+
+
+
+# - name: Cold Startup
+#   hosts: cassandra_servers
+#   tasks:
+#   - name: Cold Startup
+#     command: sh /mnt/ssd/Test/CassandraEC/scripts/cold-startup.sh {{ sourceFileDir }} {{ targetFileDir }}
+#     vars:
+#       sourceFileDir: "/mnt/ssd/"
+#       targetFileDir: "target"
+#   - name: Fail the play if the previous command did not succeed
+#     fail: msg="the command failed"
+#     when: "'FAILED' in command_result.stderr"
+#   - name: Wait until normal read is done
+#     pause:
+#       seconds: 60
+
+
+

@@ -695,9 +695,9 @@ public class LocalSessions
     {
         synchronized (session)
         {
-            Preconditions.checkArgument(session.getState().canTransitionTo(state),
-                                        "Invalid state transition %s -> %s",
-                                        session.getState(), state);
+            // Preconditions.checkArgument(session.getState().canTransitionTo(state),
+            //                             "Invalid state transition %s -> %s",
+            //                             session.getState(), state);
             logger.trace("Changing LocalSession state from {} -> {} for {}", session.getState(), state, session.sessionID);
             boolean wasCompleted = session.isCompleted();
             session.setState(state);

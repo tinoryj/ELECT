@@ -21,15 +21,20 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOError;
 import java.io.IOException;
+import java.io.Serializable;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
+import java.sql.Array;
 import java.time.Instant;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
@@ -70,6 +75,7 @@ import org.apache.cassandra.fql.FullQueryLoggerOptionsCompositeData;
 import org.apache.cassandra.io.util.File;
 import org.apache.cassandra.locator.ReplicaCollection.Builder.Conflict;
 import org.apache.cassandra.schema.Keyspaces;
+import org.apache.cassandra.service.ActiveRepairService.ParentRepairStatus;
 import org.apache.cassandra.service.disk.usage.DiskUsageBroadcaster;
 import org.apache.cassandra.service.snapshot.SnapshotLoader;
 import org.apache.cassandra.utils.concurrent.Future;
@@ -98,16 +104,30 @@ import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.compaction.CompactionManager;
 import org.apache.cassandra.db.compaction.Verifier;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.db.virtual.VirtualKeyspaceRegistry;
 import org.apache.cassandra.dht.*;
+import org.apache.cassandra.dht.RandomPartitioner.BigIntegerToken;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token.TokenFactory;
 import org.apache.cassandra.exceptions.*;
 import org.apache.cassandra.gms.*;
 import org.apache.cassandra.hints.HintsService;
+import org.apache.cassandra.io.erasurecode.alibaba.OSSAccess;
+import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
+import org.apache.cassandra.io.erasurecode.net.LSMTreeRecovery;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata.ECMetadataContent;
+import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler.BlockedECMetadata;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.ByteObjectConversion;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils.InetAddressAndPortComparator;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdate.SSTableContentWithHashID;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler.DataForRewrite;
 import org.apache.cassandra.io.sstable.SSTableLoader;
 import org.apache.cassandra.io.sstable.format.SSTableFormat;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.VersionAndType;
 import org.apache.cassandra.io.util.FileUtils;
 import org.apache.cassandra.io.util.PathUtils;
@@ -128,8 +148,6 @@ import org.apache.cassandra.schema.TableMetadataRef;
 import org.apache.cassandra.schema.ViewMetadata;
 import org.apache.cassandra.service.snapshot.SnapshotManager;
 import org.apache.cassandra.service.snapshot.TableSnapshot;
-import org.apache.cassandra.net.AsyncOneResponse;
-import org.apache.cassandra.net.MessagingService;
 import org.apache.cassandra.streaming.*;
 import org.apache.cassandra.tracing.TraceKeyspace;
 import org.apache.cassandra.transport.ClientResourceLimits;
@@ -179,9 +197,146 @@ public class StorageService extends NotificationBroadcasterSupport
     public static final int RING_DELAY_MILLIS = getRingDelay(); // delay after which we assume ring has stablized
     public static final int SCHEMA_DELAY_MILLIS = getSchemaDelay();
 
+    // [CASSANDRAEC] The following properties belong to CassandraEC.
+    public volatile boolean isInsertRecently = false;
+    public volatile List<String> compactingOrErasureCodingSSTables = new ArrayList<String>();
+
+    // [In parity node] This queue is used to receive ECMessages for erasure coding.
+    public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>> globalRecvQueues = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<ECMessage>>();
+    public volatile long totalReceivedECMessages = 0;
+    public volatile long totalConsumedECMessages = 0;
+    public volatile long generatedNormalECMetadata = 0;
+    public volatile long generatedPaddingZeroECMetadata = 0;
+    public volatile List<String> globalRecvSSTHashList = new ArrayList<String>();
+
+    // [In secondary node] This map is used to read EC SSTables generate after
+    // perform ECSyncSSTable, use During erasure coding.
+    public ConcurrentHashMap<String, DataForRewrite> globalSSTHashToSyncedFileMap = new ConcurrentHashMap<String, DataForRewrite>();
+
+    // caches the key for the global rewrite sstable
+    public ConcurrentHashMap<String, Integer> globalCachedKeys = new ConcurrentHashMap<>();
+
+    // The following concurrency parameters are used to support EC strip update
+    // operations
+    // [In parity node] This map is used to store <stripID, ECMetadataContent>,
+    // generate after erasure coding, use during parity update.
+    public ConcurrentHashMap<String, ECMetadataContent> globalStripIdToECMetadataMap = new ConcurrentHashMap<String, ECMetadataContent>();
+    // [In parity node] Generate after ResponseParity, use during real parity
+    // update.
+    public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToParityCodeMap = new ConcurrentHashMap<String, ByteBuffer[]>();
+    // [In primary node] Generate when sendSSTableToParity, use during send parity
+    // update signal.
+    public ConcurrentHashMap<String, List<InetAddressAndPort>> globalSSTHashToParityNodesMap = new ConcurrentHashMap<String, List<InetAddressAndPort>>();
+    // [In parity node] Generate after erasure coding, use during parity update.
+    public ConcurrentHashMap<String, String> globalSSTHashToStripIDMap = new ConcurrentHashMap<String, String>();
+    // [In every node] Record the sstHash to SSTableReader map
+    public ConcurrentHashMap<String, SSTableReader> globalSSTHashToECSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
+    // [In secondary node] Record the ECMetadata data, <cfName, BlockedECMetadata>
+    public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalReadyECMetadatas = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
+    // [In secondary node] Record the updated ECMetadata to avoid concurrent
+    // conflict <sstHash, BlockedECMetadata>
+    public ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>> globalPendingECMetadata = new ConcurrentHashMap<String, ConcurrentLinkedQueue<BlockedECMetadata>>();
+    public volatile long globalRecvECMetadatas = 0;
+    public volatile long globalConsumedECMetadatas = 0;
+    public volatile long globalReadyECMetadataCount = 0;
+    public volatile long globalBolckedECMetadataCount = 0;
+
+    // [In parity node], <old sstable hash, parity update sstable>
+    public ConcurrentHashMap<String, SSTableContentWithHashID> globalPendingOldSSTableForECStripUpdateMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
+    // [In parity node], this is the global map <primary node, old sstables for
+    // parity update>
+    public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalReadyOldSSTableForECStripUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
+    public volatile long globalReadyOldSSTableForECStripUpdateCount = 0;
+    // [In parity node], this is the global map <sstHash, old sstable>
+    public ConcurrentHashMap<String, SSTableContentWithHashID> globalPendingNewOldSSTableForECStripUpdateMap = new ConcurrentHashMap<String, SSTableContentWithHashID>();
+    // [In parity node], this is the global map <primary node, new sstables for
+    // parity update>
+    public ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>> globalReadyNewSSTableForECStripUpdateMap = new ConcurrentHashMap<InetAddressAndPort, ConcurrentLinkedQueue<SSTableContentWithHashID>>();
+    // [In parity node] save the global update strip list
+    public ConcurrentSkipListSet<String> globalUpdatingStripList = new ConcurrentSkipListSet<>();
+    // [In secondary node] maintain a global view for the updating sstHash.
+    public ConcurrentSkipListSet<String> globalUpdatingSSTHashList = new ConcurrentSkipListSet<>();
+    // [In data migration]
+    public static OSSAccess ossAccessObj = new OSSAccess();
+    // [In parity node]
+    private static int codeLength = 0;
+
+    public ConcurrentSkipListSet<String> recoveredSSTables = new ConcurrentSkipListSet<String>();
+    public ConcurrentSkipListSet<String> recoveringSSTables = new ConcurrentSkipListSet<String>();
+    
+
+    // [CASSANDRAEC] The following parameters are used to support recovery
+    public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();
+    public ConcurrentHashMap<String, SSTableReader> globalRecoveredSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
+
+    // [CASSANDRAEC] The following parameters are used to support data migration
+    public volatile long transferredSSTableCount = 0;
+    public volatile long migratedParityCodeCount = 0;
+    public ConcurrentSkipListSet<String> migratedParityCodes = new ConcurrentSkipListSet<String>();
+    public volatile long migratedRawSSTablecount = 0;
+    public ConcurrentSkipListSet<String> migratedSStables = new ConcurrentSkipListSet<String>();
+
+    
+    public ConcurrentSkipListSet<String> downloadingSSTables = new ConcurrentSkipListSet<String>();
+    public ConcurrentHashMap<String, SSTableReader> globalDownloadedSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
+
+
+    // [ELECT] Metrics for elect's operation, unit is millisecond.
+    // Write
+    public volatile long memtableTime = 0;
+    public volatile long commitLogTime = 0;
+    public volatile long flushTime = 0;
+    public volatile long compactionTime = 0;
+    public volatile long rewriteTime = 0;
+    public volatile long ecSSTableCompactionTime = 0;
+    public volatile long encodingTime = 0;
+    public volatile long migratedRawSSTableTimeCost = 0;
+    public volatile long migratedRawSSTableTimeSendCost = 0;
+    public volatile long migratedParityCodeTimeCost = 0;
+
+    // Normal read
+    public volatile long readCacheTime = 0;
+    public volatile long readIndexTime = 0;
+    public volatile long readMemtableTime = 0;
+    public volatile long readSSTableTime = 0;
+    public volatile long readRawDataMigrationTime = 0;
+
+    // Degraded read
+    public volatile long waitMigrationTime = 0;
+    public volatile long waitRecoveryTime = 0;
+    public volatile long degradedRetrieveTime = 0;
+    public volatile long degradedReadDecodingTime = 0;
+    public volatile long readParityMigrationTime = 0;
+
+    // recovery
+    public volatile long retrieveChunksTimeForLSMTreeRecovery = 0;
+    public volatile long recoveryTimeForLSMTreeRecovery = 0;
+
+    // repair
+    public volatile long createMerkleTreeTime = 0;
+    public volatile long compareMerkleTreeTime = 0;
+    public volatile long repairTime = 0;
+
+
+    // [ELECT] Recovery the LSM-tree
+    // cfName -> start time.
+    public ConcurrentHashMap<String, Long> recoveringCFS = new ConcurrentHashMap<String, Long>();
+
+
+
     private static final boolean REQUIRE_SCHEMAS = !BOOTSTRAP_SKIP_SCHEMA_CHECK.getBoolean();
 
     private final JMXProgressSupport progressSupport = new JMXProgressSupport(this);
+
+    public static void setErasureCodeLength(int sstableSizeInMB) {
+        if (codeLength == 0) {
+            codeLength = (int) Math.ceil(sstableSizeInMB * 1024 * 1024 * 1.05);
+        }
+    }
+
+    public static int getErasureCodeLength() {
+        return codeLength;
+    }
 
     private static int getRingDelay() {
         String newdelay = CassandraRelevantProperties.RING_DELAY.getString();
@@ -771,6 +926,27 @@ public class StorageService extends NotificationBroadcasterSupport
                 } finally {
                     LoggingSupportFactory.getLoggingSupport().onShutdown();
                 }
+            }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable)
+                    throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
+                    throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
         }, "StorageServiceShutdownHook");
         Runtime.getRuntime().addShutdownHook(drainOnShutdown);
@@ -3944,6 +4120,160 @@ public class StorageService extends NotificationBroadcasterSupport
         }
     }
 
+    public void backupImMemoryDataForElectColdStartup(){
+        String backupDir = ECNetutils.getInMemoryDataDir();
+
+        // Backup data to support degraded read
+        try {
+            ECNetutils.writeBytesToFile(backupDir + "globalCachedKeys",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalCachedKeys));
+            ECNetutils.writeBytesToFile(backupDir + "globalStripIdToECMetadataMap",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalStripIdToECMetadataMap));
+            ECNetutils.writeBytesToFile(backupDir + "globalSSTHashToParityNodesMap",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalSSTHashToParityNodesMap));
+            ECNetutils.writeBytesToFile(backupDir + "globalSSTHashToStripIDMap",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.globalSSTHashToStripIDMap));
+            ECNetutils.writeBytesToFile(backupDir + "migratedParityCodes",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.migratedParityCodes));
+            ECNetutils.writeBytesToFile(backupDir + "migratedSStables",  
+                                        ByteObjectConversion.objectToByteArray((Serializable) StorageService.instance.migratedSStables));
+
+            logger.debug("ELECT-Debug: backup migrated parity codes({}), migrated sstables ({})", StorageService.instance.migratedParityCodes, StorageService.instance.migratedSStables);
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+    }
+
+    public void reloadImMemoryDataForElectColdStartup(){
+
+        // Backup data to support degraded read
+
+        String backupDir = ECNetutils.getInMemoryDataDir();
+        try {
+            StorageService.instance.globalCachedKeys = (ConcurrentHashMap<String, Integer>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalCachedKeys"));
+            StorageService.instance.globalStripIdToECMetadataMap = (ConcurrentHashMap<String, ECMetadataContent>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalStripIdToECMetadataMap"));
+            StorageService.instance.globalSSTHashToParityNodesMap = (ConcurrentHashMap<String, List<InetAddressAndPort>>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalSSTHashToParityNodesMap"));
+            StorageService.instance.globalSSTHashToStripIDMap = (ConcurrentHashMap<String, String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "globalSSTHashToStripIDMap"));
+            StorageService.instance.migratedParityCodes = (ConcurrentSkipListSet<String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "migratedParityCodes"));
+            StorageService.instance.migratedSStables = (ConcurrentSkipListSet<String>) ByteObjectConversion.byteArrayToObject(ECNetutils.readBytesFromFile(backupDir + "migratedSStables"));
+
+            StorageService.instance.migratedParityCodeCount = migratedParityCodes.size();
+            StorageService.instance.migratedRawSSTablecount = migratedSStables.size();
+
+            logger.debug("ELECT-Debug: reload migrated parity codes({}), migrated sstables ({})", StorageService.instance.migratedParityCodes, StorageService.instance.migratedSStables);
+
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+
+    }
+
+
+    public String getBreakdownTime() {
+        
+        String result = "Write operations:\n" +
+                        "\tMemtable time cost: " + memtableTime + " (ms)\n" +
+                        "\tCommitLog time cost: " + commitLogTime + " (ms)\n" +
+                        "\tFlush time cost: " + flushTime + " (ms)\n" +
+                        "\tCompaction time cost: " + compactionTime + " (ms)\n" +
+                        "\tRewrite time cost: " + rewriteTime + " (ms)\n" +
+                        "\tECSSTable compaction time cost: " + ecSSTableCompactionTime + " (ms)\n" +
+                        "\tEncoding time cost: " + encodingTime + " (ms)\n" +
+                        "\tMigrate raw SSTable time cost: " + migratedRawSSTableTimeCost + " (ms)\n" +
+                        "\tMigrate raw SSTable send time cost: " + migratedRawSSTableTimeSendCost + " (ms)\n" +
+                        "\tMigrate parity code time cost: " + migratedParityCodeTimeCost + " (ms)\n\n\n" +
+                        "Read operations:\n" +
+                        "\tRead index time cost: " + readIndexTime + " (ns)\n" +
+                        "\tRead cache time cost: " + readCacheTime + " (ns)\n" +
+                        "\tRead memtable time cost: " + readMemtableTime + " (ms)\n" +
+                        "\tRead SSTable time cost: " + readSSTableTime + " (ms)\n" +
+                        "\tRead migrated raw data time cost: " + readRawDataMigrationTime + " (ms)\n" +
+                        "\tWait for migration time cost: " + waitMigrationTime + " (us)\n" +
+                        "\tWait for recovery time cost: " + waitRecoveryTime + " (us)\n" +
+                        "\tRetrieve time cost: " + degradedRetrieveTime + " (ms)\n" +
+                        "\tDecoding time cost: " + degradedReadDecodingTime + " (ms)\n" +
+                        "\tRead migrated parity time cost: " + readParityMigrationTime + " (ms)\n\n\n" +
+                        "Recovery operations:\n" +
+                        "\tRetrieve LSM tree time cost: " + retrieveChunksTimeForLSMTreeRecovery + " (ms)\n" +
+                        "\tRecovery LSM tree time cost: " + recoveryTimeForLSMTreeRecovery + " (ms)\n";
+
+
+
+        return result;
+    }
+
+    public List<String> getSSTableAccessFrequency(String keyspace) {
+        int level = DatabaseDescriptor.getMaxLevelCount();
+        List<String> results = new ArrayList<>();
+
+        for (ColumnFamilyStore cfs : Keyspace.open(keyspace).getColumnFamilyStores()) {
+
+            int[] sstablesCountEachLevel = new int[level];
+            long[] accessFrequencyEachLevel = new long[level];
+            long[] min = new long[level];
+            for (int i = 0; i < level; i++) {
+                min[i] = Long.MAX_VALUE;
+            }
+            long[] max = new long[level];
+            long[] average = new long[level];
+            long[][] sstableAccessFrequency = new long[level][];
+
+            for (SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                sstablesCountEachLevel[sstable.getSSTableLevel()]++;
+                accessFrequencyEachLevel[sstable.getSSTableLevel()] += sstable.getReadMeter().count();
+                min[sstable.getSSTableLevel()] = ((min[sstable.getSSTableLevel()] < sstable.getReadMeter().count())
+                        ? min[sstable.getSSTableLevel()]
+                        : sstable.getReadMeter().count());
+                max[sstable.getSSTableLevel()] = ((max[sstable.getSSTableLevel()] > sstable.getReadMeter().count())
+                        ? max[sstable.getSSTableLevel()]
+                        : sstable.getReadMeter().count());
+
+            }
+            for (int levelCount = 0; levelCount < level; levelCount++) {
+                sstableAccessFrequency[levelCount] = new long[sstablesCountEachLevel[levelCount]];
+            }
+            int indexOfCurrentLevel = 0, currentLevel = 0;
+            for (SSTableReader sstable : cfs.getTracker().getView().liveSSTables()) {
+                if (currentLevel != sstable.getSSTableLevel()) {
+                    currentLevel = sstable.getSSTableLevel();
+                    indexOfCurrentLevel = 0;
+                }
+                sstableAccessFrequency[sstable.getSSTableLevel()][indexOfCurrentLevel++] = sstable.getReadMeter()
+                        .count();
+            }
+            for (int i = 0; i < level; i++) {
+                if (sstablesCountEachLevel[i] == 0) {
+                    min[i] = 0;
+                    continue;
+                }
+                average[i] = accessFrequencyEachLevel[i] / sstablesCountEachLevel[i];
+            }
+
+            String result = "SSTable's Access Frequency of Each Level (" + cfs.getColumnFamilyName() + "): \n" +
+                    "\tSSTables in each level: " + Arrays.toString(sstablesCountEachLevel) + "\n" +
+                    "\tTotal sstables's access count of each level: " + Arrays.toString(accessFrequencyEachLevel) + "\n"
+                    +
+                    "\tMinimum sstables's access count of each level: " + Arrays.toString(min) + "\n" +
+                    "\tMaximum sstables's access count of each level: " + Arrays.toString(max) + "\n" +
+                    "\tAverage sstables's access count of each level: " + Arrays.toString(average) + "\n\n\n";
+
+            for (int i = 0; i < level; i++) {
+                result += "\tSSTables's access count of level " + i + ": " + Arrays.toString(sstableAccessFrequency[i])
+                        + "\n\n";
+            }
+            results.add(result);
+        }
+        return results;
+    }
+
     /**
      * Flush all memtables for a keyspace and column families.
      * 
@@ -3961,10 +4291,21 @@ public class StorageService extends NotificationBroadcasterSupport
         return repair(keyspace, repairSpec, Collections.emptyList()).left;
     }
 
+    public void recoveryAsync(String keyspace, String cfsName) {
+        LSMTreeRecovery.recoveryLSMTree(keyspace, cfsName);        
+    }
+
     public Pair<Integer, Future<?>> repair(String keyspace, Map<String, String> repairSpec,
             List<ProgressListener> listeners) {
         RepairOption option = RepairOption.parse(repairSpec, tokenMetadata.partitioner);
         return repair(keyspace, option, listeners);
+    }
+
+    public Pair<Integer, Future<?>> recovery(String keyspace, String cfsName,
+            List<ProgressListener> listeners) {
+
+        int cmd = nextRepairCommand.incrementAndGet();
+        return Pair.create(cmd, repairCommandExecutor().submit(createRecoveryTask(cmd, keyspace, cfsName, listeners)));
     }
 
     public Pair<Integer, Future<?>> repair(String keyspace, RepairOption option, List<ProgressListener> listeners) {
@@ -4000,9 +4341,7 @@ public class StorageService extends NotificationBroadcasterSupport
      * @return collection of ranges that match ring layout in TokenMetadata
      */
     @VisibleForTesting
-    public
-    Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken)
-    {
+    public Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken) {
         Token parsedBeginToken = getTokenFactory().fromString(beginToken);
         Token parsedEndToken = getTokenFactory().fromString(endToken);
 
@@ -4053,6 +4392,15 @@ public class StorageService extends NotificationBroadcasterSupport
 
         if (options.isTraced())
             return new FutureTaskWithResources<>(() -> ExecutorLocals::clear, task);
+        return new FutureTask<>(task);
+    }
+
+    private FutureTask<Object> createRecoveryTask(final int cmd, final String keyspace, final String cfsName,
+            List<ProgressListener> listeners) {
+        RecoveryRunnable task = new RecoveryRunnable(this, cmd, keyspace, cfsName);
+        task.addProgressListener(progressSupport);
+        for (ProgressListener listener : listeners)
+            task.addProgressListener(listener);
         return new FutureTask<>(task);
     }
 
@@ -4270,7 +4618,6 @@ public class StorageService extends NotificationBroadcasterSupport
      * @param key          key for which we need to find the endpoint
      * @return the endpoint responsible for this key
      */
-    @Deprecated
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, String cf, String key) {
         EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, cf, key);
         List<InetAddress> inetList = new ArrayList<>(replicas.size());
@@ -4282,7 +4629,6 @@ public class StorageService extends NotificationBroadcasterSupport
         return Replicas.stringify(getNaturalReplicasForToken(keyspaceName, cf, key), true);
     }
 
-    @Deprecated
     public List<InetAddress> getNaturalEndpoints(String keyspaceName, ByteBuffer key) {
         EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, key);
         List<InetAddress> inetList = new ArrayList<>(replicas.size());
@@ -4290,9 +4636,139 @@ public class StorageService extends NotificationBroadcasterSupport
         return inetList;
     }
 
+    // [CASSANDRAEC]
+    public List<InetAddressAndPort> getNaturalEndpointsForCassandraEC(String keyspaceName, ByteBuffer key) {
+        EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, key);
+        List<InetAddressAndPort> inetList = new ArrayList<>(replicas.size());
+        replicas.forEach(r -> inetList.add(r.endpoint()));
+        return inetList;
+    }
+
     public List<String> getNaturalEndpointsWithPort(String keyspaceName, ByteBuffer key) {
         EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, key);
         return Replicas.stringify(replicas, true);
+    }
+
+    // [CASSANDRAEC]
+    public List<InetAddressAndPort> getReplicaNodesWithPort(String keyspaceName, String cf, String key) {
+        List<String> inetStringList = getNaturalEndpointsWithPort(keyspaceName, cf, key);
+        List<InetAddressAndPort> inetList = new ArrayList<>(inetStringList.size());
+        inetStringList.forEach(r -> {
+            try {
+                inetList.add(InetAddressAndPort.getByName(r));
+            } catch (UnknownHostException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        });
+        return inetList;
+
+    }
+
+    public List<InetAddressAndPort> getReplicaNodesWithPortFromTokenForDegradeRead(String keyspaceName, Token token) {
+
+        // Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(),
+        //         Gossiper.instance.getUnreachableMembers());
+        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>(Gossiper.getAllNodesBasedOnSeeds());
+        // allHostsIterable.forEach(allHosts::add);
+        // InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
+        // Collections.sort(allHosts, comparator);
+        // logger.debug("ELECT-Debug: for token ({}), all hosts number is ({}), hosts are ({})", token,allHosts.size(), allHosts);
+        List<InetAddressAndPort> replicaNodes = new ArrayList<>();
+
+        // Collection<String> tokenRanges = DatabaseDescriptor.getTokenRanges();
+        long targetToken = (long) token.getTokenValue();
+        int index = 0;
+        for (long currentToken : Gossiper.getTokenRanges()) {
+            // long currentToken = Long.parseLong(tk);
+            // int result = currentToken.compareTo(targetToken);
+            if (currentToken >= targetToken) {
+                break;
+            }
+            index++;
+        }
+
+        if (index ==  Gossiper.getTokenRanges().size())
+            index = 0;
+
+        int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
+        int endIndex = index + rf;
+
+        if (endIndex > allHosts.size()) {
+            replicaNodes.addAll(allHosts.subList(index, allHosts.size()));
+            replicaNodes.addAll(allHosts.subList(0, endIndex % allHosts.size()));
+        } else {
+            replicaNodes.addAll(allHosts.subList(index, endIndex));
+        }
+
+        logger.debug("ELECT-Debug: token is ({}), replica nodes are ({}), all hosts are ({}), token ranges are ({})", token, replicaNodes, allHosts, Gossiper.getTokenRanges());
+
+        return replicaNodes;
+
+    }
+
+    public Range<Token> getTokenRangeForPrimaryNode(List<InetAddressAndPort> allEndPoints) {
+        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>(Gossiper.getAllNodesBasedOnSeeds());
+        InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();   
+        Collections.sort(allEndPoints, comparator);
+        int index = 0;
+        Token rightToken=null;
+        for(long token : Gossiper.getTokenRanges()) {
+            if(index == allHosts.indexOf(allEndPoints.get(0))) {
+                rightToken = getTokenFactory().fromString(String.valueOf(token));
+                break;
+            }
+        }
+        Range<Token> result = tokenMetadata.getPrimaryRangeFor(rightToken);
+        logger.debug("ELECT-Debug: All endpoints are ({}), all tokens are ({}), right token is ({}), result is ({})", allEndPoints, Gossiper.getTokenRanges(), rightToken, result);
+        return result;
+    }
+
+    // [CASSANDRAEC]
+    public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode,
+            String keyspaceName) {
+        Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(),
+                Gossiper.instance.getUnreachableMembers());
+        List<InetAddressAndPort> allHosts = new ArrayList<InetAddressAndPort>();
+        allHostsIterable.forEach(allHosts::add);
+        InetAddressAndPortComparator comparator = new InetAddressAndPortComparator();
+        Collections.sort(allHosts, comparator);
+        List<InetAddressAndPort> replicaNodes = new ArrayList<>();
+        int rf = Keyspace.open(keyspaceName).getAllReplicationFactor();
+
+        int startIndex = allHosts.indexOf(primaryNode);
+
+        if (startIndex == -1)
+            throw new IllegalStateException(String.format("ELECT-ERROR: primary node %s is not in the live member set %s.",
+                    primaryNode, allHosts));
+
+        int endIndex = startIndex + rf;
+
+        if (endIndex > allHosts.size()) {
+            replicaNodes.addAll(allHosts.subList(startIndex, allHosts.size()));
+            replicaNodes.addAll(allHosts.subList(0, endIndex % allHosts.size()));
+        } else {
+            replicaNodes.addAll(allHosts.subList(startIndex, endIndex));
+        }
+
+        return replicaNodes;
+    }
+
+    public List<InetAddress> getNaturalEndpointsForToken(String keyspaceName, String tokenStr) {
+        List<InetAddress> inetList = new ArrayList<>();
+        Token token = getTokenFactory().fromString(tokenStr);
+        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy()
+                .getNaturalReplicasForToken(token);
+        replicas.forEach(r -> inetList.add(r.endpoint().getAddress()));
+        return inetList;
+    }
+
+    public List<InetAddress> getNaturalEndpointsForToken(String keyspaceName, Token token) {
+        List<InetAddress> inetList = new ArrayList<>();
+        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy()
+                .getNaturalReplicasForToken(token);
+        replicas.forEach(r -> inetList.add(r.endpoint().getAddress()));
+        return inetList;
     }
 
     public EndpointsForToken getNaturalReplicasForToken(String keyspaceName, String cf, String key) {
@@ -4308,14 +4784,14 @@ public class StorageService extends NotificationBroadcasterSupport
         return tokenMetadata.partitioner.decorateKey(partitionKeyToBytes(keyspaceName, table, partitionKey));
     }
 
-    private static ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key) {
+    public ByteBuffer partitionKeyToBytes(String keyspaceName, String cf, String key) {
         KeyspaceMetadata ksMetaData = Schema.instance.getKeyspaceMetadata(keyspaceName);
-        
+
         if (ksMetaData == null)
             throw new IllegalArgumentException("Unknown keyspace '" + keyspaceName + "'");
 
         TableMetadata metadata = ksMetaData.getTableOrViewNullable(cf);
-        
+
         if (metadata == null)
             throw new IllegalArgumentException("Unknown table '" + cf + "' in keyspace '" + keyspaceName + "'");
 

@@ -8,7 +8,7 @@
 
 # The name of the cluster. This is mainly used to prevent machines in
 # one logical cluster from joining another.
-cluster_name: 'Test Cluster'
+cluster_name: 'ELECT Exp Cluster'
 
 # This defines the number of tokens randomly assigned to this node on the ring
 # The more tokens, relative to other nodes, the larger the proportion of data
@@ -24,7 +24,7 @@ cluster_name: 'Test Cluster'
 # See https://cassandra.apache.org/doc/latest/getting_started/production.html#tokens for
 # best practice information about num_tokens.
 #
-num_tokens: 16
+num_tokens: 1
 
 # Triggers automatic allocation of num_tokens tokens for this node. The allocation
 # algorithm attempts to choose tokens in a way that optimizes replicated load over
@@ -47,7 +47,8 @@ allocate_tokens_for_local_replication_factor: 3
 # vnodes (num_tokens > 1, above) -- in which case you should provide a 
 # comma-separated list -- it's primarily used when adding nodes to legacy clusters 
 # that do not have vnodes enabled.
-# initial_token:
+initial_token: -9223372036854775808
+token_ranges: -9223372036854775808,-7378697629483820544,-5534023222112865280,-3689348814741909504,-1844674407370954752,0,1844674407370956800,3689348814741911552,5534023222112866304,7378697629483821056
 
 # May either be "true" or "false" to enable globally
 hinted_handoff_enabled: true
@@ -96,7 +97,8 @@ max_hints_file_size: 128MiB
 # max_hints_size_per_host: 0MiB
 
 # Enable / disable automatic cleanup for the expired and orphaned hints file.
-# Disable the option in order to preserve those hints on the disk.
+# Disable the option in order to pr
+# /eserve those hints on the disk.
 auto_hints_cleanup_enabled: false
 
 # Compression to apply to the hint files. If omitted, hints files
@@ -550,7 +552,7 @@ seed_provider:
     parameters:
       # seeds is actually a comma-delimited list of addresses.
       # Ex: "<ip1>,<ip2>,<ip3>"
-      - seeds: "127.0.0.1:7000"
+      - seeds: "172.27.96.1,172.27.96.2,172.27.96.3,172.27.96.4,172.27.96.5,172.27.96.6,172.27.96.7,172.27.96.8,172.27.96.9,172.27.96.10"
 
 # For workloads with more data than can fit in memory, Cassandra's
 # bottleneck will be reads that need to fetch data from
@@ -563,13 +565,29 @@ seed_provider:
 # On the other hand, since writes are almost never IO bound, the ideal
 # number of "concurrent_writes" is dependent on the number of cores in
 # your system; (8 * number_of_cores) is a good rule of thumb.
-concurrent_reads: 32
-concurrent_writes: 32
-concurrent_counter_writes: 32
+
+ec_data_nodes: 4
+parity_nodes: 2
+max_level_count: 9
+concurrent_ec: 64
+initial_delay: 300
+task_delay: 1
+stripe_update_frequency: 10
+max_send_sstables: 32
+enable_migration: true
+enable_erasure_coding: true
+cold_period: 3
+target_storage_saving: 0.6
+max_stripe_update_sstable: 2
+storage_saving_grade: 0
+
+concurrent_reads: 64
+concurrent_writes: 64
+concurrent_counter_writes: 64
 
 # For materialized view writes, as there is a read involved, so this should
 # be limited by the less of concurrent reads or concurrent writes.
-concurrent_materialized_view_writes: 32
+concurrent_materialized_view_writes: 64
 
 # Maximum memory to use for inter-node and client-server networking buffers.
 #
@@ -613,8 +631,8 @@ concurrent_materialized_view_writes: 32
 # and will trigger a flush based on memtable_cleanup_threshold
 # If omitted, Cassandra will set both to 1/4 the size of the heap.
 # Min unit: MiB
-# memtable_heap_space: 2048MiB
-# Min unit: MiB
+memtable_heap_space: 2048MiB
+# # Min unit: MiB
 # memtable_offheap_space: 2048MiB
 
 # memtable_cleanup_threshold is deprecated. The default calculation
@@ -726,7 +744,8 @@ index_summary_capacity:
 # proportional their recent read rates.  Setting to null value will disable this
 # process, leaving existing index summaries at their current sampling level.
 # Min unit: m
-index_summary_resize_interval: 60m
+#index_summary_resize_interval: 60m
+index_summary_resize_interval:
 
 # Whether to, when doing sequential writing, fsync() at intervals in
 # order to force the operating system to flush the dirty
@@ -760,7 +779,7 @@ ssl_storage_port: 7001
 #
 # Setting listen_address to 0.0.0.0 is always wrong.
 #
-listen_address: localhost
+listen_address: 172.27.96.
 
 # Set listen_address OR listen_interface, not both. Interfaces must correspond
 # to a single address, IP aliasing is not supported.
@@ -856,7 +875,7 @@ native_transport_allow_older_protocols: true
 # set broadcast_rpc_address to a value other than 0.0.0.0.
 #
 # For security reasons, you should not expose this port to the internet.  Firewall it if needed.
-rpc_address: localhost
+rpc_address: 192.168.10.21
 
 # Set rpc_address OR rpc_interface, not both. Interfaces must correspond
 # to a single address, IP aliasing is not supported.
@@ -1057,15 +1076,15 @@ uuid_sstable_identifiers_enabled: false
 # How long the coordinator should wait for read operations to complete.
 # Lowest acceptable value is 10 ms.
 # Min unit: ms
-read_request_timeout: 5000ms
+read_request_timeout: 100000ms
 # How long the coordinator should wait for seq or index scans to complete.
 # Lowest acceptable value is 10 ms.
 # Min unit: ms
-range_request_timeout: 10000ms
+range_request_timeout: 100000ms
 # How long the coordinator should wait for writes to complete.
 # Lowest acceptable value is 10 ms.
 # Min unit: ms
-write_request_timeout: 2000ms
+write_request_timeout: 20000ms
 # How long the coordinator should wait for counter writes to complete.
 # Lowest acceptable value is 10 ms.
 # Min unit: ms
@@ -1084,7 +1103,7 @@ truncate_request_timeout: 60000ms
 # The default timeout for other, miscellaneous operations.
 # Lowest acceptable value is 10 ms.
 # Min unit: ms
-request_timeout: 10000ms
+request_timeout: 100000ms
 
 # Defensive settings for protecting Cassandra from true network partitions.
 # See (CASSANDRA-14358) for details.
@@ -1121,12 +1140,13 @@ request_timeout: 10000ms
 # on all links to or from any node in the cluster.
 #
 # Min unit: B
-# internode_application_send_queue_capacity: 4MiB
-# internode_application_send_queue_reserve_endpoint_capacity: 128MiB
-# internode_application_send_queue_reserve_global_capacity: 512MiB
-# internode_application_receive_queue_capacity: 4MiB
-# internode_application_receive_queue_reserve_endpoint_capacity: 128MiB
-# internode_application_receive_queue_reserve_global_capacity: 512MiB
+internode_max_message_size: 32MiB
+internode_application_send_queue_capacity: 256MiB
+internode_application_send_queue_reserve_endpoint_capacity: 512MiB
+#internode_application_send_queue_reserve_global_capacity: 2048MiB
+internode_application_receive_queue_capacity: 256MiB
+internode_application_receive_queue_reserve_endpoint_capacity: 512MiB
+#internode_application_receive_queue_reserve_global_capacity: 2048MiB
 
 
 # How long before a node logs slow queries. Select queries that take longer than

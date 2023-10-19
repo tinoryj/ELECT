@@ -44,6 +44,7 @@ public enum Stage
 {
     // Set the parameters of ERASURECODE threadpool are the same as READ thread pool
     ERASURECODE       (false, "ErasureCodeStage",      "request",  DatabaseDescriptor::getConcurrentErasureCoders,  DatabaseDescriptor::setConcurrentErasureCoders,  Stage::multiThreadedLowSignalStage),
+    RECOVERY       (false, "RecoveryStage",      "request",  DatabaseDescriptor::getConcurrentRecovery,  DatabaseDescriptor::setConcurrentRecovery,  Stage::multiThreadedLowSignalStage),
     READ              (false, "ReadStage",             "request",  DatabaseDescriptor::getConcurrentReaders,        DatabaseDescriptor::setConcurrentReaders,        Stage::multiThreadedLowSignalStage),
     MUTATION          (true,  "MutationStage",         "request",  DatabaseDescriptor::getConcurrentWriters,        DatabaseDescriptor::setConcurrentWriters,        Stage::multiThreadedLowSignalStage),
     COUNTER_MUTATION  (true,  "CounterMutationStage",  "request",  DatabaseDescriptor::getConcurrentCounterWriters, DatabaseDescriptor::setConcurrentCounterWriters, Stage::multiThreadedLowSignalStage),

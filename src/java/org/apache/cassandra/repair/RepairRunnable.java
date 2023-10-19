@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -53,11 +54,15 @@ import org.apache.cassandra.cql3.UntypedResultSet;
 import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.ConsistencyLevel;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Keyspace;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.RepairException;
 import org.apache.cassandra.gms.FailureDetector;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
+import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.EndpointsForRange;
 import org.apache.cassandra.locator.InetAddressAndPort;
 import org.apache.cassandra.locator.Replica;
@@ -218,6 +223,12 @@ public class RepairRunnable implements Runnable, ProgressEventNotifier, RepairNo
             String duration = DurationFormatUtils.formatDurationWords(durationMillis, true, true);
             msg = String.format("Repair command #%d finished in %s", state.cmd, duration);
         }
+        logger.debug("ELECT-Debug: The repair task ({}) duration time is ({}), create Merkle tree time cost is ({}), compare Merkle tree time cost is ({}), receive data time cost is ({})",
+                     state.options.getPreviewKind().logPrefix(state.id),
+                     durationMillis,
+                     StorageService.instance.createMerkleTreeTime,
+                     StorageService.instance.compareMerkleTreeTime,
+                     StorageService.instance.repairTime);
 
         fireProgressEvent(jmxEvent(ProgressEventType.COMPLETE, msg));
         logger.info(state.options.getPreviewKind().logPrefix(state.id) + msg);
@@ -549,6 +560,26 @@ public class RepairRunnable implements Runnable, ProgressEventNotifier, RepairNo
                     si = si == 0 ? 1 : 0;
                     seen[si].clear();
                 }
+            }
+
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+
+            @Override
+            protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
+                    throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+            }
+            
+            @Override
+            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
             }
         });
     }

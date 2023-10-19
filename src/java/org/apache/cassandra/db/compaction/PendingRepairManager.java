@@ -38,11 +38,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.repair.consistent.admin.CleanupSummary;
@@ -445,7 +448,7 @@ class PendingRepairManager {
                     logger.info("Moving {} from pending to repaired with repaired at = {} and session id = {}",
                             transaction.originals(), repairedAt, sessionID);
                     cfs.getCompactionStrategyManager().mutateRepaired(transaction.originals(), repairedAt,
-                            ActiveRepairService.NO_PENDING_REPAIR, false, false);
+                            ActiveRepairService.NO_PENDING_REPAIR, false);
                 }
                 completed = true;
             } finally {
@@ -474,6 +477,40 @@ class PendingRepairManager {
         protected int executeInternal(ActiveCompactionsTracker activeCompactions) {
             run();
             return transaction.originals().size();
+        }
+
+
+        @Override
+        protected int executeInternal(ActiveCompactionsTracker activeCompactions,
+                List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'executeInternal'");
+        }
+
+        @Override
+        protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) throws Exception {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+        }
+
+        @Override
+        protected int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last,
+                ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'executeInternal'");
+        }
+
+        @Override
+        protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+        }
+
+        @Override
+        protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys)
+                throws Exception {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
         }
     }
 

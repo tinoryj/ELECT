@@ -21,6 +21,10 @@ package org.apache.cassandra.utils.concurrent;
 import static org.apache.cassandra.utils.Throwables.maybeFail;
 import static org.apache.cassandra.utils.Throwables.merge;
 
+import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * An abstraction for Transactional behaviour. An object implementing this interface has a lifetime
  * of the following pattern:
@@ -71,8 +75,11 @@ public interface Transactional extends AutoCloseable
             IN_PROGRESS,
             READY_TO_COMMIT,
             COMMITTED,
+            COMMITTED_FIRST_PHASE,
             ABORTED;
         }
+        
+        protected static final Logger logger = LoggerFactory.getLogger(AbstractTransactional.class);
 
         private State state = State.IN_PROGRESS;
 
@@ -82,6 +89,11 @@ public interface Transactional extends AutoCloseable
 
         protected abstract Throwable doCommit(Throwable accumulate);
         protected abstract Throwable doAbort(Throwable accumulate);
+
+        // [CASSANDRAEC]
+        protected abstract Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable);
+        protected Throwable doPostCleanup(Throwable accumulate, SSTableReader ecSSTable){ return accumulate; }
+
 
         // these only needs to perform cleanup of state unique to this instance; any internal
         // Transactional objects will perform cleanup in the commit() or abort() calls
@@ -103,6 +115,9 @@ public interface Transactional extends AutoCloseable
          */
         protected abstract void doPrepare();
 
+        // [CASSANDRAEC]
+        protected abstract void doPrepare(SSTableReader ecSSTable);
+
         /**
          * commit any effects of this transaction object graph, then cleanup; delegates first to doCommit, then to doCleanup
          */
@@ -112,6 +127,23 @@ public interface Transactional extends AutoCloseable
                 throw new IllegalStateException("Cannot commit unless READY_TO_COMMIT; state is " + state);
             accumulate = doCommit(accumulate);
             accumulate = doPostCleanup(accumulate);
+            state = State.COMMITTED;
+            return accumulate;
+        }
+
+        // [CASSANDRAEC]
+        public final Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite)
+        {
+            if(!isRewrite) {
+                state = State.READY_TO_COMMIT;
+            }
+            if (state != State.READY_TO_COMMIT) 
+                throw new IllegalStateException(String.format("Cannot commit unless READY_TO_COMMIT; state is {%s}, isRewrite {%s}", state, isRewrite));
+
+            logger.debug("ELECT-Debug: This is commitEC transaction ({})", ecSSTable.getSSTableHashID());
+            accumulate = doCommit(accumulate, ecSSTable);
+            accumulate = doPostCleanup(accumulate, ecSSTable);
+            logger.debug("ELECT-Debug: successful commit ec_metadata {}", ecSSTable.descriptor);
             state = State.COMMITTED;
             return accumulate;
         }
@@ -144,12 +176,14 @@ public interface Transactional extends AutoCloseable
         }
 
         // if we are committed or aborted, then we are done; otherwise abort
+        // [CASSANDRAEC]
         public final void close()
         {
             switch (state)
             {
                 case COMMITTED:
                 case ABORTED:
+                case COMMITTED_FIRST_PHASE:
                     break;
                 default:
                     abort();
@@ -181,6 +215,28 @@ public interface Transactional extends AutoCloseable
             return this;
         }
 
+        // [CASSANDRA]
+        public final void prepareToCommit(SSTableReader ecSSTable)
+        {
+            if (state != State.IN_PROGRESS)
+                throw new IllegalStateException("Cannot prepare to commit unless IN_PROGRESS; state is " + state);
+
+            doPrepare(ecSSTable);
+            // doPrepare();
+            maybeFail(doPreCleanup(null));
+            state = State.READY_TO_COMMIT;
+        }
+
+
+        // [CASSANDRAEC]
+        public Object finish(SSTableReader ecSSTable)
+        {
+            // prepareToCommit(ecSSTable);
+            prepareToCommit();
+            commitEC(ecSSTable);
+            return this;
+        }
+
         // convenience method wrapping abort, and throwing any exception encountered
         // only of use to (and to be used by) outer-most object in a transactional graph
         public final void abort()
@@ -195,6 +251,18 @@ public interface Transactional extends AutoCloseable
             maybeFail(commit(null));
         }
 
+        // [CASSANDRAEC]
+        public final void commitEC(SSTableReader ecSSTable)
+        {
+            maybeFail(commitEC(null, ecSSTable, true));
+        }
+
+
+        // [CASSANDRAEC]
+        public void updateState(){
+            state = State.READY_TO_COMMIT;
+        }
+
         public final State state()
         {
             return state;
@@ -207,6 +275,9 @@ public interface Transactional extends AutoCloseable
     // prepareToCommit, it MUST be executed before any other commit methods in the object graph
     Throwable commit(Throwable accumulate);
 
+    // [CASSANDRAEC]
+    Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite);
+
     // release any resources, then rollback all state changes (unless commit() has already been invoked)
     Throwable abort(Throwable accumulate);
 
@@ -214,4 +285,7 @@ public interface Transactional extends AutoCloseable
 
     // close() does not throw
     public void close();
+
+    // [CASSANDRAEC]
+    // public void updateState();
 }

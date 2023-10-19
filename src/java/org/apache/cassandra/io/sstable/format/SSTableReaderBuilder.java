@@ -43,6 +43,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -271,8 +272,12 @@ public abstract class SSTableReaderBuilder {
             String dataFilePath;
             boolean useECMetadataReplacedDataFlag = false;
             if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
+                // logger.debug("[ELECT] Find data path = {}",
+                // descriptor.filenameFor(Component.DATA));
                 dataFilePath = descriptor.filenameFor(Component.DATA);
             } else {
+                // logger.debug("[ELECT] Find EC metadata path = {}",
+                // descriptor.filenameFor(Component.EC_METADATA));
                 dataFilePath = descriptor.filenameFor(Component.EC_METADATA);
                 useECMetadataReplacedDataFlag = true;
             }
@@ -299,6 +304,7 @@ public abstract class SSTableReaderBuilder {
                     int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / summary.size());
                     ifile = ibuilder.bufferSize(indexBufferSize).complete();
                     dfile = dbuilder.bufferSize(dataBufferSize).complete();
+                    logger.debug("[ELECT] the new dfile is {}, data buffer size is {}", dfile, dataBufferSize);
                     bf = FilterFactory.AlwaysPresent;
 
                     SSTableReader sstable = readerFactory.open(this);
@@ -311,6 +317,8 @@ public abstract class SSTableReaderBuilder {
                 }
             } else {
                 // only EC_metadata file
+                // logger.debug("[ELECT] Only find ec metadata path = {}",
+                // descriptor.filenameFor(Component.DATA));
                 try (FileHandle.Builder ibuilder = new FileHandle.Builder(
                         descriptor.filenameFor(Component.PRIMARY_INDEX))
                         .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
@@ -327,6 +335,7 @@ public abstract class SSTableReaderBuilder {
                     int indexBufferSize = optimizationStrategy.bufferSize(indexFileLength / summary.size());
                     ifile = ibuilder.bufferSize(indexBufferSize).complete();
                     dfile = dbuilder.bufferSize(dataBufferSize).complete();
+                    logger.debug("[ELECT] the new dfile is {}, data buffer size is {}", dfile, dataBufferSize);
                     bf = FilterFactory.AlwaysPresent;
 
                     SSTableReader sstable = readerFactory.open(this);
@@ -373,8 +382,12 @@ public abstract class SSTableReaderBuilder {
         public SSTableReader build() {
             String dataFilePath;
             if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
+                // logger.debug("[ELECT] Find data path = {}",
+                // descriptor.filenameFor(Component.DATA));
                 dataFilePath = descriptor.filenameFor(Component.DATA);
             } else {
+                // logger.debug("[ELECT] Find ec metadata path = {}",
+                // descriptor.filenameFor(Component.EC_METADATA));
                 dataFilePath = descriptor.filenameFor(Component.EC_METADATA);
             }
             long fileLength = new File(dataFilePath).length();
@@ -447,7 +460,7 @@ public abstract class SSTableReaderBuilder {
                 DiskOptimizationStrategy optimizationStrategy,
                 StatsMetadata statsMetadata,
                 Set<Component> components) throws IOException {
-            if (!(new File(descriptor.filenameFor(Component.DATA)).exists())) {
+            if (Files.exists(Paths.get(descriptor.filenameFor(Component.DATA)))) {
                 try (FileHandle.Builder ibuilder = new FileHandle.Builder(
                         descriptor.filenameFor(Component.PRIMARY_INDEX))
                         .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
@@ -471,7 +484,7 @@ public abstract class SSTableReaderBuilder {
                     }
 
                     dfile = dbuilder.bufferSize(dataBufferSize).complete();
-
+                    logger.debug("[ELECT] the new dfile is {}, data buffer size is {}", dfile, dataBufferSize);
                     if (buildSummary) {
                         if (saveSummaryIfCreated)
                             SSTableReader.saveSummary(descriptor, first, last, summary);
@@ -494,8 +507,10 @@ public abstract class SSTableReaderBuilder {
 
                     throw t;
                 }
-            } else if (!(new File(descriptor.filenameFor(Component.EC_METADATA)).exists())) {
+            } else if (Files.exists(Paths.get(descriptor.filenameFor(Component.EC_METADATA)))) {
                 // No data file, this sst may be changed to ec metadata
+                // logger.debug("[ELECT] Find only ec metadata path = {}",
+                // descriptor.filenameFor(Component.EC_METADATA));
                 try (FileHandle.Builder ibuilder = new FileHandle.Builder(
                         descriptor.filenameFor(Component.PRIMARY_INDEX))
                         .mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap)
@@ -516,6 +531,7 @@ public abstract class SSTableReaderBuilder {
                     }
 
                     dfile = dbuilder.bufferSize(dataBufferSize).complete();
+                    logger.debug("[ELECT] the new dfile is {}, data buffer size is {}", dfile, dataBufferSize);
 
                 } catch (Throwable t) { // Because the tidier has not been set-up yet in SSTableReader.open(), we must
                                         // release the files in case of error

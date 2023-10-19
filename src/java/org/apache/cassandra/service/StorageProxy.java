@@ -17,6 +17,10 @@
  */
 package org.apache.cassandra.service;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,8 +49,10 @@ import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.Uninterruptibles;
 
 import org.apache.cassandra.config.Config;
+import org.apache.cassandra.service.BatchlogResponseHandler.BatchlogCleanup;
+import org.apache.cassandra.service.StorageProxy.PaxosBallotAndContention;
+import org.apache.cassandra.service.StorageProxy.WritePerformer;
 import org.apache.cassandra.service.paxos.*;
-import org.apache.cassandra.service.paxos.Paxos;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.concurrent.CountDownLatch;
 
@@ -81,6 +87,7 @@ import org.apache.cassandra.db.partitions.PartitionIterators;
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 import org.apache.cassandra.db.partitions.UnfilteredPartitionIterator;
 import org.apache.cassandra.db.rows.RowIterator;
+import org.apache.cassandra.db.rows.UnfilteredRowIterator;
 import org.apache.cassandra.db.view.ViewUtils;
 import org.apache.cassandra.dht.Token;
 import org.apache.cassandra.exceptions.CasWriteTimeoutException;
@@ -102,6 +109,7 @@ import org.apache.cassandra.gms.Gossiper;
 import org.apache.cassandra.hints.Hint;
 import org.apache.cassandra.hints.HintsService;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.locator.AbstractReplicationStrategy;
 import org.apache.cassandra.locator.EndpointsForToken;
 import org.apache.cassandra.locator.IEndpointSnitch;
@@ -134,6 +142,7 @@ import org.apache.cassandra.service.reads.range.RangeCommands;
 import org.apache.cassandra.service.reads.repair.ReadRepair;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.triggers.TriggerExecutor;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Clock;
 import org.apache.cassandra.utils.FBUtilities;
 import org.apache.cassandra.utils.MBeanWrapper;
@@ -169,6 +178,20 @@ import static org.apache.cassandra.utils.concurrent.CountDownLatch.newCountDownL
 import static org.apache.commons.lang3.StringUtils.join;
 
 public class StorageProxy implements StorageProxyMBean {
+
+    // Reset
+    public static final String RESET = "\033[0m"; // Text Reset
+
+    // Regular Colors
+    public static final String WHITE = "\033[0;30m"; // WHITE
+    public static final String RED = "\033[0;31m"; // RED
+    public static final String GREEN = "\033[0;32m"; // GREEN
+    public static final String YELLOW = "\033[0;33m"; // YELLOW
+    public static final String BLUE = "\033[0;34m"; // BLUE
+    public static final String PURPLE = "\033[0;35m"; // PURPLE
+    public static final String CYAN = "\033[0;36m"; // CYAN
+    public static final String GREY = "\033[0;37m"; // GREY
+
     public static final String MBEAN_NAME = "org.apache.cassandra.db:type=StorageProxy";
     private static final Logger logger = LoggerFactory.getLogger(StorageProxy.class);
 
@@ -353,6 +376,7 @@ public class StorageProxy implements StorageProxyMBean {
             long queryStartNanoTime)
             throws UnavailableException, IsBootstrappingException, RequestFailureException, RequestTimeoutException,
             InvalidRequestException {
+        // logger.debug("[ELECT] legacyCas read command to column family {}", cfName);
         final long startTimeForMetrics = nanoTime();
         try {
             TableMetadata metadata = Schema.instance.validateTable(keyspaceName, cfName);
@@ -1459,24 +1483,6 @@ public class StorageProxy implements StorageProxyMBean {
             String localDataCenter,
             Stage stage)
             throws OverloadedException {
-
-        /*
-         * The following is ECMessage test code
-         */
-        
-        String ks = mutation.getKeyspaceName();
-        String table = mutation.getTableName(mutation.getTableIds().iterator().next());
-        String key = mutation.getKeyName();
-        ECMessage ecMessage = new ECMessage(mutation.toString(), ks, table, key, "",
-                "");
-        logger.debug("rymDebug: the test message is: {}", ecMessage);
-        try {
-            ecMessage.sendSelectedSSTables();
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-
         ////////////////////////////////////////////////////////////////////////////////
         // this dc replicas:
         Collection<Replica> localDc = null;
@@ -1491,7 +1497,23 @@ public class StorageProxy implements StorageProxyMBean {
 
         List<InetAddressAndPort> backPressureHosts = null;
 
+        // logger.debug(BLUE+"ELECT-Debug: get replica destinations: {}",
+        // plan.contacts().endpointList()+RESET);
+
+        // List<InetAddressAndPort> replicas = plan.contacts().endpointList();
+
+        // List<InetAddressAndPort> naturalEndpoints = StorageService.instance
+        // .getNaturalEndpointsForCassandraEC(mutation.getKeyspaceName(),
+        // mutation.key().getKey());
+        // List<InetAddressAndPort> address = StorageService.instance
+        // .getReplicaNodesWithPortFromTokenForDegradeRead(mutation.getKeyspaceName(),
+        // mutation.key().getToken());
+        // ECNetutils.checkTheReplicaPlanIsEqualsToNaturalEndpoint(plan, address,
+        // mutation.key().getToken());
+
         for (Replica destination : plan.contacts()) {
+            // logger.debug(YELLOW+"ELECT-Debug: get replica destinations: {}",
+            // destination.endpoint()+RESET);
             checkHintOverload(destination);
 
             if (plan.isAlive(destination)) {
@@ -1542,17 +1564,77 @@ public class StorageProxy implements StorageProxyMBean {
             }
         }
 
-        if (endpointsToHint != null)
+        if (endpointsToHint != null) {
+            // if(keyspaceName.equals("ycsb")) {
+            // for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+            // String fileName = "endpointsToHint";
+            // try {
+            // FileWriter writer = new FileWriter("logs/" + fileName, true);
+            // BufferedWriter buffer = new BufferedWriter(writer);
+            // buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+            // buffer.close();
+            // } catch (IOException e) {
+            // // TODO Auto-generated catch block
+            // e.printStackTrace();
+            // }
+
+            // }
+            // }
             submitHint(mutation, EndpointsForToken.copyOf(mutation.key().getToken(), endpointsToHint), responseHandler);
+        }
 
         if (insertLocal) {
+            // if(keyspaceName.equals("ycsb")) {
+            // for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+            // String fileName = "sendKeysLocal";
+            // try {
+            // FileWriter writer = new FileWriter("logs/" + fileName, true);
+            // BufferedWriter buffer = new BufferedWriter(writer);
+            // buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+            // buffer.close();
+            // } catch (IOException e) {
+            // // TODO Auto-generated catch block
+            // e.printStackTrace();
+            // }
+
+            // }
+            // }
+
             Preconditions.checkNotNull(localReplica);
             performLocally(stage, localReplica, mutation::apply, responseHandler);
         }
 
         if (localDc != null) {
-            for (Replica destination : localDc)
+            for (Replica destination : localDc) {
+                // if(keyspaceName.equals("ycsb")) {
+                // for(PartitionUpdate upd : mutation.getPartitionUpdates()) {
+                // String fileName = "sendKeysRemote";
+                // try {
+                // FileWriter writer = new FileWriter("logs/" + fileName, true);
+                // BufferedWriter buffer = new BufferedWriter(writer);
+                // buffer.write(upd.partitionKey().getRawKey(upd.metadata()) + "\n");
+                // buffer.close();
+                // } catch (IOException e) {
+                // // TODO Auto-generated catch block
+                // e.printStackTrace();
+                // }
+
+                // String key = upd.partitionKey().getRawKey(upd.metadata());
+                // List<InetAddressAndPort> eps =
+                // StorageService.instance.getReplicaNodesWithPort(keyspaceName,
+                // upd.metadata().name, key);
+                // if(!eps.contains(destination.endpoint())||eps.indexOf(destination.endpoint())==0)
+                // {
+                // // logger.debug(RED+"ELECT-Debug: destination [{}] is wrong, correct is {} key
+                // is {}, local address is {}",
+                // // destination.endpoint()+RESET, eps+RESET, key,
+                // FBUtilities.getBroadcastAddressAndPort()+RESET);
+                // }
+
+                // }
+                // }
                 MessagingService.instance().sendWriteWithCallback(message, destination, responseHandler, true);
+            }
         }
         if (dcGroups != null) {
             // for each datacenter, send the message to one node to relay the write to other
@@ -2019,11 +2101,15 @@ public class StorageProxy implements StorageProxyMBean {
      * 4. If the digests (if any) match the data return the data
      * 5. else carry out read repair by getting data from all the nodes.
      */
+    public static void printStackTace(String msg) {
+        logger.debug("stack trace {}", new Exception(msg));
+    }
+
     private static PartitionIterator fetchRows(List<SinglePartitionReadCommand> commands,
             ConsistencyLevel consistencyLevel, long queryStartNanoTime)
             throws UnavailableException, ReadFailureException, ReadTimeoutException {
         int cmdCount = commands.size();
-
+        // logger.debug("[ELECT] total read command count: {}", cmdCount);
         AbstractReadExecutor[] reads = new AbstractReadExecutor[cmdCount];
 
         // Get the replica locations, sorted by response time according to the snitch,
@@ -2043,6 +2129,7 @@ public class StorageProxy implements StorageProxyMBean {
         // read executoe, we'll only send read requests to enough replicas to satisfy
         // the consistency level
         for (int i = 0; i < cmdCount; i++) {
+            // the command we'll actually query the replica
             reads[i].executeAsync();
         }
 
@@ -2050,10 +2137,9 @@ public class StorageProxy implements StorageProxyMBean {
         // response from the initial
         // set of replicas we sent messages to, speculatively send an additional
         // messages to an un-contacted replica
-        for (int i = 0; i < cmdCount; i++) {
-            reads[i].maybeTryAdditionalReplicas();
-        }
-
+        // for (int i = 0; i < cmdCount; i++) {
+        // reads[i].maybeTryAdditionalReplicas();
+        // }
         // wait for enough responses to meet the consistency level. If there's a digest
         // mismatch, begin the read
         // repair process by sending full data reads to all replicas we received
@@ -2115,13 +2201,50 @@ public class StorageProxy implements StorageProxyMBean {
                         DatabaseDescriptor.getSlowQueryTimeout(NANOSECONDS));
 
                 ReadResponse response;
+                // Token tokenForRead = (command instanceof SinglePartitionReadCommand
+                // ? ((SinglePartitionReadCommand) command).partitionKey().getToken()
+                // : ((PartitionRangeReadCommand)
+                // command).dataRange().keyRange.left.getToken());
                 try (ReadExecutionController controller = command.executionController(trackRepairedStatus);
                         UnfilteredPartitionIterator iterator = command.executeLocally(controller)) {
-                    response = command.createResponse(iterator, controller.getRepairedDataInfo());
+                    if (iterator == null) {
+                        // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
+                        // false) {
+                        // logger.error(
+                        // "[ELECT-ERROR] For key token = {}, with data query, Local Could not get
+                        // response from table {}",
+                        // tokenForRead,
+                        // command.metadata().name, FBUtilities.getBroadcastAddressAndPort());
+                        // }
+                        response = command.createEmptyResponse();
+                    } else {
+                        response = command.createResponse(iterator, controller.getRepairedDataInfo());
+                        // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
+                        // false) {
+                        // ByteBuffer newDigest = response.digest(command);
+                        // String digestStr = "0x" + ByteBufferUtil.bytesToHex(newDigest);
+                        // if (digestStr.equals("0xd41d8cd98f00b204e9800998ecf8427e")) {
+                        // logger.error(
+                        // "[ELECT-ERROR] For key token = {}, with data query, Local Could not get
+                        // non-empty response from table {}, address = {}, {}, response = {}",
+                        // tokenForRead,
+                        // command.metadata().name, FBUtilities.getBroadcastAddressAndPort(),
+                        // "Digest:0x" + ByteBufferUtil.bytesToHex(newDigest), response);
+                        // }
+                        // }
+                    }
                 } catch (RejectException e) {
-                    if (!command.isTrackingWarnings())
+                    // if (command.metadata().keyspace.equals("ycsb") && command.isDigestQuery() ==
+                    // false) {
+                    // logger.error(
+                    // "[ELECT-ERROR] For key token = {}, with data query, Local try to read from
+                    // {} in keyspace {}, key not found, created empty response",
+                    // tokenForRead,
+                    // command.metadata().name, command.metadata().keyspace);
+                    // }
+                    if (!command.isTrackingWarnings()) {
                         throw e;
-
+                    }
                     response = command.createEmptyResponse();
                     readRejected = true;
                 }

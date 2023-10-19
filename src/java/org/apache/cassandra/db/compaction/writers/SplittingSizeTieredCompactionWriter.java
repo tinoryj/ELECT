@@ -106,7 +106,6 @@ public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter {
                 minRepairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 cfs.metadata,
                 new MetadataCollector(allSSTables, cfs.metadata().comparator, 0),
                 SerializationHeader.make(cfs.metadata(), nonExpiredSSTables),
@@ -119,5 +118,11 @@ public class SplittingSizeTieredCompactionWriter extends CompactionAwareWriter {
     @Override
     protected long getExpectedWriteSize() {
         return Math.round(totalSize * ratios[currentRatioIndex]);
+    }
+
+    @Override
+    protected boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'realAppend'");
     }
 }

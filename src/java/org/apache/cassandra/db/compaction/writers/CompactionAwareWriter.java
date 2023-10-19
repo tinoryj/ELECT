@@ -56,7 +56,6 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     protected final long minRepairedAt;
     protected final TimeUUID pendingRepair;
     protected final boolean isTransient;
-    protected final boolean isReplicationTransferredToErasureCoding;
 
     protected final SSTableRewriter sstableWriter;
     protected final LifecycleTransaction txn;
@@ -80,8 +79,6 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         minRepairedAt = CompactionTask.getMinRepairedAt(nonExpiredSSTables);
         pendingRepair = CompactionTask.getPendingRepair(nonExpiredSSTables);
         isTransient = CompactionTask.getIsTransient(nonExpiredSSTables);
-        isReplicationTransferredToErasureCoding = CompactionTask
-                .getIsReplicationTransferredToErasureCoding(nonExpiredSSTables);
         DiskBoundaries db = cfs.getDiskBoundaries();
         diskBoundaries = db.positions;
         locations = db.directories;
@@ -99,10 +96,23 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     }
 
     @Override
+    protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+        return sstableWriter.commitEC(accumulate, ecSSTable, true);
+    }
+
+    @Override
     protected void doPrepare() {
         sstableWriter.prepareToCommit();
     }
 
+    // [CASSANDRAEC]
+    protected void doPrepare(SSTableReader ecSSTable) {
+        sstableWriter.prepareToCommit(ecSSTable);
+    }
+
+    public SSTableRewriter getSSTableWriter() {
+        return sstableWriter;
+    }
     /**
      * we are done, return the finished sstables so that the caller can mark the old
      * ones as compacted
@@ -112,6 +122,12 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     @Override
     public Collection<SSTableReader> finish() {
         super.finish();
+        return sstableWriter.finished();
+    }
+
+    // [CASSANDRAEC]
+    public Collection<SSTableReader> finish(SSTableReader ecSSTable) {
+        super.finish(ecSSTable);
         return sstableWriter.finished();
     }
 
@@ -133,13 +149,29 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         return realAppend(partition);
     }
 
+    // [CASSANDRAEC]
+    public final boolean append(UnfilteredRowIterator partition, boolean isSwitchWriter) {
+        maybeSwitchWriter(partition.partitionKey());
+        return realAppend(partition, isSwitchWriter);
+    }
+
     @Override
     protected Throwable doPostCleanup(Throwable accumulate) {
         sstableWriter.close();
         return super.doPostCleanup(accumulate);
     }
 
+    // [CASSANDRAEC]
+    @Override
+    protected Throwable doPostCleanup(Throwable accumulate, SSTableReader ecSSTable) {
+        sstableWriter.close();
+        return super.doPostCleanup(accumulate);
+    }
+    
     protected abstract boolean realAppend(UnfilteredRowIterator partition);
+
+    // [CASSANDRAEC]
+    protected abstract boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter);
 
     /**
      * Guaranteed to be called before the first call to realAppend.
@@ -168,7 +200,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
                     locations.get(locationIndex));
         switchCompactionLocation(locations.get(locationIndex));
     }
-
+    
     /**
      * Implementations of this method should finish the current sstable writer and
      * start writing to this directory.

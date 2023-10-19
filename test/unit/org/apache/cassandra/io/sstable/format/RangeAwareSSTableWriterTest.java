@@ -75,7 +75,6 @@ public class RangeAwareSSTableWriterTest {
                 0,
                 null,
                 false,
-                false,
                 SSTableFormat.Type.BIG,
                 0,
                 0,

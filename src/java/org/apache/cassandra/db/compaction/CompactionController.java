@@ -212,7 +212,9 @@ public class CompactionController extends AbstractCompactionController
         while (iterator.hasNext())
         {
             SSTableReader candidate = iterator.next();
-            if (candidate.getMaxTimestamp() >= minTimestamp)
+            if (candidate.getMaxTimestamp() >= minTimestamp ||
+                candidate.isReplicationTransferredToErasureCoding() // [CASSANDRAEC]
+             )
             {
                 iterator.remove();
             }
@@ -337,7 +339,8 @@ public class CompactionController extends AbstractCompactionController
      */
     protected boolean ignoreOverlaps()
     {
-        return false;
+        boolean ignoreOverlaps = false;
+        return ignoreOverlaps;
     }
 
     private FileDataInput openDataFile(SSTableReader reader)

@@ -117,12 +117,12 @@ public class CompactionManagerGetSSTablesForValidationTest {
 
         repaired = iter.next();
         repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor,
-                System.currentTimeMillis(), null, false, false);
+                System.currentTimeMillis(), null, false);
         repaired.reloadSSTableMetadata();
 
         pendingRepair = iter.next();
         pendingRepair.descriptor.getMetadataSerializer().mutateRepairMetadata(pendingRepair.descriptor,
-                ActiveRepairService.UNREPAIRED_SSTABLE, sessionID, false, false);
+                ActiveRepairService.UNREPAIRED_SSTABLE, sessionID, false);
         pendingRepair.reloadSSTableMetadata();
 
         unrepaired = iter.next();

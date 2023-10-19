@@ -97,6 +97,7 @@ public abstract class SSTable {
     protected final DiskOptimizationStrategy optimizationStrategy;
     protected final TableMetadataRef metadata;
     protected static boolean isDataRemovedByRedundancyTransionFlag;
+    protected static boolean isDataMigrateToCloud;
 
     protected SSTable(Descriptor descriptor, Set<Component> components, TableMetadataRef metadata,
             DiskOptimizationStrategy optimizationStrategy) {
@@ -112,7 +113,8 @@ public abstract class SSTable {
         this.components = new CopyOnWriteArraySet<>(dataComponents);
         this.metadata = metadata;
         this.optimizationStrategy = Objects.requireNonNull(optimizationStrategy);
-        isDataRemovedByRedundancyTransionFlag = false;
+        this.isDataRemovedByRedundancyTransionFlag = false;
+        this.isDataMigrateToCloud = false;
     }
 
     @VisibleForTesting
@@ -154,19 +156,17 @@ public abstract class SSTable {
     /**
      * @return true if the file was deleted
      */
-    public static boolean deleteComponentOnlyData(Descriptor desc, Set<Component> components) {
-        logger.info("Deleting sstable: {}", desc);
+    @Deprecated
+    public static boolean deleteComponentOnlyData(Descriptor desc, String sstableHash) {
+        logger.info("Deleting sstable: {}, hash is {}", desc, sstableHash);
         // remove the DATA component first if it exists
-        if (components.contains(Component.DATA)) {
+        try {
             FileUtils.deleteWithConfirm(desc.filenameFor(Component.DATA));
-        } else {
-            if (components.contains(Component.EC_METADATA)) {
-                FileUtils.deleteWithConfirm(desc.filenameFor(Component.EC_METADATA));
-            } else {
-                logger.error("## deleteComponentOnlyData: no DATA or EC_METADATA component found");
-            }
+            isDataRemovedByRedundancyTransionFlag = true;
+            logger.info("Successful delete sstable: {}", desc);
+        } catch (Exception e) {
+            // TODO: handle exception
         }
-        isDataRemovedByRedundancyTransionFlag = true;
         return true;
     }
 
@@ -174,26 +174,36 @@ public abstract class SSTable {
         return metadata.get();
     }
 
+    public void updateDataRedundancyTransionFlagToTrue() {
+        isDataRemovedByRedundancyTransionFlag = true;
+    }
+
+    public void updateDataMigrationFlagToTrue() {
+        isDataMigrateToCloud = true;
+    }
+    
     public IPartitioner getPartitioner() {
         return metadata().partitioner;
     }
 
-    public List<InetAddressAndPort> getRelicaNodes(String keyspaceName) {
-        Token token = metadata.get().partitioner.getRandomToken();
-        EndpointsForToken replicas = Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
-        List<InetAddressAndPort> replicaNodes = new ArrayList<>(replicas.size());
-        replicas.forEach(r -> {
-            try {
-                replicaNodes.add(InetAddressAndPort.getByName(r.endpoint().getHostAddress(true)));
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            }
-        });
-        return replicaNodes;
-    }
+    // public List<InetAddressAndPort> getRelicaNodes(String keyspaceName) {
+    // // TODO: get correct replica nodes
+    // Token token = first.getToken();
+    // //Token token = metadata.get().partitioner.getMinimumToken();
+    // EndpointsForToken replicas =
+    // Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalReplicasForToken(token);
+    // List<InetAddressAndPort> replicaNodes = new ArrayList<>(replicas.size());
+    // replicas.forEach(r -> {
+    // try {
+    // replicaNodes.add(InetAddressAndPort.getByName(r.endpoint().getHostAddress(true)));
+    // } catch (UnknownHostException e) {
+    // e.printStackTrace();
+    // }
+    // });
+    // return replicaNodes;
+    // }
 
-    public DecoratedKey decorateKey(ByteBuffer key)
-    {
+    public DecoratedKey decorateKey(ByteBuffer key) {
         return getPartitioner().decorateKey(key);
     }
 
@@ -209,7 +219,7 @@ public abstract class SSTable {
     }
 
     public String getFilename() {
-        if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
+        if (isDataRemovedByRedundancyTransionFlag == false) {
             return descriptor.filenameFor(Component.DATA);
         } else {
             return descriptor.filenameFor(Component.EC_METADATA);
@@ -229,13 +239,12 @@ public abstract class SSTable {
         return descriptor.ksname;
     }
 
-    public String getSSTContent() throws IOException
-    {
+    public byte[] getSSTContent() throws IOException {
         String fileName = descriptor.filenameFor(Component.DATA);
         File file = new File(fileName);
         long fileLength = file.length();
         FileInputStream fileStream = new FileInputStream(fileName);
-        byte[] buffer = new byte[(int)fileLength];
+        byte[] buffer = new byte[(int) fileLength];
         int offset = 0;
         int numRead = 0;
         while (offset < buffer.length && (numRead = fileStream.read(buffer, offset, buffer.length - offset)) >= 0) {
@@ -245,14 +254,12 @@ public abstract class SSTable {
             throw new IOException(String.format("Could not read %s, only read %d bytes", fileName, offset));
         }
         fileStream.close();
-        
-        String sstContent = new String(buffer);
 
-        return sstContent;
+        // return ByteBuffer.wrap(buffer);
+        return buffer;
     }
 
-    public List<String> getAllFilePaths()
-    {
+    public List<String> getAllFilePaths() {
         List<String> ret = new ArrayList<>(components.size());
         for (Component component : components)
             ret.add(descriptor.filenameFor(component));

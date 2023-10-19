@@ -256,13 +256,13 @@ public class SSTableImporter {
     private void moveSSTablesBack(Set<MovedSSTable> movedSSTables) {
         for (MovedSSTable movedSSTable : movedSSTables) {
             if (new File(movedSSTable.newDescriptor.filenameFor(Component.DATA)).exists()) {
-                logger.debug("Moving sstable {} back to {}", movedSSTable.newDescriptor.filenameFor(Component.DATA),
-                        movedSSTable.oldDescriptor.filenameFor(Component.DATA));
+                // logger.debug("[ELECT] Moving sstable {} back to {}", movedSSTable.newDescriptor.filenameFor(Component.DATA),
+                //         movedSSTable.oldDescriptor.filenameFor(Component.DATA));
                 SSTableWriter.rename(movedSSTable.newDescriptor, movedSSTable.oldDescriptor, movedSSTable.components);
             } else if (new File(movedSSTable.newDescriptor.filenameFor(Component.EC_METADATA)).exists()) {
-                logger.debug("Moving sstable {} back to {}",
-                        movedSSTable.newDescriptor.filenameFor(Component.EC_METADATA),
-                        movedSSTable.oldDescriptor.filenameFor(Component.EC_METADATA));
+                // logger.debug("[ELECT] Moving sstable {} back to {}",
+                //         movedSSTable.newDescriptor.filenameFor(Component.EC_METADATA),
+                //         movedSSTable.oldDescriptor.filenameFor(Component.EC_METADATA));
                 SSTableWriter.rename(movedSSTable.newDescriptor, movedSSTable.oldDescriptor, movedSSTable.components);
             }
         }
@@ -348,7 +348,6 @@ public class SSTableImporter {
                 descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor,
                         ActiveRepairService.UNREPAIRED_SSTABLE,
                         null,
-                        false,
                         false);
             }
         }

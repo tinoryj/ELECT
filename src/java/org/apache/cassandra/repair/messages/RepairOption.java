@@ -55,7 +55,7 @@ public class RepairOption
     public static final String PAXOS_ONLY_KEY = "paxosOnly";
 
     // we don't want to push nodes too much for repair
-    public static final int MAX_JOB_THREADS = 4;
+    public static final int MAX_JOB_THREADS = 32;
 
     private static final Logger logger = LoggerFactory.getLogger(RepairOption.class);
 

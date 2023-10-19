@@ -39,8 +39,12 @@ import org.apache.cassandra.io.sstable.metadata.MetadataCollector;
 import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.TimeUUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CompactionStrategyHolder extends AbstractStrategyHolder {
+    private static final Logger logger = LoggerFactory.getLogger(CompactionStrategyHolder.class);
+
     private final List<AbstractCompactionStrategy> strategies = new ArrayList<>();
     private final boolean isRepaired;
 
@@ -67,8 +71,8 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder {
     }
 
     @Override
-    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+    public boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient
+            ) {
         if (!isPendingRepair) {
             Preconditions.checkArgument(!isTransient, "isTransient can only be true for sstables pending repairs");
             return this.isRepaired == isRepaired;
@@ -164,6 +168,7 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder {
     @SuppressWarnings("resource")
     public List<ISSTableScanner> getScanners(GroupedSSTableContainer sstables, Collection<Range<Token>> ranges) {
         List<ISSTableScanner> scanners = new ArrayList<>(strategies.size());
+        // logger.debug("ELECT-Debug: CompactionStrategyHolder.getscanner4");
         for (int i = 0; i < strategies.size(); i++) {
             if (sstables.isGroupEmpty(i))
                 continue;
@@ -195,7 +200,6 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             MetadataCollector collector,
             SerializationHeader header,
             Collection<Index> indexes,
@@ -217,7 +221,6 @@ public class CompactionStrategyHolder extends AbstractStrategyHolder {
                 repairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 collector,
                 header,
                 indexes,

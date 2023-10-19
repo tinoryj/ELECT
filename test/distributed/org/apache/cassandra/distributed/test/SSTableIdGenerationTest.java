@@ -464,7 +464,7 @@ public class SSTableIdGenerationTest extends TestBaseImpl
     private static void verfiySSTableActivity(Cluster cluster, boolean expectLegacyTableIsPopulated)
     {
         cluster.get(1).runOnInstance(() -> {
-            RestorableMeter meter = new RestorableMeter(15, 120);
+            RestorableMeter meter = new RestorableMeter(15, 120, 0.0);
             SequenceBasedSSTableId seqGenId = new SequenceBasedSSTableId(1);
             SystemKeyspace.persistSSTableReadMeter("ks", "tab", seqGenId, meter);
             assertThat(SystemKeyspace.getSSTableReadMeter("ks", "tab", seqGenId)).matches(m -> m.fifteenMinuteRate() == meter.fifteenMinuteRate()

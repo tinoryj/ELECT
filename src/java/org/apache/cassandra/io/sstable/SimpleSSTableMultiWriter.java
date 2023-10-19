@@ -98,15 +98,26 @@ public class SimpleSSTableMultiWriter implements SSTableMultiWriter {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             TableMetadataRef metadata,
             MetadataCollector metadataCollector,
             SerializationHeader header,
             Collection<Index> indexes,
             LifecycleNewTracker lifecycleNewTracker) {
         SSTableWriter writer = SSTableWriter.create(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, metadata, metadataCollector, header, indexes,
+                 metadata, metadataCollector, header, indexes,
                 lifecycleNewTracker);
         return new SimpleSSTableMultiWriter(writer, lifecycleNewTracker);
     }
+
+    @Override
+    public Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'commitEC'");
+    }
+
+    // @Override
+    // public void updateState() {
+    //     // TODO Auto-generated method stub
+    //     throw new UnsupportedOperationException("Unimplemented method 'updateState'");
+    // }
 }

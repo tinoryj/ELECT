@@ -12,24 +12,31 @@ extern "C" {
  * Method:    initImpl
  * Signature: (II)V
  */
-JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSEncoder_initImpl
-  (JNIEnv *, jobject, jint, jint);
+JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSEncoder_initImpl(JNIEnv*, jobject, jint, jint);
 
 /*
  * Class:     org_apache_cassandra_io_erasurecode_NativeRSEncoder
  * Method:    encodeImpl
  * Signature: ([Ljava/nio/ByteBuffer;[II[Ljava/nio/ByteBuffer;[I)V
  */
-JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSEncoder_encodeImpl
-  (JNIEnv *, jobject, jobjectArray, jintArray, jint, jobjectArray, jintArray);
+JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSEncoder_encodeImpl(JNIEnv*, jobject, jobjectArray, jintArray, jint, jobjectArray, jintArray);
+
+/*
+ * Class:     org_apache_cassandra_io_erasurecode_NativeRSEncoder
+ * Method:    encodeUpdateImpl
+ * Signature: ([Ljava/nio/ByteBuffer;[II[Ljava/nio/ByteBuffer;[I)V
+ */
+JNIEXPORT void JNICALL
+Java_org_apache_cassandra_io_erasurecode_NativeRSEncoder_encodeUpdateImpl(
+    JNIEnv* env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
+    jint dataLen, jint targetUpdateDataIndex, jobjectArray outputs, jintArray outputOffsets);
 
 /*
  * Class:     org_apache_cassandra_io_erasurecode_NativeRSEncoder
  * Method:    destroyImpl
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSEncoder_destroyImpl
-  (JNIEnv *, jobject);
+JNIEXPORT void JNICALL Java_org_apache_cassandra_io_erasurecode_NativeRSEncoder_destroyImpl(JNIEnv*, jobject);
 
 #ifdef __cplusplus
 }

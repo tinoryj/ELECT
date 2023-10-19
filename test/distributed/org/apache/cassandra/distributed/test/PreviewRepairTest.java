@@ -420,7 +420,7 @@ public class PreviewRepairTest extends TestBaseImpl {
             ColumnFamilyStore cfs = Keyspace.open(KEYSPACE).getColumnFamilyStore(table);
             try {
                 cfs.getCompactionStrategyManager().mutateRepaired(cfs.getLiveSSTables(),
-                        ActiveRepairService.UNREPAIRED_SSTABLE, null, false, false);
+                        ActiveRepairService.UNREPAIRED_SSTABLE, null, false);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

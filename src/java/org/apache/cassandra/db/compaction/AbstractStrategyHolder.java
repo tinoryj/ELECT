@@ -77,7 +77,7 @@ public abstract class AbstractStrategyHolder {
      */
     public static class GroupedSSTableContainer {
         private final AbstractStrategyHolder holder;
-        private final Set<SSTableReader>[] groups;
+        public final Set<SSTableReader>[] groups;
 
         private GroupedSSTableContainer(AbstractStrategyHolder holder) {
             this.holder = holder;
@@ -149,12 +149,10 @@ public abstract class AbstractStrategyHolder {
      * isRepaired/isPendingRepair combo,
      * none of the others should.
      */
-    public abstract boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding);
+    public abstract boolean managesRepairedGroup(boolean isRepaired, boolean isPendingRepair, boolean isTransient);
 
     public boolean managesSSTable(SSTableReader sstable) {
-        return managesRepairedGroup(sstable.isRepaired(), sstable.isPendingRepair(), sstable.isTransient(),
-                sstable.isReplicationTransferredToErasureCoding());
+        return managesRepairedGroup(sstable.isRepaired(), sstable.isPendingRepair(), sstable.isTransient());
     }
 
     public abstract AbstractCompactionStrategy getStrategyFor(SSTableReader sstable);
@@ -186,7 +184,6 @@ public abstract class AbstractStrategyHolder {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             MetadataCollector collector,
             SerializationHeader header,
             Collection<Index> indexes,

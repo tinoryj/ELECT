@@ -20,56 +20,63 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "jni_common.h"
 #include "NativeRSDecoder.h"
+#include "jni_common.h"
 
 typedef struct _RSDecoder {
-  IsalDecoder decoder;
-  unsigned char* inputs[MMAX];
-  unsigned char* outputs[MMAX];
+    IsalDecoder decoder;
+    unsigned char* inputs[MMAX];
+    unsigned char* outputs[MMAX];
 } RSDecoder;
 
 JNIEXPORT void JNICALL
 Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_initImpl(
-    JNIEnv *env, jobject thiz, jint numDataUnits, jint numParityUnits) {
-  RSDecoder* rsDecoder = (RSDecoder*)malloc(sizeof(RSDecoder));
-  memset(rsDecoder, 0, sizeof(*rsDecoder));
-  initDecoder(&rsDecoder->decoder, (int)numDataUnits, (int)numParityUnits);
+    JNIEnv* env, jobject thiz, jint numDataUnits, jint numParityUnits)
+{
+    RSDecoder* rsDecoder = (RSDecoder*)malloc(sizeof(RSDecoder));
+    memset(rsDecoder, 0, sizeof(*rsDecoder));
+    initDecoder(&rsDecoder->decoder, (int)numDataUnits, (int)numParityUnits);
 
-  setCoder(env, thiz, &rsDecoder->decoder.coder);
+    setCoder(env, thiz, &rsDecoder->decoder.coder);
 }
 
 JNIEXPORT void JNICALL
 Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_decodeImpl(
-    JNIEnv *env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
-    jint dataLen, jintArray erasedIndexes, jobjectArray outputs,
-    jintArray outputOffsets) {
-  RSDecoder* rsDecoder = (RSDecoder*)getCoder(env, thiz);
-  if (!rsDecoder) {
-    THROW(env, "java/io/IOException", "NativeRSRawDecoder closed");
-  }
+    JNIEnv* env, jobject thiz, jobjectArray inputs, jintArray inputOffsets,
+    jint dataLen, jintArray decodeIndexes, jintArray erasedIndexes, jobjectArray outputs,
+    jintArray outputOffsets)
+{
+    RSDecoder* rsDecoder = (RSDecoder*)getCoder(env, thiz);
+    if (!rsDecoder) {
+        THROW(env, "java/io/IOException", "NativeRSRawDecoder closed");
+    }
 
-  int numDataUnits = rsDecoder->decoder.coder.numDataUnits;
-  int numParityUnits = rsDecoder->decoder.coder.numParityUnits;
-  int chunkSize = (int)dataLen;
+    int numDataUnits = rsDecoder->decoder.coder.numDataUnits;
+    int numParityUnits = rsDecoder->decoder.coder.numParityUnits;
+    int chunkSize = (int)dataLen;
+    printf("NativeRSDecoder_decodeImpl, start to process: data unit = %d, parity unit = %d, data block size = %d\n", numDataUnits, numParityUnits, chunkSize);
 
-  int* tmpErasedIndexes = (int*)(*env)->GetIntArrayElements(env,
-      erasedIndexes, NULL);
-  int numErased = (*env)->GetArrayLength(env, erasedIndexes);
-  getInputs(env, inputs, inputOffsets, rsDecoder->inputs,
-      numDataUnits + numParityUnits);
-  getOutputs(env, outputs, outputOffsets, rsDecoder->outputs, numErased);
-
-  decode(&rsDecoder->decoder, rsDecoder->inputs, tmpErasedIndexes,
-      numErased, rsDecoder->outputs, chunkSize);
+    int* tmpDecodeIndexes = (int*)(*env)->GetIntArrayElements(env,
+        decodeIndexes, NULL);
+    int* tmpErasedIndexes = (int*)(*env)->GetIntArrayElements(env,
+        erasedIndexes, NULL);
+    int numUsedForDecode = (*env)->GetArrayLength(env, decodeIndexes);
+    int numErased = (*env)->GetArrayLength(env, erasedIndexes);
+    printf("NativeRSDecoder_decodeImpl, read data: target recovery data block number = %d, the first recovery request block ID = %d\n", numErased, tmpErasedIndexes[0]);
+    getInputs(env, inputs, inputOffsets, rsDecoder->inputs, numDataUnits);
+    getOutputs(env, outputs, outputOffsets, rsDecoder->outputs, numErased);
+    printf("NativeRSDecoder_decodeImpl, start do decode\n");
+    decode(&rsDecoder->decoder, rsDecoder->inputs, tmpDecodeIndexes, tmpErasedIndexes,
+        numErased, rsDecoder->outputs, chunkSize);
 }
 
 JNIEXPORT void JNICALL
 Java_org_apache_cassandra_io_erasurecode_NativeRSDecoder_destroyImpl(
-    JNIEnv *env, jobject thiz) {
-  RSDecoder* rsDecoder = (RSDecoder*)getCoder(env, thiz);
-  if (rsDecoder) {
-    free(rsDecoder);
-    setCoder(env, thiz, NULL);
-  }
+    JNIEnv* env, jobject thiz)
+{
+    RSDecoder* rsDecoder = (RSDecoder*)getCoder(env, thiz);
+    if (rsDecoder) {
+        free(rsDecoder);
+        setCoder(env, thiz, NULL);
+    }
 }

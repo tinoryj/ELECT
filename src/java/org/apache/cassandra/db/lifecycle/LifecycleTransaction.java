@@ -20,6 +20,9 @@ package org.apache.cassandra.db.lifecycle;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiPredicate;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.collect.*;
@@ -29,9 +32,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.concurrent.Stage;
 import org.apache.cassandra.db.ColumnFamilyStore;
 import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.compaction.OperationType;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.SSTable;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableReader.UniqueIdentifier;
@@ -203,6 +208,12 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
 
         // prepare for compaction obsolete readers as long as they were part of the original set
         // since those that are not original are early readers that share the same desc with the finals
+        // [CASSANDRAEC]
+        // Do not release the reference of transferred readers until parity update
+        // Set<SSTableReader> filteredOriginals = originals.stream()
+        //                                                 .filter(sstable -> (!sstable.isReplicationTransferredToErasureCoding() || sstable.getColumnFamilyName().equals("usertable0")))
+        //                                                 .collect(Collectors.toSet());
+
         maybeFail(prepareForObsoletion(filterIn(logged.obsolete, originals), log, obsoletions = new ArrayList<>(), null));
         log.prepareToCommit();
     }
@@ -343,6 +354,49 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         // ensure any new readers are in the compacting set, since we aren't done with them yet
         // and don't want anyone else messing with them
         // apply atomically along with updating the live set of readers
+        // ECNetutils.printStackTace("Invoke checkpoint()");
+        tracker.apply(compose(updateCompacting(emptySet(), fresh),
+                              updateLiveSet(toUpdate, staged.update)));
+
+        // log the staged changes and our newly marked readers
+        marked.addAll(fresh);
+        logged.log(staged);
+
+        // setup our tracker, and mark our prior versions replaced, also releasing our references to them
+        // we do not replace/release obsoleted readers, since we may need to restore them on rollback
+        accumulate = setReplaced(filterOut(toUpdate, staged.obsolete), accumulate);
+        accumulate = release(selfRefs(filterOut(toUpdate, staged.obsolete)), accumulate);
+
+        staged.clear();
+        return accumulate;
+    }
+
+    // [CASSANDRAEC]
+    public void checkpointEC(SSTableReader ecSStable)
+    {
+        maybeFail(checkpointEC(null, ecSStable));
+    }
+    private Throwable checkpointEC(Throwable accumulate, SSTableReader ecSStable)
+    {
+        if (logger.isTraceEnabled())
+            logger.trace("Checkpointing staged {}", staged);
+
+        if (staged.isEmpty())
+            return accumulate;
+
+        Set<SSTableReader> toUpdate = toUpdate();
+        Set<SSTableReader> fresh = copyOf(fresh());
+        fresh.add(ecSStable);
+
+        staged.update.add(ecSStable);
+
+        // check the current versions of the readers we're replacing haven't somehow been replaced by someone else
+        checkNotReplaced(filterIn(toUpdate, staged.update));
+
+        // ensure any new readers are in the compacting set, since we aren't done with them yet
+        // and don't want anyone else messing with them
+        // apply atomically along with updating the live set of readers
+        // ECNetutils.printStackTace();
         tracker.apply(compose(updateCompacting(emptySet(), fresh),
                               updateLiveSet(toUpdate, staged.update)));
 
@@ -366,15 +420,28 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
      */
     public void update(SSTableReader reader, boolean original)
     {
+        // ELECT Removed synchronized
+        // [ELECT-Debug]
+        // ECNetutils.printStackTace("Invoke LifecycleTransaction.update method");
+        // if(reader.isReplicationTransferredToErasureCoding()) {
+        //     logger.debug("ELECT-Debug: update a transferred sstable {}", reader.descriptor);
+        // }
+        
         assert !staged.update.contains(reader) : "each reader may only be updated once per checkpoint: " + reader;
         assert !identities.contains(reader.instanceId) : "each reader instance may only be provided as an update once: " + reader;
         // check it isn't obsolete, and that it matches the original flag
-        assert !(logged.obsolete.contains(reader) || staged.obsolete.contains(reader)) : "may not update a reader that has been obsoleted";
+        assert !logged.obsolete.contains(reader)  : "may not update a reader that has been obsoleted in logged";
+        assert !staged.obsolete.contains(reader) : "may not update a reader that has been obsoleted in staged";
         assert original == originals.contains(reader) : String.format("the 'original' indicator was incorrect (%s provided): %s", original, reader);
         staged.update.add(reader);
         identities.add(reader.instanceId);
         if (!isOffline())
             reader.setupOnline();
+        
+        // if(reader.isReplicationTransferredToErasureCoding()) {
+        //     logger.debug("ELECT-Debug: successfully update a transferred sstable {}", reader.descriptor);
+        // }
+        // throw new IllegalStateException("Debug method LifcycleTransaction.update");
     }
 
     public void update(Collection<SSTableReader> readers, boolean original)
@@ -516,6 +583,12 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
             cancel(cancel);
     }
 
+    // [CASSANDRAEC]
+    public void removeAll(Iterable<SSTableReader> cancels) {
+        for (SSTableReader cancel : cancels)
+            originals.remove(cancel);
+    }
+
     /**
      * remove the provided readers from this Transaction, and return a new Transaction to manage them
      * only permitted to be called if the current Transaction has never been used
@@ -549,6 +622,19 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
 
     private Throwable unmarkCompacting(Set<SSTableReader> unmark, Throwable accumulate)
     {
+        accumulate = tracker.apply(updateCompacting(unmark, emptySet()), accumulate);
+        // when the CFS is invalidated, it will call unreferenceSSTables().  However, unreferenceSSTables only deals
+        // with sstables that aren't currently being compacted.  If there are ongoing compactions that finish or are
+        // interrupted after the CFS is invalidated, those sstables need to be unreferenced as well, so we do that here.
+        accumulate = tracker.dropSSTablesIfInvalid(accumulate);
+        return accumulate;
+    }
+
+    // [CASSANDRAEC]
+    private Throwable unmarkCompacting(Set<SSTableReader> unmark, Throwable accumulate, SSTableReader ecSSTable)
+    {
+        logger.debug("This is ummarkCompacting for ec sstable {}", ecSSTable.descriptor);
+        // unmark.add(ecSSTable);
         accumulate = tracker.apply(updateCompacting(unmark, emptySet()), accumulate);
         // when the CFS is invalidated, it will call unreferenceSSTables().  However, unreferenceSSTables only deals
         // with sstables that aren't currently being compacted.  If there are ongoing compactions that finish or are
@@ -691,5 +777,58 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
     public String toString()
     {
         return originals.toString();
+    }
+
+    @Override
+    protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+        
+        assert staged.isEmpty() : "must be no actions introduced between prepareToCommit and a commit";
+
+        // if (logger.isTraceEnabled())
+        logger.debug("Committing transaction ({}) over {} staged: {}, logged: {}", log.id(), originals, staged, logged);
+
+        // accumulate must be null if we have been used correctly, so fail immediately if it is not
+        maybeFail(accumulate);
+
+        // transaction log commit failure means we must abort; safe commit is not possible
+        log.updateState();
+        maybeFail(log.commit(null));
+
+        // this is now the point of no return; we cannot safely rollback, so we ignore exceptions until we're done
+        // we restore state by obsoleting our obsolete files, releasing our references to them, and updating our size
+        // and notification status for the obsolete and new files
+        // logger.debug("ELECT-Debug: commit ec_metadata {}", ecSSTable.descriptor);
+        // logger.debug("ELECT-Debug: Before update live set, the size of sstables map is {}", tracker.view.get().sstablesMap.size());
+        // accumulate = tracker.apply(updateLiveSet(Collections.emptySet(), Collections.singletonList(ecSSTable)), accumulate);
+        // logger.debug("ELECT-Debug: After update live set, the size of sstables map is {}", tracker.view.get().sstablesMap.size());
+        accumulate = markObsolete(obsoletions, accumulate);
+        accumulate = tracker.updateSizeTracking(logged.obsolete, logged.update, accumulate, ecSSTable);
+        accumulate = runOnCommitHooks(accumulate);
+        // logged.obsolete.add(ecSSTable);
+        accumulate = release(selfRefs(logged.obsolete), accumulate);
+        accumulate = tracker.notifySSTablesChanged(originals, logged.update, log.type(), accumulate, ecSSTable);
+
+        return accumulate;
+    }
+
+    @Override
+    protected Throwable doPostCleanup(Throwable accumulate, SSTableReader ecSSTable)
+    {
+        log.close();
+        return unmarkCompacting(marked, accumulate, ecSSTable);
+    }
+
+    @Override
+    protected void doPrepare(SSTableReader ecSSTable) {
+        // note for future: in anticompaction two different operations use the same Transaction, and both prepareToCommit()
+        // separately: the second prepareToCommit is ignored as a "redundant" transition. since it is only a checkpoint
+        // (and these happen anyway) this is fine but if more logic gets inserted here than is performed in a checkpoint,
+        // it may break this use case, and care is needed
+        checkpointEC(ecSSTable);
+
+        // prepare for compaction obsolete readers as long as they were part of the original set
+        // since those that are not original are early readers that share the same desc with the finals
+        maybeFail(prepareForObsoletion(filterIn(logged.obsolete, originals), log, obsoletions = new ArrayList<>(), null));
+        log.prepareToCommit(ecSSTable);
     }
 }

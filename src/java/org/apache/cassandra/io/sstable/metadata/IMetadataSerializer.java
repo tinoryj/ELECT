@@ -94,6 +94,23 @@ public interface IMetadataSerializer {
     void mutateLevel(Descriptor descriptor, int newLevel) throws IOException;
 
     /**
+     * Set the transferred flag
+     * @param descriptor
+     * @param flag
+     * @throws IOException
+     */
+    void setIsTransferredToErasureCoding(Descriptor descriptor, String sstHash, boolean flag) throws IOException;    
+    
+    
+    /**
+     * Set the transferred flag
+     * @param descriptor
+     * @param flag
+     * @throws IOException
+     */
+    void setIsDataMigrateToCloud(Descriptor descriptor, String sstHash, boolean flag) throws IOException;
+
+    /**
      * Mutate the repairedAt time, pendingRepair ID, and transient status.
      *
      * NOTE: mutating stats metadata of a live sstable will race with
@@ -101,7 +118,7 @@ public interface IMetadataSerializer {
      * {@link SSTableReader#mutateLevelAndReload} instead on live sstable.
      */
     public void mutateRepairMetadata(Descriptor descriptor, long newRepairedAt, TimeUUID newPendingRepair,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException;
+            boolean isTransient) throws IOException;
 
     /**
      * Replace the sstable metadata file ({@code -Statistics.db}) with the given

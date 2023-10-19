@@ -659,7 +659,7 @@ public class ScrubTest {
                 metadata.get().regularAndStaticColumns(), EncodingStats.NO_STATS);
         MetadataCollector collector = new MetadataCollector(metadata.get().comparator).sstableLevel(0);
         return new TestMultiWriter(
-                new TestWriter(descriptor, keyCount, 0, null, false, false, metadata, collector, header, txn), txn);
+                new TestWriter(descriptor, keyCount, 0, null, false, metadata, collector, header, txn), txn);
     }
 
     private static class TestMultiWriter extends SimpleSSTableMultiWriter {
@@ -673,9 +673,9 @@ public class ScrubTest {
      */
     private static class TestWriter extends BigTableWriter {
         TestWriter(Descriptor descriptor, long keyCount, long repairedAt, TimeUUID pendingRepair, boolean isTransient,
-                boolean isReplicationTransferredToErasureCoding, TableMetadataRef metadata,
+                TableMetadataRef metadata,
                 MetadataCollector collector, SerializationHeader header, LifecycleTransaction txn) {
-            super(descriptor, keyCount, repairedAt, pendingRepair, isTransient, isReplicationTransferredToErasureCoding,
+            super(descriptor, keyCount, repairedAt, pendingRepair, isTransient,
                     metadata, collector, header,
                     Collections.emptySet(), txn);
         }

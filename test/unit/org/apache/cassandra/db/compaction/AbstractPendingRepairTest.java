@@ -98,10 +98,10 @@ public class AbstractPendingRepairTest extends AbstractRepairTest {
     }
 
     public static void mutateRepaired(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) {
+            boolean isTransient) {
         try {
             sstable.descriptor.getMetadataSerializer().mutateRepairMetadata(sstable.descriptor, repairedAt,
-                    pendingRepair, isTransient, isReplicationTransferredToErasureCoding);
+                    pendingRepair, isTransient);
             sstable.reloadSSTableMetadata();
         } catch (IOException e) {
             throw new AssertionError(e);
@@ -109,12 +109,10 @@ public class AbstractPendingRepairTest extends AbstractRepairTest {
     }
 
     public static void mutateRepaired(SSTableReader sstable, long repairedAt) {
-        mutateRepaired(sstable, repairedAt, ActiveRepairService.NO_PENDING_REPAIR, false, false);
+        mutateRepaired(sstable, repairedAt, ActiveRepairService.NO_PENDING_REPAIR, false);
     }
 
-    public static void mutateRepaired(SSTableReader sstable, TimeUUID pendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
-        mutateRepaired(sstable, ActiveRepairService.UNREPAIRED_SSTABLE, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding);
+    public static void mutateRepaired(SSTableReader sstable, TimeUUID pendingRepair, boolean isTransient) {
+        mutateRepaired(sstable, ActiveRepairService.UNREPAIRED_SSTABLE, pendingRepair, isTransient);
     }
 }

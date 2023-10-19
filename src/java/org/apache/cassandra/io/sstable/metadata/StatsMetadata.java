@@ -17,11 +17,15 @@
  */
 package org.apache.cassandra.io.sstable.metadata;
 
-import java.io.IOException;
+import java.io.DataInputStream;
+import java.io.FileInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.io.IOException;
+import java.io.Serializable;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -34,18 +38,23 @@ import org.apache.cassandra.db.commitlog.CommitLogPosition;
 import org.apache.cassandra.db.commitlog.IntervalSet;
 import org.apache.cassandra.io.ISerializer;
 import org.apache.cassandra.io.sstable.format.Version;
-import org.apache.cassandra.io.util.DataInputPlus;
-import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.EstimatedHistogram;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.streamhist.TombstoneHistogram;
 import org.apache.cassandra.utils.UUIDSerializer;
+import org.apache.cassandra.io.util.*;
+import org.apache.cassandra.utils.*;
+
+import static org.apache.cassandra.utils.FBUtilities.now;
+
+import java.time.temporal.ChronoField;
 
 /**
  * SSTable metadata that always stay on heap.
  */
-public class StatsMetadata extends MetadataComponent {
+public class StatsMetadata extends MetadataComponent implements Serializable {
+    private static final Logger logger = LoggerFactory.getLogger(StatsMetadata.class);
     public static final IMetadataComponentSerializer serializer = new StatsMetadataSerializer();
     public static final ISerializer<IntervalSet<CommitLogPosition>> commitLogPositionSetSerializer = IntervalSet
             .serializer(CommitLogPosition.serializer);
@@ -53,6 +62,7 @@ public class StatsMetadata extends MetadataComponent {
     public final EstimatedHistogram estimatedPartitionSize;
     public final EstimatedHistogram estimatedCellPerPartitionCount;
     public final IntervalSet<CommitLogPosition> commitLogIntervals;
+    public final long creationTimestamp;
     public final long minTimestamp;
     public final long maxTimestamp;
     public final int minLocalDeletionTime;
@@ -71,8 +81,10 @@ public class StatsMetadata extends MetadataComponent {
     public final UUID originatingHostId;
     public final TimeUUID pendingRepair;
     public final boolean isTransient;
-    public final boolean isReplicationTransferredToErasureCoding;
-    public final String hashID;
+    public final boolean isDataMigrateToCloud;
+    public final boolean isReplicationTransferToErasureCoding;
+    public String hashID = null;
+    public long dataFileSize = 0;
     // just holds the current encoding stats to avoid allocating - it is not
     // serialized
     public final EncodingStats encodingStats;
@@ -80,6 +92,7 @@ public class StatsMetadata extends MetadataComponent {
     public StatsMetadata(EstimatedHistogram estimatedPartitionSize,
             EstimatedHistogram estimatedCellPerPartitionCount,
             IntervalSet<CommitLogPosition> commitLogIntervals,
+            long creationTimestamp,
             long minTimestamp,
             long maxTimestamp,
             int minLocalDeletionTime,
@@ -98,11 +111,14 @@ public class StatsMetadata extends MetadataComponent {
             UUID originatingHostId,
             TimeUUID pendingRepair,
             boolean isTransient,
+            boolean isDataMigrateToCloud,
             boolean isReplicationTransferredToErasureCoding,
-            String hashID) {
+            String hashID,
+            long dataFileSize) {
         this.estimatedPartitionSize = estimatedPartitionSize;
         this.estimatedCellPerPartitionCount = estimatedCellPerPartitionCount;
         this.commitLogIntervals = commitLogIntervals;
+        this.creationTimestamp = creationTimestamp;
         this.minTimestamp = minTimestamp;
         this.maxTimestamp = maxTimestamp;
         this.minLocalDeletionTime = minLocalDeletionTime;
@@ -121,9 +137,11 @@ public class StatsMetadata extends MetadataComponent {
         this.originatingHostId = originatingHostId;
         this.pendingRepair = pendingRepair;
         this.isTransient = isTransient;
-        this.isReplicationTransferredToErasureCoding = isReplicationTransferredToErasureCoding;
+        this.isDataMigrateToCloud = isDataMigrateToCloud;
         this.hashID = hashID;
+        this.dataFileSize = dataFileSize;
         this.encodingStats = new EncodingStats(minTimestamp, minLocalDeletionTime, minTTL);
+        this.isReplicationTransferToErasureCoding = isReplicationTransferredToErasureCoding;
     }
 
     public MetadataType getType() {
@@ -133,6 +151,62 @@ public class StatsMetadata extends MetadataComponent {
     public String hashID() {
         return hashID;
     }
+
+    public Boolean setupHashIDIfMissed(String fileName) {
+
+        if (this.hashID == null) {
+            try (DataInputStream dataFileReadForHash = new DataInputStream(
+                    new FileInputStream(fileName))) {
+                this.dataFileSize = new File(fileName).length();
+                byte[] bytes = new byte[(int) this.dataFileSize];
+                dataFileReadForHash.readFully(bytes);
+                dataFileReadForHash.close();
+                // logger.debug("[ELECT]: Read sstable data size = {}", fileLength);
+                // generate hash based on the bytes buffer
+                try {
+                    MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                    byte[] hash = digest.digest(bytes);
+                    // this.hashID = new String(hash);
+                    int hashSize = 32;
+                    StringBuilder sb = new StringBuilder();
+                    for (byte b : hash) {
+                        sb.append(String.format("%02x", b));
+                    }
+                    if (sb.length() > hashSize) {
+                        this.hashID = sb.substring(0, hashSize);
+                    } else {
+                        while (sb.length() < hashSize) {
+                            sb.append("0");
+                        }
+                        this.hashID = sb.toString();
+                    }
+
+                    logger.debug("[ELECT]: generated hash value for current SSTable is {}, hash length is {}", this.hashID, this.hashID.length());
+                } catch (NoSuchAlgorithmException e) {
+                    this.hashID = null;
+                    // logger.debug("[ELECT]: Could not generated hash value for current SSTable =
+                    // {}", fileName);
+                    e.printStackTrace();
+                }
+            } catch (IOException e) {
+                this.hashID = null;
+                // logger.debug("[ELECT]: Could not read SSTable {}", fileName);
+                e.printStackTrace();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // public Boolean setIsReplicationTransferredToErasureCodingFlag(boolean isReplicationTransferToErasureCoding) {
+    //     this.isReplicationTransferToErasureCoding = isReplicationTransferToErasureCoding;
+    //     return true;
+    // }
+
+    // public Boolean setIsDataMigrateToCloudFlag(boolean isDataMigrateToCloud) {
+    //     this.isDataMigrateToCloud = isDataMigrateToCloud;
+    //     return true;
+    // }
 
     /**
      * @param gcBefore gc time in seconds
@@ -157,9 +231,11 @@ public class StatsMetadata extends MetadataComponent {
     }
 
     public StatsMetadata mutateLevel(int newLevel) {
+        logger.debug("ELECT-Debug: set the new level is ({})", newLevel);
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
                 minTimestamp,
                 maxTimestamp,
                 minLocalDeletionTime,
@@ -178,15 +254,81 @@ public class StatsMetadata extends MetadataComponent {
                 originatingHostId,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
-                hashID);
+                isDataMigrateToCloud,
+                isReplicationTransferToErasureCoding,
+                hashID,
+                dataFileSize);
     }
 
-    public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient,
-            boolean newIsReplicationTransferredToErasureCoding) {
+    public StatsMetadata setIsTransferredToErasureCoding(final boolean newIsReplicationTransferToErasureCoding) {
+
+        logger.debug("ELECT-Debug: setIsTransferredToErasureCoding is StatsMetadata ({})", newIsReplicationTransferToErasureCoding);
+
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
+                minTimestamp,
+                maxTimestamp,
+                minLocalDeletionTime,
+                maxLocalDeletionTime,
+                minTTL,
+                maxTTL,
+                compressionRatio,
+                estimatedTombstoneDropTime,
+                sstableLevel,
+                minClusteringValues,
+                maxClusteringValues,
+                hasLegacyCounterShards,
+                repairedAt,
+                totalColumnsSet,
+                totalRows,
+                originatingHostId,
+                pendingRepair,
+                isTransient,
+                isDataMigrateToCloud,
+                newIsReplicationTransferToErasureCoding,
+                hashID,
+                dataFileSize);
+    }
+
+    public StatsMetadata setIsDataMigrateToCloud(boolean newIsDataMigrateToCloud) {
+
+        logger.debug("ELECT-Debug: newIsDataMigrateToCloud is StatsMetadata ({})", newIsDataMigrateToCloud);
+
+        return new StatsMetadata(estimatedPartitionSize,
+                estimatedCellPerPartitionCount,
+                commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
+                minTimestamp,
+                maxTimestamp,
+                minLocalDeletionTime,
+                maxLocalDeletionTime,
+                minTTL,
+                maxTTL,
+                compressionRatio,
+                estimatedTombstoneDropTime,
+                sstableLevel,
+                minClusteringValues,
+                maxClusteringValues,
+                hasLegacyCounterShards,
+                repairedAt,
+                totalColumnsSet,
+                totalRows,
+                originatingHostId,
+                pendingRepair,
+                isTransient,
+                newIsDataMigrateToCloud,
+                isReplicationTransferToErasureCoding,
+                hashID,
+                dataFileSize);
+    }
+
+    public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient) {
+        return new StatsMetadata(estimatedPartitionSize,
+                estimatedCellPerPartitionCount,
+                commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
                 minTimestamp,
                 maxTimestamp,
                 minLocalDeletionTime,
@@ -205,8 +347,10 @@ public class StatsMetadata extends MetadataComponent {
                 originatingHostId,
                 newPendingRepair,
                 newIsTransient,
-                newIsReplicationTransferredToErasureCoding,
-                hashID);
+                isDataMigrateToCloud,
+                isReplicationTransferToErasureCoding,
+                hashID,
+                dataFileSize);
     }
 
     @Override
@@ -272,12 +416,17 @@ public class StatsMetadata extends MetadataComponent {
 
         public int serializedSize(Version version, StatsMetadata component) throws IOException {
             int size = 0;
+
+            size += 32; // size of hashID.
+            size += 8; // dataFileSize
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedPartitionSize);
             size += EstimatedHistogram.serializer.serializedSize(component.estimatedCellPerPartitionCount);
             size += CommitLogPosition.serializer
                     .serializedSize(component.commitLogIntervals.upperBound().orElse(CommitLogPosition.NONE));
-            size += 8 + 8 + 4 + 4 + 4 + 4 + 8 + 8; // mix/max timestamp(long), min/maxLocalDeletionTime(int), min/max
-                                                   // TTL, compressionRatio(double), repairedAt (long)
+            size += 8 + 8 + 8 + 4 + 4 + 4 + 4 + 8 + 8; // creationTimestamp/ mix/max timestamp(long),
+                                                       // min/maxLocalDeletionTime(int),
+                                                       // min/max
+                                                       // TTL, compressionRatio(double), repairedAt (long)
             size += TombstoneHistogram.serializer.serializedSize(component.estimatedTombstoneDropTime);
             size += TypeSizes.sizeof(component.sstableLevel);
             // min column names
@@ -306,9 +455,11 @@ public class StatsMetadata extends MetadataComponent {
                 size += TypeSizes.sizeof(component.isTransient);
             }
 
-            if (version.hasIsReplicationTransferredToErasureCoding()) {
-                size += TypeSizes.sizeof(component.isReplicationTransferredToErasureCoding);
-            }
+            // if (version.hasIsDataMigrateToCloud()) {
+            size += TypeSizes.sizeof(component.isDataMigrateToCloud);
+            // }
+
+            size += TypeSizes.sizeof(component.isReplicationTransferToErasureCoding);
 
             if (version.hasOriginatingHostId()) {
                 size += 1; // boolean: is originatingHostId present
@@ -316,21 +467,16 @@ public class StatsMetadata extends MetadataComponent {
                     size += UUIDSerializer.serializer.serializedSize(component.originatingHostId,
                             version.correspondingMessagingVersion());
             }
-
-            if (version.hasHashID()) {
-                size += 32;
-            }
             return size;
         }
 
         public void serialize(Version version, StatsMetadata component, DataOutputPlus out) throws IOException {
-            if (version.hasHashID()) {
-                out.writeBytes(component.hashID);
-            }
+
             EstimatedHistogram.serializer.serialize(component.estimatedPartitionSize, out);
             EstimatedHistogram.serializer.serialize(component.estimatedCellPerPartitionCount, out);
             CommitLogPosition.serializer
                     .serialize(component.commitLogIntervals.upperBound().orElse(CommitLogPosition.NONE), out);
+            out.writeLong(component.creationTimestamp);
             out.writeLong(component.minTimestamp);
             out.writeLong(component.maxTimestamp);
             out.writeInt(component.minLocalDeletionTime);
@@ -371,8 +517,16 @@ public class StatsMetadata extends MetadataComponent {
                 out.writeBoolean(component.isTransient);
             }
 
-            if (version.hasIsReplicationTransferredToErasureCoding()) {
-                out.writeBoolean(component.isReplicationTransferredToErasureCoding);
+            out.writeBoolean(component.isDataMigrateToCloud);
+            if (component.isDataMigrateToCloud == true) {
+                logger.debug("[ELECT] Write isDataMigrateToCloud {}",
+                        component.isDataMigrateToCloud ? "true" : "false");
+            }
+
+            out.writeBoolean(component.isReplicationTransferToErasureCoding);
+            if (component.isReplicationTransferToErasureCoding == true) {
+                logger.debug("[ELECT] Write isReplicationTransferToErasureCoding {}",
+                        component.isReplicationTransferToErasureCoding ? "true" : "false");
             }
 
             if (version.hasOriginatingHostId()) {
@@ -383,16 +537,22 @@ public class StatsMetadata extends MetadataComponent {
                     out.writeByte(0);
                 }
             }
+
+            if (version.hasHashID() && component.hashID != null) {
+                out.writeBytes(component.hashID);
+                // logger.debug("[ELECT] Write real HashID {}", component.hashID);
+            } else {
+                byte[] placeHolder = new byte[32];
+                Arrays.fill(placeHolder, (byte) 0);
+                String placeHolderStr = placeHolder.toString();
+                out.writeBytes(placeHolderStr);
+                // logger.debug("[ELECT] Write fake HashID place holder");
+            }
+
+            out.writeLong(component.dataFileSize);
         }
 
         public StatsMetadata deserialize(Version version, DataInputPlus in) throws IOException {
-            String hashID = null;
-            if (version.hasHashID()) {
-                byte[] buf = new byte[32];
-                in.readFully(buf, 0, 32);
-                hashID = new String(buf);
-                in.skipBytes(32);
-            }
 
             EstimatedHistogram partitionSizes = EstimatedHistogram.serializer.deserialize(in);
 
@@ -417,6 +577,7 @@ public class StatsMetadata extends MetadataComponent {
 
             CommitLogPosition commitLogLowerBound = CommitLogPosition.NONE, commitLogUpperBound;
             commitLogUpperBound = CommitLogPosition.serializer.deserialize(in);
+            long creationTimestamp = in.readLong();
             long minTimestamp = in.readLong();
             long maxTimestamp = in.readLong();
             int minLocalDeletionTime = in.readInt();
@@ -466,16 +627,39 @@ public class StatsMetadata extends MetadataComponent {
 
             boolean isTransient = version.hasIsTransient() && in.readBoolean();
 
-            boolean isReplicationTransferredToErasureCoding = version.hasIsReplicationTransferredToErasureCoding()
-                    && in.readBoolean();
+            boolean isDataMigrateToCloud = in.readBoolean();
+
+            if (isDataMigrateToCloud == true) {
+                logger.debug("[ELECT] Read isDataMigrateToCloud which has been set to true");
+            }
+
+            boolean isReplicationTransferredToErasureCoding = in.readBoolean();
+
+            if (isReplicationTransferredToErasureCoding == true) {
+                logger.debug("[ELECT] Read isReplicationTransferredToErasureCoding which has been set to true");
+            }
 
             UUID originatingHostId = null;
             if (version.hasOriginatingHostId() && in.readByte() != 0)
                 originatingHostId = UUIDSerializer.serializer.deserialize(in, 0);
 
+            String hashIDRawStr;
+
+            byte[] buf = new byte[32];
+            for (int i = 0; i < 32; i++) {
+                buf[i] = in.readByte();
+            }
+            hashIDRawStr = new String(buf);
+            // logger.debug("[ELECT]: read hashID from the sstable success, hashID =
+            // {}!!!", hashIDRawStr);
+            // in.skipBytes(32);
+
+            long dataFileSize = in.readLong();
+
             return new StatsMetadata(partitionSizes,
                     columnCounts,
                     commitLogIntervals,
+                    creationTimestamp,
                     minTimestamp,
                     maxTimestamp,
                     minLocalDeletionTime,
@@ -494,8 +678,10 @@ public class StatsMetadata extends MetadataComponent {
                     originatingHostId,
                     pendingRepair,
                     isTransient,
+                    isDataMigrateToCloud,
                     isReplicationTransferredToErasureCoding,
-                    hashID);
+                    hashIDRawStr,
+                    dataFileSize);
         }
     }
 }

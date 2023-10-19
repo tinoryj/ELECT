@@ -78,9 +78,34 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
     }
 
     protected boolean realAppend(UnfilteredRowIterator partition) {
+
+        // if(!sstableWriter.currentWriter().isOverlapped && sstableWriter.currentWriter().first != null &&
+        //      sstableWriter.currentWriter().first.compareTo(partition.partitionKey()) >= 0) {
+        //     logger.error("ELECT-ERROR: MaxSSTableSizeWriter first key {} is larger than right key {}, key count is {}",
+        //                  sstableWriter.currentWriter().first.getToken(),
+        //                  sstableWriter.currentWriter().last.getToken(),
+        //                  sstableWriter.currentWriter().currentKeyCount);
+        //     sstableWriter.currentWriter().isOverlapped = true;
+        // }
+
+        // if(sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() <= 1024) {
+        //     sstableWriter.currentWriter().first = partition.partitionKey();
+        // }
+        
+
         RowIndexEntry rie = sstableWriter.append(partition);
+        // sstableWriter.currentWriter().currentKeyCount++;
         if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize) {
+            // sstableWriter.currentWriter().last = partition.partitionKey();
+            // if(sstableWriter.currentWriter().first.compareTo(sstableWriter.currentWriter().last) >= 0) {
+            //     logger.error("ELECT-ERROR: MaxSSTableSizeWriter first key {} is larger than last key {}",
+            //                  sstableWriter.currentWriter().first.getToken(),
+            //                  sstableWriter.currentWriter().last.getToken());
+            // }
+            // logger.debug("ELECT-Debug: MaxSSTableSizeWriter first key is {}, last key is {}",
+            //              sstableWriter.currentWriter().first.getToken(), sstableWriter.currentWriter().last.getToken());
             switchCompactionLocation(sstableDirectory);
+            // sstableWriter.currentWriter().isOverlapped = false;
         }
         return rie != null;
     }
@@ -95,7 +120,6 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
                 minRepairedAt,
                 pendingRepair,
                 isTransient,
-                isReplicationTransferredToErasureCoding,
                 cfs.metadata,
                 new MetadataCollector(allSSTables, cfs.metadata().comparator, level),
                 SerializationHeader.make(cfs.metadata(), nonExpiredSSTables),
@@ -108,5 +132,17 @@ public class MaxSSTableSizeWriter extends CompactionAwareWriter {
     @Override
     protected long getExpectedWriteSize() {
         return Math.min(maxSSTableSize, super.getExpectedWriteSize());
+    }
+
+    @Override
+    protected boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter) {
+        RowIndexEntry rie = sstableWriter.append(partition);
+        if (sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten() > maxSSTableSize || isSwitchWriter) {
+            switchCompactionLocation(sstableDirectory);
+        }
+        return rie != null;
+        // TODO Auto-generated method stub
+        // throw new UnsupportedOperationException("Unimplemented method 'realAppend'");
+
     }
 }

@@ -22,6 +22,10 @@ import java.util.*;
 
 import com.google.common.annotations.VisibleForTesting;
 
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.cassandra.cache.InstrumentingCache;
 import org.apache.cassandra.cache.KeyCacheKey;
 import org.apache.cassandra.config.DatabaseDescriptor;
@@ -54,6 +58,8 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
 {
     @VisibleForTesting
     public static boolean disableEarlyOpeningForTests = false;
+    
+    protected static final Logger logger = LoggerFactory.getLogger(SSTableRewriter.class);
 
     private final long preemptiveOpenInterval;
     private final long maxAge;
@@ -200,6 +206,16 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         return accumulate;
     }
 
+    // [CASSANDRAEC]
+    @Override
+    protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
+        for (SSTableWriter writer : writers)
+            accumulate = writer.commit(accumulate);
+
+        accumulate = transaction.commitEC(accumulate, ecSSTable, true);
+        return accumulate;
+    }
+
     /**
      * Replace the readers we are rewriting with cloneWithNewStart, reclaiming any page cache that is no longer
      * needed, and transferring any key cache entries over to the new reader, expiring them from the old. if reset
@@ -213,7 +229,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
      * @param newReader the rewritten reader that replaces them for this region
      * @param lowerbound if !reset, must be non-null, and marks the exclusive lowerbound of the start for each sstable
      */
-    private void moveStarts(SSTableReader newReader, DecoratedKey lowerbound)
+    public void moveStarts(SSTableReader newReader, DecoratedKey lowerbound)
     {
         if (transaction.isOffline() || preemptiveOpenInterval == Long.MAX_VALUE)
             return;
@@ -348,6 +364,8 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
      */
     public List<SSTableReader> finish()
     {
+        // updateState();
+        // logger.debug("ELECT-Debug: updated state is {}", state());
         super.finish();
         return finished();
     }
@@ -392,5 +410,36 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
             throwEarly = true;
         else
             throwLate = true;
+    }
+
+    // [CASSANDRAEC]
+    @Override
+    protected void doPrepare(SSTableReader ecSSTable) {
+        switchWriter(null);
+
+        if (throwEarly)
+            throw new RuntimeException("exception thrown early in finish, for testing");
+
+        // No early open to finalize and replace
+        for (SSTableWriter writer : writers)
+        {
+            assert writer.getFilePointer() > 0;
+            writer.setRepairedAt(repairedAt).setOpenResult(true).prepareToCommit();
+            SSTableReader reader = writer.finished();
+            transaction.update(reader, false);
+            preparedForCommit.add(reader);
+        }
+        transaction.update(ecSSTable, false);
+        preparedForCommit.add(ecSSTable);
+
+        transaction.checkpoint();
+
+        if (throwLate)
+            throw new RuntimeException("exception thrown after all sstables finished, for testing");
+
+        if (!keepOriginals)
+            transaction.obsoleteOriginals();
+
+        transaction.prepareToCommit();
     }
 }

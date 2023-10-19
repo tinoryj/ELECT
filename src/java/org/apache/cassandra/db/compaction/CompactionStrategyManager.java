@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -34,7 +35,9 @@ import java.util.stream.Collectors;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.Longs;
 import org.apache.cassandra.io.util.File;
 import org.slf4j.Logger;
@@ -46,6 +49,7 @@ import org.apache.cassandra.db.Directories;
 import org.apache.cassandra.db.DiskBoundaries;
 import org.apache.cassandra.db.SerializationHeader;
 import org.apache.cassandra.db.compaction.AbstractStrategyHolder.TaskSupplier;
+import org.apache.cassandra.db.compaction.CompactionLogger.Strategy;
 import org.apache.cassandra.db.compaction.PendingRepairManager.CleanupTask;
 import org.apache.cassandra.db.lifecycle.LifecycleNewTracker;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
@@ -73,6 +77,7 @@ import org.apache.cassandra.schema.CompactionParams;
 import org.apache.cassandra.schema.TableMetadata;
 import org.apache.cassandra.service.ActiveRepairService;
 import org.apache.cassandra.utils.TimeUUID;
+import org.psjava.formula.geometry.StraightOrder;
 
 import static org.apache.cassandra.db.compaction.AbstractStrategyHolder.GroupedSSTableContainer;
 
@@ -167,8 +172,8 @@ public class CompactionStrategyManager implements INotificationConsumer {
                 return compactionStrategyIndexForDirectory(descriptor);
             }
         };
-        transientRepairs = new PendingRepairHolder(cfs, router, true, false);
-        pendingRepairs = new PendingRepairHolder(cfs, router, false, false);
+        transientRepairs = new PendingRepairHolder(cfs, router, true);
+        pendingRepairs = new PendingRepairHolder(cfs, router, false);
         repaired = new CompactionStrategyHolder(cfs, router, true); // runing SSTs
         unrepaired = new CompactionStrategyHolder(cfs, router, false);
         holders = ImmutableList.of(transientRepairs, pendingRepairs, repaired, unrepaired);
@@ -319,7 +324,9 @@ public class CompactionStrategyManager implements INotificationConsumer {
             fanout = (repaired.first() instanceof LeveledCompactionStrategy)
                     ? ((LeveledCompactionStrategy) repaired.first()).getLevelFanoutSize()
                     : LeveledCompactionStrategy.DEFAULT_LEVEL_FANOUT_SIZE;
+            // logger.debug("[ELECT] Compaction strategy fanout is {}", fanout);
             maxSSTableSizeBytes = repaired.first().getMaxSSTableBytes();
+            // logger.debug("[ELECT] Compaction strategy maxSSTableSizeBytes is {}", maxSSTableSizeBytes);
             name = repaired.first().getName();
         } finally {
             writeLock.unlock();
@@ -559,6 +566,25 @@ public class CompactionStrategyManager implements INotificationConsumer {
         return null;
     }
 
+    public Set<SSTableReader> getSSTableForLevel(int sstableLevel) {
+        maybeReloadDiskBoundaries();
+        readLock.lock();
+        try {
+            if (repaired.first() instanceof LeveledCompactionStrategy) {
+                Set<SSTableReader> res = new HashSet<SSTableReader>();
+                for (AbstractCompactionStrategy strategy : getAllStrategies()) {
+                    res = Sets.union(res, ((LeveledCompactionStrategy) strategy).getSStablesForLevel(sstableLevel));
+                }
+
+                return res;
+            }
+
+        } finally {
+            readLock.unlock();
+        }
+        return null;
+    }
+
     public long[] getPerLevelSizeBytes() {
         readLock.lock();
         try {
@@ -628,19 +654,16 @@ public class CompactionStrategyManager implements INotificationConsumer {
         throw new IllegalStateException("No holder claimed " + sstable);
     }
 
-    private AbstractStrategyHolder getHolder(long repairedAt, TimeUUID pendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+    private AbstractStrategyHolder getHolder(long repairedAt, TimeUUID pendingRepair, boolean isTransient) {
         return getHolder(repairedAt != ActiveRepairService.UNREPAIRED_SSTABLE,
                 pendingRepair != ActiveRepairService.NO_PENDING_REPAIR,
-                isTransient, isReplicationTransferredToErasureCoding);
+                isTransient);
     }
 
     @VisibleForTesting
-    AbstractStrategyHolder getHolder(boolean isRepaired, boolean isPendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+    AbstractStrategyHolder getHolder(boolean isRepaired, boolean isPendingRepair, boolean isTransient) {
         for (AbstractStrategyHolder holder : holders) {
-            if (holder.managesRepairedGroup(isRepaired, isPendingRepair, isTransient,
-                    isReplicationTransferredToErasureCoding))
+            if (holder.managesRepairedGroup(isRepaired, isPendingRepair, isTransient))
                 return holder;
         }
 
@@ -783,14 +806,28 @@ public class CompactionStrategyManager implements INotificationConsumer {
         maybeReloadDiskBoundaries();
         List<ISSTableScanner> scanners = new ArrayList<>(sstables.size());
         readLock.lock();
+        // logger.debug("ELECT-Debug: cfName is {}, sstable level is {},
+        // BigTableScanner.getscanner3",
+        // sstables.iterator().next().getColumnFamilyName(),
+        // sstables.iterator().next().getSSTableLevel());
         try {
             List<GroupedSSTableContainer> sstableGroups = groupSSTables(sstables);
-
             for (int i = 0; i < holders.size(); i++) {
                 AbstractStrategyHolder holder = holders.get(i);
                 GroupedSSTableContainer group = sstableGroups.get(i);
                 scanners.addAll(holder.getScanners(group, ranges));
             }
+
+            // if(scanners.size() != sstables.size()) {
+            // for (int i = 0; i < holders.size(); i++) {
+            // if( sstableGroups.get(i).groups[0] != null )
+            // logger.debug("holder is {}, group.sstable num is {}",
+            // holders.get(i).getClass(), sstableGroups.get(i).groups[0].size());
+            // }
+            // logger.debug("ELECT-Debug: sstableGroups num is {}, sstables num is {}, scanner
+            // num is {}", sstableGroups.size(), sstables.size(), scanners.size());
+            // }
+
         } catch (PendingRepairManager.IllegalSSTableArgumentException e) {
             ISSTableScanner.closeAllAndPropagate(scanners, new ConcurrentModificationException(e));
         } finally {
@@ -803,6 +840,10 @@ public class CompactionStrategyManager implements INotificationConsumer {
             Collection<Range<Token>> ranges) {
         while (true) {
             try {
+                // logger.debug("ELECT-Debug: cfName is {}, sstable level is {},
+                // BigTableScanner.getscanner2",
+                // sstables.iterator().next().getColumnFamilyName(),
+                // sstables.iterator().next().getSSTableLevel());
                 return maybeGetScanners(sstables, ranges);
             } catch (ConcurrentModificationException e) {
                 logger.debug("SSTable repairedAt/pendingRepaired values changed while getting scanners");
@@ -811,6 +852,10 @@ public class CompactionStrategyManager implements INotificationConsumer {
     }
 
     public AbstractCompactionStrategy.ScannerList getScanners(Collection<SSTableReader> sstables) {
+        // logger.debug("ELECT-Debug: cfName is {}, sstable level is {},
+        // BigTableScanner.getscanner1",
+        // sstables.iterator().next().getColumnFamilyName(),
+        // sstables.iterator().next().getSSTableLevel());
         return getScanners(sstables, null);
     }
 
@@ -986,7 +1031,6 @@ public class CompactionStrategyManager implements INotificationConsumer {
             long repairedAt,
             TimeUUID pendingRepair,
             boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
             MetadataCollector collector,
             SerializationHeader header,
             Collection<Index> indexes,
@@ -995,13 +1039,12 @@ public class CompactionStrategyManager implements INotificationConsumer {
         maybeReloadDiskBoundaries();
         readLock.lock();
         try {
-            return getHolder(repairedAt, pendingRepair, isTransient, isReplicationTransferredToErasureCoding)
+            return getHolder(repairedAt, pendingRepair, isTransient)
                     .createSSTableMultiWriter(descriptor,
                             keyCount,
                             repairedAt,
                             pendingRepair,
                             isTransient,
-                            isReplicationTransferredToErasureCoding,
                             collector,
                             header,
                             indexes,
@@ -1058,16 +1101,14 @@ public class CompactionStrategyManager implements INotificationConsumer {
      * are moved between strategies.
      */
     public void mutateRepaired(Collection<SSTableReader> sstables, long repairedAt, TimeUUID pendingRepair,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) throws IOException {
+            boolean isTransient) throws IOException {
         Set<SSTableReader> changed = new HashSet<>();
 
         writeLock.lock();
         try {
             for (SSTableReader sstable : sstables) {
-                sstable.mutateRepairedAndReload(repairedAt, pendingRepair, isTransient,
-                        isReplicationTransferredToErasureCoding);
-                verifyMetadata(sstable, repairedAt, pendingRepair, isTransient,
-                        isReplicationTransferredToErasureCoding);
+                sstable.mutateRepairedAndReload(repairedAt, pendingRepair, isTransient);
+                verifyMetadata(sstable, repairedAt, pendingRepair, isTransient);
                 changed.add(sstable);
             }
         } finally {
@@ -1082,7 +1123,7 @@ public class CompactionStrategyManager implements INotificationConsumer {
     }
 
     private static void verifyMetadata(SSTableReader sstable, long repairedAt, TimeUUID pendingRepair,
-            boolean isTransient, boolean isReplicationTransferredToErasureCoding) {
+            boolean isTransient) {
         if (!Objects.equals(pendingRepair, sstable.getPendingRepair()))
             throw new IllegalStateException(
                     String.format("Failed setting pending repair to %s on %s (pending repair is %s)", pendingRepair,

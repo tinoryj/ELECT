@@ -35,12 +35,14 @@ import org.apache.cassandra.db.rows.UnfilteredRowIterators;
 import org.apache.cassandra.dht.AbstractBounds;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.*;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener.SelectionReason;
 import org.apache.cassandra.io.sstable.format.SSTableReadsListener.SkippingReason;
 import org.apache.cassandra.io.util.FileDataInput;
+import org.apache.cassandra.service.StorageService;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.utils.ByteBufferUtil;
 
@@ -101,6 +103,9 @@ public class BigTableReader extends SSTableReader
      */
     public ISSTableScanner getScanner()
     {
+        // logger.debug("ELECT-Debug: cfName is {}, sstable level is {}, BigTableScanner.getscanner8",
+        //              this.getColumnFamilyName(), this.getSSTableLevel());
+
         return BigTableScanner.getScanner(this);
     }
 
@@ -153,6 +158,8 @@ public class BigTableReader extends SSTableReader
             {
                 listener.onSSTableSkipped(this, SkippingReason.BLOOM_FILTER);
                 Tracing.trace("Bloom filter allows skipping sstable {}", descriptor.id);
+                // logger.debug("ELECT-Debug: Bloom filter allows skipping sstable {}, Is recovered sstable? ({})", 
+                //             descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
                 bloomFilterTracker.addTrueNegative();
                 return null;
             }
@@ -165,10 +172,15 @@ public class BigTableReader extends SSTableReader
             RowIndexEntry cachedPosition = getCachedPosition(decoratedKey, updateCacheAndStats);
             if (cachedPosition != null)
             {
+
                 // we do not need to track "true positive" for Bloom Filter here because it has been already tracked
                 // inside getCachedPosition method
                 listener.onSSTableSelected(this, cachedPosition, SelectionReason.KEY_CACHE_HIT);
                 Tracing.trace("Key cache hit for sstable {}", descriptor.id);
+                // logger.debug("ELECT-Debug: Key cache hit for sstable {}, Is recovered SSTable? ({})", 
+                //                     descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
+                
+
                 return cachedPosition;
             }
         }
@@ -198,6 +210,8 @@ public class BigTableReader extends SSTableReader
                 bloomFilterTracker.addFalsePositive();
             listener.onSSTableSkipped(this, SkippingReason.MIN_MAX_KEYS);
             Tracing.trace("Check against min and max keys allows skipping sstable {}", descriptor.id);
+            logger.debug("ELECT-Debug: Check against min and max keys allows skipping sstable {}, Is recovered SSTable? ({})", 
+                                descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
             return null;
         }
 
@@ -244,7 +258,10 @@ public class BigTableReader extends SSTableReader
                         if (op == SSTableReader.Operator.EQ && updateCacheAndStats)
                             bloomFilterTracker.addFalsePositive();
                         listener.onSSTableSkipped(this, SkippingReason.PARTITION_INDEX_LOOKUP);
-                        Tracing.trace("Partition index lookup allows skipping sstable {}", descriptor.id);
+                        // Tracing.trace("Partition index lookup allows skipping sstable {}", descriptor.id);
+
+                        // logger.debug("ELECT-Debug: Partition index lookup allows skipping sstable {}, Is recovered SSTable? ({})", 
+                        //                     descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
                         return null;
                     }
                 }
@@ -266,6 +283,9 @@ public class BigTableReader extends SSTableReader
                                 DecoratedKey keyInDisk = decorateKey(ByteBufferUtil.readWithShortLength(fdi));
                                 if (!keyInDisk.equals(key))
                                     throw new AssertionError(String.format("%s != %s in %s", keyInDisk, key, fdi.getPath()));
+                                // else
+                                //     logger.debug("ELECT-Debug: The key in disk is ({}), search key is ({}), sstable hash is ({}), is recovered ? ({})", 
+                                //                  keyInDisk, key, sstableMetadata.hashID, ECNetutils.getIsRecovered(sstableMetadata.hashID));
                             }
                         }
 
@@ -275,7 +295,9 @@ public class BigTableReader extends SSTableReader
                     if (op == Operator.EQ && updateCacheAndStats)
                         bloomFilterTracker.addTruePositive();
                     listener.onSSTableSelected(this, indexEntry, SelectionReason.INDEX_ENTRY_FOUND);
-                    Tracing.trace("Partition index with {} entries found for sstable {}", indexEntry.columnsIndexCount(), descriptor.id);
+                    // Tracing.trace("Partition index with {} entries found for sstable {}", indexEntry.columnsIndexCount(), descriptor.id);
+                    // logger.debug("ELECT-Debug: Partition index with {} entries found for sstable {} Is recovered SSTable? ({})", 
+                    //              indexEntry.columnsIndexCount(), descriptor.id, ECNetutils.getIsRecovered(sstableMetadata.hashID));
                     return indexEntry;
                 }
 

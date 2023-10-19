@@ -17,6 +17,9 @@
  */
 package org.apache.cassandra.cql3.statements;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -570,8 +573,9 @@ public class BatchStatement implements CQLStatement
         long timestamp = batchOptions.getTimestamp(queryState);
         int nowInSeconds = batchOptions.getNowInSeconds(queryState);
 
-        for (IMutation mutation : getMutations(queryState.getClientState(), batchOptions, true, timestamp, nowInSeconds, queryStartNanoTime))
+        for (IMutation mutation : getMutations(queryState.getClientState(), batchOptions, true, timestamp, nowInSeconds, queryStartNanoTime)){
             mutation.apply();
+        }
         return null;
     }
 

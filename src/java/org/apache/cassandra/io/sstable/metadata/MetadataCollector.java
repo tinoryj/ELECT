@@ -45,7 +45,16 @@ import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.streamhist.TombstoneHistogram;
 import org.apache.cassandra.utils.streamhist.StreamingTombstoneHistogramBuilder;
 
+
+import static org.apache.cassandra.utils.FBUtilities.now;
+
+import java.time.temporal.ChronoField;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class MetadataCollector implements PartitionStatisticsCollector {
+    private static final Logger logger = LoggerFactory.getLogger(MetadataCollector.class);
     public static final double NO_COMPRESSION_RATIO = -1.0;
     private static final ByteBuffer[] EMPTY_CLUSTERING = new ByteBuffer[0];
 
@@ -67,6 +76,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
         return new StatsMetadata(defaultPartitionSizeHistogram(),
                 defaultCellPerPartitionCountHistogram(),
                 IntervalSet.empty(),
+                now().getLong(ChronoField.MILLI_OF_SECOND),
                 Long.MIN_VALUE,
                 Long.MAX_VALUE,
                 Integer.MAX_VALUE,
@@ -86,7 +96,9 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 null,
                 false,
                 false,
-                null);
+                false,
+                null,
+                0);
     }
 
     protected EstimatedHistogram estimatedPartitionSize = defaultPartitionSizeHistogram();
@@ -246,10 +258,11 @@ public class MetadataCollector implements PartitionStatisticsCollector {
     }
 
     public Map<MetadataType, MetadataComponent> finalizeMetadata(String partitioner, double bloomFilterFPChance,
-            long repairedAt, TimeUUID pendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding,
+            long repairedAt, TimeUUID pendingRepair, boolean isTransient, boolean isDataMigrateToCloud, boolean isReplicationTransferredToErasureCoding,
             SerializationHeader header,
-            String hashID) {
+            String hashID,
+            long dataFileSize) {
+                // logger.debug("[ELECT] new sstable level = {}", sstableLevel);
         Preconditions.checkState((minClustering == null && maxClustering == null)
                 || comparator.compare(maxClustering, minClustering) >= 0);
         ByteBuffer[] minValues = minClustering != null ? minClustering.getBufferArray() : EMPTY_CLUSTERING;
@@ -259,6 +272,7 @@ public class MetadataCollector implements PartitionStatisticsCollector {
         components.put(MetadataType.STATS, new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
                 commitLogIntervals,
+                now().getLong(ChronoField.MILLI_OF_SECOND),
                 timestampTracker.min(),
                 timestampTracker.max(),
                 localDeletionTimeTracker.min(),
@@ -277,8 +291,10 @@ public class MetadataCollector implements PartitionStatisticsCollector {
                 originatingHostId,
                 pendingRepair,
                 isTransient,
+                isDataMigrateToCloud,
                 isReplicationTransferredToErasureCoding,
-                hashID));
+                hashID,
+                dataFileSize));
         components.put(MetadataType.COMPACTION, new CompactionMetadata(cardinality));
         components.put(MetadataType.HEADER, header.toComponent());
         return components;

@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -55,18 +56,21 @@ import org.slf4j.LoggerFactory;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.compaction.AbstractPendingRepairTest;
 import org.apache.cassandra.db.compaction.CompactionController;
 import org.apache.cassandra.db.compaction.CompactionInfo;
 import org.apache.cassandra.db.compaction.CompactionInterruptedException;
 import org.apache.cassandra.db.compaction.CompactionIterator;
 import org.apache.cassandra.db.compaction.CompactionManager;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.OperationType;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
 import org.apache.cassandra.dht.ByteOrderedPartitioner;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.dht.Range;
 import org.apache.cassandra.dht.Token;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.ISSTableScanner;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.locator.InetAddressAndPort;
@@ -198,7 +202,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         assertTrue(repaired.intersects(FULL_RANGE));
         assertTrue(unrepaired.intersects(FULL_RANGE));
 
-        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 1, null, false, false);
+        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 1, null, false);
         repaired.reloadSSTableMetadata();
 
         PendingAntiCompaction.AcquisitionCallable acquisitionCallable = new PendingAntiCompaction.AcquisitionCallable(
@@ -226,7 +230,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
 
         TimeUUID sessionId = prepareSession();
         LocalSessionAccessor.finalizeUnsafe(sessionId);
-        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false,false);
+        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false);
         repaired.reloadSSTableMetadata();
         assertTrue(repaired.isPendingRepair());
 
@@ -254,7 +258,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         assertTrue(unrepaired.intersects(FULL_RANGE));
 
         TimeUUID sessionId = prepareSession();
-        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false,false);
+        repaired.descriptor.getMetadataSerializer().mutateRepairMetadata(repaired.descriptor, 0, sessionId, false);
         repaired.reloadSSTableMetadata();
         assertTrue(repaired.isPendingRepair());
 
@@ -424,6 +428,26 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
                             protected void runMayThrow() {
                                 throw new CompactionInterruptedException("antiCompactionExceptionTest");
                             }
+
+                            @Override
+                            protected void runMayThrow(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable) throws Exception {
+                                // TODO Auto-generated method stub
+                                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                            }
+
+                            @Override
+                            protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
+                                    throws Exception {
+                                // TODO Auto-generated method stub
+                                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                            }
+
+                            @Override
+                            protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata,
+                                    String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
+                                // TODO Auto-generated method stub
+                                throw new UnsupportedOperationException("Unimplemented method 'runMayThrow'");
+                            }
                         };
                         return es.submit(r);
                     }
@@ -559,7 +583,7 @@ public class PendingAntiCompactionTest extends AbstractPendingAntiCompactionTest
         }
         for (int i = 1; i <= 10; i++) {
             SSTableReader sstable = MockSchema.sstable(i + 20, i * 10, i * 10 + 9, cfs);
-            AbstractPendingRepairTest.mutateRepaired(sstable, nextTimeUUID(), false, false);
+            AbstractPendingRepairTest.mutateRepaired(sstable, nextTimeUUID(), false);
             pendingSSTables.add(sstable);
         }
 

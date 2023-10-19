@@ -549,7 +549,7 @@ public class RepairDigestTrackingTest extends TestBaseImpl {
                     SSTableReader sstable = sstables.next();
                     Descriptor descriptor = sstable.descriptor;
                     descriptor.getMetadataSerializer()
-                            .mutateRepairMetadata(descriptor, currentTimeMillis(), null, false, false);
+                            .mutateRepairMetadata(descriptor, currentTimeMillis(), null, false);
                     sstable.reloadSSTableMetadata();
                 }
             } catch (IOException e) {

@@ -27,10 +27,10 @@ public enum MetadataType {
     VALIDATION(ValidationMetadata.serializer),
     /** Metadata only used at compaction */
     COMPACTION(CompactionMetadata.serializer),
-    /** Metadata always keep in memory */
-    STATS(StatsMetadata.serializer),
     /** Serialization header */
-    HEADER((IMetadataComponentSerializer) SerializationHeader.serializer);
+    HEADER((IMetadataComponentSerializer) SerializationHeader.serializer),
+    /** Metadata always keep in memory */
+    STATS(StatsMetadata.serializer);
 
     public final IMetadataComponentSerializer<MetadataComponent> serializer;
 

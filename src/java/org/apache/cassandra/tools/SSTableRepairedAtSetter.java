@@ -25,6 +25,8 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.util.Arrays;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.cassandra.io.sstable.Component;
 import org.apache.cassandra.io.sstable.Descriptor;
@@ -43,6 +45,7 @@ import org.apache.cassandra.io.sstable.Descriptor;
 import org.apache.cassandra.io.util.File;
 
 public class SSTableRepairedAtSetter {
+    private static final Logger logger = LoggerFactory.getLogger(SSTableRepairedAtSetter.class);
     /**
      * @param args a list of sstables whose metadata we are changing
      */
@@ -85,17 +88,17 @@ public class SSTableRepairedAtSetter {
             if (setIsRepaired) {
                 if (new File(descriptor.filenameFor(Component.DATA)).exists()) {
                     FileTime f = Files.getLastModifiedTime(new File(descriptor.filenameFor(Component.DATA)).toPath());
-                    descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false,
-                            false);
-                } else {
+                    descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false);
+                } else if (new File(descriptor.filenameFor(Component.EC_METADATA)).exists()){
                     FileTime f = Files
                             .getLastModifiedTime(new File(descriptor.filenameFor(Component.EC_METADATA)).toPath());
-                    descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false,
-                            false);
+                    descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, f.toMillis(), null, false);
+                }else {
+                    logger.debug("[Tinoryi] Could not find both EC metadata and data");
                 }
 
             } else {
-                descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, 0, null, false, false);
+                descriptor.getMetadataSerializer().mutateRepairMetadata(descriptor, 0, null, false);
             }
         }
     }

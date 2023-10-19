@@ -83,6 +83,7 @@ public class CompactionIterator extends CompactionInfo.Holder implements Unfilte
     private long bytesRead;
     private long totalSourceCQLRows;
 
+
     /*
      * counters for merged rows.
      * array index represents (number of merged rows - 1), so index 0 is counter for no merge (1 row),
@@ -124,10 +125,10 @@ public class CompactionIterator extends CompactionInfo.Holder implements Unfilte
         sstables = scanners.stream().map(ISSTableScanner::getBackingSSTables).flatMap(Collection::stream).collect(ImmutableSet.toImmutableSet());
         this.activeCompactions = activeCompactions == null ? ActiveCompactionsTracker.NOOP : activeCompactions;
         this.activeCompactions.beginCompaction(this); // note that CompactionTask also calls this, but CT only creates CompactionIterator with a NOOP ActiveCompactions
-
+        
         UnfilteredPartitionIterator merged = scanners.isEmpty()
                                            ? EmptyIterators.unfilteredPartition(controller.cfs.metadata())
-                                           : UnfilteredPartitionIterators.merge(scanners, listener());
+                                           : UnfilteredPartitionIterators.merge(scanners, listener(), controller.cfs.name.contains("usertable"), compactionId);
         if (topPartitionCollector != null) // need to count tombstones before they are purged
             merged = Transformation.apply(merged, new TopPartitionTracker.TombstoneCounter(topPartitionCollector, nowInSec));
         merged = Transformation.apply(merged, new GarbageSkipper(controller));

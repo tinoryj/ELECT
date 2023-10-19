@@ -18,25 +18,39 @@
 package org.apache.cassandra.db.compaction;
 
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
 
 import org.apache.cassandra.db.ColumnFamilyStore;
+import org.apache.cassandra.db.DecoratedKey;
 import org.apache.cassandra.db.Directories;
+import org.apache.cassandra.db.compaction.LeveledCompactionTask.TransferredSSTableKeyRange;
 import org.apache.cassandra.db.compaction.writers.CompactionAwareWriter;
 import org.apache.cassandra.io.FSDiskFullWriteError;
+import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
 import org.apache.cassandra.utils.TimeUUID;
 import org.apache.cassandra.utils.WrappedRunnable;
 import org.apache.cassandra.db.lifecycle.LifecycleTransaction;
-
+import org.apache.cassandra.dht.Range;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 public abstract class AbstractCompactionTask extends WrappedRunnable
 {
     protected final ColumnFamilyStore cfs;
     protected LifecycleTransaction transaction;
     protected boolean isUserDefined;
     protected OperationType compactionType;
+
+    // [CASSANDRAEC]
+    protected boolean isContainReplicationTransferredToErasureCoding = false;
+    protected boolean isContainECSSTable = false;
+
+    private static final Logger logger = LoggerFactory.getLogger(AbstractCompactionTask.class);
+
 
     /**
      * @param cfs
@@ -110,9 +124,69 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
             transaction.close();
         }
     }
+
+    /**
+     * 
+     * [CASSANDRAEC] perform SSTables rewrite
+     * @param first first key of the ecSSTable
+     * @param last last key of the ecSSTable
+     * @param ecSSTable the new SSTable which has been replaced Data.db with EC.db
+     * 
+     */
+    public int execute(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys)
+    {
+        try
+        {
+            // logger.debug("ELECT-Debug: this is ActiveCompactionTask.execute");
+
+            return executeInternal(activeCompactions, first, last, ecMetadata, fileNamePrefix, sourceKeys);
+        }
+        catch(FSDiskFullWriteError e)
+        {
+            RuntimeException cause = new RuntimeException("Converted from FSDiskFullWriteError: " + e.getMessage());
+            cause.setStackTrace(e.getStackTrace());
+            throw new RuntimeException("Throwing new Runtime to bypass exception handler when disk is full", cause);
+        }
+        finally
+        {
+            transaction.close();
+        }
+    }
+
+    /**
+     * [CASSANDRAEC] perform Leveled Compaction for CassandraEC in secondary node, if transferred SSTables are selected
+     * 
+     * @param TransferredSSTableKeyRanges the key ranges of the selected transferred SSTables, we should abandon the keys
+     * within these ranges.
+     * 
+     */
+    public int execute(ActiveCompactionsTracker activeCompactions, List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges)
+    {
+        try
+        {
+            // logger.debug("ELECT-Debug: this is ActiveCompactionTask.execute");
+
+            return executeInternal(activeCompactions, TransferredSSTableKeyRanges);
+        }
+        catch(FSDiskFullWriteError e)
+        {
+            RuntimeException cause = new RuntimeException("Converted from FSDiskFullWriteError: " + e.getMessage());
+            cause.setStackTrace(e.getStackTrace());
+            throw new RuntimeException("Throwing new Runtime to bypass exception handler when disk is full", cause);
+        }
+        finally
+        {
+            transaction.close();
+        }
+    }
+
     public abstract CompactionAwareWriter getCompactionAwareWriter(ColumnFamilyStore cfs, Directories directories, LifecycleTransaction txn, Set<SSTableReader> nonExpiredSSTables);
 
     protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions);
+    
+    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys);
+
+    protected abstract int executeInternal(ActiveCompactionsTracker activeCompactions, List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges);
 
     public AbstractCompactionTask setUserDefined(boolean isUserDefined)
     {

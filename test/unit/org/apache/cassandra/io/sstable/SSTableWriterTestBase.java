@@ -144,17 +144,17 @@ public class SSTableWriterTestBase extends SchemaLoader {
     }
 
     public static SSTableWriter getWriter(ColumnFamilyStore cfs, File directory, LifecycleTransaction txn,
-            long repairedAt, TimeUUID pendingRepair, boolean isTransient,
-            boolean isReplicationTransferredToErasureCoding) {
+            long repairedAt, TimeUUID pendingRepair, boolean isTransient
+            ) {
         Descriptor desc = cfs.newSSTableDescriptor(directory);
         return SSTableWriter.create(desc, 0, repairedAt, pendingRepair, isTransient,
-                isReplicationTransferredToErasureCoding, new SerializationHeader(true, cfs.metadata(),
+                new SerializationHeader(true, cfs.metadata(),
                         cfs.metadata().regularAndStaticColumns(), EncodingStats.NO_STATS),
                 cfs.indexManager.listIndexes(), txn);
     }
 
     public static SSTableWriter getWriter(ColumnFamilyStore cfs, File directory, LifecycleTransaction txn) {
-        return getWriter(cfs, directory, txn, 0, null, false, false);
+        return getWriter(cfs, directory, txn, 0, null, false);
     }
 
     public static ByteBuffer random(int i, int size) {

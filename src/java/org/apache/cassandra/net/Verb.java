@@ -55,6 +55,7 @@ import org.apache.cassandra.gms.GossipShutdownVerbHandler;
 import org.apache.cassandra.hints.HintMessage;
 import org.apache.cassandra.hints.HintVerbHandler;
 import org.apache.cassandra.io.IVersionedAsymmetricSerializer;
+import org.apache.cassandra.io.erasurecode.net.ECCompaction;
 import org.apache.cassandra.io.erasurecode.net.ECCompactionVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECMessage;
 import org.apache.cassandra.io.erasurecode.net.ECMessageVerbHandler;
@@ -62,6 +63,28 @@ import org.apache.cassandra.io.erasurecode.net.ECMetadata;
 import org.apache.cassandra.io.erasurecode.net.ECMetadataVerbHandler;
 import org.apache.cassandra.io.erasurecode.net.ECParityNode;
 import org.apache.cassandra.io.erasurecode.net.ECParityNodeVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdate;
+import org.apache.cassandra.io.erasurecode.net.ECParityUpdateVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECRecoveryForSecondary;
+import org.apache.cassandra.io.erasurecode.net.ECRecoveryForSecondaryVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECRequestData;
+import org.apache.cassandra.io.erasurecode.net.ECRequestDataVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECRequestParity;
+import org.apache.cassandra.io.erasurecode.net.ECRequestParityForRecovery;
+import org.apache.cassandra.io.erasurecode.net.ECRequestParityForRecoveryVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECRequestParityVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECResponseData;
+import org.apache.cassandra.io.erasurecode.net.ECResponseDataVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECResponseParity;
+import org.apache.cassandra.io.erasurecode.net.ECResponseParityForRecovery;
+import org.apache.cassandra.io.erasurecode.net.ECResponseParityForRecoveryVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECResponseParityVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTable;
+import org.apache.cassandra.io.erasurecode.net.ECSyncSSTableVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.LSMTreeRecovery;
+import org.apache.cassandra.io.erasurecode.net.LSMTreeRecoveryVerbHandler;
+import org.apache.cassandra.io.erasurecode.net.ResponseLSMTreeRecovery;
+import org.apache.cassandra.io.erasurecode.net.ResponseLSMTreeRecoveryVerbHandler;
 import org.apache.cassandra.repair.RepairMessageVerbHandler;
 import org.apache.cassandra.repair.messages.CleanupMessage;
 import org.apache.cassandra.repair.messages.FailSession;
@@ -117,48 +140,48 @@ import static org.apache.cassandra.net.Verb.Priority.*;
  * urgent, i.e. what used to be the "Gossip" connection.
  */
 public enum Verb {
-    MUTATION_RSP(60, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
-            () -> ResponseVerbHandler.instance),
-    MUTATION_REQ(0, P3, writeTimeout, MUTATION, () -> Mutation.serializer, () -> MutationVerbHandler.instance,
-            MUTATION_RSP),
+    MUTATION_RSP(60, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    MUTATION_REQ(0, P3, writeTimeout, MUTATION, () -> Mutation.serializer, () -> MutationVerbHandler.instance, MUTATION_RSP),
     HINT_RSP(61, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
     HINT_REQ(1, P4, writeTimeout, MUTATION, () -> HintMessage.serializer, () -> HintVerbHandler.instance, HINT_RSP),
-    READ_REPAIR_RSP(62, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
-            () -> ResponseVerbHandler.instance),
-    READ_REPAIR_REQ(2, P1, writeTimeout, MUTATION, () -> Mutation.serializer, () -> ReadRepairVerbHandler.instance,
-            READ_REPAIR_RSP),
-    BATCH_STORE_RSP(65, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
-            () -> ResponseVerbHandler.instance),
-    BATCH_STORE_REQ(5, P3, writeTimeout, MUTATION, () -> Batch.serializer, () -> BatchStoreVerbHandler.instance,
-            BATCH_STORE_RSP),
-    BATCH_REMOVE_RSP(66, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
-            () -> ResponseVerbHandler.instance),
-    BATCH_REMOVE_REQ(6, P3, writeTimeout, MUTATION, () -> TimeUUID.Serializer.instance,
-            () -> BatchRemoveVerbHandler.instance, BATCH_REMOVE_RSP),
-    ERASURECODE_RSP(201, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
-            () -> ResponseVerbHandler.instance),
-    ERASURECODE_REQ(202, P3, writeTimeout, ERASURECODE, () -> ECMessage.serializer, () -> ECMessageVerbHandler.instance,
-            ERASURECODE_RSP),
-    ECCOMPACTION_RSP(203, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
-            () -> ResponseVerbHandler.instance),
-    ECCOMPACTION_REQ(204, P3, writeTimeout, ERASURECODE, () -> ECMessage.serializer,
-            () -> ECMessageVerbHandler.instance, ECCOMPACTION_RSP),
-    ECDELETEREPLICA_RSP(205, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
-            () -> ResponseVerbHandler.instance),
-    ECDELETEREPLICA_REQ(206, P3, writeTimeout, ERASURECODE, () -> ECMessage.serializer,
-            () -> ECMessageVerbHandler.instance, ECDELETEREPLICA_RSP),
-    ECREADY_RSP(207, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
-            () -> ResponseVerbHandler.instance),
-    ECREADY_REQ(208, P3, writeTimeout, ERASURECODE, () -> ECMessage.serializer, () -> ECMessageVerbHandler.instance,
-            ECREADY_RSP),
-    ECPARITYNODE_RSP(209, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
-            () -> ResponseVerbHandler.instance),
-    ECPARITYNODE_REQ(210, P3, writeTimeout, ERASURECODE, () -> ECParityNode.serializer,
-            () -> ECParityNodeVerbHandler.instance, ECPARITYNODE_RSP),
-    ECMETADATA_RSP(211, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer,
-            () -> ResponseVerbHandler.instance),
-    ECMETADATA_REQ(212, P3, writeTimeout, ERASURECODE, () -> ECMetadata.serializer,
-            () -> ECMetadataVerbHandler.instance, ECMETADATA_RSP),
+    READ_REPAIR_RSP(62, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    READ_REPAIR_REQ(2, P1, writeTimeout, MUTATION, () -> Mutation.serializer, () -> ReadRepairVerbHandler.instance, READ_REPAIR_RSP),
+    BATCH_STORE_RSP(65, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    BATCH_STORE_REQ(5, P3, writeTimeout, MUTATION, () -> Batch.serializer, () -> BatchStoreVerbHandler.instance, BATCH_STORE_RSP),
+    BATCH_REMOVE_RSP(66, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    BATCH_REMOVE_REQ(6, P3, writeTimeout, MUTATION, () -> TimeUUID.Serializer.instance, () -> BatchRemoveVerbHandler.instance, BATCH_REMOVE_RSP),
+    ERASURECODE_RSP(201, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ERASURECODE_REQ(202, P3, writeTimeout, ERASURECODE, () -> ECMessage.serializer, () -> ECMessageVerbHandler.instance, ERASURECODE_RSP),
+    ECCOMPACTION_RSP(203, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECCOMPACTION_REQ(204, P3, writeTimeout, ERASURECODE, () -> ECCompaction.serializer, () -> ECCompactionVerbHandler.instance, ECCOMPACTION_RSP),
+    ECSYNCSSTABLE_RSP(205, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECSYNCSSTABLE_REQ(206, P3, writeTimeout, ERASURECODE, () -> ECSyncSSTable.serializer, () -> ECSyncSSTableVerbHandler.instance, ECSYNCSSTABLE_RSP),
+    ECREADY_RSP(207, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECREADY_REQ(208, P3, writeTimeout, ERASURECODE, () -> ECMessage.serializer, () -> ECMessageVerbHandler.instance, ECREADY_RSP),
+    ECPARITYNODE_RSP(209, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECPARITYNODE_REQ(210, P3, writeTimeout, ERASURECODE, () -> ECParityNode.serializer, () -> ECParityNodeVerbHandler.instance, ECPARITYNODE_RSP),
+    ECMETADATA_RSP(211, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECMETADATA_REQ(212, P3, writeTimeout, ERASURECODE, () -> ECMetadata.serializer, () -> ECMetadataVerbHandler.instance, ECMETADATA_RSP),
+    ECPARITYUPDATE_RSP(213, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECPARITYUPDATE_REQ(214, P3, writeTimeout, ERASURECODE, () -> ECParityUpdate.serializer, () -> ECParityUpdateVerbHandler.instance, ECPARITYUPDATE_RSP),
+    ECREQUESTPARITY_RSP(215, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECREQUESTPARITY_REQ(216, P3, writeTimeout, ERASURECODE, () -> ECRequestParity.serializer, () -> ECRequestParityVerbHandler.instance, ECREQUESTPARITY_RSP),
+    ECRESPONSEPARITY_RSP(217, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECRESPONSEPARITY_REQ(218, P3, writeTimeout, ERASURECODE, () -> ECResponseParity.serializer, () -> ECResponseParityVerbHandler.instance, ECRESPONSEPARITY_RSP),
+    ECREQUESTDATA_RSP(219, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECREQUESTDATA_REQ(220, P3, writeTimeout, ERASURECODE, () -> ECRequestData.serializer, () -> ECRequestDataVerbHandler.instance, ECREQUESTDATA_RSP),
+    ECRESPONSEDATA_RSP(221, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECRESPONSEDATA_REQ(222, P3, writeTimeout, ERASURECODE, () -> ECResponseData.serializer, () -> ECResponseDataVerbHandler.instance, ECRESPONSEDATA_RSP),
+    ECRECOVERYDATA_RSP(223, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECRECOVERYDATA_REQ(224, P3, writeTimeout, ERASURECODE, () -> ECRecoveryForSecondary.serializer, () -> ECRecoveryForSecondaryVerbHandler.instance, ECRECOVERYDATA_RSP),
+    LSMTREERECOVERY_RSP(225, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    LSMTREERECOVERY_REQ(226, P3, writeTimeout, ERASURECODE, () -> LSMTreeRecovery.serializer, () -> LSMTreeRecoveryVerbHandler.instance, LSMTREERECOVERY_RSP),
+    RESPONSELSMTREERECOVERY_RSP(227, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    RESPONSELSMTREERECOVERY_REQ(228, P3, writeTimeout, ERASURECODE, () -> ResponseLSMTreeRecovery.serializer, () -> ResponseLSMTreeRecoveryVerbHandler.instance, RESPONSELSMTREERECOVERY_RSP),
+    ECREQUESTPARITYFORRECOVERY_RSP(229, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECREQUESTPARITYFORRECOVERY_REQ(230, P3, writeTimeout, ERASURECODE, () -> ECRequestParityForRecovery.serializer, () -> ECRequestParityForRecoveryVerbHandler.instance, ECREQUESTPARITYFORRECOVERY_RSP),
+    ECRESPONSEPARITYFORRECOVERY_RSP(231, P1, writeTimeout, REQUEST_RESPONSE, () -> NoPayload.serializer, () -> ResponseVerbHandler.instance),
+    ECRESPONSEPARITYFORRECOVERY_REQ(232, P3, writeTimeout, ERASURECODE, () -> ECResponseParityForRecovery.serializer, () -> ECResponseParityForRecoveryVerbHandler.instance, ECRESPONSEPARITYFORRECOVERY_RSP),
 
     PAXOS_PREPARE_RSP(93, P2, writeTimeout, REQUEST_RESPONSE, () -> PrepareResponse.serializer,
             () -> ResponseVerbHandler.instance),

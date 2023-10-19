@@ -28,11 +28,14 @@ import org.apache.cassandra.db.filter.ColumnFilter;
 import org.apache.cassandra.db.rows.*;
 import org.apache.cassandra.io.sstable.IndexInfo;
 import org.apache.cassandra.io.sstable.format.SSTableReader;
+import org.apache.cassandra.io.erasurecode.net.ECNetutils;
 import org.apache.cassandra.io.sstable.CorruptSSTableException;
 import org.apache.cassandra.io.util.FileDataInput;
 import org.apache.cassandra.io.util.DataPosition;
 import org.apache.cassandra.io.util.FileHandle;
 import org.apache.cassandra.utils.ByteBufferUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
 {
@@ -53,6 +56,8 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
     private boolean isClosed;
 
     protected final Slices slices;
+    private static final Logger logger = LoggerFactory.getLogger(AbstractSSTableIterator.class);
+
 
     @SuppressWarnings("resource") // We need this because the analysis is not able to determine that we do close
                                   // file on every path where we created it.
@@ -92,10 +97,19 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                 if (needSeekAtPartitionStart)
                 {
                     // Not indexed (or is reading static), set to the beginning of the partition and read partition level deletion there
-                    if (file == null)
+                    if (file == null) {
                         file = sstable.getFileDataInput(indexEntry.position);
-                    else
+                        // ECNetutils.printStackTace(String.format("ELECT-Debug: The file of sstable %s (hash: %s) is null, the position is %s, is recovered sstable? (%s).", 
+                        //                                         sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position, ECNetutils.getIsRecovered(sstable.getSSTableHashID())));
+                        // logger.debug("ELECT-Debug: The file of sstable {} (hash: {}) is null, the position is {}.", sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position);
+                    }
+                        
+                    else{
                         file.seek(indexEntry.position);
+                        // ECNetutils.printStackTace(String.format("ELECT-Debug: The position of sstable %s (hash: %s) is %s, is recovered sstable? (%s).", 
+                        //                                         sstable.descriptor, sstable.getSSTableHashID(), indexEntry.position, ECNetutils.getIsRecovered(sstable.getSSTableHashID())));
+                    }
+
 
                     ByteBufferUtil.skipShortLength(file); // Skip partition key
                     this.partitionLevelDeletion = DeletionTime.serializer.deserialize(file);
@@ -111,8 +125,10 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                     this.staticRow = Rows.EMPTY_STATIC_ROW;
                     this.reader = createReader(indexEntry, file, shouldCloseFile);
                 }
-                if (!partitionLevelDeletion.validate())
+                if (!partitionLevelDeletion.validate()){
+                    logger.debug("ELECT-Debug: The partition level deletion is invalid,  the sstable is [{}, {}].", sstable.getFilename(), sstable.getSSTableHashID());
                     UnfilteredValidation.handleInvalid(metadata(), key, sstable, "partitionLevelDeletion="+partitionLevelDeletion.toString());
+                }
 
                 if (reader != null && !slices.isEmpty())
                     reader.setForSlice(nextSlice());
@@ -352,6 +368,8 @@ public abstract class AbstractSSTableIterator implements UnfilteredRowIterator
                     e.addSuppressed(suppressed);
                 }
                 sstable.markSuspect();
+                if(ECNetutils.getIsRecovered(sstable.getSSTableHashID()))
+                    logger.debug("ELECT-Debug: Read recovered sstable failed, hash is ({})", sstable.getSSTableHashID());
                 throw new CorruptSSTableException(e, reader.file.getPath());
             }
         }

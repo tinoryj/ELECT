@@ -25,8 +25,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NativeRSDecoder extends ErasureDecoder
-{
+public class NativeRSDecoder extends ErasureDecoder {
     private static Logger logger = LoggerFactory.getLogger(NativeRSEncoder.class.getName());
 
     // Protect ISA-L coder data structure in native layer from being accessed and
@@ -48,35 +47,24 @@ public class NativeRSDecoder extends ErasureDecoder
         decoderLock.writeLock().lock();
         try {
             initImpl(coderOptions.getNumDataUnits(),
-                     coderOptions.getNumParityUnits());
+                    coderOptions.getNumParityUnits());
         } finally {
             decoderLock.writeLock().unlock();
         }
     }
 
     protected void doDecode(ByteBufferDecodingState decodingState)
-    throws IOException {
+            throws IOException {
         decoderLock.readLock().lock();
         try {
             if (nativeCoder == 0) {
                 throw new IOException(String.format("%s closed", getClass().getSimpleName()));
             }
             decodeImpl(decodingState.inputs, decodingState.inputOffsets,
-                       decodingState.decodeLength, decodingState.erasedIndexes,
-                       decodingState.outputs, decodingState.outputOffsets);
+                    decodingState.decodeLength, decodingState.decodeIndexes, decodingState.erasedIndexes,
+                    decodingState.outputs, decodingState.outputOffsets);
         } finally {
             decoderLock.readLock().unlock();
-        }
-    }
-
-    protected void doDecode(ByteArrayDecodingState decodingState)
-    throws IOException {
-        ByteBufferDecodingState bbdState = decodingState.convertToByteBufferState();
-        doDecode(bbdState);
-
-        for (int i = 0; i < decodingState.outputs.length; i++) {
-            bbdState.outputs[i].get(decodingState.outputs[i],
-                                    decodingState.outputOffsets[i], decodingState.decodeLength);
         }
     }
 
@@ -93,8 +81,8 @@ public class NativeRSDecoder extends ErasureDecoder
     private native void initImpl(int numDataUnits, int numParityUnits);
 
     private native void decodeImpl(
-    ByteBuffer[] inputs, int[] inputOffsets, int dataLen, int[] erased,
-    ByteBuffer[] outputs, int[] outputOffsets) throws IOException;
+            ByteBuffer[] inputs, int[] inputOffsets, int dataLen, int[] decodeIndex, int[] erasedIndex,
+            ByteBuffer[] outputs, int[] outputOffsets) throws IOException;
 
     private native void destroyImpl();
 
