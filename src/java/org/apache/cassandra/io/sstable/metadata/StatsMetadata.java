@@ -83,6 +83,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
     public final boolean isTransient;
     public final boolean isDataMigrateToCloud;
     public final boolean isReplicationTransferToErasureCoding;
+    public final long tokenRangeRightBound;
+    public final long tokenRangeLeftBound;
+    public final long vNodeID;
     public String hashID = null;
     public long dataFileSize = 0;
     // just holds the current encoding stats to avoid allocating - it is not
@@ -114,7 +117,10 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
             boolean isDataMigrateToCloud,
             boolean isReplicationTransferredToErasureCoding,
             String hashID,
-            long dataFileSize) {
+            long dataFileSize,
+            long tokenRangeRightBound,
+            long tokenRangeLeftBound,
+            long vNodeID) {
         this.estimatedPartitionSize = estimatedPartitionSize;
         this.estimatedCellPerPartitionCount = estimatedCellPerPartitionCount;
         this.commitLogIntervals = commitLogIntervals;
@@ -140,6 +146,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
         this.isDataMigrateToCloud = isDataMigrateToCloud;
         this.hashID = hashID;
         this.dataFileSize = dataFileSize;
+        this.vNodeID = vNodeID;
+        this.tokenRangeRightBound = tokenRangeRightBound;
+        this.tokenRangeLeftBound = tokenRangeLeftBound;
         this.encodingStats = new EncodingStats(minTimestamp, minLocalDeletionTime, minTTL);
         this.isReplicationTransferToErasureCoding = isReplicationTransferredToErasureCoding;
     }
@@ -181,7 +190,8 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                         this.hashID = sb.toString();
                     }
 
-                    logger.debug("[ELECT]: generated hash value for current SSTable is {}, hash length is {}", this.hashID, this.hashID.length());
+                    logger.debug("[ELECT]: generated hash value for current SSTable is {}, hash length is {}",
+                            this.hashID, this.hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
                     // logger.debug("[ELECT]: Could not generated hash value for current SSTable =
@@ -198,14 +208,16 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
         return true;
     }
 
-    // public Boolean setIsReplicationTransferredToErasureCodingFlag(boolean isReplicationTransferToErasureCoding) {
-    //     this.isReplicationTransferToErasureCoding = isReplicationTransferToErasureCoding;
-    //     return true;
+    // public Boolean setIsReplicationTransferredToErasureCodingFlag(boolean
+    // isReplicationTransferToErasureCoding) {
+    // this.isReplicationTransferToErasureCoding =
+    // isReplicationTransferToErasureCoding;
+    // return true;
     // }
 
     // public Boolean setIsDataMigrateToCloudFlag(boolean isDataMigrateToCloud) {
-    //     this.isDataMigrateToCloud = isDataMigrateToCloud;
-    //     return true;
+    // this.isDataMigrateToCloud = isDataMigrateToCloud;
+    // return true;
     // }
 
     /**
@@ -257,12 +269,16 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 isDataMigrateToCloud,
                 isReplicationTransferToErasureCoding,
                 hashID,
-                dataFileSize);
+                dataFileSize,
+                tokenRangeRightBound,
+                tokenRangeLeftBound,
+                vNodeID);
     }
 
     public StatsMetadata setIsTransferredToErasureCoding(final boolean newIsReplicationTransferToErasureCoding) {
 
-        logger.debug("ELECT-Debug: setIsTransferredToErasureCoding is StatsMetadata ({})", newIsReplicationTransferToErasureCoding);
+        logger.debug("ELECT-Debug: setIsTransferredToErasureCoding is StatsMetadata ({})",
+                newIsReplicationTransferToErasureCoding);
 
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,
@@ -289,7 +305,10 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 isDataMigrateToCloud,
                 newIsReplicationTransferToErasureCoding,
                 hashID,
-                dataFileSize);
+                dataFileSize,
+                tokenRangeRightBound,
+                tokenRangeLeftBound,
+                vNodeID);
     }
 
     public StatsMetadata setIsDataMigrateToCloud(boolean newIsDataMigrateToCloud) {
@@ -321,7 +340,10 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 newIsDataMigrateToCloud,
                 isReplicationTransferToErasureCoding,
                 hashID,
-                dataFileSize);
+                dataFileSize,
+                tokenRangeRightBound,
+                tokenRangeLeftBound,
+                vNodeID);
     }
 
     public StatsMetadata mutateRepairedMetadata(long newRepairedAt, TimeUUID newPendingRepair, boolean newIsTransient) {
@@ -350,7 +372,10 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                 isDataMigrateToCloud,
                 isReplicationTransferToErasureCoding,
                 hashID,
-                dataFileSize);
+                dataFileSize,
+                tokenRangeRightBound,
+                tokenRangeLeftBound,
+                vNodeID);
     }
 
     @Override
@@ -467,6 +492,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                     size += UUIDSerializer.serializer.serializedSize(component.originatingHostId,
                             version.correspondingMessagingVersion());
             }
+            size += TypeSizes.sizeof(component.tokenRangeRightBound);
+            size += TypeSizes.sizeof(component.tokenRangeLeftBound);
+            size += TypeSizes.sizeof(component.vNodeID);
             return size;
         }
 
@@ -550,6 +578,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
             }
 
             out.writeLong(component.dataFileSize);
+            out.writeLong(component.tokenRangeRightBound);
+            out.writeLong(component.tokenRangeLeftBound);
+            out.writeLong(component.vNodeID);
         }
 
         public StatsMetadata deserialize(Version version, DataInputPlus in) throws IOException {
@@ -655,6 +686,9 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
             // in.skipBytes(32);
 
             long dataFileSize = in.readLong();
+            long tokenRangeRightBound = in.readLong();
+            long tokenRangeLeftBound = in.readLong();
+            long vNodeID = in.readLong();
 
             return new StatsMetadata(partitionSizes,
                     columnCounts,
@@ -681,7 +715,10 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                     isDataMigrateToCloud,
                     isReplicationTransferredToErasureCoding,
                     hashIDRawStr,
-                    dataFileSize);
+                    dataFileSize,
+                    tokenRangeRightBound,
+                    tokenRangeLeftBound,
+                    vNodeID);
         }
     }
 }
