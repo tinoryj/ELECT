@@ -368,7 +368,7 @@ public class LeveledGenerations {
         addAll(Collections.singleton(sstable));
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public static int getMaxLevelCount() {
         return MAX_LEVEL_COUNT;
     }

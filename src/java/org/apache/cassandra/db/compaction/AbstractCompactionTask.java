@@ -45,7 +45,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     protected boolean isUserDefined;
     protected OperationType compactionType;
 
-    // [CASSANDRAEC]
+    // [ELECT]
     protected boolean isContainReplicationTransferredToErasureCoding = false;
     protected boolean isContainECSSTable = false;
 
@@ -127,7 +127,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
 
     /**
      * 
-     * [CASSANDRAEC] perform SSTables rewrite
+     * [ELECT] perform SSTables rewrite
      * @param first first key of the ecSSTable
      * @param last last key of the ecSSTable
      * @param ecSSTable the new SSTable which has been replaced Data.db with EC.db
@@ -154,7 +154,7 @@ public abstract class AbstractCompactionTask extends WrappedRunnable
     }
 
     /**
-     * [CASSANDRAEC] perform Leveled Compaction for CassandraEC in secondary node, if transferred SSTables are selected
+     * [ELECT] perform Leveled Compaction for ELECT in secondary node, if transferred SSTables are selected
      * 
      * @param TransferredSSTableKeyRanges the key ranges of the selected transferred SSTables, we should abandon the keys
      * within these ranges.

@@ -197,7 +197,7 @@ public class StorageService extends NotificationBroadcasterSupport
     public static final int RING_DELAY_MILLIS = getRingDelay(); // delay after which we assume ring has stablized
     public static final int SCHEMA_DELAY_MILLIS = getSchemaDelay();
 
-    // [CASSANDRAEC] The following properties belong to CassandraEC.
+    // [ELECT] The following properties belong to ELECT.
     public volatile boolean isInsertRecently = false;
     public volatile List<String> compactingOrErasureCodingSSTables = new ArrayList<String>();
 
@@ -265,11 +265,11 @@ public class StorageService extends NotificationBroadcasterSupport
     public ConcurrentSkipListSet<String> recoveringSSTables = new ConcurrentSkipListSet<String>();
     
 
-    // [CASSANDRAEC] The following parameters are used to support recovery
+    // [ELECT] The following parameters are used to support recovery
     public ConcurrentHashMap<String, ByteBuffer[]> globalSSTHashToErasureCodesMap = new ConcurrentHashMap<String, ByteBuffer[]>();
     public ConcurrentHashMap<String, SSTableReader> globalRecoveredSSTableMap = new ConcurrentHashMap<String, SSTableReader>();
 
-    // [CASSANDRAEC] The following parameters are used to support data migration
+    // [ELECT] The following parameters are used to support data migration
     public volatile long transferredSSTableCount = 0;
     public volatile long migratedParityCodeCount = 0;
     public ConcurrentSkipListSet<String> migratedParityCodes = new ConcurrentSkipListSet<String>();
@@ -4636,8 +4636,8 @@ public class StorageService extends NotificationBroadcasterSupport
         return inetList;
     }
 
-    // [CASSANDRAEC]
-    public List<InetAddressAndPort> getNaturalEndpointsForCassandraEC(String keyspaceName, ByteBuffer key) {
+    // [ELECT]
+    public List<InetAddressAndPort> getNaturalEndpointsForELECT(String keyspaceName, ByteBuffer key) {
         EndpointsForToken replicas = getNaturalReplicasForToken(keyspaceName, key);
         List<InetAddressAndPort> inetList = new ArrayList<>(replicas.size());
         replicas.forEach(r -> inetList.add(r.endpoint()));
@@ -4649,7 +4649,7 @@ public class StorageService extends NotificationBroadcasterSupport
         return Replicas.stringify(replicas, true);
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public List<InetAddressAndPort> getReplicaNodesWithPort(String keyspaceName, String cf, String key) {
         List<String> inetStringList = getNaturalEndpointsWithPort(keyspaceName, cf, key);
         List<InetAddressAndPort> inetList = new ArrayList<>(inetStringList.size());
@@ -4724,7 +4724,7 @@ public class StorageService extends NotificationBroadcasterSupport
         return result;
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public List<InetAddressAndPort> getReplicaNodesWithPortFromPrimaryNode(InetAddressAndPort primaryNode,
             String keyspaceName) {
         Iterable<InetAddressAndPort> allHostsIterable = Iterables.concat(Gossiper.instance.getLiveMembers(),

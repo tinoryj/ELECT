@@ -42,7 +42,7 @@ public abstract class WrappedRunnable implements Runnable
         }
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public final void run(DecoratedKey first, DecoratedKey last, SSTableReader ecSSTable){
         
         try

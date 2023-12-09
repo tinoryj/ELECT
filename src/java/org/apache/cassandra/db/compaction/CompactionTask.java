@@ -138,7 +138,7 @@ public class CompactionTask extends AbstractCompactionTask {
         return transaction.originals().size();
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     protected int executeInternal(ActiveCompactionsTracker activeCompactions, DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix,
                                   Map<String, DecoratedKey> sourceKeys) {
         this.activeCompactions = activeCompactions == null ? ActiveCompactionsTracker.NOOP : activeCompactions;
@@ -181,7 +181,7 @@ public class CompactionTask extends AbstractCompactionTask {
         return false;
     }
 
-    /** [CASSANDRAEC] rewrite the sstables
+    /** [ELECT] rewrite the sstables
      *  only for secondary LSM-tree
      */
     protected void runMayThrow(DecoratedKey first, DecoratedKey last, ECMetadata ecMetadata, String fileNamePrefix, Map<String, DecoratedKey> sourceKeys) throws Exception {
@@ -467,7 +467,7 @@ public class CompactionTask extends AbstractCompactionTask {
         }
     }
 
-    /** [CASSANDRAEC] compaction for CassandraEC, only perform on secondary nodes
+    /** [ELECT] compaction for ELECT, only perform on secondary nodes
      * 
      */
     protected void runMayThrow(List<TransferredSSTableKeyRange> TransferredSSTableKeyRanges) throws Exception {
@@ -477,7 +477,7 @@ public class CompactionTask extends AbstractCompactionTask {
         assert transaction != null;
         Set<SSTableReader> sstables = new HashSet<SSTableReader>(transaction.originals());
         TimeUUID taskId = transaction.opId();
-        logger.debug("[Compaction for CassandraEC secondary nodes]: rewrite {} sstables, original sstbales number is {}, task id is {}",
+        logger.debug("[Compaction for ELECT secondary nodes]: rewrite {} sstables, original sstbales number is {}, task id is {}",
                      sstables.size(), transaction.originals().size(), taskId);
 
         if (transaction.originals().isEmpty())
@@ -520,7 +520,7 @@ public class CompactionTask extends AbstractCompactionTask {
             }
             ssTableLoggerMsg.append("]");
 
-            logger.info("[Compaction for CassandraEC secondary nodes] Compacting ({}) {}", taskId, ssTableLoggerMsg);
+            logger.info("[Compaction for ELECT secondary nodes] Compacting ({}) {}", taskId, ssTableLoggerMsg);
 
             RateLimiter limiter = CompactionManager.instance.getRateLimiter();
             long start = nanoTime();
@@ -561,7 +561,7 @@ public class CompactionTask extends AbstractCompactionTask {
                             nowInSec, taskId)) {
 
                 if (cfs.getColumnFamilyName().contains("usertable") && !cfs.getColumnFamilyName().equals("usertable0")) {
-                    logger.debug("[Compaction for CassandraEC secondary nodes]: actually compact sstable count is {}, scanners count is {}, task id is {}",
+                    logger.debug("[Compaction for ELECT secondary nodes]: actually compact sstable count is {}, scanners count is {}, task id is {}",
                             actuallyCompact.size(), scanners.scanners.size(), taskId);
                 }
                 long lastCheckObsoletion = start;
@@ -659,7 +659,7 @@ public class CompactionTask extends AbstractCompactionTask {
                     startsize, endsize);
 
             logger.info(String.format(
-                    "[Compaction for CassandraEC secondary nodes]: Compacted (%s) %d sstables to %d [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
+                    "[Compaction for ELECT secondary nodes]: Compacted (%s) %d sstables to %d [%s] to level=%d.  %s to %s (~%d%% of original) in %,dms.  Read Throughput = %s, Write Throughput = %s, Row Throughput = ~%,d/s.  %,d total partitions merged to %,d.  Partition merge counts were {%s}. Time spent writing keys = %,dms",
                     taskId,
                     transaction.originals().size() + transferredSSTables.size(),
                     newSStables.size(),
@@ -709,7 +709,7 @@ public class CompactionTask extends AbstractCompactionTask {
      * which are properly serialized.
      * Caller is in charge of marking/unmarking the sstables as compacting.
      * 
-     * For CassandraEC's primary LSM tree only, we should send parity update signal to parity node if needed.
+     * For ELECT's primary LSM tree only, we should send parity update signal to parity node if needed.
      */
     protected void runMayThrow() throws Exception {
         // The collection of sstables passed may be empty (but not null); even if
@@ -780,7 +780,7 @@ public class CompactionTask extends AbstractCompactionTask {
             };
             Set<SSTableReader> actuallyCompact = Sets.difference(transaction.originals(), fullyExpiredSSTables);
             
-            // [CASSANDRAEC]
+            // [ELECT]
             // store old data before compaction
             int transferredSSTablesNum = 0;
             List<SSTableContentWithHashID> oldTransferredSSTables = new ArrayList<>();

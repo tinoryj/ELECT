@@ -206,7 +206,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
         return accumulate;
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     @Override
     protected Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable) {
         for (SSTableWriter writer : writers)
@@ -412,7 +412,7 @@ public class SSTableRewriter extends Transactional.AbstractTransactional impleme
             throwLate = true;
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     @Override
     protected void doPrepare(SSTableReader ecSSTable) {
         switchWriter(null);

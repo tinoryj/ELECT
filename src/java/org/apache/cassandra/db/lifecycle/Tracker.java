@@ -188,7 +188,7 @@ public class Tracker
         return accumulate;
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     Throwable updateSizeTracking(Iterable<SSTableReader> oldSSTables, Iterable<SSTableReader> newSSTables, Throwable accumulate, SSTableReader ecSSTable)
     {
         if (isDummy())
@@ -490,7 +490,7 @@ public class Tracker
         return accumulate;
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     Throwable notifySSTablesChanged(Collection<SSTableReader> removed, Collection<SSTableReader> added, OperationType compactionType, Throwable accumulate, SSTableReader ecSStable)
     {
         added.add(ecSStable);

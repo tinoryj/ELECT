@@ -65,7 +65,7 @@ public class LeveledManifest {
      */
     private static final int NO_COMPACTION_LIMIT = 25;
 
-    /** [CASSANDRAEC]
+    /** [ELECT]
      *  To avoid network bottleneck, we have to limit the number of parity update each transaction
      */
     private static volatile int selectedSSTablesForStripeUpdate = 0;
@@ -286,7 +286,7 @@ public class LeveledManifest {
 
                 // L0 is fine, proceed with this level
                 // Collection<SSTableReader> candidates = getCandidatesFor(i);
-                Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(i);
+                Collection<SSTableReader> candidates = getCandidatesForELECT(i);
                 if (!candidates.isEmpty()) {
                     int nextLevel = getNextLevel(candidates);
                     // candidates = getOverlappingStarvedSSTables(nextLevel, candidates);
@@ -303,7 +303,7 @@ public class LeveledManifest {
         if (generations.get(0).isEmpty())
             return null;
         Collection<SSTableReader> candidates = getCandidatesFor(0);
-        // Collection<SSTableReader> candidates = getCandidatesForCASSANDRAEC(0);
+        // Collection<SSTableReader> candidates = getCandidatesForELECT(0);
         if (candidates.isEmpty()) {
             // Since we don't have any other compactions to do, see if there is a STCS
             // compaction to perform in L0; if
@@ -641,14 +641,14 @@ public class LeveledManifest {
 
     /**
      * A leveled compaction strategy implemented by the idea of RocksDB for
-     * CASSANDRAEC.
+     * ELECT.
      * 
      * @return highest-priority sstables to compact for the given level.
      *         If no compactions are possible (because of concurrent compactions or
      *         because some sstables are excluded
      *         for prior failure), will return an empty list. Never returns null.
      */
-    private Collection<SSTableReader> getCandidatesForCASSANDRAEC(int level) {
+    private Collection<SSTableReader> getCandidatesForELECT(int level) {
         assert !generations.get(level).isEmpty();
         logger.trace("Choosing candidates for L{}", level);
 
@@ -740,7 +740,7 @@ public class LeveledManifest {
         // Map<SSTableReader, Bounds<Token>> sstablesNextLevel =
         // genBounds(generations.get(level + 1));
         // TODO: for primary node
-        // [CASSANDRAEC]
+        // [ELECT]
         Set<SSTableReader> sstablesNextLevel = generations.get(level + 1);
         Set<SSTableReader> sstablesCurrentLevel = generations.get(level);
         Iterator<SSTableReader> levelIterator = generations.wrappingIterator(level, lastCompactedSSTables[level]);
@@ -790,7 +790,7 @@ public class LeveledManifest {
         return Collections.emptyList();
     }
 
-    // [CASSANDRAEC] Check whether select this sstable. 
+    // [ELECT] Check whether select this sstable. 
     private static boolean isSelectIssuedSSTableAsCompactionCandidates(SSTableReader sstable) {
         long duration = currentTimeMillis() - sstable.getCreationTimeFor(Component.DATA);
         long delayMilli = DatabaseDescriptor.getTaskDelay() * DatabaseDescriptor.getUpdateFrequency() * 60 * 1000;

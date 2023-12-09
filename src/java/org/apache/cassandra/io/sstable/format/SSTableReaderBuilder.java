@@ -267,7 +267,7 @@ public abstract class SSTableReaderBuilder {
 
         @Override
         public SSTableReader build() {
-            // CASSANDRAEC_TODO: build new SST reader with only ec metadata rather than
+            // ELECT_TODO: build new SST reader with only ec metadata rather than
             // data.
             String dataFilePath;
             boolean useECMetadataReplacedDataFlag = false;

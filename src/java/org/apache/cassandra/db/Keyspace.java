@@ -892,7 +892,7 @@ public class Keyspace {
         return replicationStrategy;
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public int getAllReplicationFactor() {
         String rfString = replicationStrategy.configOptions.get("replication_factor");
         int rf = ReplicationFactor.fromString(rfString).allReplicas;

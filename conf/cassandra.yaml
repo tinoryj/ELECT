@@ -568,6 +568,8 @@ seed_provider:
 
 ec_data_nodes: 4
 parity_nodes: 2
+target_storage_saving: 0.6
+
 max_level_count: 9
 concurrent_ec: 64
 initial_delay: 300
@@ -577,7 +579,6 @@ max_send_sstables: 32
 enable_migration: true
 enable_erasure_coding: true
 cold_period: 3
-target_storage_saving: 0.6
 max_stripe_update_sstable: 2
 storage_saving_grade: 0
 

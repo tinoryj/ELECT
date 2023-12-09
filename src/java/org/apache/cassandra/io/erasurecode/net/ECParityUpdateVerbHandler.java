@@ -594,7 +594,7 @@ public class ECParityUpdateVerbHandler implements IVerbHandler<ECParityUpdate> {
     }
 
     /**
-     * [CASSANDRAEC]
+     * [ELECT]
      * To support perform erasure coding with multiple threads, we implement the
      * following Runnable class
      * 

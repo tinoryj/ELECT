@@ -1931,7 +1931,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         while (true) {
             Collection<SSTableReader> overlapped = getOverlappingLiveSSTables(sstables);
 
-            // [CASSANDRAEC]
+            // [ELECT]
             // List<SSTableReader> resultOverlapped = new ArrayList<>();
             // for(SSTableReader sstable : overlapped) {
             // if(!sstable.isReplicationTransferredToErasureCoding() ||
@@ -2101,7 +2101,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 
-    // [CASSANDRAEC] rewrite the sstables based on the source decorated keys
+    // [ELECT] rewrite the sstables based on the source decorated keys
     public CompactionManager.AllSSTableOpStatus sstablesRewrite(
             final Map<String, DecoratedKey> sourceKeys,
             final DecoratedKey first,
@@ -2263,7 +2263,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
         return false;
     }
 
-    // [CASSANDRAEC] rewrite the sstables based on the source decorated keys
+    // [ELECT] rewrite the sstables based on the source decorated keys
     public CompactionManager.AllSSTableOpStatus forceCompactionForTheLastLevel(
             List<SSTableReader> candidates,
             final LifecycleTransaction txn,
@@ -2279,7 +2279,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                 skipIfNewerThanTimestamp, skipIfCompressionMatches, jobs);
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public void updateECSSTable(ECMetadata metadata, String sstHash, ColumnFamilyStore cfs, String fileNamePrefix,
             final LifecycleTransaction txn) {
         // notify sstable changes to view and leveled generation

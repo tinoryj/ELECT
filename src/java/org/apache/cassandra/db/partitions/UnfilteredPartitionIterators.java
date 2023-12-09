@@ -104,7 +104,7 @@ public abstract class UnfilteredPartitionIterators {
 
     @SuppressWarnings("resource")
     public static UnfilteredPartitionIterator merge(final List<? extends UnfilteredPartitionIterator> iterators,
-            final MergeListener listener, Boolean isCassandraEC, TimeUUID taskId) {
+            final MergeListener listener, Boolean isELECT, TimeUUID taskId) {
         assert !iterators.isEmpty();
 
         final TableMetadata metadata = iterators.get(0).metadata();
@@ -154,7 +154,7 @@ public abstract class UnfilteredPartitionIterators {
                             toMerge.add(null);
                     }
                 },
-                isCassandraEC, taskId);
+                isELECT, taskId);
 
         return new AbstractUnfilteredPartitionIterator() {
             public TableMetadata metadata() {

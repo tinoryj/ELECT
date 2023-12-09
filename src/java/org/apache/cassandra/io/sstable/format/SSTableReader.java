@@ -419,7 +419,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return open(descriptor, metadata);
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
 
     public static SSTableReader openECSSTable(ECMetadata ecMetadata, String sstHash, ColumnFamilyStore cfs,
             String fileNamePrefix, TimeUUID txnId) throws IOException {
@@ -478,7 +478,7 @@ public abstract class SSTableReader extends SSTable implements UnfilteredSource,
         return ecSSTable;
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public static void loadECMetadata(ECMetadata ecMetadata, Descriptor desc, TimeUUID txnId)
             throws FileNotFoundException {
 

@@ -36,7 +36,7 @@ public class LeveledCompactionTask extends CompactionTask
     private final long maxSSTableBytes;
     private final boolean majorCompaction;
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public final List<TransferredSSTableKeyRange> transferredSSTableKeyRanges;
 
     public static class TransferredSSTableKeyRange {

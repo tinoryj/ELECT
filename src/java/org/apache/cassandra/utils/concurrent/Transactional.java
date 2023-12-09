@@ -90,7 +90,7 @@ public interface Transactional extends AutoCloseable
         protected abstract Throwable doCommit(Throwable accumulate);
         protected abstract Throwable doAbort(Throwable accumulate);
 
-        // [CASSANDRAEC]
+        // [ELECT]
         protected abstract Throwable doCommit(Throwable accumulate, SSTableReader ecSSTable);
         protected Throwable doPostCleanup(Throwable accumulate, SSTableReader ecSSTable){ return accumulate; }
 
@@ -115,7 +115,7 @@ public interface Transactional extends AutoCloseable
          */
         protected abstract void doPrepare();
 
-        // [CASSANDRAEC]
+        // [ELECT]
         protected abstract void doPrepare(SSTableReader ecSSTable);
 
         /**
@@ -131,7 +131,7 @@ public interface Transactional extends AutoCloseable
             return accumulate;
         }
 
-        // [CASSANDRAEC]
+        // [ELECT]
         public final Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite)
         {
             if(!isRewrite) {
@@ -176,7 +176,7 @@ public interface Transactional extends AutoCloseable
         }
 
         // if we are committed or aborted, then we are done; otherwise abort
-        // [CASSANDRAEC]
+        // [ELECT]
         public final void close()
         {
             switch (state)
@@ -228,7 +228,7 @@ public interface Transactional extends AutoCloseable
         }
 
 
-        // [CASSANDRAEC]
+        // [ELECT]
         public Object finish(SSTableReader ecSSTable)
         {
             // prepareToCommit(ecSSTable);
@@ -251,14 +251,14 @@ public interface Transactional extends AutoCloseable
             maybeFail(commit(null));
         }
 
-        // [CASSANDRAEC]
+        // [ELECT]
         public final void commitEC(SSTableReader ecSSTable)
         {
             maybeFail(commitEC(null, ecSSTable, true));
         }
 
 
-        // [CASSANDRAEC]
+        // [ELECT]
         public void updateState(){
             state = State.READY_TO_COMMIT;
         }
@@ -275,7 +275,7 @@ public interface Transactional extends AutoCloseable
     // prepareToCommit, it MUST be executed before any other commit methods in the object graph
     Throwable commit(Throwable accumulate);
 
-    // [CASSANDRAEC]
+    // [ELECT]
     Throwable commitEC(Throwable accumulate, SSTableReader ecSSTable, boolean isRewrite);
 
     // release any resources, then rollback all state changes (unless commit() has already been invoked)
@@ -286,6 +286,6 @@ public interface Transactional extends AutoCloseable
     // close() does not throw
     public void close();
 
-    // [CASSANDRAEC]
+    // [ELECT]
     // public void updateState();
 }

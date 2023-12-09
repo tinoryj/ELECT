@@ -94,7 +94,7 @@ public class MajorLeveledCompactionWriter extends CompactionAwareWriter {
 
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter) {
 
         if (isSwitchWriter) {

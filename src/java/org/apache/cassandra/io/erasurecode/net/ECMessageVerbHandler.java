@@ -245,7 +245,7 @@ public class ECMessageVerbHandler implements IVerbHandler<ECMessage> {
     }
 
     /**
-     * [CASSANDRAEC]
+     * [ELECT]
      * To support perform erasure coding with multiple threads, we implement the
      * following Runnable class
      * 

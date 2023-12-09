@@ -82,7 +82,7 @@ public class LeveledCompactionStrategy extends AbstractCompactionStrategy {
             if (options.containsKey(SSTABLE_SIZE_OPTION)) {
                 configuredMaxSSTableSize = Integer.parseInt(options.get(SSTABLE_SIZE_OPTION));
 
-                // [CASSANDRAEC]
+                // [ELECT]
                 if(cfs.getColumnFamilyName().equals("usertable0")) {
                     StorageService.setErasureCodeLength(configuredMaxSSTableSize);
                     logger.debug("ELECT-Debug: set erasure code length based on sstable_size_in_mb ({}),", configuredMaxSSTableSize);

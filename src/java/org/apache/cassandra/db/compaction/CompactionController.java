@@ -213,7 +213,7 @@ public class CompactionController extends AbstractCompactionController
         {
             SSTableReader candidate = iterator.next();
             if (candidate.getMaxTimestamp() >= minTimestamp ||
-                candidate.isReplicationTransferredToErasureCoding() // [CASSANDRAEC]
+                candidate.isReplicationTransferredToErasureCoding() // [ELECT]
              )
             {
                 iterator.remove();

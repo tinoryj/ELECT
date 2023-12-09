@@ -105,7 +105,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         sstableWriter.prepareToCommit();
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     protected void doPrepare(SSTableReader ecSSTable) {
         sstableWriter.prepareToCommit(ecSSTable);
     }
@@ -125,7 +125,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         return sstableWriter.finished();
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public Collection<SSTableReader> finish(SSTableReader ecSSTable) {
         super.finish(ecSSTable);
         return sstableWriter.finished();
@@ -149,7 +149,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         return realAppend(partition);
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public final boolean append(UnfilteredRowIterator partition, boolean isSwitchWriter) {
         maybeSwitchWriter(partition.partitionKey());
         return realAppend(partition, isSwitchWriter);
@@ -161,7 +161,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
         return super.doPostCleanup(accumulate);
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     @Override
     protected Throwable doPostCleanup(Throwable accumulate, SSTableReader ecSSTable) {
         sstableWriter.close();
@@ -170,7 +170,7 @@ public abstract class CompactionAwareWriter extends Transactional.AbstractTransa
     
     protected abstract boolean realAppend(UnfilteredRowIterator partition);
 
-    // [CASSANDRAEC]
+    // [ELECT]
     protected abstract boolean realAppend(UnfilteredRowIterator partition, boolean isSwitchWriter);
 
     /**

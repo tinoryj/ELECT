@@ -57,7 +57,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
     public static <In, Out> MergeIterator<In, Out> get(List<? extends Iterator<In>> sources,
                                                        Comparator<? super In> comparator,
                                                        Reducer<In, Out> reducer,
-                                                       boolean isCassandraEC,
+                                                       boolean isELECT,
                                                        TimeUUID taskId)
     {
         if (sources.size() == 1)
@@ -66,7 +66,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
                  ? new TrivialOneToOne<>(sources, reducer)
                  : new OneToOne<>(sources, reducer);
         }
-        else if (isCassandraEC)
+        else if (isELECT)
             return new ManyToMany<>(sources, comparator, reducer, taskId);
         return new ManyToOne<>(sources, comparator, reducer);
     }
@@ -373,7 +373,7 @@ public abstract class MergeIterator<In,Out> extends AbstractIterator<Out> implem
     }
 
 
-    /** [CASSANDRAEC]
+    /** [ELECT]
      * A MergeIterator that consumes multiple input values per output value.
      *
      * The most straightforward way to implement this is to use a {@code PriorityQueue} of iterators, {@code poll} it to

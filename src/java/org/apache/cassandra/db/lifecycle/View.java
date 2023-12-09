@@ -260,7 +260,7 @@ public class View {
         {
             public View apply(View view)
             {
-                // [CASSANDRAEC]
+                // [ELECT]
                 // Iterable<SSTableReader> markWithOutECSSTables = Iterables.filter(mark, new Predicate<SSTableReader>() {
                 //     @Override
                 //     public boolean apply(@Nullable SSTableReader input) {
@@ -304,7 +304,7 @@ public class View {
     // construct a function to change the liveset in a Snapshot
     static Function<View, View> updateLiveSet(final Set<SSTableReader> remove, final Iterable<SSTableReader> add)
     {
-        // [CASSANDRAEC]
+        // [ELECT]
         // ECNetutils.printStackTace("Invoke View.updateLiveSet method");
 
         if (remove.isEmpty() && Iterables.isEmpty(add))

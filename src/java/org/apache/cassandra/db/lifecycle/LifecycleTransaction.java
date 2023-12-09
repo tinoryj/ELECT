@@ -208,7 +208,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
 
         // prepare for compaction obsolete readers as long as they were part of the original set
         // since those that are not original are early readers that share the same desc with the finals
-        // [CASSANDRAEC]
+        // [ELECT]
         // Do not release the reference of transferred readers until parity update
         // Set<SSTableReader> filteredOriginals = originals.stream()
         //                                                 .filter(sstable -> (!sstable.isReplicationTransferredToErasureCoding() || sstable.getColumnFamilyName().equals("usertable0")))
@@ -371,7 +371,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         return accumulate;
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public void checkpointEC(SSTableReader ecSStable)
     {
         maybeFail(checkpointEC(null, ecSStable));
@@ -583,7 +583,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
             cancel(cancel);
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public void removeAll(Iterable<SSTableReader> cancels) {
         for (SSTableReader cancel : cancels)
             originals.remove(cancel);
@@ -630,7 +630,7 @@ public class LifecycleTransaction extends Transactional.AbstractTransactional im
         return accumulate;
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     private Throwable unmarkCompacting(Set<SSTableReader> unmark, Throwable accumulate, SSTableReader ecSSTable)
     {
         logger.debug("This is ummarkCompacting for ec sstable {}", ecSSTable.descriptor);

@@ -78,7 +78,7 @@ public abstract class SSTableWriter extends SSTable implements Transactional {
     protected final TransactionalProxy txnProxy = txnProxy();
     protected final Collection<SSTableFlushObserver> observers;
     
-    // [CASSANDRAEC]
+    // [ELECT]
     protected DecoratedKey firstKey = null;
     protected DecoratedKey lastKey = null;
     public long currentKeyCount = 0;

@@ -425,7 +425,7 @@ public class CompactionManager implements CompactionManagerMBean {
         }
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     private AllSSTableOpStatus rewriteSSTables(
             final Map<String, DecoratedKey> sourceKeys,
             final ColumnFamilyStore cfs,
@@ -494,7 +494,7 @@ public class CompactionManager implements CompactionManagerMBean {
     }
 
 
-    // [CASSANDRAEC]
+    // [ELECT]
     private AllSSTableOpStatus forceCompactionForTheLastLevel(final ColumnFamilyStore cfs, 
             List<SSTableReader> candidates,
             final LifecycleTransaction txn,
@@ -643,7 +643,7 @@ public class CompactionManager implements CompactionManagerMBean {
         }, jobs);
     }
 
-    // [CASSANDRAEC] rewrite sstables based source decorated keys
+    // [ELECT] rewrite sstables based source decorated keys
     public AllSSTableOpStatus performSSTableRewrite(
             final Map<String, DecoratedKey> sourceKeys,
             final ColumnFamilyStore cfs,
@@ -687,7 +687,7 @@ public class CompactionManager implements CompactionManagerMBean {
         }, jobs);
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public AllSSTableOpStatus performSSTableRewrite(
             final Map<String, DecoratedKey> sourceKeys,
             final ColumnFamilyStore cfs,
@@ -742,7 +742,7 @@ public class CompactionManager implements CompactionManagerMBean {
                 }, OperationType.COMPACTION);
     }
 
-    // [CASSANDRAEC] rewrite sstables based source decorated keys
+    // [ELECT] rewrite sstables based source decorated keys
     public AllSSTableOpStatus performForceCompactionForTheLastLevel(final ColumnFamilyStore cfs,
             List<SSTableReader> sstables,
             // SSTableReader ecSSTable,
@@ -781,7 +781,7 @@ public class CompactionManager implements CompactionManagerMBean {
         }, jobs);
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public AllSSTableOpStatus performForceCompactionForTheLastLevel(final ColumnFamilyStore cfs,
             List<SSTableReader> sstables, 
             // SSTableReader ecSSTable,
@@ -832,7 +832,7 @@ public class CompactionManager implements CompactionManagerMBean {
         }, OperationType.COMPACTION);
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     private static AbstractCompactionTask getCompactionTaskForForceCompaction(ColumnFamilyStore cfs, LifecycleTransaction txn) {
         boolean isContainECSSTable = false;
         boolean isContainRawSSTable = false;
@@ -2511,7 +2511,7 @@ public class CompactionManager implements CompactionManagerMBean {
         return executor.getMaximumPoolSize();
     }
 
-    // [CASSANDRAEC]
+    // [ELECT]
     public int getActiveTaskCount() {
         return executor.getActiveTaskCount();
     }
