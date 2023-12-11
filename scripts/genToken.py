@@ -18,11 +18,12 @@
 
 import sys
 
-if len(sys.argv) != 3:
+if len(sys.argv) != 2:
     print("Usage: python genToken.py num_nodes num_tokens")
     sys.exit(1)
 num_nodes = int(sys.argv[1])
-num_tokens = int(sys.argv[2])
+# num_tokens = int(sys.argv[2])
+num_tokens = 1
 
 print(
     "\n".join(

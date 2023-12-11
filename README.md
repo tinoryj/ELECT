@@ -12,17 +12,18 @@ ELECT is a distributed tiered KV store that enables replication and erasure codi
 
 ### Testbed
 
-As a distributed KV store, ELECT requires a cluster of machines to run. With the default erasure coding parameters (i.e., [n,k]==[6,4]), ELECT requires a minimum of 6 machines as the storage nodes. In addition, to avoid the long procedure of setting up Alibaba OSS, we use a server node within the same cluster as the higher tier to store the cold data. We also needs a client node to run the YCSB benchmark tool. Therefore, we need at least 8 machines to run the prototype. 
+As a distributed KV store, ELECT requires a cluster of machines to run. With the default erasure coding parameters (i.e., [n,k]==[6,4]), ELECT requires a minimum of 6 machines as the storage nodes. In addition, to avoid unstable access to Alibaba OSS, we use a server node within the same cluster as the cold tier to store the cold data. We also need a client node to run the YCSB benchmark tool. Therefore, we need at least 8 machines to run the prototype. 
 
 ### Dependencies
 
 * For Java project build (used for Prototype and YCSB): openjdk-11-jdk, openjdk-11-jre, ant, maven.
 * For erasure-coding library build (used for Prototype via JNI): clang, llvm, libisal-dev.
+* For scripts: python3, ansible.
 
-The packages above can be directly installed via apt-get:
+The packages above can be directly installed via `apt` package manager:
 
 ```shell 
-sudo apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev
+sudo apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible
 ```
 
 Note that, the dependencies for both ELECT and YCSB will be automatically installed via maven during compile.
@@ -102,4 +103,59 @@ Step 3: Copy the SSH public key to all the nodes in the cluster.
 ```shell
 ssh-copy-id node${i}
 ```
+
+### Configuring ELECT cluster
+
+The ELECT prototype requires to configure the cluster information before running. We provide an example configuration file `./Prototype/conf/cassandra.yaml`. Please modify the file according to your cluster settings and the instructions shown below (lines 11-34).
+
+```shell
+cluster_name: 'ELECT Cluster'
+
+# ELECT settings
+ec_data_nodes: 4 # The erasure coding parameter (k)
+parity_nodes: 2 # The erasure coding parameter (n - k)
+target_storage_saving: 0.6 # The balance parameter (storage saving target), which controls the approximate storage saving ratio of the cold tier.
+enable_migration: true # Enable the migration module to migrate cold data to the cold tier.
+enable_erasure_coding: true # Enable redundancy transitioning module to encode the cold data.
+# Manual settings to balance workload across different nodes.
+initial_token: -9223372036854775808 # The initial token of the current node.
+token_ranges: -9223372036854775808,-6148914691236517376,-3074457345618258944,0,3074457345618257920,6148914691236515840 # The initial token ranges of all nodes in the cluster.
+# Current node settings
+listen_address: 192.168.10.21 # IP address of the current node.
+rpc_address: 192.168.10.21 # IP address of the current node.
+seed_provider:
+  # Addresses of hosts that are deemed contact points.
+  # Cassandra nodes use this list of hosts to find each other and learn
+  # the topology of the ring.  You must change this if you are running
+  # multiple nodes!
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      # ELECT: put all server nodes IP here.
+      # Ex: "<ip1>,<ip2>,<ip3>"
+      - seeds: "192.168.10.21,192.168.10.22,192.168.10.23,192.168.10.25,192.168.10.26,192.168.10.28" # IP address of all the server nodes.
+```
+
+To simplify the configuration of `initial_token` and `token_ranges`, which is important for ELECT to achieve optimal storage saving. We provide a script `./scripts/genToken.sh` to generate the token ranges for all the nodes in the cluster with the given node number. 
+
+```shell
+cd ./scripts
+python3 genToken.py ${n} # Replace ${n} to the number of nodes in the cluster.
+# Sample output:
+[Node 1]
+initial_token: -9223372036854775808
+[Node 2]
+initial_token: -6148914691236517376
+[Node 3]
+initial_token: -3074457345618258944
+[Node 4]
+initial_token: 0
+[Node 5]
+initial_token: 3074457345618257920
+[Node 6]
+initial_token: 6148914691236515840
+```
+
+After getting the initial token for each node, please fill the generated number into the `initial_token` and `token_ranges` fields in the configuration file.
+
+## Running
 
