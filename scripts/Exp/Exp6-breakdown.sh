@@ -52,8 +52,8 @@ function load {
     targetScheme=$1
     echo "Start loading data into ${targetScheme}"
     # Make local results directory
-    if [ ! -d /home/elect/Results/${targetScheme} ]; then
-        mkdir -p /home/elect/Results/${targetScheme}
+    if [ ! -d ${PathToELECTLog}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTLog}/${targetScheme}
     fi
 
     # Copy playbook
@@ -112,7 +112,7 @@ function load {
     # Collect load results
     for ((i = 1; i <= NodeNumber; i++)); do
         echo "Copy loading stats of ${targetScheme} back, node$i"
-        scp -r elect@node$i:/home/elect/Results /home/elect/Results/${targetScheme}/${ExpName}-Load-Node$i
+        scp -r elect@node$i:/home/elect/Results ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-Node$i
         ssh elect@node$i "rm -rf /home/elect/Results && mkdir -p /home/elect/Results"
     done
 }
@@ -136,8 +136,8 @@ function flush {
     waitTime=$2
     echo "Start for flush and wait for compaction of ${targetScheme}"
     # Make local results directory
-    if [ ! -d /home/elect/Results/${targetScheme} ]; then
-        mkdir -p /home/elect/Results/${targetScheme}
+    if [ ! -d ${PathToELECTLog}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTLog}/${targetScheme}
     fi
 
     # Copy playbook
@@ -154,7 +154,7 @@ function flush {
     # Collect load results
     for ((i = 1; i <= NodeNumber; i++)); do
         echo "Copy loading stats of ${targetScheme} back, node$i"
-        scp -r elect@node$i:/home/elect/Results /home/elect/Results/${targetScheme}/${ExpName}-Compact-Node$i
+        scp -r elect@node$i:/home/elect/Results ${PathToELECTLog}/${targetScheme}/${ExpName}-Compact-Node$i
         ssh elect@node$i "rm -rf /home/elect/Results && mkdir -p /home/elect/Results"
     done
 }
@@ -163,8 +163,8 @@ function backup {
     targetScheme=$1
     echo "Start copy data of ${targetScheme} to backup, this will kill the online system!!!"
     # Make local results directory
-    if [ ! -d /home/elect/Results/${targetScheme} ]; then
-        mkdir -p /home/elect/Results/${targetScheme}
+    if [ ! -d ${PathToELECTLog}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTLog}/${targetScheme}
     fi
 
     # Copy playbook
@@ -195,8 +195,8 @@ function startup {
     targetScheme=$1
     echo "Start copy data back ${targetScheme} from backup"
     # Make local results directory
-    if [ ! -d /home/elect/Results/${targetScheme} ]; then
-        mkdir -p /home/elect/Results/${targetScheme}
+    if [ ! -d ${PathToELECTLog}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTLog}/${targetScheme}
     fi
 
     # Copy playbook
@@ -260,8 +260,8 @@ function run {
 
     echo "Start run benchmark to ${targetScheme}"
     # Make local results directory
-    if [ ! -d /home/elect/Results/${targetScheme} ]; then
-        mkdir -p /home/elect/Results/${targetScheme}
+    if [ ! -d ${PathToELECTLog}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTLog}/${targetScheme}
     fi
 
     # Normal/Degraded Ops
@@ -293,7 +293,7 @@ function run {
         # Collect
         for ((i = 1; i <= NodeNumber; i++)); do
             echo "Copy running data of ${targetScheme} back, node$i"
-            scp -r elect@node$i:/home/elect/Results /home/elect/Results/"${targetScheme}"/"${ExpName}-${workload}-${round}-Node$i"
+            scp -r elect@node$i:/home/elect/Results ${PathToELECTLog}/"${targetScheme}"/"${ExpName}-${workload}-${round}-Node$i"
             ssh elect@node$i "rm -rf /home/elect/Results && mkdir -p /home/elect/Results"
         done
     done

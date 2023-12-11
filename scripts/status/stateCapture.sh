@@ -8,7 +8,7 @@ func() {
     INTERFACE="eth0"
 
     # File to store the results
-    NET_OUTPUT_FILE="/home/elect/Results/${expName}_${workload}_${stage}_network_summary.txt"
+    NET_OUTPUT_FILE="${PathToELECTLog}/${expName}_${workload}_${stage}_network_summary.txt"
 
     # Extract the received (RX) and transmitted (TX) bytes for the specified interface
     RX_BYTES=$(cat /proc/net/dev | grep $INTERFACE | awk '{print $2}')
@@ -23,7 +23,7 @@ func() {
     MOUNT_POINT="/mnt/ssd"
 
     # File to store the results
-    IO_OUTPUT_FILE="/home/elect/Results/${expName}_${workload}_${stage}_disk_io_total.txt"
+    IO_OUTPUT_FILE="${PathToELECTLog}/${expName}_${workload}_${stage}_disk_io_total.txt"
 
     # Get the device associated with the mount point (e.g., sda, sdb)
     DEVICE=$(df --output=source "$MOUNT_POINT" | tail -1 | awk -F'/' '{print $NF}')
@@ -46,7 +46,7 @@ func() {
     echo "Total KiB written: $TOTAL_KB_WRITTEN" >>$IO_OUTPUT_FILE
 
     # File to store the results
-    DB_OUTPUT_FILE="/home/elect/Results/${expName}_${workload}_${stage}_db_stats.txt"
+    DB_OUTPUT_FILE="${PathToELECTLog}/${expName}_${workload}_${stage}_db_stats.txt"
     echo "Record DB status for ${expName} at stage ${stage}" >>"$DB_OUTPUT_FILE"
     # Write the results to the file
     cd /mnt/ssd/CassandraEC || exit

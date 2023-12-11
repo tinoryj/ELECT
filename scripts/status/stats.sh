@@ -24,8 +24,8 @@ func() {
 
     SimpleBase=1
 
-    OUTPUT_MEM="/home/elect/Results/${expName}_${stage}_memory_usage.txt"
-    OUTPUT_CPU="/home/elect/Results/${expName}_${stage}_cpu_usage.txt"
+    OUTPUT_MEM="${PathToELECTLog}/${expName}_${stage}_memory_usage.txt"
+    OUTPUT_CPU="${PathToELECTLog}/${expName}_${stage}_cpu_usage.txt"
     echo "Memory overhead for Cassandra PID: $CASSANDRA_PID, Exp = ${expName}, stage = $stage" >>"$OUTPUT_MEM"
     echo "CPU overhead for Cassandra PID: $CASSANDRA_PID, Exp = ${expName}, stage = $stage" >>"$OUTPUT_CPU"
 

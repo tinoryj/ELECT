@@ -113,9 +113,10 @@
   become_user: elect
   tasks:
     - name: Execute script loadDB.sh
-      command: bash /home/elect/ELECTExp/scripts/Run/loadDB.sh {{ record_count }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ trace }}
+      command: bash /home/elect/ELECTExp/scripts/Run/loadDB.sh {{ record_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ trace }}
       vars:
         record_count: 100000000
+        key_length: 24
         filed_length: 1000
         threads: 64
         workload: "workloads/workload_template"
