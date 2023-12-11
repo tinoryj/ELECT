@@ -1,0 +1,182 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+- name: Rebuild and start Cassandra servers
+  hosts: elect_servers
+  become: yes
+  become_user: elect
+  tasks:
+    - name: Execute script start-server.sh
+      shell: |
+        . /etc/profile &&
+        bash /home/elect/ELECTExp/scripts/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ concurrentEC }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }} {{ grade }}
+      vars:
+        maxLevel: 9
+        initialDelay:  65536
+        concurrentEC: 64
+        target_saving: 0.6
+        data_block_num: 4
+        parity_block_num: 2
+        mode: "raw"
+        grade: "0"
+      register: command_result
+      ignore_errors: True
+    - name: Fail the play if the previous command did not succeed
+      fail: msg="the command failed"
+      when: "'FAILED' in command_result.stderr"
+    - name: Wait until all nodes are ready
+      pause:
+        seconds: 90
+
+- name: Setup log levels
+  hosts: elect_servers
+  become: yes
+  become_user: elect
+  tasks:
+    - name: Setup log levels
+      shell: |
+        . /etc/profile && cd /mnt/ssd/CassandraEC && bin/nodetool setlogginglevel org.apache.cassandra error && bin/nodetool setlogginglevel ROOT error
+      register: command_result
+      ignore_errors: true
+
+- name: Prepare keyspace and tables for loading
+  hosts: elect_client
+  become: yes
+  become_user: elect
+  tasks:
+    - name: Execute script start-client.sh
+      command: bash /home/elect/ELECTExp/scripts/Run/start-client.sh {{ coordinator }} {{ sstable_size_in_mb }} {{ fanout_size }} {{ mode }}
+      vars:
+        coordinator: "172.27.96.1"
+        sstable_size_in_mb: 4
+        fanout_size: 10
+        mode: "raw"
+      register: command_result
+      ignore_errors: True
+    - name: Fail the play if the previous command did not succeed
+      fail: msg="the command failed"
+      when: "'FAILED' in command_result.stderr"
+
+- name: Start CPU&Memory Monitor
+  hosts: elect_servers
+  become: yes
+  become_user: elect
+  gather_facts: false
+  tasks:
+    - name: CPU&Memory Monitor
+      shell: |
+        . /etc/profile &&
+        nohup bash /home/elect/ELECTExp/scripts/status/stats.sh {{ expName }} {{ stage }} > /home/elect/run.log 2>&1 &
+      vars:
+        expName: "Exp#1479-Load-Cassandra-DATAPATH"
+        stage: "Loading"
+      register: command_result
+      ignore_errors: true
+    - name: Fail the play if the previous command did not succeed
+      fail: msg="the command failed"
+      when: "'FAILED' in command_result.stderr"
+
+- name: Monitor before loading
+  hosts: elect_servers
+  become: yes
+  become_user: elect
+  tasks:
+    - name: Monitor
+      shell: |
+        . /etc/profile && bash /home/elect/ELECTExp/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+      vars:
+        expName: "Exp#1479-Load-Cassandra-DATAPATH"
+        workload: "workload_template"
+        stage: "Before-loading"
+      register: command_result
+      ignore_errors: true
+    - name: Fail the play if the previous command did not succeed
+      fail: msg="the command failed"
+      when: "'FAILED' in command_result.stderr"
+
+- name: Load data
+  hosts: elect_client
+  become: yes
+  become_user: elect
+  tasks:
+    - name: Execute script loadDB.sh
+      command: bash /home/elect/ELECTExp/scripts/Run/loadDB.sh {{ record_count }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ trace }}
+      vars:
+        record_count: 100000000
+        filed_length: 1000
+        threads: 64
+        workload: "workloads/workload_template"
+        expName: "Exp#1479-Load-Cassandra-DATAPATH"
+        keyspace: "ycsb"
+        trace: "off"
+      register: command_result
+      ignore_errors: True
+    - name: Fail the play if the previous command did not succeed
+      fail: msg="the command failed"
+      when: "'FAILED' in command_result.stderr"
+    - name: Wait until insertion is done
+      pause:
+        seconds: 5
+
+- name: Monitor after loading
+  hosts: elect_servers
+  become: yes
+  become_user: elect
+  tasks:
+    - name: Monitor
+      shell: |
+        . /etc/profile && bash /home/elect/ELECTExp/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+      vars:
+        expName: "Exp#1479-Load-Cassandra-DATAPATH"
+        workload: "workload_template"
+        stage: "After-Loading"
+      register: command_result
+      ignore_errors: true
+    - name: Fail the play if the previous command did not succeed
+      fail: msg="the command failed"
+      when: "'FAILED' in command_result.stderr"
+
+- name: Stop CPU&Memory Monitor
+  hosts: elect_servers
+  become: yes
+  become_user: elect
+  gather_facts: false
+  tasks:
+    - name: CPU&Memory Monitor
+      shell: |
+        . /etc/profile && bash /home/elect/ELECTExp/scripts/status/killMonitor.sh
+      register: command_result
+      ignore_errors: true
+
+- name: Backup Logs
+  hosts: elect_servers
+  become: yes
+  become_user: elect
+  tasks:
+    - name: copy logs
+      command: bash /home/elect/ELECTExp/scripts/Run/copyLogs.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }}
+      vars:
+        record_count: 10000000
+        operation_count: 10000000
+        threads: 64
+        workload: "workload_template"
+        expName: "Exp#1-Normal-Run-Cassandra-DATAPATH"
+        keyspace: "ycsb"
+      register: command_result
+      ignore_errors: true
+    - name: Fail the play if the previous command did not succeed
+      fail: msg="the command failed"
+      when: "'FAILED' in command_result.stderr"

@@ -1,41 +1,49 @@
-<!--
-#
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
--->
+# ELECT
 
-# ELECT: 
+## Introduction
+
+ELECT is a distributed tiered KV store that enables replication and erasure coding tiering. This repo contains the implementation of the ELECT prototype, YCSB benchmark tool, and evaluation scripts used in our USENIX FAST 2024 paper.
+
+* `./ELECT`: includes the implementation of the ELECT prototype.
+* `./YCSB`: includes the modified version of YCSB which supports user-defined key and value sizes.
+* `./scripts`: includes the prototype setup and evaluation scripts.
+
+## Dependencies
+
+* For Java project build (used for ELECT and YCSB): openjdk-11-jdk, openjdk-11-jre, ant, maven.
+* For erasure-coding library build (used for ELECT via JNI): clang, llvm, libisal-dev.
+
+The packages above can be directly installed via apt-get:
+
+```shell 
+sudo apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev
+```
+
+Note that, the dependencies for both ELECT and YCSB will be automatically installed via maven during compile.
 
 ## Build
+
+### ELECT 
+
+Since ELECT utilizes the Intel Isa-L library to achieve high-performance erasure coding, we need to build the EC library first:
+
+```shell
+# Set Java Home for isa-l library 
+export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
+# Build the JNI-based erasure coding library
+cd ELECT/src/native/src/org/apache/cassandra/io/erasurecode/
+chmod +x genlib.sh 
+./genlib.sh
+```
+
+Then, we can build the ELECT prototype:
 
 ```shell
 # Build with java 11
 ant clean
 ant -Duse.jdk11=true
-# Set Java Home for isa-l library 
-export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
-export PATH=$JAVA_HOME/bin:$PATH
 ```
 
-Build ec library first:
+### YCSB
 
-```shell
-sudo apt install libisal-dev
-cd src/native/src/org/apache/cassandra/io/erasurecode/
-chmod +x genlib.sh 
-./genlib.sh
-```
