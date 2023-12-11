@@ -81,7 +81,7 @@
         . /etc/profile &&
         nohup bash /home/elect/ELECTExp/scripts/status/stats.sh {{ expName }} {{ stage }} > /home/elect/run.log 2>&1 &
       vars:
-        expName: "Exp#1479-Load-Cassandra-DATAPATH"
+        expName: "SampleExpName"
         stage: "Loading"
       register: command_result
       ignore_errors: true
@@ -98,7 +98,7 @@
       shell: |
         . /etc/profile && bash /home/elect/ELECTExp/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
-        expName: "Exp#1479-Load-Cassandra-DATAPATH"
+        expName: "SampleExpName"
         workload: "workload_template"
         stage: "Before-loading"
       register: command_result
@@ -119,7 +119,7 @@
         filed_length: 1000
         threads: 64
         workload: "workloads/workload_template"
-        expName: "Exp#1479-Load-Cassandra-DATAPATH"
+        expName: "SampleExpName"
         keyspace: "ycsb"
         trace: "off"
       register: command_result
@@ -140,7 +140,7 @@
       shell: |
         . /etc/profile && bash /home/elect/ELECTExp/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
-        expName: "Exp#1479-Load-Cassandra-DATAPATH"
+        expName: "SampleExpName"
         workload: "workload_template"
         stage: "After-Loading"
       register: command_result
