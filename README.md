@@ -104,7 +104,7 @@ Step 3: Copy the SSH public key to all the nodes in the cluster.
 ssh-copy-id node${i}
 ```
 
-### Configuring ELECT cluster
+### Configuring ELECT (~20 human-minutes)
 
 The ELECT prototype requires to configure the cluster information before running. We provide an example configuration file `./Prototype/conf/cassandra.yaml`. Please modify the file according to your cluster settings and the instructions shown below (lines 11-34).
 
@@ -157,5 +157,41 @@ initial_token: 6148914691236515840
 
 After getting the initial token for each node, please fill the generated number into the `initial_token` and `token_ranges` fields in the configuration file.
 
-## Running
+## Running 
 
+### Run the ELECT cluster (~5 human-minutes + ~3 compute-time)
+
+After configuring the cluster information in the `cassandra.yaml` file on each of the server nodes, we can run the ELECT cluster with the following command (on each server node):
+
+```shell
+cd Prototype
+mkdir logs data # Create the log and data directories.
+nohup bin/cassandra >logs/debug.log 2>&1 &
+```
+
+It will take about 1~2 minutes to fully set up the cluster. You can check the cluster status via the following command:
+
+```shell
+cd Prototype
+bin/nodetool ring
+```
+
+Once the cluster is ready, you can see the information of all nodes in the cluster on each of the server nodes. Note that each node in the cluster should own the same percentage of the consistent hashing ring. For example:
+
+```shell
+
+```
+
+### Run YCSB benchmark
+
+After the ELECT cluster is set up, we can run the YCSB benchmark tool on the client node to evaluate the performance of ELECT. 
+
+```shell
+cd YCSB
+bin/ycsb run cassandra-cql -p hosts=${NodesList} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/${workload}
+````
+
+```shell
+cd YCSB
+bin/ycsb load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads ${threads} -s -P workloads/${workload}
+```
