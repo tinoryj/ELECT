@@ -159,7 +159,7 @@ After getting the initial token for each node, please fill the generated number 
 
 ## Running 
 
-### Run the ELECT cluster (~5 human-minutes + ~3 compute-time)
+### Run the ELECT cluster (~5 human-minutes + ~3 compute-minutes)
 
 After configuring the cluster information in the `cassandra.yaml` file on each of the server nodes, we can run the ELECT cluster with the following command (on each server node):
 
@@ -182,7 +182,7 @@ Once the cluster is ready, you can see the information of all nodes in the clust
 
 ```
 
-### Run YCSB benchmark
+### Run YCSB benchmark (~1 human-minutes + ~70 compute-minutes)
 
 After the ELECT cluster is set up, we can run the YCSB benchmark tool on the client node to evaluate the performance of ELECT. 
 
