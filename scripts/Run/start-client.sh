@@ -18,14 +18,6 @@ func() {
         ALTER TABLE usertable0 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
         ALTER TABLE ycsbraw.usertable0 WITH compression = {'enabled':'false'};
         consistency all;"
-    elif [ $mode == "eas" ] ; then
-        echo "Create keyspace ycsb for eas;"
-        bin/cqlsh $coordinator -e "create keyspace ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 6 };
-        USE ycsb;
-        create table usertable (y_id varchar primary key, field0 varchar, field1 varchar, tag0 bigint, tag1 bigint);
-        ALTER TABLE usertable WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
-        ALTER TABLE ycsb.usertable WITH compression = {'enabled':'false'};
-        consistency all;"
     else
         echo "Create keyspace ycsb;"
         bin/cqlsh "$coordinator" -e "create keyspace ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 3 };

@@ -18,12 +18,13 @@ As a distributed KV store, ELECT requires a cluster of machines to run. With the
 
 * For Java project build (used for Prototype and YCSB): openjdk-11-jdk, openjdk-11-jre, ant, maven.
 * For erasure-coding library build (used for Prototype via JNI): clang, llvm, libisal-dev.
-* For scripts: python3, ansible.
+* For scripts: python3, ansible, python3-pip, cassandra-driver.
 
-The packages above can be directly installed via `apt` package manager:
+The packages above can be directly installed via `apt` and `pip` package manager:
 
 ```shell 
-sudo apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible
+sudo apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip
+pip install cassandra-driver
 ```
 
 Note that, the dependencies for both ELECT and YCSB will be automatically installed via maven during compile.
@@ -49,9 +50,11 @@ export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
 export PATH=$JAVA_HOME/bin:$PATH
 # Build the JNI-based erasure coding library
 cd ./Prototype
-cd ELECT/src/native/src/org/apache/cassandra/io/erasurecode/
+cd src/native/src/org/apache/cassandra/io/erasurecode/
 chmod +x genlib.sh 
 ./genlib.sh
+cd ../../../../../../../../
+cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
 ```
 
 Then, we can build the ELECT prototype:
@@ -204,6 +207,11 @@ mkdir logs data # Create the log and data directories.
 nohup bin/cassandra >logs/debug.log 2>&1 &
 ```
 
+```shell
+DEBUG [OptionalTasks:1] 2023-12-13 18:45:05,396 CassandraDaemon.java:404 - Completed submission of build tasks for any materialized views defined at startup
+DEBUG [ScheduledTasks:1] 2023-12-13 18:45:25,030 MigrationCoordinator.java:264 - Pulling unreceived schema versions...
+```
+
 It will take about 1~2 minutes to fully set up the cluster. You can check the cluster status via the following command:
 
 ```shell
@@ -214,12 +222,55 @@ bin/nodetool ring
 Once the cluster is ready, you can see the information of all nodes in the cluster on each of the server nodes. Note that each node in the cluster should own the same percentage of the consistent hashing ring. For example:
 
 ```shell
-
+Datacenter: datacenter1
+==========
+Address             Rack        Status State   Load            Owns                Token
+192.168.10.21       rack1       Up     Normal  75.76 KiB       33.33%              -9223372036854775808
+192.168.10.22       rack1       Up     Normal  97 KiB          33.33%              -6148914691236517376
+192.168.10.23       rack1       Up     Normal  70.53 KiB       33.33%              -3074457345618258944
+192.168.10.25       rack1       Up     Normal  93.88 KiB       33.33%              0
+192.168.10.26       rack1       Up     Normal  96.4 KiB        33.33%              3074457345618257920
+192.168.10.28       rack1       Up     Normal  75.75 KiB       33.33%              6148914691236515840
 ```
+
 
 ### Run YCSB benchmark (~1 human-minutes + ~70 compute-minutes)
 
-After the ELECT cluster is set up, we can run the YCSB benchmark tool on the client node to evaluate the performance of ELECT.
+After the ELECT cluster is set up, we can run the YCSB benchmark tool on the client node to evaluate the performance of ELECT. We show the steps as follows:
+
+**Step 1:** Create the keyspace and set the replication factor for YCSB benchmark.
+
+```shell
+cd Prototype
+bin/cqlsh ${coordinator} -e "create keyspace ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 3 };
+        USE ycsb;
+        create table usertable0 (y_id varchar primary key, field0 varchar);
+        ALTER TABLE usertable0 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
+        ALTER TABLE usertable1 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
+        ALTER TABLE usertable2 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': $sstable_size, 'fanout_size': $fanout_size};
+        ALTER TABLE ycsb.usertable0 WITH compression = {'enabled':'false'};
+        ALTER TABLE ycsb.usertable1 WITH compression = {'enabled':'false'};
+        ALTER TABLE ycsb.usertable2 WITH compression = {'enabled':'false'};
+        consistency all;"
+# Parameters:
+# ${coordinator}: The IP address of any ELECT server node.
+# ${sstable_size}: The maximum SSTable size. Default 4.
+# ${fanout_size}: The size ratio between adjacent levels. Default 10.
+```
+
+**Step 2:** Load data into the ELECT cluster.
+
+```shell
+cd YCSB
+bin/ycsb load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads ${threads} -s -P workloads/${workload}
+# The parameters:
+# ${NodesList}: the list of server nodes in the cluster. E.g., 192.168.0.1,192.168.0.2,192.168.0.3
+# ${keyspace}: the keyspace name of the YCSB benchmark. E.g., ycsb for ELECT and ycsbraw for raw Cassandra.
+# ${threads}: the number of threads (number of simulated clients) of the YCSB benchmark. E.g., 1, 2, 4, 8, 16, 32, 64
+# ${workload}: the workload file of the YCSB benchmark. E.g., workloads/workloada, workloads/workloadb, workloads/workloadc
+```
+
+**Step 3:** Run benchmark with specific workloads.
 
 ```shell
 cd YCSB
@@ -227,16 +278,6 @@ bin/ycsb run cassandra-cql -p hosts=${NodesList} -p cassandra.readconsistencylev
 # The parameters:
 # ${NodesList}: the list of server nodes in the cluster. E.g., 192.168.0.1,192.168.0.2,192.168.0.3
 # ${consistency}: the read consistency level of the YCSB benchmark. E.g., ONE, TWO, ALL
-# ${keyspace}: the keyspace name of the YCSB benchmark. E.g., ycsb for ELECT and ycsbraw for raw Cassandra.
-# ${threads}: the number of threads (number of simulated clients) of the YCSB benchmark. E.g., 1, 2, 4, 8, 16, 32, 64
-# ${workload}: the workload file of the YCSB benchmark. E.g., workloads/workloada, workloads/workloadb, workloads/workloadc
-```
-
-```shell
-cd YCSB
-bin/ycsb load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads ${threads} -s -P workloads/${workload}
-# The parameters:
-# ${NodesList}: the list of server nodes in the cluster. E.g., 192.168.0.1,192.168.0.2,192.168.0.3
 # ${keyspace}: the keyspace name of the YCSB benchmark. E.g., ycsb for ELECT and ycsbraw for raw Cassandra.
 # ${threads}: the number of threads (number of simulated clients) of the YCSB benchmark. E.g., 1, 2, 4, 8, 16, 32, 64
 # ${workload}: the workload file of the YCSB benchmark. E.g., workloads/workloada, workloads/workloadb, workloads/workloadc
