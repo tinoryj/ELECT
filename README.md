@@ -136,6 +136,8 @@ token_ranges: -9223372036854775808,-6148914691236517376,-3074457345618258944,0,3
 # Current node settings
 listen_address: 192.168.10.21 # IP address of the current node.
 rpc_address: 192.168.10.21 # IP address of the current node.
+cold_tier_ip: 192.168.10.21 # The IP address of the file server (cold tier).
+cold_tier_port: 8080 # The port of the file server (cold tier).
 seed_provider:
   # Addresses of hosts that are deemed contact points.
   # Cassandra nodes use this list of hosts to find each other and learn
@@ -189,7 +191,7 @@ mkdir data # Create the data directories.
 nohup java FileServer ${port} >coldStorage.log 2>&1 & # ${port} should be replaced with the port number of the file server.
 ```
 
-Note that the port of FileServer is the same as the `coldStoragePort` in the ELECT configuration file.
+Note that the port of FileServer is the same as the `cold_tier_port` in the ELECT configuration file.
 
 If the file server is running correctly, you can see the following output in the log file (`coldStorage.log`):
 
