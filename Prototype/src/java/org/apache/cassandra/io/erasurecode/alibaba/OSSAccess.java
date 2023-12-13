@@ -351,7 +351,7 @@ import java.net.URLDecoder;
 
 // The following is the code for using a general server node (transfer data via simple socket) as the cold tier.
 public class OSSAccess implements AutoCloseable {
-    private static final java.util.logging.Logger logger = LoggerFactory.getLogger(OSSAccess.class);
+    private static final Logger logger = LoggerFactory.getLogger(OSSAccess.class);
 
     private static String localIP = FBUtilities.getBroadcastAddressAndPort().toString(false).replace('/', '_');
     private final int maxConcurrentDownloads = DatabaseDescriptor.getMaxConcurrentDownload();
