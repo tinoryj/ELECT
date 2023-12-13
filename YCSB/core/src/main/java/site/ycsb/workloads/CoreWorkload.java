@@ -109,7 +109,7 @@ public class CoreWorkload extends Workload {
   /**
    * Default number of fields in a record.
    */
-  public static final String FIELD_COUNT_PROPERTY_DEFAULT = "10";
+  public static final String FIELD_COUNT_PROPERTY_DEFAULT = "1";
 
   private List<String> fieldnames;
 
@@ -126,7 +126,6 @@ public class CoreWorkload extends Workload {
    */
   public static final String FIELD_LENGTH_DISTRIBUTION_PROPERTY = "fieldlengthdistribution";
 
-  public static final String KEY_LENGTH_DISTRIBUTION_PROPERTY = "keylengthdistribution";
   /**
    * The default field length distribution.
    */
@@ -137,23 +136,12 @@ public class CoreWorkload extends Workload {
    */
   public static final String FIELD_LENGTH_PROPERTY = "fieldlength";
 
-  public static final String FIELD_LENGTH_STDEV_PROPERTY = "fieldlengthSTDEV";
-
-  public static final String FIELD_LENGTH_MIN_PROPERTY = "fieldlengthMin";
-
-  public static final String FIELD_LENGTH_MAX_PROPERTY = "fieldlengthMax";
-
   public static final String KEY_LENGTH_MEAN_PROPERTY = "keylength";
 
-  public static final String KEY_LENGTH_STDEV_PROPERTY = "keylengthSTDEV";
-
-  public static final String KEY_LENGTH_MIN_PROPERTY = "keylengthMin";
-
-  public static final String KEY_LENGTH_MAX_PROPERTY = "keylengthMax";
   /**
    * The default maximum length of a field in bytes.
    */
-  public static final String FIELD_LENGTH_PROPERTY_DEFAULT = "100";
+  public static final String FIELD_LENGTH_PROPERTY_DEFAULT = "1000";
 
   /**
    * The name of the property for the minimum length of a field in bytes.
@@ -420,12 +408,7 @@ public class CoreWorkload extends Workload {
   protected int zeropadding;
   protected int insertionRetryLimit;
   protected int insertionRetryInterval;
-  protected static double keyMean;
-  protected static int keyMeanInt;
-  protected static double keyMin;
-  protected static double keyMax;
-  protected static double keyStdev;
-  protected static boolean varyKeyFlag;
+  protected static int keyLen;
 
   private static final double EPSILON = 1e-9;
 
@@ -435,48 +418,22 @@ public class CoreWorkload extends Workload {
 
   private Measurements measurements = Measurements.getMeasurements();
 
-  public static int keyLengthGen(long keynum) {
-    if (varyKeyFlag == false) {
-      return (int) keyMean;
-    }
-    double result;
-    Random random = new Random(keynum);
-    do {
-      result = random.nextGaussian() * keyStdev + keyMean;
-    } while (result < keyMin || result > keyMax);
-    return (int) result;
-  }
-
-  public static String buildKeyName(long keynum, int zeropadding, boolean orderedinserts) {
+  protected String buildKeyName(long keynum) {
     if (!orderedinserts) {
       keynum = Utils.hash(keynum);
     }
     String value = Long.toString(keynum);
-    // int keyLen = keyLengthGen(keynum);
-    if (keyMeanInt >= value.length()) {
-      int fill = keyMeanInt - value.length();
+    if (keyLen >= value.length()) {
+      int fill = keyLen - value.length();
       String prekey = "";
       for (int i = 0; i < fill; i++) {
         prekey += '0';
       }
       return prekey + value;
     } else {
-      return value.substring(0, keyMeanInt);
+      return value.substring(0, keyLen);
     }
   }
-
-  // protected String buildKeyName(long keynum) {
-  // if (!orderedinserts) {
-  // keynum = Utils.hash(keynum);
-  // }
-  // String value = Long.toString(keynum);
-  // int fill = zeropadding - value.length();
-  // String prekey = "user";
-  // for (int i = 0; i < fill; i++) {
-  // prekey += '0';
-  // }
-  // return prekey + value;
-  // }
 
   protected static NumberGenerator getFieldLengthGenerator(Properties p) throws WorkloadException {
     NumberGenerator fieldlengthgenerator;
@@ -484,12 +441,6 @@ public class CoreWorkload extends Workload {
         FIELD_LENGTH_DISTRIBUTION_PROPERTY, FIELD_LENGTH_DISTRIBUTION_PROPERTY_DEFAULT);
     double fieldlength = Double.parseDouble(
         p.getProperty(FIELD_LENGTH_PROPERTY, FIELD_LENGTH_PROPERTY_DEFAULT));
-    double fieldlengthSTDEV = Double.parseDouble(
-        p.getProperty(FIELD_LENGTH_STDEV_PROPERTY, "0"));
-    double fieldlengthMin = Double.parseDouble(
-        p.getProperty(FIELD_LENGTH_MIN_PROPERTY, FIELD_LENGTH_PROPERTY_DEFAULT));
-    double fieldlengthMax = Double.parseDouble(
-        p.getProperty(FIELD_LENGTH_MAX_PROPERTY, FIELD_LENGTH_PROPERTY_DEFAULT));
     int minfieldlength = Integer.parseInt(p.getProperty(MIN_FIELD_LENGTH_PROPERTY, MIN_FIELD_LENGTH_PROPERTY_DEFAULT));
     String fieldlengthhistogram = p.getProperty(
         FIELD_LENGTH_HISTOGRAM_FILE_PROPERTY, FIELD_LENGTH_HISTOGRAM_FILE_PROPERTY_DEFAULT);
@@ -497,9 +448,6 @@ public class CoreWorkload extends Workload {
       fieldlengthgenerator = new ConstantIntegerGenerator((int) fieldlength);
     } else if (fieldlengthdistribution.compareTo("uniform") == 0) {
       fieldlengthgenerator = new UniformLongGenerator(minfieldlength, (int) fieldlength);
-    } else if (fieldlengthdistribution.compareTo("normal") == 0) {
-      // For ELECT
-      fieldlengthgenerator = new NormalLongGenerator(fieldlength, fieldlengthSTDEV, fieldlengthMin, fieldlengthMax);
     } else if (fieldlengthdistribution.compareTo("zipfian") == 0) {
       fieldlengthgenerator = new ZipfianGenerator(minfieldlength, (int) fieldlength);
     } else if (fieldlengthdistribution.compareTo("histogram") == 0) {
@@ -524,27 +472,13 @@ public class CoreWorkload extends Workload {
   public void init(Properties p) throws WorkloadException {
     table = p.getProperty(TABLENAME_PROPERTY, TABLENAME_PROPERTY_DEFAULT);
 
-    keyMean = Double.parseDouble(
+    keyLen = Integer.parseInt(
         p.getProperty(KEY_LENGTH_MEAN_PROPERTY, "24"));
-    keyMeanInt = (int) keyMean;
-    keyStdev = Double.parseDouble(
-        p.getProperty(KEY_LENGTH_STDEV_PROPERTY, "0"));
-    keyMin = Double.parseDouble(
-        p.getProperty(KEY_LENGTH_MIN_PROPERTY, "24"));
-    keyMax = Double.parseDouble(
-        p.getProperty(KEY_LENGTH_MAX_PROPERTY, "24"));
     fieldcount = Long.parseLong(p.getProperty(FIELD_COUNT_PROPERTY, FIELD_COUNT_PROPERTY_DEFAULT));
     final String fieldnameprefix = p.getProperty(FIELD_NAME_PREFIX, FIELD_NAME_PREFIX_DEFAULT);
     fieldnames = new ArrayList<>();
     for (int i = 0; i < fieldcount; i++) {
       fieldnames.add(fieldnameprefix + i);
-    }
-    String keylengthdistribution = p.getProperty(
-        KEY_LENGTH_DISTRIBUTION_PROPERTY, "false");
-    if (keylengthdistribution.compareTo("true") == 0) {
-      varyKeyFlag = true;
-    } else {
-      varyKeyFlag = false;
     }
     fieldlengthgenerator = CoreWorkload.getFieldLengthGenerator(p);
     recordcount = Long.parseLong(p.getProperty(Client.RECORD_COUNT_PROPERTY, Client.DEFAULT_RECORD_COUNT));

@@ -69,13 +69,7 @@ function modifyWorkload {
     workload=$1
     cd /home/elect/ELECTExp/YCSB/workloads || exit
     sed -i "s/\(keylength= \)".*"/keylength=${keylength}/" ${workload}
-    sed -i "s/\(keylengthSTDEV= \)".*"/keylengthSTDEV=${keylengthSTDEV}/" ${workload}
-    sed -i "s/\(keylengthMin= \)".*"/keylengthMin=${keylengthMin}/" ${workload}
-    sed -i "s/\(keylengthMax= \)".*"/keylengthMax=${keylengthMax}/" ${workload}
     sed -i "s/\(fieldlength= \)".*"/fieldlength=${fieldlength}/" ${workload}
-    sed -i "s/\(fieldlengthSTDEV= \)".*"/fieldlengthSTDEV=${fieldlengthSTDEV}/" ${workload}
-    sed -i "s/\(fieldlengthMin= \)".*"/fieldlengthMin=${fieldlengthMin}/" ${workload}
-    sed -i "s/\(fieldlengthMax= \)".*"/fieldlengthMax=${fieldlengthMax}/" ${workload}
     cd /home/elect/ELECTExp/scripts/Exp || exit
 }
 

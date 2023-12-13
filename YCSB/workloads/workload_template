@@ -37,9 +37,6 @@ workload=site.ycsb.workloads.CoreWorkload
 # table before the run phase.
 
 keylength=24
-keylengthSTDEV=0
-keylengthMin=24
-keylengthMax=24
 
 recordcount=1000000
 
@@ -60,9 +57,6 @@ fieldcount=1
 
 # The size of each field (in bytes)
 fieldlength=1000
-fieldlengthSTDEV=0
-fieldlengthMin=1000
-fieldlengthMax=1000
 
 # Should read all fields
 readallfields=true
@@ -71,9 +65,9 @@ readallfields=true
 writeallfields=true
 
 # The distribution used to choose the length of a field
-keylengthdistribution=false
-#fieldlengthdistribution=normal
+
 fieldlengthdistribution=constant
+#fieldlengthdistribution=normal
 #fieldlengthdistribution=uniform
 #fieldlengthdistribution=zipfian
 
