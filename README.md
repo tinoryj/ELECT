@@ -64,6 +64,16 @@ ant realclean
 ant -Duse.jdk11=true
 ```
 
+### ColdTier (1 human-minutes + ~ 1 compute-minutes)
+
+To avoid unstable access to Alibaba OSS (if cross-country), we use a server node within the same cluster as the cold tier to store the cold data. We use the `FileServer` tool to provide the file-based storage service. The `FileServer` tool is a simple file server that supports the following operations: `read`, `write`. We provide the source code of the `FileServer` tool in `./ColdTier`. To build the `FileServer` tool, please run the following command:
+
+```shell
+cd ColdTier
+make clean 
+make
+```
+
 ### YCSB (2 human-minutes + ~ 30 compute-minutes)
 
 We build the modified version of YCSB which supports user-defined key and value sizes. The build procedure is similar to the original YCSB.
@@ -135,6 +145,8 @@ seed_provider:
       - seeds: "192.168.10.21,192.168.10.22,192.168.10.23,192.168.10.25,192.168.10.26,192.168.10.28" # IP address of all the server nodes.
 ```
 
+**Note that you can configure the prototype to run the raw Cassandra by setting `enable_migration` and `enable_erasure_coding` to `false`.**
+
 To simplify the configuration of `initial_token` and `token_ranges`, which is important for ELECT to achieve optimal storage saving. We provide a script `./scripts/genToken.sh` to generate the token ranges for all the nodes in the cluster with the given node number. 
 
 ```shell
@@ -159,9 +171,32 @@ After getting the initial token for each node, please fill the generated number 
 
 ## Running 
 
+To test the ELECT prototype, we need to run the following steps:
+1. Run the file server at clod tier.
+2. Run the ELECT cluster.
+3. Run YCSB benchmark.
+
+We describe the detailed steps below.
+
+### Run the file server at clod tier (~1 human-minutes + ~1 compute-minutes)
+
+```shell
+cd ColdTier
+mkdir data # Create the data directories.
+nohup java FileServer ${port} >coldStorage.log 2>&1 & # ${port} should be replaced with the port number of the file server.
+```
+
+Note that the port of FileServer is the same as the `coldStoragePort` in the ELECT configuration file.
+
+If the file server is running correctly, you can see the following output in the log file (`coldStorage.log`):
+
+```shell
+Server started on port: xxx
+```
+
 ### Run the ELECT cluster (~5 human-minutes + ~3 compute-minutes)
 
-After configuring the cluster information in the `cassandra.yaml` file on each of the server nodes, we can run the ELECT cluster with the following command (on each server node):
+After the `FileServer` is running correctly and configuring the cluster information in the `cassandra.yaml` file on each of the server nodes, we can run the ELECT cluster with the following command (on each server node):
 
 ```shell
 cd Prototype
@@ -184,14 +219,25 @@ Once the cluster is ready, you can see the information of all nodes in the clust
 
 ### Run YCSB benchmark (~1 human-minutes + ~70 compute-minutes)
 
-After the ELECT cluster is set up, we can run the YCSB benchmark tool on the client node to evaluate the performance of ELECT. 
+After the ELECT cluster is set up, we can run the YCSB benchmark tool on the client node to evaluate the performance of ELECT.
 
 ```shell
 cd YCSB
 bin/ycsb run cassandra-cql -p hosts=${NodesList} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/${workload}
-````
+# The parameters:
+# ${NodesList}: the list of server nodes in the cluster. E.g., 192.168.0.1,192.168.0.2,192.168.0.3
+# ${consistency}: the read consistency level of the YCSB benchmark. E.g., ONE, TWO, ALL
+# ${keyspace}: the keyspace name of the YCSB benchmark. E.g., ycsb for ELECT and ycsbraw for raw Cassandra.
+# ${threads}: the number of threads (number of simulated clients) of the YCSB benchmark. E.g., 1, 2, 4, 8, 16, 32, 64
+# ${workload}: the workload file of the YCSB benchmark. E.g., workloads/workloada, workloads/workloadb, workloads/workloadc
+```
 
 ```shell
 cd YCSB
 bin/ycsb load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads ${threads} -s -P workloads/${workload}
+# The parameters:
+# ${NodesList}: the list of server nodes in the cluster. E.g., 192.168.0.1,192.168.0.2,192.168.0.3
+# ${keyspace}: the keyspace name of the YCSB benchmark. E.g., ycsb for ELECT and ycsbraw for raw Cassandra.
+# ${threads}: the number of threads (number of simulated clients) of the YCSB benchmark. E.g., 1, 2, 4, 8, 16, 32, 64
+# ${workload}: the workload file of the YCSB benchmark. E.g., workloads/workloada, workloads/workloadb, workloads/workloadc
 ```

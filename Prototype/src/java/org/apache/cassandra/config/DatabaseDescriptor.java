@@ -2020,6 +2020,26 @@ public class DatabaseDescriptor
         conf.target_storage_saving = target_storage_saving;
     }
 
+    public static String getColdTierIP() 
+    {
+        return conf.coldTierIP;
+    }
+
+    public static void setColdTierIP(String coldTierIP)
+    {
+        conf.coldTierIP = coldTierIP;
+    }
+
+    public static int getColdTierPort() 
+    {
+        return conf.coldTierPort;
+    }
+
+    public static void setColdTierIP(int coldTierPort)
+    {
+        conf.coldTierPort = coldTierPort;
+    }
+
     public static int getColdPeriod() 
     {
         return conf.cold_period;
