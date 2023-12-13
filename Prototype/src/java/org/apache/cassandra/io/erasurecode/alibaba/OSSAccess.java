@@ -385,7 +385,6 @@ public class OSSAccess implements AutoCloseable {
             e.printStackTrace();
             return false;
         }
-        return true;
     }
 
     public boolean uploadFileToOSS(String targetFilePath, String content) {
@@ -404,7 +403,6 @@ public class OSSAccess implements AutoCloseable {
             e.printStackTrace();
             return false;
         }
-        return true;
     }
 
     public boolean downloadFileFromOSS(String originalFilePath, String targetStorePath) {
@@ -451,6 +449,8 @@ public class OSSAccess implements AutoCloseable {
                 if (fileExists) {
                     byte[] content = (byte[]) objectInputStream.readObject();
                     Files.write(Paths.get(originalFilePath), content);
+                    logger.debug("[ELECT-Debug]: Downloaded original file from cold tier, file name is ({})",
+                            objectName);
                     return true;
                 } else {
                     System.out.println("File not found on server: " + objectName);
@@ -467,8 +467,6 @@ public class OSSAccess implements AutoCloseable {
         } finally {
             semaphore.release();
         }
-        logger.debug("[ELECT-Debug]: Downloaded original file from cold tier, file name is ({})", objectName);
-        return true;
     }
 
     public static void main(String[] args) throws Exception {
