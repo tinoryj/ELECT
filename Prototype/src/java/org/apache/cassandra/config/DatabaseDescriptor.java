@@ -2027,7 +2027,7 @@ public class DatabaseDescriptor
 
     public static void setColdTierIP(String cold_tier_ip)
     {
-        conf.cold_tier_ip = coldTierIP;
+        conf.cold_tier_ip = cold_tier_ip;
     }
 
     public static int getColdTierPort() 
