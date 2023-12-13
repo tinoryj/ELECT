@@ -385,6 +385,7 @@ public class OSSAccess implements AutoCloseable {
             e.printStackTrace();
             return false;
         }
+        return true;
     }
 
     public boolean uploadFileToOSS(String targetFilePath, String content) {
@@ -395,13 +396,15 @@ public class OSSAccess implements AutoCloseable {
         try {
             long startTime = System.currentTimeMillis();
             byte[] content = Files.readAllBytes(Paths.get(targetFilePath));
-            return uploadFileToOSS(targetFilePath, content);
+            boolean status = uploadFileToOSS(targetFilePath, content);
             long timeCost = System.currentTimeMillis() - startTime;
             StorageService.instance.migratedRawSSTableTimeSendCost += timeCost;
+            return status;
         } catch (IOException e) {
             e.printStackTrace();
             return false;
         }
+        return true;
     }
 
     public boolean downloadFileFromOSS(String originalFilePath, String targetStorePath) {
@@ -433,27 +436,33 @@ public class OSSAccess implements AutoCloseable {
 
     public boolean downloadFileAsByteArrayFromOSS(String originalFilePath, String targetIp) {
         String objectName = originalFilePath.replace('/', '_') + "_" + targetIp;
-        try (Socket socket = new Socket(DatabaseDescriptor.getColdTierIP(), DatabaseDescriptor.getColdTierPort());
-                ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
-                ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream())) {
+        try {
             semaphore.acquire();
+            try (Socket socket = new Socket(DatabaseDescriptor.getColdTierIP(), DatabaseDescriptor.getColdTierPort());
+                    ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
+                    ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream())) {
 
-            objectOutputStream.writeUTF("DOWNLOAD");
-            objectOutputStream.writeUTF(objectName);
-            objectOutputStream.flush();
-            System.out.println("Try to download from server: " + objectName + ", request sent");
-            boolean fileExists = objectInputStream.readBoolean();
-            System.out.println("Recv the file exist flag");
-            if (fileExists) {
-                byte[] content = (byte[]) objectInputStream.readObject();
-                Files.write(Paths.get(originalFilePath), content);
-                return true;
-            } else {
-                System.out.println("File not found on server: " + objectName);
+                objectOutputStream.writeUTF("DOWNLOAD");
+                objectOutputStream.writeUTF(objectName);
+                objectOutputStream.flush();
+                System.out.println("Try to download from server: " + objectName + ", request sent");
+                boolean fileExists = objectInputStream.readBoolean();
+                System.out.println("Recv the file exist flag");
+                if (fileExists) {
+                    byte[] content = (byte[]) objectInputStream.readObject();
+                    Files.write(Paths.get(originalFilePath), content);
+                    return true;
+                } else {
+                    System.out.println("File not found on server: " + objectName);
+                    return false;
+                }
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
                 return false;
             }
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("[ELECT-ERROR]: Download original file from OSS failed, file name is ({})", objectName);
             return false;
         } finally {
             semaphore.release();
