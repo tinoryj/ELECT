@@ -195,8 +195,8 @@ public class Config {
     public int max_concurrent_download = 16;
     public boolean enable_merkle_tree = false;
     public boolean enable_proxy = false;
-    public String coldTierIP;
-    public int coldTierPort = 8000;
+    public String cold_tier_ip;
+    public int cold_tier_port = 8000;
 
     /**
      * This parameter indicates three storage saving levels.
