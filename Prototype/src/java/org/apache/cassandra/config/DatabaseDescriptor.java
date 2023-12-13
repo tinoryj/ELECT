@@ -2022,22 +2022,22 @@ public class DatabaseDescriptor
 
     public static String getColdTierIP() 
     {
-        return conf.coldTierIP;
+        return conf.cold_tier_ip;
     }
 
-    public static void setColdTierIP(String coldTierIP)
+    public static void setColdTierIP(String cold_tier_ip)
     {
-        conf.coldTierIP = coldTierIP;
+        conf.cold_tier_ip = coldTierIP;
     }
 
     public static int getColdTierPort() 
     {
-        return conf.coldTierPort;
+        return conf.cold_tier_port;
     }
 
-    public static void setColdTierIP(int coldTierPort)
+    public static void setColdTierIP(int cold_tier_port)
     {
-        conf.coldTierPort = coldTierPort;
+        conf.cold_tier_port = cold_tier_port;
     }
 
     public static int getColdPeriod() 

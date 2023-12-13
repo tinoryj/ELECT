@@ -22,8 +22,8 @@ token_ranges: -9223372036854775808,-6148914691236517376,-3074457345618258944,0,3
 # Current node settings
 listen_address: 192.168.10.21
 rpc_address: 192.168.10.21
-coldTierIP: 192.168.10.29
-coldTierPort: 8000
+cold_tier_ip: 192.168.10.29
+cold_tier_port: 8000
 seed_provider:
   # Addresses of hosts that are deemed contact points.
   # Cassandra nodes use this list of hosts to find each other and learn
