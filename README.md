@@ -205,7 +205,14 @@ After the `FileServer` is running correctly and configuring the cluster informat
 
 ```shell
 cd Prototype
-mkdir logs data # Create the log and data directories.
+rm -rf data logs # Clean up the data and log directories.
+# Create the data directories.
+mkdir -p data/receivedParityHashes/
+mkdir -p data/localParityHashes/
+mkdir -p data/ECMetadata/
+mkdir -p data/tmp/
+mkdir -p logs
+# Run the cluster 
 nohup bin/cassandra >logs/debug.log 2>&1 &
 ```
 

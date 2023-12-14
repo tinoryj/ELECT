@@ -12,21 +12,19 @@ We provide scripts to setup the environment for the evaluation. The scripts are 
 
 ## Evaluations
 
-Note: to reduce the hardware requirement, complexity, and also running time of the evaluation, we made some changes to the evaluation configurations.
+Note: to reduce the influence of cloud storage location, hardware requirement, complexity, and also running time of the evaluation, we made some changes to the evaluation configurations.
 
-* We use a single client node with six server nodes in AE.
+* We requires a single client node, six server nodes, and one storage node (as the cold tier) in AE.
 * We replaced the Alibaba OSS with a server node within the same cluster as the higher tier to store the cold data.
 * We reduced the number of test case in some evaluations such as the Exp#6,7,10.
 
 To simplify the reproduce process, we provide anible-based script to run all the experiments. The script will automatically run the experiments and generate the result logs. The scripts will take about 9~10 days to finish all the experiments.
 
-### Overall system analysis (Exp#1~5,9,10 in our paper)
+### Overall system analysis (Exp#1~5 in our paper)
 
 Note: To reduce the long running time, we pre-load 10M KV pairs for the following evaluations. Especially, we reduced the workload size in Exp#1 to utilize the pre-loaded data. The storage saving and performance trend should be similar to the original evaluation.
 
 #### Exp#1: Performance with YCSB core workloads
-
-
 
 #### Exp#2: Micro-benchmarks on KV operations
 
@@ -36,10 +34,6 @@ Note: To reduce the long running time, we pre-load 10M KV pairs for the followin
 
 #### Exp#5: Resource usage
 
-#### Exp#9: Impact of read consistency level
-
-#### Exp#10: Impact of number of clients
-
 ### Parameter analysis (Exp#6~8 in our paper)
 
 #### Exp#6: Impact of key and value sizes
@@ -47,3 +41,9 @@ Note: To reduce the long running time, we pre-load 10M KV pairs for the followin
 #### Exp#7: Impact of storage saving target
 
 #### Exp#8: Impact of erasure codig parameters
+
+### System setting analysis (Exp#9,10 in our paper)
+
+#### Exp#9: Impact of read consistency level
+
+#### Exp#10: Impact of number of clients
