@@ -2,14 +2,15 @@
 
 # Common params for all experiments
 
-NodesList="172.27.96.1,172.27.96.2,172.27.96.3,172.27.96.4,172.27.96.5,172.27.96.6,172.27.96.7,172.27.96.8,172.27.96.9,172.27.96.10"
+NodesList=(172.27.96.1 172.27.96.2 172.27.96.3 172.27.96.4 172.27.96.5 172.27.96.6 172.27.96.7 172.27.96.8 172.27.96.9 172.27.96.10)
 RunningRoundNumber=1
 
 PathToELECT="/home/elect/ELECT/prototype"
 PathToYCSB="/home/elect/ELECT/YCSB"
 PathToELECTExpDBBackup="/home/elect/ELECTExpDBBackup"
 PathToELECTLog="/home/elect/ELECTLog"
-
+PathToELECTResultSummary="/home/elect/ELECTLog"
+UserName="elect"
 
 NodeNumber=$(echo "$NodesList" | awk -F, '{print NF}')
 maxLevel=9
@@ -20,10 +21,16 @@ concurrentEC=64
 
 function load {
     targetScheme=$1
+    expName=$2
+    KVNumber=$3
+    keylength=$4
+    fieldlength=$5
+    simulatedClientNumber=$6
+
     echo "Start loading data into ${targetScheme}"
     # Make local results directory
-    if [ ! -d ${PathToELECTLog}/${targetScheme} ]; then
-        mkdir -p ${PathToELECTLog}/${targetScheme}
+    if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTResultSummary}/${targetScheme}
     fi
 
     # Copy playbook
@@ -46,40 +53,42 @@ function load {
         sed -i "s/\(concurrentEC: \)".*"/concurrentEC: ${concurrentEC}/" playbook-load.yaml
     fi
 
-    sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Load"/" playbook-load.yaml
+    sed -i "s/\(expName: \)".*"/expName: "${expName}-${targetScheme}-Load"/" playbook-load.yaml
     sed -i "s/record_count:.*$/record_count: ${KVNumber}/" playbook-load.yaml
+    sed -i "s/key_length:.*$/key_length: ${keylength}/" playbook-load.yaml
     sed -i "s/filed_length:.*$/filed_length: ${fieldlength}/" playbook-load.yaml
 
-    modifyWorkload "workload_template"
+    modifyWorkload "workload_load"
 
-    sed -i "s/\(workload: \)".*"/workload: \"workload_template\"/" playbook-load.yaml
+    sed -i "s/\(workload: \)".*"/workload: \"workload_load\"/" playbook-load.yaml
     sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" playbook-load.yaml
 
     ansible-playbook -v -i hosts.ini playbook-load.yaml
 
-    ## Collect load results
-    for ((i = 1; i <= NodeNumber; i++)); do
-        echo "Copy loading stats of ${targetScheme} back, node$i"
-        scp -r elect@node$i:/home/elect/Results ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-Node$i
-        ssh elect@node$i "rm -rf /home/elect/Results && mkdir -p /home/elect/Results"
+    ## Collect load logs
+    for nodeIP in "${NodesList[@]}"; do
+        echo "Copy loading stats of loading for ${expName}-${targetScheme} back, current working on node ${nodeIP}"
+        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Load-${nodeIP}
+        ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
 }
 
 function modifyWorkload {
     workload=$1
-    cd /home/elect/ELECTExp/YCSB/workloads || exit
-    sed -i "s/\(keylength= \)".*"/keylength=${keylength}/" ${workload}
-    sed -i "s/\(fieldlength= \)".*"/fieldlength=${fieldlength}/" ${workload}
-    cd /home/elect/ELECTExp/scripts/Exp || exit
+    keylength=$2
+    fieldlength=$3
+    sed -i "s/\(keylength= \)".*"/keylength=${keylength}/" ./YCSB/workloads/${workload}
+    sed -i "s/\(fieldlength= \)".*"/fieldlength=${fieldlength}/" ./YCSB/workloads/${workload}
 }
 
 function flush {
-    targetScheme=$1
-    waitTime=$2
+    expName=$1
+    targetScheme=$2
+    waitTime=$3
     echo "Start for flush and wait for compaction of ${targetScheme}"
     # Make local results directory
-    if [ ! -d ${PathToELECTLog}/${targetScheme} ]; then
-        mkdir -p ${PathToELECTLog}/${targetScheme}
+    if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTResultSummary}/${targetScheme}
     fi
 
     # Copy playbook
@@ -98,8 +107,8 @@ function backup {
     targetScheme=$1
     echo "Start copy data of ${targetScheme} to backup, this will kill the online system!!!"
     # Make local results directory
-    if [ ! -d ${PathToELECTLog}/${targetScheme} ]; then
-        mkdir -p ${PathToELECTLog}/${targetScheme}
+    if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTResultSummary}/${targetScheme}
     fi
 
     # Copy playbook
@@ -108,17 +117,11 @@ function backup {
     fi
     cp ../playbook/playbook-backup.yaml .
     # Modify playbook
-    if [ ${targetScheme} == "cassandreas" ]; then
-        sed -i "s/\(mode: \)".*"/mode: eas/" playbook-backup.yaml
-        sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" playbook-backup.yaml
-    elif [ ${targetScheme} == "cassandra" ]; then
+    if [ ${targetScheme} == "cassandra" ]; then
         sed -i "s/\(mode: \)".*"/mode: raw/" playbook-backup.yaml
         sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" playbook-backup.yaml
     elif [ ${targetScheme} == "elect" ]; then
         sed -i "s/\(mode: \)".*"/mode: elect/" playbook-backup.yaml
-        sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" playbook-backup.yaml
-    elif [ ${targetScheme} == "mlsm" ]; then
-        sed -i "s/\(mode: \)".*"/mode: mlsm/" playbook-backup.yaml
         sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" playbook-backup.yaml
     fi
     sed -i "s/Scheme/${targetScheme}/g" playbook-backup.yaml

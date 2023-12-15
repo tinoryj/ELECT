@@ -8,7 +8,7 @@ import java.nio.file.Files;
 public class FileServer {
 
     private static int PORT;
-    private ExecutorService executorService = Executors.newFixedThreadPool(200);
+    private ExecutorService executorService = Executors.newFixedThreadPool(500);
 
     public void startServer() {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
