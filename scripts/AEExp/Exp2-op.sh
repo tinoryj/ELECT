@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Exp4: SYN workload, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP.
+# Exp2: SYN workload, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP.
 
 if [ ! -f "hosts.ini" ]; then
     cp ../playbook/hosts.ini .
 fi
 
-ExpName="Exp4-op"
-schemes=("elect")
+ExpName="Exp2-op"
+schemes=("elect" "cassandara")
 workloads=("workloadRead" "workloadWrite" "workloadScan" "workloadUpdate")
 types=("normal" "degraded")
 waitFlush="true"

@@ -52,7 +52,7 @@
       when: "'FAILED' in command_result.stderr"
 
 - name: Recovery
-  hosts: failure_nodes
+  hosts: elect_failure
   become: yes
   become_user: elect
   tasks:

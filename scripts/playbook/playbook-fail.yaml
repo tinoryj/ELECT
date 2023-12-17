@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ---
-- name: Test recovery
-  hosts: failure_nodes
+- name: Stop ELECT server for recovery/degraded operations test
+  hosts: elect_failure
   become: yes
   become_user: elect
   tasks:
@@ -32,7 +32,7 @@
         seconds: 60
 
 - name: Stop CPU&Memory Monitor
-  hosts: failure_nodes
+  hosts: elect_failure
   become: yes
   become_user: elect
   gather_facts: false

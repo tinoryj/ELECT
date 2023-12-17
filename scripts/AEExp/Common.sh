@@ -3,6 +3,8 @@
 # Common params for all experiments
 
 NodesList=(172.27.96.1 172.27.96.2 172.27.96.3 172.27.96.4 172.27.96.5 172.27.96.6 172.27.96.7 172.27.96.8 172.27.96.9 172.27.96.10)
+OSSServerNode="172.27.96.1"
+ClientNode="172.27.96.1"
 RunningRoundNumber=1
 
 PathToELECT="/home/elect/ELECT/prototype"
@@ -11,13 +13,38 @@ PathToELECTExpDBBackup="/home/elect/ELECTExpDBBackup"
 PathToELECTLog="/home/elect/ELECTLog"
 PathToELECTResultSummary="/home/elect/ELECTLog"
 UserName="elect"
+NodeNumber="${#NodesList[@]}"
+SSTableSize=4
+LSMTreeFanOutRatio=10
 
-NodeNumber=$(echo "$NodesList" | awk -F, '{print NF}')
-maxLevel=9
+teeLevels=9
 initialDelay=65536
 concurrentEC=64
 
-# Run Exp
+function setupNodeInfo {
+    targetHostInfo=$1
+    if [ -f ${targetHostInfo} ]; then
+        rm -rf ${targetHostInfo}
+    fi
+    echo "[elect_servers]" >>${targetHostInfo}
+    for ((i = 1; i <= NodeNumber; i++)); do
+        echo "server${i} ansible_host=${NodesList[(($i - 1))]}" >>${targetHostInfo}
+    done
+    echo >>${targetHostInfo}
+    echo "[elect_oss]" >>${targetHostInfo}
+    echo "oss ansible_host=${OSSServerNode}" >>${targetHostInfo}
+    echo >>${targetHostInfo}
+    echo "[elect_client]" >>${targetHostInfo}
+    echo "client ansible_host=${ClientNode}" >>${targetHostInfo}
+    # random select the failure node from the total node list
+    failure_nodes=($(shuf -i 1-${NodeNumber} -n 1))
+    echo >>${targetHostInfo}
+    echo "[elect_failure]" >>${targetHostInfo}
+    echo "server${failure_nodes} ansible_host=${NodesList[(($failure_nodes - 1))]}" >>${targetHostInfo}
+}
+
+setupNodeInfo "hosts.ini"
+exit
 
 function load {
     targetScheme=$1
@@ -42,13 +69,13 @@ function load {
     if [ ${targetScheme} == "cassandra" ]; then
         sed -i "s/\(mode: \)".*"/mode: raw/" playbook-load.yaml
         sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" playbook-load.yaml
-        sed -i "s/\(maxLevel: \)".*"/maxLevel: 9/" playbook-load.yaml
+        sed -i "s/\(teeLevels: \)".*"/teeLevels: 9/" playbook-load.yaml
         sed -i "s/\(initialDelay: \)".*"/initialDelay: 65536/" playbook-load.yaml
         sed -i "s/\(concurrentEC: \)".*"/concurrentEC: 0/" playbook-load.yaml
     elif [ ${targetScheme} == "elect" ]; then
         sed -i "s/\(mode: \)".*"/mode: elect/" playbook-load.yaml
         sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" playbook-load.yaml
-        sed -i "s/\(maxLevel: \)".*"/maxLevel: ${maxLevel}/" playbook-load.yaml
+        sed -i "s/\(teeLevels: \)".*"/teeLevels: ${teeLevels}/" playbook-load.yaml
         sed -i "s/\(initialDelay: \)".*"/initialDelay: ${initialDelay}/" playbook-load.yaml
         sed -i "s/\(concurrentEC: \)".*"/concurrentEC: ${concurrentEC}/" playbook-load.yaml
     fi
@@ -104,7 +131,8 @@ function flush {
 }
 
 function backup {
-    targetScheme=$1
+    expName=$1
+    targetScheme=$2
     echo "Start copy data of ${targetScheme} to backup, this will kill the online system!!!"
     # Make local results directory
     if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
@@ -125,32 +153,35 @@ function backup {
         sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" playbook-backup.yaml
     fi
     sed -i "s/Scheme/${targetScheme}/g" playbook-backup.yaml
-    sed -i "s/DATAPATH/${ExpName}/g" playbook-backup.yaml
+    sed -i "s/DATAPATH/${expName}g" playbook-backup.yaml
     ansible-playbook -v -i hosts.ini playbook-backup.yaml
 }
 
-function maxLevelCount {
-    # calculate target max level
-    initial_count=4
-    ratio=10
+function treeSizeEstimation {
+    KVNumber=$1
+    keylength=$2
+    fieldlength=$3
+    initial_count=${SSTableSize}
+    ratio=${LSMTreeFanOutRatio}
     target_count=$((KVNumber * (keylength + fieldlength) / NodeNumber / 1024 / 1024 / 4))
 
     current_count=$initial_count
-    current_layer=1
+    current_level=1
 
     while [ $current_count -lt $target_count ]; do
         current_count=$((current_count * ratio))
-        current_layer=$((current_layer + 1))
+        current_level=$((current_level + 1))
     done
-    maxLevel=$((current_layer))
+    teeLevels=$((current_level))
+    echo ${teeLevels}
 }
 
-function startup {
+function startupFromBackup {
     targetScheme=$1
-    echo "Start copy data back ${targetScheme} from backup"
+    echo "Start copy data of ${targetScheme} back from backup"
     # Make local results directory
-    if [ ! -d ${PathToELECTLog}/${targetScheme} ]; then
-        mkdir -p ${PathToELECTLog}/${targetScheme}
+    if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTResultSummary}/${targetScheme}
     fi
 
     # Copy playbook
@@ -159,17 +190,6 @@ function startup {
     fi
     cp ../playbook/playbook-startup.yaml .
     # Modify playbook
-    if [ ${targetScheme} == "elect" ]; then
-        sed -i "s/\(maxLevel: \)".*"/maxLevel: ${maxLevel}/" playbook-startup.yaml
-        sed -i "s/\(initialDelay: \)".*"/initialDelay: ${initialDelay}/" playbook-startup.yaml
-        sed -i "s/\(concurrentEC: \)".*"/concurrentEC: ${concurrentEC}/" playbook-startup.yaml
-        sed -i "s/\(mode: \)".*"/mode: elect/" playbook-startup.yaml
-    else
-        sed -i "s/\(maxLevel: \)".*"/maxLevel: 9/" playbook-startup.yaml
-        sed -i "s/\(initialDelay: \)".*"/initialDelay: 65536/" playbook-startup.yaml
-        sed -i "s/\(concurrentEC: \)".*"/concurrentEC: 0/" playbook-startup.yaml
-        sed -i "s/\(mode: \)".*"/mode: raw/" playbook-startup.yaml
-    fi
     sed -i "s/Scheme/${targetScheme}/g" playbook-startup.yaml
     sed -i "s/DATAPATH/${ExpName}/g" playbook-startup.yaml
     ansible-playbook -v -i hosts.ini playbook-startup.yaml
@@ -239,16 +259,17 @@ for scheme in "${schemes[@]}"; do
     initialDellayLocal=$(echo "scale=2; $dataSizeOnEachNode * 8" | bc)
     initialDellayLocalCeil=$(echo "scale=0; (${initialDellayLocal} + 0.5)/1" | bc)
     waitTime=$(echo "scale=2; $dataSizeOnEachNode * 500" | bc)
+    teeLevels=0
     if [ "${scheme}" == "elect" ]; then
         waitTime=$(echo "scale=2; ($dataSizeOnEachNode * 1024  / 4 / 3 / ($concurrentEC / 2)) * 80 + $dataSizeOnEachNode * 500" | bc)
-        maxLevelCount
+        teeLevels=$(treeSizeEstimation 10000000 16 1024)
         initialDelay=$initialDellayLocalCeil
     else
-        maxLevel=9
+        teeLevels=9
         initialDelay=65536
     fi
     waitTimeCeil=$(echo "scale=0; (${waitTime} + 0.5)/1" | bc)
-    echo "Data size on each node is ${dataSizeOnEachNode} GiB, initial delay is ${initialDelay}, target flush wait time is ${waitTimeCeil}, max level is ${maxLevel}"
+    echo "Data size on each node is ${dataSizeOnEachNode} GiB, initial delay is ${initialDelay}, target flush wait time is ${waitTimeCeil}, max level is ${teeLevels}"
 
     # Load
 

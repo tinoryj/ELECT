@@ -2,10 +2,10 @@
 . /etc/profile
 func() {
 
-    echo "Copy DB from $1 to $2"
+    echo "Backup DB data from $1 to $2"
     sourceDataDir=$1
     targetDataDir=$2
-    mode=$3
+    configureFilePath=$3
 
     rm -rf "${targetDataDir}"
     if [ ! -d "${targetDataDir}" ]; then
@@ -28,6 +28,7 @@ func() {
     kill -9 $(ps aux | grep CassandraDaemon | grep -v grep | awk 'NR == 1' | awk {'print $2'})
 
     cp -r "${sourceDataDir}" "${targetDataDir}"
+    cp -r "${configureFilePath}" "${targetDataDir}"
 }
 
 func "$1" "$2" "$3"

@@ -14,22 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ---
-- name: Cold Startup
+- name: Startup with backuped data
   hosts: elect_servers
   become: yes
   become_user: elect
   tasks:
-    - name: Cold Startup
-      command: bash /home/elect/ELECTExp/scripts/Run/cold-startup.sh {{ maxLevel }} {{ initialDelay }} {{ concurrentEC }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ sourceFileDir }} {{ grade }}
+    - name: Startup with backuped data
+      command: bash /home/elect/ELECTExp/scripts/Run/cold-startup.sh {{ configureFileDir }} {{ sourceFileDir }}
       vars:
-        maxLevel: 9
-        initialDelay:  65536
-        concurrentEC: 64
-        target_saving: 0.6
-        data_block_num: 4
-        parity_block_num: 2
+        configureFileDir: "/mnt/ssd/backups/Scheme/DATAPATH/cassandra.yaml"
         sourceFileDir: "/mnt/ssd/backups/Scheme/DATAPATH/data"
-        grade: "0"
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed
@@ -51,12 +45,12 @@
       ignore_errors: true
 
 
-- name: Cold Startup reload
+- name: Reload ELECT logs
   hosts: elect_servers
   become: yes
   become_user: elect
   tasks:
-    - name: Cold Startup
+    - name: Reload ELECT logs
       command: bash /home/elect/ELECTExp/scripts/Run/cold-startup-reload.sh {{ mode }}
       vars:
         mode: "raw"
@@ -65,6 +59,6 @@
     - name: Fail the play if the previous command did not succeed
       fail: msg="the command failed"
       when: "'FAILED' in command_result.stderr"
-    - name: Wait until cold startup is done
+    - name: Wait until startup is done
       pause:
         seconds: 5

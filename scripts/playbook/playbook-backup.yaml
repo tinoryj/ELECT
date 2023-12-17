@@ -20,11 +20,11 @@
   become_user: elect
   tasks:
     - name: Copy files
-      command: bash /home/elect/ELECTExp/scripts/Run/copyDB.sh {{ sourceFileDir }} {{ targetFileDir }} {{ mode }}
+      command: bash /home/elect/ELECTExp/scripts/Run/copyDB.sh {{ sourceFileDir }} {{ targetFileDir }} {{ configureFileDir }}
       vars:
         sourceFileDir: "/mnt/ssd/CassandraEC/data"
         targetFileDir: "/mnt/ssd/backups/Scheme/DATAPATH"
-        mode: "raw"
+        configureFileDir: "/mnt/ssd/CassandraEC/conf/cassandra.yaml"
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed
