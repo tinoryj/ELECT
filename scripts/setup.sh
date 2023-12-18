@@ -18,8 +18,8 @@ ssh-copy-id -i ~/.ssh/id_rsa.pub ${UserName}@${ClientNode}
 
 
 # Install packages
-sudo apt-get update 
-sudo apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip 
+echo '${sudoPasswd}' | sudo -S apt update 
+echo '${sudoPasswd}' | sudo -S apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip 
 pip install cassandra-driver
 
 if [ ! -d "${PathToELECTResultSummary}" ]; then
@@ -32,5 +32,5 @@ FullNodeList+=("${ClientNode}")
 
 for nodeIP in "${NodesList[@]}"; do
     echo "Set up each nodes"
-    ssh ${UserName}@${nodeIP} "cd ${PathToELECTPrototype}/../scripts/; bash scripts/setupOnEachNode.sh"
+    ssh ${UserName}@${nodeIP} "cd ${PathToScripts}; bash setupOnEachNode.sh"
 done

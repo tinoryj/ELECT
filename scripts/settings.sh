@@ -2,9 +2,9 @@
 . /etc/profile
 # Common params for all experiments
 
-NodesList=(192.168.10.21 192.168.10.22 192.168.10.23 192.168.10.25 192.168.10.26 192.168.10.28) 
-OSSServerNode="192.168.10.27"
-ClientNode="192.168.10.29"
+NodesList=(192.168.0.21 192.168.0.22 192.168.0.23 192.168.0.25 192.168.0.26 192.168.0.28) 
+OSSServerNode="192.168.0.27"
+ClientNode="192.168.0.29"
 UserName="yjren"
 PathToELECTPrototype="/home/${UserName}/ELECT/prototype"
 PathToYCSB="/home/${UserName}/ELECT/YCSB"
@@ -19,7 +19,7 @@ LSMTreeFanOutRatio=10
 concurrentEC=64
 defaultSimulatedClientNumber=16
 networkInterface="eth0"
-
+sudoPasswd="yjren"
 
 FullNodeList=("${NodesList[@]}")
 FullNodeList+=("${OSSServerNode}")
