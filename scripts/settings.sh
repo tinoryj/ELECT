@@ -6,6 +6,7 @@ NodesList=(192.168.0.21 192.168.0.22 192.168.0.23 192.168.0.25 192.168.0.26 192.
 OSSServerNode="192.168.0.27"
 ClientNode="192.168.0.29"
 UserName="yjren"
+sudoPasswd="yjren"
 PathToELECTPrototype="/home/${UserName}/ELECT/prototype"
 PathToYCSB="/home/${UserName}/ELECT/YCSB"
 PathToScripts="/home/${UserName}/ELECT/scripts"
@@ -19,8 +20,8 @@ LSMTreeFanOutRatio=10
 concurrentEC=64
 defaultSimulatedClientNumber=16
 networkInterface="eth0"
-sudoPasswd="yjren"
 
 FullNodeList=("${NodesList[@]}")
 FullNodeList+=("${OSSServerNode}")
 FullNodeList+=("${ClientNode}")
+export ${sudoPasswd}

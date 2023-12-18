@@ -1,8 +1,6 @@
 #!/bin/bash
 source settings.sh
 
-source settings.sh
-
 # SSH keygen on control node
 if [ ! -f ~/.ssh/id_rsa ]; then
     ssh-keygen -q -t rsa -b 2048 -N "" -f ~/.ssh/id_rsa
@@ -19,9 +17,9 @@ done
 
 
 # Install packages
-echo '${sudoPasswd}' | sudo -S apt update 
-echo '${sudoPasswd}' | sudo -S apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip 
-pip install cassandra-driver
+# echo '${sudoPasswd}' | sudo -S apt update 
+# echo '${sudoPasswd}' | sudo -S apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip 
+# pip install cassandra-driver
 
 if [ ! -d "${PathToELECTResultSummary}" ]; then
     mkdir -p ${PathToELECTResultSummary}
@@ -31,7 +29,7 @@ FullNodeList=("${NodesList[@]}")
 FullNodeList+=("${OSSServerNode}")
 FullNodeList+=("${ClientNode}")
 
-for nodeIP in "${NodesList[@]}"; do
+for nodeIP in "${FullNodeList[@]}"; do
     echo "Set up each nodes"
     ssh ${UserName}@${nodeIP} "cd ${PathToScripts}; bash setupOnEachNode.sh"
 done
