@@ -5,7 +5,7 @@
 ELECT is a distributed tiered KV store that enables replication and erasure coding tiering. This repo contains the implementation of the ELECT prototype, YCSB benchmark tool, and evaluation scripts used in our USENIX FAST 2024 paper.
 
 * `./Prototype`: includes the implementation of the ELECT prototype.
-* `./YCSB`: includes the modified version of YCSB which supports user-defined key and value sizes.
+* `./YCSB`: includes the modified version of YCSB, which supports user-defined key and value sizes.
 * `./scripts`: includes the prototype setup and evaluation scripts.
 * `./ColdTier`: includes the simple in-cluster object storage implementation for ELECT evaluation.
 
@@ -17,24 +17,24 @@ As a distributed KV store, ELECT requires a cluster of machines to run. With the
 
 ### Dependencies
 
-* For Java project build (used for Prototype and YCSB): openjdk-11-jdk, openjdk-11-jre, ant, maven.
+* For Java project build (used for Prototype and YCSB): openjdk-11-jdk, openjdk-11-jre, ant, Maven.
 * For erasure-coding library build (used for Prototype via JNI): clang, llvm, libisal-dev.
 * For scripts: python3, ansible, python3-pip, cassandra-driver.
 
-The packages above can be directly installed via `apt` and `pip` package manager:
+The packages above can be directly installed via `apt` and `pip` package managers:
 
 ```shell 
 sudo apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip
 pip install cassandra-driver
 ```
 
-Note that, the dependencies for both ELECT and YCSB will be automatically installed via maven during compile.
+Note that the dependencies for both ELECT and YCSB will be automatically installed via Maven during compilation.
 
 ## Build
 
-### Environment setup (5 human-minutes)
+### Environment setup (5 human minutes)
 
-The build procedure of both the ELECT prototype and YCSB requires an internet connection to download the dependencies via Maven. In case the internet connection requires a proxy, we provide an example maven setting file `./scripts/env/settings.xml`. Please modify the file according to your proxy settings and then put it into the local Maven directory as shown below.
+The build procedure of both the ELECT prototype and YCSB requires an internet connection to download the dependencies via Maven. In case the internet connection requires a proxy, we provide an example maven setting file `./scripts/env/settings.xml`. Please modify the file according to your proxy settings and then put it into the local Maven directory, as shown below.
 
 ```shell
 mkdir -p ~/.m2
@@ -43,7 +43,7 @@ cp ./scripts/env/settings.xml ~/.m2/
 
 ### Prototype (5 human-minutes + ~ 40 compute-minutes)
 
-Since the Prototype utilizes the Intel Isa-L library to achieve high-performance erasure coding, we need to build the EC library first:
+Since the prototype utilizes the Intel Isa-L library to achieve high-performance erasure coding, we need to build the EC library first:
 
 ```shell
 # Set Java Home for isa-l library 
@@ -70,7 +70,7 @@ ant -Duse.jdk11=true
 
 ### ColdTier (1 human-minutes + ~ 1 compute-minutes)
 
-To avoid unstable access to Alibaba OSS (if cross-country), we use a server node within the same cluster as the cold tier to store the cold data. We use the `FileServer` tool to provide the file-based storage service. The `FileServer` tool is a simple file server that supports the following operations: `read`, `write`. We provide the source code of the `FileServer` tool in `./ColdTier`. To build the `FileServer` tool, please run the following command:
+To avoid unstable access to Alibaba OSS (if cross-country), we use a server node within the same cluster as the cold tier to store the cold data. We use the `FileServer` tool to provide the file-based storage service. The `FileServer` tool is a simple file server that supports the following operations: `read`, and `write`. We provide the source code of the `FileServer` tool in `./ColdTier`. To build the `FileServer` tool, please run the following command:
 
 ```shell
 cd ColdTier
@@ -80,7 +80,7 @@ make
 
 ### YCSB (2 human-minutes + ~ 30 compute-minutes)
 
-We build the modified version of YCSB which supports user-defined key and value sizes. The build procedure is similar to the original YCSB.
+We build the modified version of YCSB, which supports user-defined key and value sizes. The build procedure is similar to the original YCSB.
 
 ```shell
 cd ./YCSB
@@ -91,7 +91,7 @@ mvn clean package
 
 ### Cluster setup (~20 human-minutes)
 
-To run the experiment scripts, SSH key-free access is required between all nodes in the cluster.
+SSH key-free access is required between all nodes in the cluster.
 
 Step 1: Generate the SSH key pair on each node.
 
@@ -99,10 +99,10 @@ Step 1: Generate the SSH key pair on each node.
 ssh-keygen -q -t rsa -b 2048 -N "" -f ~/.ssh/id_rsa
 ```
 
-Step 2: Create an SSH configuration file. You can run the following command with the specific node IP, Port, and User to generate the configuration file. Note that, you can run the command multiple times to add all the nodes to the configuration file.
+Step 2: Create an SSH configuration file. You can run the following command with the specific node IP, Port, and User to generate the configuration file. Note that you can run the command multiple times to add all the nodes to the configuration file.
 
 ```shell
-# Replace xxx to the correct IP, Port, and User information, and replace ${i} to the correct node ID.
+# Replace xxx with the correct IP, Port, and User information, and replace ${i} to the correct node ID.
 cat <<EOT >> ~/.ssh/config
 Host node${i}
     StrictHostKeyChecking no
@@ -128,7 +128,7 @@ cluster_name: 'ELECT Cluster'
 # ELECT settings
 ec_data_nodes: 4 # The erasure coding parameter (k)
 parity_nodes: 2 # The erasure coding parameter (n - k)
-target_storage_saving: 0.6 # The balance parameter (storage saving target), which controls the approximate storage saving ratio of the cold tier.
+target_storage_saving: 0.6 # The balance parameter (storage saving target) controls the approximate storage saving ratio of the cold tier.
 enable_migration: true # Enable the migration module to migrate cold data to the cold tier.
 enable_erasure_coding: true # Enable redundancy transitioning module to encode the cold data.
 # Manual settings to balance workload across different nodes.
@@ -142,11 +142,11 @@ cold_tier_port: 8080 # The port of the file server (cold tier).
 seed_provider:
   # Addresses of hosts that are deemed contact points.
   # Cassandra nodes use this list of hosts to find each other and learn
-  # the topology of the ring.  You must change this if you are running
+  # the topology of the ring. You must change this if you are running
   # multiple nodes!
   - class_name: org.apache.cassandra.locator.SimpleSeedProvider
     parameters:
-      # ELECT: put all server nodes IP here.
+      # ELECT: Put all the server nodes' IPs here.
       # Ex: "<ip1>,<ip2>,<ip3>"
       - seeds: "192.168.10.21,192.168.10.22,192.168.10.23,192.168.10.25,192.168.10.26,192.168.10.28" # IP address of all the server nodes.
 ```
@@ -178,9 +178,9 @@ After getting the initial token for each node, please fill the generated number 
 ## Running 
 
 To test the ELECT prototype, we need to run the following steps:
-1. Run the file server at clod tier.
+1. Run the file server at the clod tier.
 2. Run the ELECT cluster.
-3. Run YCSB benchmark.
+3. Run the YCSB benchmark.
 
 We describe the detailed steps below.
 
@@ -248,7 +248,7 @@ Address             Rack        Status State   Load            Owns             
 
 After the ELECT cluster is set up, we can run the YCSB benchmark tool on the client node to evaluate the performance of ELECT. We show the steps as follows:
 
-**Step 1:** Create the keyspace and set the replication factor for YCSB benchmark.
+**Step 1:** Create the keyspace and set the replication factor for the YCSB benchmark.
 
 ```shell
 cd Prototype
