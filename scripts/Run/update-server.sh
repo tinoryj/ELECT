@@ -1,5 +1,7 @@
 #!/bin/bash
-source ../settings.sh
+. /etc/profile
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "${SCRIPT_DIR}/../Common.sh"
 
 kill -9 $(ps aux | grep CassandraDaemon | grep -v grep | awk 'NR == 1' | awk {'print $2'})
 
@@ -11,7 +13,8 @@ my_ip=$(ifconfig ${networkInterface} | grep 'inet ' | awk '{print $2}')
 echo "my_ip: ${my_ip}"
 last_octet=$(echo $my_ip | awk -F'.' '{print $NF}')
 echo "last_octet: ${last_octet}"
-tokens=(-9223372036854775808 -7378697629483820544 -5534023222112865280 -3689348814741909504 -1844674407370954752 0 1844674407370956800 3689348814741911552 5534023222112866304 7378697629483821056)
+new_tokens=( $(generate_tokens) )
+echo "tokens: ${new_tokens[*]}"
 
 selected_token=${tokens[(( last_octet - 1))]}
 echo "selected_token: ${selected_token}"

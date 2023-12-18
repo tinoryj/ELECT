@@ -4,6 +4,20 @@ source "${SCRIPT_DIR}/settings.sh"
 
 playbookSet=(playbook-load.yaml playbook-run.yaml playbook-flush.yaml playbook-backup.yaml playbook-startup.yaml playbook-fail.yaml playbook-recovery.yaml)
 
+function generate_tokens {
+    python3 ${SCRIPT_DIR}/genToken.py ${NodeNumber} >${SCRIPT_DIR}/token.txt
+    readarray -t lines <${SCRIPT_DIR}/token.txt
+    local -a tokens=()
+    for line in "${lines[@]}"; do
+        if [[ $line == *"initial_token:"* ]]; then
+            token=$(echo $line | grep -oP '(?<=initial_token: )[-0-9]+')
+            tokens+=("$token") 
+        fi
+    done
+    rm -rf ${SCRIPT_DIR}/token.txt
+    echo ${tokens[*]}
+}
+
 function setupNodeInfo {
     targetHostInfo=$1
     if [ -f ${SCRIPT_DIR}/Exp/${targetHostInfo} ]; then

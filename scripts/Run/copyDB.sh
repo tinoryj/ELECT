@@ -1,5 +1,8 @@
 #!/bin/bash
 . /etc/profile
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "${SCRIPT_DIR}/../Common.sh"
+
 func() {
 
     echo "Backup DB data from $1 to $2"

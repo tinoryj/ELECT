@@ -1,5 +1,7 @@
 #!/bin/bash
-source ../settings.sh
+. /etc/profile
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "${SCRIPT_DIR}/../Common.sh"
 
 recordcount=$1
 operationcount=$2

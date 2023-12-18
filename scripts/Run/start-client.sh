@@ -1,5 +1,7 @@
 #!/bin/bash
-source ../settings.sh
+. /etc/profile
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "${SCRIPT_DIR}/../Common.sh"
 
 kill -9 $(ps aux | grep ycsb | grep -v grep | awk 'NR == 1' | awk {'print $2'})
 function setupCluster {

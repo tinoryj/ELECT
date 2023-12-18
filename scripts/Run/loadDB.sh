@@ -1,7 +1,7 @@
 #!/bin/bash
 . /etc/profile
-../Common.sh
-
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "${SCRIPT_DIR}/../Common.sh"
 func() {
     record_count=$1
     key_length=$2
