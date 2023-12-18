@@ -24,4 +24,3 @@ networkInterface="eth0"
 FullNodeList=("${NodesList[@]}")
 FullNodeList+=("${OSSServerNode}")
 FullNodeList+=("${ClientNode}")
-export ${sudoPasswd}

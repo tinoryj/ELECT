@@ -1,4 +1,4 @@
-#!/bon/bash
+#!/bin/bash
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 source "${SCRIPT_DIR}/settings.sh"
 
@@ -18,8 +18,8 @@ for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
 done
 
 # Install packages
-printf  '${sudoPasswd}' | sudo -S apt-get update 
-printf  '${sudoPasswd}' | sudo -S apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip 
+printf  ${sudoPasswd} | sudo -S apt-get update 
+printf  ${sudoPasswd} | sudo -S apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip 
 pip install cassandra-driver
 
 # Java configuration
