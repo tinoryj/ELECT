@@ -1,11 +1,11 @@
 #!/bin/bash
-
-func() {
+source ../settings.sh
+function statsDisk_Network_DB {
     expName=$1
     workload=$2
     stage=$3
     # Network interface (change this to your interface, e.g., wlan0, ens33, etc.)
-    INTERFACE="eth0"
+    INTERFACE=${networkInterface}
 
     # File to store the results
     NET_OUTPUT_FILE="${PathToELECTLog}/${expName}_${workload}_${stage}_network_summary.txt"
@@ -49,24 +49,24 @@ func() {
     DB_OUTPUT_FILE="${PathToELECTLog}/${expName}_${workload}_${stage}_db_stats.txt"
     echo "Record DB status for ${expName} at stage ${stage}" >>"$DB_OUTPUT_FILE"
     # Write the results to the file
-    cd /mnt/ssd/CassandraEC || exit
+    cd ${PathToELECTPrototype} || exit
     bin/nodetool breakdown >>"$DB_OUTPUT_FILE"
     bin/nodetool tpstats >>"$DB_OUTPUT_FILE"
     bin/nodetool tablehistograms ycsb.usertable0 >>"$DB_OUTPUT_FILE"
     bin/nodetool tablehistograms ycsb.usertable1 >>"$DB_OUTPUT_FILE"
     bin/nodetool tablehistograms ycsb.usertable2 >>"$DB_OUTPUT_FILE"
     echo "Total storage usage:" >>"$DB_OUTPUT_FILE"
-    du -s --bytes /mnt/ssd/CassandraEC/data/ | awk '{print $1}' >>"$DB_OUTPUT_FILE"
+    du -s --bytes ${PathToELECTPrototype}/data/ | awk '{print $1}' >>"$DB_OUTPUT_FILE"
     echo "LSM-tree:" >>"$DB_OUTPUT_FILE"
-    du -s --bytes /mnt/ssd/CassandraEC/data/data/ | awk '{print $1}' >>"$DB_OUTPUT_FILE"
+    du -s --bytes ${PathToELECTPrototype}/data/data/ | awk '{print $1}' >>"$DB_OUTPUT_FILE"
     echo "Received parity:" >>"$DB_OUTPUT_FILE"
-    du -s --bytes /mnt/ssd/CassandraEC/data/receivedParityHashes/ | awk '{print $1}' >>"$DB_OUTPUT_FILE"
+    du -s --bytes ${PathToELECTPrototype}/data/receivedParityHashes/ | awk '{print $1}' >>"$DB_OUTPUT_FILE"
     echo "Local parity:" >>"$DB_OUTPUT_FILE"
-    du -s --bytes /mnt/ssd/CassandraEC/data/localParityHashes/ | awk '{print $1}' >>"$DB_OUTPUT_FILE"
+    du -s --bytes ${PathToELECTPrototype}/data/localParityHashes/ | awk '{print $1}' >>"$DB_OUTPUT_FILE"
     echo "EC Metadata:" >>"$DB_OUTPUT_FILE"
-    du -s --bytes /mnt/ssd/CassandraEC/data/ECMetadata/ | awk '{print $1}' >>"$DB_OUTPUT_FILE"
+    du -s --bytes ${PathToELECTPrototype}/data/ECMetadata/ | awk '{print $1}' >>"$DB_OUTPUT_FILE"
 
-    find /mnt/ssd/CassandraEC/data/data/ycsb/usertable* -type f \( -name "*Index.db" -o -name "*Digest.crc32" -o -name "*Filter.db" -o -name "*Statistics.db" -o -name "*Summary.db" -o -name "*TOC.txt" -o -name "*EC.db" -o -name "*Data.db" \) -print0 | xargs -0 du -s | awk '{
+    find ${PathToELECTPrototype}/data/data/**/usertable* -type f \( -name "*Index.db" -o -name "*Digest.crc32" -o -name "*Filter.db" -o -name "*Statistics.db" -o -name "*Summary.db" -o -name "*TOC.txt" -o -name "*EC.db" -o -name "*Data.db" \) -print0 | xargs -0 du -s | awk '{
         if($2 ~ /Index\.db/) { sum_index += $1 }
         else if($2 ~ /Digest\.crc32/) { sum_digest += $1 }
         else if($2 ~ /Filter\.db/) { sum_filter += $1 }
@@ -77,15 +77,16 @@ func() {
         else if($2 ~ /EC\.db/) { sum_ec += $1 }
         } 
         END {
-            print "Total for Index.db: " sum_index
-            print "Total for Digest.crc32: " sum_digest
-            print "Total for Filter.db: " sum_filter
-            print "Total for Statistics.db: " sum_statistics
-            print "Total for Summary.db: " sum_summary
-            print "Total for TOC.txt: " sum_toc
-            print "Metadata Total: " sum_index+sum_digest+sum_filter+sum_statistics        +sum_summary+sum_toc
-            print "Total for Data.db: " sum_data
-            print "Total for EC.db: " sum_ec
+            print "Total size of Index.db: " sum_index
+            print "Total size of Digest.crc32: " sum_digest
+            print "Total size of Filter.db: " sum_filter
+            print "Total size of Statistics.db: " sum_statistics
+            print "Total size of Summary.db: " sum_summary
+            print "Total size of TOC.txt: " sum_toc
+            print "Total size of Data.db: " sum_data
+            print "Total size of EC.db: " sum_ec
+            print "Total Metadata Size (In LSM-tree): " sum_index+sum_digest+sum_filter+sum_statistics        +sum_summary+sum_toc
+            print "Total Data Size (In LSM-tree): " sum_data+sum_ec
         }' >>"$DB_OUTPUT_FILE"
 }
 

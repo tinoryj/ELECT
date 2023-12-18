@@ -21,6 +21,9 @@ function setupNodeInfo {
     echo >>${targetHostInfo}
     echo "[elect_failure]" >>${targetHostInfo}
     echo "server${failure_nodes} ansible_host=${NodesList[(($failure_nodes - 1))]}" >>${targetHostInfo}
+    
+    # Setup user ID for each playbook
+    sed -i "s/\(become_user: \)".*"/become_user: ${UserName}/" playbook/playbook-load.yaml
 }
 
 function load {
@@ -66,9 +69,9 @@ function load {
     sed -i "s/key_length:.*$/key_length: ${keylength}/" playbook-load.yaml
     sed -i "s/filed_length:.*$/filed_length: ${fieldlength}/" playbook-load.yaml
 
-    modifyWorkload "workload_load"
+    modifyWorkload "workloadLoad"
 
-    sed -i "s/\(workload: \)".*"/workload: \"workload_load\"/" playbook-load.yaml
+    sed -i "s/\(workload: \)".*"/workload: \"workloadLoad\"/" playbook-load.yaml
     sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" playbook-load.yaml
 
     ansible-playbook -v -i hosts.ini playbook-load.yaml
@@ -106,7 +109,7 @@ function flush {
     cp ../playbook/playbook-flush.yaml .
     # Modify playbook
     sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Load"/" playbook-flush.yaml
-    sed -i "s/\(workload: \)".*"/workload: \"workload_template\"/" playbook-flush.yaml
+    sed -i "s/\(workload: \)".*"/workload: \"workloadLoad\"/" playbook-flush.yaml
     sed -i "s/\(seconds: \)".*"/seconds: ${waitTime}/" playbook-flush.yaml
     ansible-playbook -v -i hosts.ini playbook-flush.yaml
 }
@@ -357,8 +360,11 @@ function doEvaluation {
 }
 
 function recovery {
-    targetScheme=$1
-    recoveryNode=$2
+    expName=$1
+    targetScheme=$2
+    recoveryNode=$3
+    KVNumber=$4
+    runningRound=${5,-"1"}
 
     # Make local results directory
     if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
@@ -381,5 +387,5 @@ function recovery {
     ansible-playbook -v -i hosts.ini playbook-recovery.yaml
 
     echo "Copy running data of ${targetScheme} back, ${recoveryNode}"
-    scp elect@${recoveryNode}:/mnt/ssd/CassandraEC/logs/recovery.log ${PathToELECTLog}/"${targetScheme}"/"${ExpName}-Size-${KVNumber}-recovery-${round}-${recoveryNode}"
+    scp elect@${recoveryNode}:${PathToELECTPrototype}/logs/recovery.log ${PathToELECTResultSummary}/"${targetScheme}"/"${expName}-Size-${KVNumber}-recovery-${runningRound}-${recoveryNode}"
 }

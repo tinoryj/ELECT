@@ -20,7 +20,7 @@
   become_user: elect
   tasks:
     - name: Copy files
-      command: bash /home/elect/ELECTExp/scripts/Run/update-server.sh 
+      command: bash PATH_TO_SCRIPTS/Run/update-server.sh 
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed

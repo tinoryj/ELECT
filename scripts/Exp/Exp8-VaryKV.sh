@@ -120,7 +120,7 @@ function modifyWorkload {
     sed -i "s/\(fieldlengthSTDEV= \)".*"/fieldlengthSTDEV=0/" ${workload}
     sed -i "s/\(fieldlengthMin= \)".*"/fieldlengthMin=${valueSize}/" ${workload}
     sed -i "s/\(fieldlengthMax= \)".*"/fieldlengthMax=${valueSize}/" ${workload}
-    cd /home/elect/ELECTExp/scripts/Exp || exit
+    cd PATH_TO_SCRIPTS/Exp || exit
 }
 
 function flush {

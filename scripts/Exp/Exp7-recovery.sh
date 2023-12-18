@@ -129,7 +129,7 @@ function modifyWorkload {
     sed -i "s/\(fieldlengthSTDEV= \)".*"/fieldlengthSTDEV=${fieldlengthSTDEV}/" ${workload}
     sed -i "s/\(fieldlengthMin= \)".*"/fieldlengthMin=${fieldlengthMin}/" ${workload}
     sed -i "s/\(fieldlengthMax= \)".*"/fieldlengthMax=${fieldlengthMax}/" ${workload}
-    cd /home/elect/ELECTExp/scripts/Exp || exit
+    cd PATH_TO_SCRIPTS/Exp || exit
 }
 
 function flush {
@@ -325,7 +325,7 @@ function recovery {
     ansible-playbook -v -i hosts.ini playbook-recovery.yaml
 
     echo "Copy running data of ${targetScheme} back, ${recoveryNode}"
-    scp elect@${recoveryNode}:/mnt/ssd/CassandraEC/logs/recovery.log ${PathToELECTLog}/"${targetScheme}"/"${ExpName}-Size-${KVNumber}-recovery-${round}-${recoveryNode}"
+    scp elect@${recoveryNode}:${PathToELECTPrototype}/logs/recovery.log ${PathToELECTLog}/"${targetScheme}"/"${ExpName}-Size-${KVNumber}-recovery-${round}-${recoveryNode}"
 }
 
 for KVNumberTemp in "${KVNumberSet[@]}"; do

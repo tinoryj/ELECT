@@ -1,6 +1,4 @@
-#!/bin/bash
-source settings.sh
-
+#!/bon/bash
 source settings.sh
 
 # SSH keygen on control node
@@ -22,12 +20,5 @@ sudo apt-get update
 sudo apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip 
 pip install cassandra-driver
 
-
-FullNodeList=("${NodesList[@]}")
-FullNodeList+=("${OSSServerNode}")
-FullNodeList+=("${ClientNode}")
-
-for nodeIP in "${NodesList[@]}"; do
-    echo "Set up each nodes"
-    ssh ${UserName}@${nodeIP} "cd ${PathToELECTPrototype}/../scripts/; bash scripts/setupOnEachNode.sh"
-done
+# Java configuration
+export _JAVA_OPTIONS='-Xmx12g -Xms2048m -XX:MaxDirectMemorySize=2048m'

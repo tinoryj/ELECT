@@ -1,13 +1,13 @@
 #!/bin/bash
+source ../settings.sh
 
-. /etc/profile
 kill -9 $(ps aux | grep CassandraDaemon | grep -v grep | awk 'NR == 1' | awk {'print $2'})
 
-cd /mnt/ssd/CassandraEC
-git checkout yuanming
-git pull origin yuanming
+cd ${PathToELECTPrototype}
+git checkout master
+git pull origin master
 
-my_ip=$(ifconfig eth0 | grep 'inet ' | awk '{print $2}')
+my_ip=$(ifconfig ${networkInterface} | grep 'inet ' | awk '{print $2}')
 echo "my_ip: ${my_ip}"
 last_octet=$(echo $my_ip | awk -F'.' '{print $NF}')
 echo "last_octet: ${last_octet}"
@@ -31,7 +31,7 @@ ant realclean && ant -Duse.jdk11=true
 
 cd src/native/src/org/apache/cassandra/io/erasurecode/
 ./genlib.sh
-rm -rf /mnt/ssd/CassandraEC/lib/sigar-bin/libec.so
-cd /mnt/ssd/CassandraEC
+rm -rf ${PathToELECTPrototype}/lib/sigar-bin/libec.so
+cd ${PathToELECTPrototype}
 cp src/native/src/org/apache/cassandra/io/erasurecode/libec.so lib/sigar-bin
 

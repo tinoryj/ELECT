@@ -19,7 +19,7 @@ for type in "${types[@]}"; do
                     else
                         input_file="$type/${expName}-${workload}-${round}-Node${node}/Results/Exp6-breakdown-${type}-Run-${running}-Round-${round}_${workload}_After-normal-run_db_stats.txt"
                     fi
-                    # 使用 grep 和 awk 来提取数值，并将它们存储在变量中
+                    
                     memtable_time_cost=$(grep "Memtable time cost" $input_file | awk '{print $5}')
                     commitlog_time_cost=$(grep "CommitLog time cost" $input_file | awk '{print $5}')
                     flush_time_cost=$(grep "Flush time cost" $input_file | awk '{print $5}')

@@ -23,6 +23,6 @@ nodes=("1" "2" "3" "4" "5" "6" "7" "8" "9" "10")
 for TSS in "${TSSs[@]}"; do
     echo "TSS: ${TSS}"
     for node in "${nodes[@]}"; do
-        ssh node${node} "du -s /mnt/ssd/backups/elect/Exp6-${TSS}"
+        ssh node${node} "du -s PATH_TO_DB_BACKUP/elect/Exp6-${TSS}"
     done
 done

@@ -1,5 +1,5 @@
 #!/bin/bash
-source Common.sh
+source ../Common.sh
 # Exp9: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP. Vary read consistency level.
 
 ExpName="Exp9-consistency"

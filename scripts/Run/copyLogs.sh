@@ -9,9 +9,9 @@ func() {
     expName=$5
     keyspace=$6
 
-    dirName="${expName}-${workload}-${keyspace}-${recordcount}-${operationcount}-${threads}-$(date +%s)"
+    dirName="${expName}-${workload}-${keyspace}-${recordcount}-${operationcount}-${threads}-$(date +%s)-Log"
 
-    cp -r /mnt/ssd/CassandraEC/logs /mnt/ssd/logs/$dirName
+    cp -r ${PathToELECTPrototype}/logs ${PathToELECTLog}/$dirName
 }
 
 func "$1" "$2" "$3" "$4" "$5" "$6"

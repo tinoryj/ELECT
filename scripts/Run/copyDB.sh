@@ -17,7 +17,7 @@ func() {
         exit
     fi
 
-    cd /mnt/ssd/CassandraEC || exit
+    cd ${PATH_TO_PROTOTYPE} || exit
 
     bin/nodetool coldStartup backup
 
