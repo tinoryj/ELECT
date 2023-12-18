@@ -1,4 +1,30 @@
 ---
+- name: Rebuild and start OSS file server
+  hosts: elect_oss
+  become: yes
+  become_user: elect
+  tasks:
+    - name: Execute script start-server.sh
+      shell: |
+        . /etc/profile &&
+        bash PATH_TO_SCRIPTS/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ concurrentEC }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
+      vars:
+        maxLevel: 9
+        initialDelay:  65536
+        concurrentEC: 64
+        target_saving: 0.6
+        data_block_num: 4
+        parity_block_num: 2
+        mode: "raw"
+      register: command_result
+      ignore_errors: True
+    - name: Fail the play if the previous command did not succeed
+      fail: msg="the command failed"
+      when: "'FAILED' in command_result.stderr"
+    - name: Wait until all nodes are ready
+      pause:
+        seconds: 90
+
 - name: Rebuild and start Cassandra servers
   hosts: elect_servers
   become: yes

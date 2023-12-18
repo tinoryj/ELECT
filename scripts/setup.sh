@@ -22,6 +22,9 @@ sudo apt-get update
 sudo apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip 
 pip install cassandra-driver
 
+if [ ! -d "${PathToELECTResultSummary}" ]; then
+    mkdir -p ${PathToELECTResultSummary}
+fi
 
 FullNodeList=("${NodesList[@]}")
 FullNodeList+=("${OSSServerNode}")

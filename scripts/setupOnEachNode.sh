@@ -6,14 +6,10 @@ if [ ! -f ~/.ssh/id_rsa ]; then
     ssh-keygen -q -t rsa -b 2048 -N "" -f ~/.ssh/id_rsa
 fi
 # SSH key-free connection from control node to all nodes
-for nodeIP in "${NodesList[@]}"; do
+for nodeIP in "${FullNodeList[@]}"; do
     echo "Set SSH key-free connection to node ${nodeIP}"
     ssh-copy-id -i ~/.ssh/id_rsa.pub ${UserName}@${nodeIP}
 done
-
-ssh-copy-id -i ~/.ssh/id_rsa.pub ${UserName}@${OSSServerNode}
-ssh-copy-id -i ~/.ssh/id_rsa.pub ${UserName}@${ClientNode}
-
 
 # Install packages
 sudo apt-get update 
@@ -22,3 +18,15 @@ pip install cassandra-driver
 
 # Java configuration
 export _JAVA_OPTIONS='-Xmx12g -Xms2048m -XX:MaxDirectMemorySize=2048m'
+
+if [ ! -d "${PathToELECTExpDBBackup}" ]; then
+    mkdir -p ${PathToELECTExpDBBackup}
+fi
+
+if [ ! -d "${PathToELECTLog}" ]; then
+    mkdir -p ${PathToELECTLog}
+fi
+
+if [ ! -d "${PathToELECTResultSummary}" ]; then
+    mkdir -p ${PathToELECTResultSummary}
+fi
