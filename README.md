@@ -7,6 +7,7 @@ ELECT is a distributed tiered KV store that enables replication and erasure codi
 * `./Prototype`: includes the implementation of the ELECT prototype.
 * `./YCSB`: includes the modified version of YCSB which supports user-defined key and value sizes.
 * `./scripts`: includes the prototype setup and evaluation scripts.
+* `./ColdTier`: includes the simple in-cluster object storage implementation for ELECT evaluation.
 
 ## Prerequisites
 

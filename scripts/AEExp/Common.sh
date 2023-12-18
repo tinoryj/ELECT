@@ -1,25 +1,5 @@
 #!/bin/bash
-
-# Common params for all experiments
-
-NodesList=(172.27.96.1 172.27.96.2 172.27.96.3 172.27.96.4 172.27.96.5 172.27.96.6 172.27.96.7 172.27.96.8 172.27.96.9 172.27.96.10)
-OSSServerNode="172.27.96.1"
-ClientNode="172.27.96.1"
-RunningRoundNumber=1
-
-PathToELECT="/home/elect/ELECT/prototype"
-PathToYCSB="/home/elect/ELECT/YCSB"
-PathToELECTExpDBBackup="/home/elect/ELECTExpDBBackup"
-PathToELECTLog="/home/elect/ELECTLog"
-PathToELECTResultSummary="/home/elect/ELECTLog"
-UserName="elect"
-NodeNumber="${#NodesList[@]}"
-SSTableSize=4
-LSMTreeFanOutRatio=10
-
-teeLevels=9
-initialDelay=65536
-concurrentEC=64
+source settings.sh
 
 function setupNodeInfo {
     targetHostInfo=$1
@@ -43,16 +23,15 @@ function setupNodeInfo {
     echo "server${failure_nodes} ansible_host=${NodesList[(($failure_nodes - 1))]}" >>${targetHostInfo}
 }
 
-setupNodeInfo "hosts.ini"
-exit
-
 function load {
-    targetScheme=$1
-    expName=$2
+    expName=$1
+    targetScheme=$2
     KVNumber=$3
     keylength=$4
     fieldlength=$5
     simulatedClientNumber=$6
+    storageSavingTarget=$7
+    ecK=$8
 
     echo "Start loading data into ${targetScheme}"
     # Make local results directory
@@ -77,7 +56,9 @@ function load {
         sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" playbook-load.yaml
         sed -i "s/\(teeLevels: \)".*"/teeLevels: ${teeLevels}/" playbook-load.yaml
         sed -i "s/\(initialDelay: \)".*"/initialDelay: ${initialDelay}/" playbook-load.yaml
+        sed -i "s/\(target_saving: \)".*"/target_saving: ${storageSavingTarget}/" playbook-load.yaml
         sed -i "s/\(concurrentEC: \)".*"/concurrentEC: ${concurrentEC}/" playbook-load.yaml
+        sed -i "s/\(data_block_num: \)".*"/data_block_num: ${ecK}/" playbook-load.yaml
     fi
 
     sed -i "s/\(expName: \)".*"/expName: "${expName}-${targetScheme}-Load"/" playbook-load.yaml
@@ -133,6 +114,11 @@ function flush {
 function backup {
     expName=$1
     targetScheme=$2
+    KVNumber=$3
+    keylength=$4
+    fieldlength=$5
+    extraFlag=${9:-}
+
     echo "Start copy data of ${targetScheme} to backup, this will kill the online system!!!"
     # Make local results directory
     if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
@@ -153,31 +139,21 @@ function backup {
         sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" playbook-backup.yaml
     fi
     sed -i "s/Scheme/${targetScheme}/g" playbook-backup.yaml
-    sed -i "s/DATAPATH/${expName}g" playbook-backup.yaml
+    if [ -z "${extraFlag}" ]; then
+        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" playbook-backup.yaml
+    else
+        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-Flags=${extraFlag}g" playbook-backup.yaml
+    fi
     ansible-playbook -v -i hosts.ini playbook-backup.yaml
 }
 
-function treeSizeEstimation {
-    KVNumber=$1
-    keylength=$2
-    fieldlength=$3
-    initial_count=${SSTableSize}
-    ratio=${LSMTreeFanOutRatio}
-    target_count=$((KVNumber * (keylength + fieldlength) / NodeNumber / 1024 / 1024 / 4))
-
-    current_count=$initial_count
-    current_level=1
-
-    while [ $current_count -lt $target_count ]; do
-        current_count=$((current_count * ratio))
-        current_level=$((current_level + 1))
-    done
-    teeLevels=$((current_level))
-    echo ${teeLevels}
-}
-
 function startupFromBackup {
-    targetScheme=$1
+    expName=$1
+    targetScheme=$2
+    KVNumber=$3
+    keylength=$4
+    fieldlength=$5
+    extraFlag=${9:-}
     echo "Start copy data of ${targetScheme} back from backup"
     # Make local results directory
     if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
@@ -191,7 +167,11 @@ function startupFromBackup {
     cp ../playbook/playbook-startup.yaml .
     # Modify playbook
     sed -i "s/Scheme/${targetScheme}/g" playbook-startup.yaml
-    sed -i "s/DATAPATH/${ExpName}/g" playbook-startup.yaml
+    if [ -z "${extraFlag}" ]; then
+        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" playbook-startup.yaml
+    else
+        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-Flags=${extraFlag}g" playbook-startup.yaml
+    fi
     ansible-playbook -v -i hosts.ini playbook-startup.yaml
 }
 
@@ -206,15 +186,22 @@ function failnodes {
     ansible-playbook -v -i hosts.ini playbook-fail.yaml
 }
 
-function run {
-    targetScheme=$1
-    round=$2
-    runningType=$3
+function runExp {
+    expName=$1
+    targetScheme=$2
+    round=$3
+    runningType=$4
+    KVNumber=$5
+    operationNumber=$6
+    workloads=$7
+    simulatedClientNumber=$8
+    consistency=$9
 
-    echo "Start run benchmark to ${targetScheme}"
+    echo "Start run benchmark to ${targetScheme}, settings: expName is ${expName}, target scheme is ${targetScheme}, running mode is ${runningType}, KVNumber is ${KVNumber}, operationNumber is ${operationNumber}, workloads are ${workloads}, simulatedClientNumber is ${simulatedClientNumber}, consistency is ${consistency}."
+
     # Make local results directory
-    if [ ! -d ${PathToELECTLog}/${targetScheme} ]; then
-        mkdir -p ${PathToELECTLog}/${targetScheme}
+    if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTResultSummary}/${targetScheme}
     fi
 
     # Normal/Degraded Ops
@@ -236,70 +223,163 @@ function run {
         sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Run-${runningType}-Round-${round}"/" playbook-run.yaml
         sed -i "s/record_count:.*$/record_count: ${KVNumber}/" playbook-run.yaml
         sed -i "s/operation_count:.*$/operation_count: ${operationNumber}/" playbook-run.yaml
-        if [ "${workload}" == "workloade" ]; then
+        sed -i "s/\(consistency: \)".*"/consistency: ${consistency}/" playbook-run.yaml
+        if [ "${workload}" == "workloade" ] || [ "${workload}" == "workloadscan" ]; then
             # generate scanNumber = operationNumber / 10
             scanNumber=$((operationNumber / 10))
             sed -i "s/operation_count:.*$/operation_count: ${scanNumber}/" playbook-run.yaml
         fi
         ansible-playbook -v -i hosts.ini playbook-run.yaml
         ## Collect
-        for ((i = 1; i <= NodeNumber; i++)); do
-            echo "Copy running data of ${targetScheme} back, node$i"
-            scp -r elect@node$i:/home/elect/Results ${PathToELECTLog}/"${targetScheme}"/"${ExpName}-${workload}-${round}-Node$i"
-            ssh elect@node$i "rm -rf /home/elect/Results && mkdir -p /home/elect/Results"
+        ## Collect running logs
+        for nodeIP in "${NodesList[@]}"; do
+            echo "Copy loading stats of loading for ${expName}-${targetScheme} back, current working on node ${nodeIP}"
+            scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Load-${nodeIP}
+            ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
         done
     done
 }
 
-for scheme in "${schemes[@]}"; do
-    echo "Start experiment to ${scheme}"
+function treeSizeEstimation {
+    KVNumber=$1
+    keylength=$2
+    fieldlength=$3
+    initial_count=${SSTableSize}
+    ratio=${LSMTreeFanOutRatio}
+    target_count=$((KVNumber * (keylength + fieldlength) / NodeNumber / 1024 / 1024 / 4))
+
+    current_count=$initial_count
+    current_level=1
+
+    while [ $current_count -lt $target_count ]; do
+        current_count=$((current_count * ratio))
+        current_level=$((current_level + 1))
+    done
+    teeLevels=$((current_level))
+    echo ${teeLevels}
+}
+
+function dataSizeEstimation {
+    KVNumber=$1
+    keylength=$2
+    fieldlength=$3
+    dataSizeOnEachNode=$(echo "scale=2; $KVNumber * ($keylength + $fieldlength) / $NodeNumber / 1024 / 1024 / 1024 * 3" | bc)
+    echo ${dataSizeOnEachNode}
+}
+
+function initialDelayEstimation {
+    dataSizeOnEachNode=$1
+    scheme=$2
+    if [ "${scheme}" == "cassandra" ]; then
+        initialDelay=65536
+        echo ${initialDelay}
+    else
+        initialDellayLocal=$(echo "scale=2; $dataSizeOnEachNode * 8" | bc)
+        initialDellayLocalCeil=$(echo "scale=0; (${initialDellayLocal} + 0.5)/1" | bc)
+        echo ${initialDellayLocalCeil}
+    fi
+}
+
+function waitFlushCompactionTimeEstimation {
+    dataSizeOnEachNode=$1
+    scheme=$2
+    if [ "${scheme}" == "cassandra" ]; then
+        waitTime=$(echo "scale=2; $dataSizeOnEachNode * 500" | bc)
+        waitTimeCeil=$(echo "scale=0; (${waitTime} + 0.5)/1" | bc)
+        echo ${waitTimeCeil}
+    else
+        waitTime=$(echo "scale=2; ($dataSizeOnEachNode * 1024  / 4 / 3 / ($concurrentEC / 2)) * 80 + $dataSizeOnEachNode * 500" | bc)
+        waitTimeCeil=$(echo "scale=0; (${waitTime} + 0.5)/1" | bc)
+        echo ${waitTimeCeil}
+    fi
+}
+
+function loadDataForEvaluation {
+    expName=$1
+    scheme=$2
+    KVNumber=$3
+    keylength=$4
+    fieldlength=$5
+    simulatedClientNumber=${6:-"${defaultSimulatedClientNumber}"}
+    storageSavingTarget=${7:-"0.6"}
+    codingK=${8:-"4"}
+    extraFlag=${9:-}
 
     # Gen params
-    dataSizeOnEachNode=$(echo "scale=2; $KVNumber * ($keylength + $fieldlength) / $NodeNumber / 1024 / 1024 / 1024 * 3" | bc)
-    initialDellayLocal=$(echo "scale=2; $dataSizeOnEachNode * 8" | bc)
-    initialDellayLocalCeil=$(echo "scale=0; (${initialDellayLocal} + 0.5)/1" | bc)
-    waitTime=$(echo "scale=2; $dataSizeOnEachNode * 500" | bc)
-    teeLevels=0
-    if [ "${scheme}" == "elect" ]; then
-        waitTime=$(echo "scale=2; ($dataSizeOnEachNode * 1024  / 4 / 3 / ($concurrentEC / 2)) * 80 + $dataSizeOnEachNode * 500" | bc)
-        teeLevels=$(treeSizeEstimation 10000000 16 1024)
-        initialDelay=$initialDellayLocalCeil
-    else
-        teeLevels=9
-        initialDelay=65536
-    fi
-    waitTimeCeil=$(echo "scale=0; (${waitTime} + 0.5)/1" | bc)
-    echo "Data size on each node is ${dataSizeOnEachNode} GiB, initial delay is ${initialDelay}, target flush wait time is ${waitTimeCeil}, max level is ${teeLevels}"
+    dataSizeOnEachNode=$(dataSizeEstimation KVNumber keylength fieldlength)
+    initialDelayTime=$(initialDelayEstimation ${dataSizeOnEachNode} ${scheme})
+    waitFlushCompactionTime=$(waitFlushCompactionTimeEstimation ${dataSizeOnEachNode} ${scheme})
+    teeLevels=$(treeSizeEstimation ${KVNumber} ${keylength} ${fieldlength})
+
+    # Outpout params
+    echo "Start experiment to ${scheme} (Loading), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}. Estimation of data size on each node is ${dataSizeOnEachNode} GiB, initial delay is ${initialDelayTime}, flush and compaction wait time is ${waitFlushCompactionTime}."
+    ehco ""
+    echo "The total running time is estimated to be (( (${waitFlushCompactionTime} + ${KVNumber}/20000)/60 )) minutes."
 
     # Load
+    load "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${simulatedClientNumber}" "${codingK}"
+    flush "${expName}" "${scheme}" "${waitFlushCompactionTime}"
+    backup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${extraFlag}"
+}
 
-    # if [ "${scheme}" == "cassandra" ]; then
-    #     echo "Skip load and backup for raw cassandra"
-    # else
-    #     load "${scheme}"
-    #     if [ "${waitFlush}" == "true" ]; then
-    #         flush "${scheme}" "${waitTimeCeil}"
-    #     fi
+function doEvaluation {
+    expName=$1
+    scheme=$2
+    KVNumber=$3
+    operationNumber=$4
+    simulatedClientNumber=$5
+    runningModes=$6
+    workloads=$7
+    RunningRoundNumber=$8
+    extraFlag=${9:-}
 
-    #     if [ "${restart}" == "true" ]; then
-    #         backup "${scheme}"
-    #     fi
-    # fi
+    # Outpout params
+    echo "Start experiment to ${scheme} (Running), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, operationNumber is ${operationNumber}, simulatedClientNumber is ${simulatedClientNumber}. The experiment will run ${RunningRoundNumber} rounds."
+
+    readConsistency="ONE" # default read consistency level is ONE, can be changed by extraFlag to "TWO" and "ALL"
+    if [[ "${extraFlag}" == *"consistency"* ]]; then
+        readConsistency=$(echo "${extraFlag}" | awk -F'=' '{print $2}')
+        echo "Read consistency level is chanegd to ${readConsistency}"
+    fi
 
     for ((round = 1; round <= RunningRoundNumber; round++)); do
         for type in "${runningModes[@]}"; do
             if [ "${type}" == "normal" ]; then
-                if [ "${restart}" == "true" ]; then
-                    startup "${scheme}"
-                fi
-                run "${scheme}" "${round}" "${type}"
+                startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${extraFlag}"
+                runExp "${expName}" "${scheme}" "${round}" "${type}" "${KVNumber}" "${operationNumber}" "${workloads}" "${simulatedClientNumber}" "${readConsistency}"
             elif [ "${type}" == "degraded" ]; then
-                if [ "${restart}" == "true" ]; then
-                    startup "${scheme}"
-                fi
+                startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${extraFlag}"
                 failnodes
-                run "${scheme}" "${round}" "${type}"
+                runExp "${expName}" "${scheme}" "${round}" "${type}" "${KVNumber}" "${operationNumber}" "${workloads}" "${simulatedClientNumber}" "${readConsistency}"
             fi
         done
     done
-done
+}
+
+function recovery {
+    targetScheme=$1
+    recoveryNode=$2
+
+    # Make local results directory
+    if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
+        mkdir -p ${PathToELECTResultSummary}/${targetScheme}
+    fi
+
+    # Copy playbook
+    if [ -f "playbook-recovery.yaml" ]; then
+        rm -rf playbook-recovery.yaml
+    fi
+    cp ../playbook/playbook-recovery.yaml .
+
+    if [ ${targetScheme} == "cassandra" ]; then
+        sed -i "s/\(mode: \)".*"/mode: raw/" playbook-recovery.yaml
+    else
+        sed -i "s/\(mode: \)".*"/mode: elect/" playbook-recovery.yaml
+    fi
+    sed -i "s/\(seconds: \)".*"/seconds: 900/" playbook-recovery.yaml
+
+    ansible-playbook -v -i hosts.ini playbook-recovery.yaml
+
+    echo "Copy running data of ${targetScheme} back, ${recoveryNode}"
+    scp elect@${recoveryNode}:/mnt/ssd/CassandraEC/logs/recovery.log ${PathToELECTLog}/"${targetScheme}"/"${ExpName}-Size-${KVNumber}-recovery-${round}-${recoveryNode}"
+}
