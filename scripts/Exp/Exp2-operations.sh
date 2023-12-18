@@ -1,8 +1,9 @@
 #!/bin/bash
-source ../Common.sh
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "${SCRIPT_DIR}/../Common.sh"
 # Exp1: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP.
 
-ExpName="Exp5-resource"
+ExpName="Exp2-operations"
 schemes=("cassandra" "elect")
 workloads=("workloadRead" "workloadWrite" "workloadScan" "workloadUpdate")
 runningTypes=("normal" "degraded")
@@ -19,8 +20,8 @@ setupNodeInfo ./hosts.ini
 for scheme in "${schemes[@]}"; do
     echo "Start experiment of ${scheme}"
     # Load data for evaluation
-    loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${operationNumber}" "${simulatedClientNumber}"
-
+    loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${simulatedClientNumber}"
+    exit
     # Run experiment
     doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${operationNumber}" "${simulatedClientNumber}" "${runningTypes[@]}" "${workloads[@]}" "${RunningRoundNumber}"
 done

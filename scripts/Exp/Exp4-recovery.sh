@@ -1,5 +1,6 @@
 #!/bin/bash
-source ../Common.sh
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "${SCRIPT_DIR}/../Common.sh"
 # Exp4: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, recovery performance.
 
 ExpName="Exp4-recovery"

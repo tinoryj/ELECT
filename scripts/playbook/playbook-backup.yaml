@@ -5,11 +5,11 @@
   become_user: elect
   tasks:
     - name: Copy files
-      command: bash PATH_TO_SCRIPTS/Run/copyDB.sh {{ sourceFileDir }} {{ targetFileDir }} {{ configureFileDir }}
+      command: bash PATH_TO_ELECT/scripts/Run/copyDB.sh {{ sourceFileDir }} {{ targetFileDir }} {{ configureFileDir }}
       vars:
-        sourceFileDir: "PATH_TO_PROTOTYPE/data"
+        sourceFileDir: "PATH_TO_ELECT/Prototype/data"
         targetFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH"
-        configureFileDir: "PATH_TO_PROTOTYPE/conf/cassandra.yaml"
+        configureFileDir: "PATH_TO_ELECT/Prototype/conf/cassandra.yaml"
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed

@@ -7,7 +7,7 @@
     - name: Execute script start-server.sh
       shell: |
         . /etc/profile &&
-        bash PATH_TO_SCRIPTS/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ concurrentEC }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
+        bash PATH_TO_ELECT/scripts/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ concurrentEC }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
       vars:
         maxLevel: 9
         initialDelay:  65536
@@ -33,7 +33,7 @@
     - name: Execute script start-server.sh
       shell: |
         . /etc/profile &&
-        bash PATH_TO_SCRIPTS/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ concurrentEC }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
+        bash PATH_TO_ELECT/scripts/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ concurrentEC }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
       vars:
         maxLevel: 9
         initialDelay:  65536
@@ -58,7 +58,7 @@
   tasks:
     - name: Setup log levels
       shell: |
-        . /etc/profile && cd PATH_TO_PROTOTYPE && bin/nodetool setlogginglevel org.apache.cassandra error && bin/nodetool setlogginglevel ROOT error
+        . /etc/profile && cd PATH_TO_ELECT/Prototype && bin/nodetool setlogginglevel org.apache.cassandra error && bin/nodetool setlogginglevel ROOT error
       register: command_result
       ignore_errors: true
 
@@ -68,7 +68,7 @@
   become_user: elect
   tasks:
     - name: Execute script start-client.sh
-      command: bash PATH_TO_SCRIPTS/Run/start-client.sh {{ coordinator }} {{ sstable_size_in_mb }} {{ fanout_size }} {{ mode }}
+      command: bash PATH_TO_ELECT/scripts/Run/start-client.sh {{ coordinator }} {{ sstable_size_in_mb }} {{ fanout_size }} {{ mode }}
       vars:
         coordinator: "172.27.96.1"
         sstable_size_in_mb: 4
@@ -89,7 +89,7 @@
     - name: CPU&Memory Monitor
       shell: |
         . /etc/profile &&
-        nohup bash PATH_TO_SCRIPTS/status/stats.sh {{ expName }} {{ stage }} > /home/elect/run.log 2>&1 &
+        nohup bash PATH_TO_ELECT/scripts/status/stats.sh {{ expName }} {{ stage }} > /home/elect/run.log 2>&1 &
       vars:
         expName: "SampleExpName"
         stage: "Loading"
@@ -106,7 +106,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "SampleExpName"
         workload: "workload_template"
@@ -123,7 +123,7 @@
   become_user: elect
   tasks:
     - name: Execute script loadDB.sh
-      command: bash PATH_TO_SCRIPTS/Run/loadDB.sh {{ record_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ trace }}
+      command: bash PATH_TO_ELECT/scripts/Run/loadDB.sh {{ record_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ trace }}
       vars:
         record_count: 100000000
         key_length: 24
@@ -149,7 +149,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "SampleExpName"
         workload: "workload_template"
@@ -168,7 +168,7 @@
   tasks:
     - name: CPU&Memory Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/status/killMonitor.sh
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/killMonitor.sh
       register: command_result
       ignore_errors: true
 
@@ -178,7 +178,7 @@
   become_user: elect
   tasks:
     - name: copy logs
-      command: bash PATH_TO_SCRIPTS/Run/copyLogs.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }}
+      command: bash PATH_TO_ELECT/scripts/Run/copyLogs.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }}
       vars:
         record_count: 10000000
         operation_count: 10000000

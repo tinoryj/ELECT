@@ -17,7 +17,7 @@ func() {
         exit
     fi
 
-    cd ${PATH_TO_PROTOTYPE} || exit
+    cd ${PathToELECTPrototype} || exit
 
     bin/nodetool coldStartup backup
 

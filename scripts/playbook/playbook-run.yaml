@@ -8,7 +8,7 @@
     - name: CPU&Memory Monitor
       shell: |
         . /etc/profile &&
-        nohup bash PATH_TO_SCRIPTS/status/stats.sh {{ expName }} {{ stage }} &
+        nohup bash PATH_TO_ELECT/scripts/status/stats.sh {{ expName }} {{ stage }} &
       vars:
         expName: "SampleExpName"
         stage: "Running"
@@ -25,7 +25,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/status/stateCapture.sh {{ expName }} {{ stage }} 
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ stage }} 
       vars:
         expName: "SampleExpName"
         workload: "workload_template"
@@ -42,7 +42,7 @@
   become_user: elect
   tasks:
     - name: Execute runDB.sh
-      command: bash PATH_TO_SCRIPTS/Run/runDB.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ consistency }} {{ trace }}
+      command: bash PATH_TO_ELECT/scripts/Run/runDB.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ consistency }} {{ trace }}
       vars:
         record_count: 10000000
         operation_count: 10000000
@@ -66,7 +66,7 @@
   tasks:
     - name: CPU&Memory Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/status/killMonitor.sh
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/killMonitor.sh
       register: command_result
       ignore_errors: true
 
@@ -77,7 +77,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "Exp#1-Degraded-Run-Cassandra-DATAPATH"
         workload: "workload_template"
@@ -94,7 +94,7 @@
   become_user: elect
   tasks:
     - name: copy logs
-      command: bash PATH_TO_SCRIPTS/Run/copyLogs.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }}
+      command: bash PATH_TO_ELECT/scripts/Run/copyLogs.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }}
       vars:
         record_count: 10000000
         operation_count: 10000000

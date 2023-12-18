@@ -24,6 +24,6 @@
   tasks:
     - name: Stop CPU&Memory Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/status/killMonitor.sh
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/killMonitor.sh
       register: command_result
       ignore_errors: true

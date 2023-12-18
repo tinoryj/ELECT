@@ -1,11 +1,12 @@
 #!/bin/bash
-source ../Common.sh
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "${SCRIPT_DIR}/../Common.sh"
 # Exp1: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP.
 
-ExpName="Exp1-ycsb"
+ExpName="Exp5-resource"
 schemes=("cassandra" "elect")
-workloads=("workloada" "workloadb" "workloadc" "workloadd" "workloade" "workloadf")
-runningTypes=("normal")
+workloads=("workloadRead" "workloadWrite" "workloadScan" "workloadUpdate")
+runningTypes=("normal" "degraded")
 KVNumber=10000000
 keylength=24
 fieldlength=1000

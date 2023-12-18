@@ -1,5 +1,6 @@
 #!/bin/bash
-source ../Common.sh
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+source "${SCRIPT_DIR}/../Common.sh"
 # Exp10: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV. Varying number of clients, each client issues 100K operations.
 
 ExpName="Exp10-clients"

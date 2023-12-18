@@ -5,7 +5,7 @@
   become_user: elect
   tasks:
     - name: Startup with backuped data
-      command: bash PATH_TO_SCRIPTS/Run/cold-startup.sh {{ configureFileDir }} {{ sourceFileDir }}
+      command: bash PATH_TO_ELECT/scripts/Run/cold-startup.sh {{ configureFileDir }} {{ sourceFileDir }}
       vars:
         configureFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH/cassandra.yaml"
         sourceFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH/data"
@@ -25,7 +25,7 @@
   tasks:
     - name: Setup log levels
       shell: |
-        . /etc/profile && cd PATH_TO_PROTOTYPE && bin/nodetool setlogginglevel org.apache.cassandra error && bin/nodetool setlogginglevel ROOT error
+        . /etc/profile && cd PATH_TO_ELECT/Prototype && bin/nodetool setlogginglevel org.apache.cassandra error && bin/nodetool setlogginglevel ROOT error
       register: command_result
       ignore_errors: true
 
@@ -36,7 +36,7 @@
   become_user: elect
   tasks:
     - name: Reload ELECT logs
-      command: bash PATH_TO_SCRIPTS/Run/cold-startup-reload.sh {{ mode }}
+      command: bash PATH_TO_ELECT/scripts/Run/cold-startup-reload.sh {{ mode }}
       vars:
         mode: "raw"
       register: command_result

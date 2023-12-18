@@ -1,30 +1,42 @@
 #!/bin/bash
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/settings.sh"
+
+playbookSet=(playbook-load.yaml playbook-run.yaml playbook-flush.yaml playbook-backup.yaml playbook-startup.yaml playbook-fail.yaml playbook-recovery.yaml)
 
 function setupNodeInfo {
     targetHostInfo=$1
-    if [ -f ${targetHostInfo} ]; then
-        rm -rf ${targetHostInfo}
+    if [ -f ${SCRIPT_DIR}/Exp/${targetHostInfo} ]; then
+        rm -rf ${SCRIPT_DIR}/Exp/${targetHostInfo}
     fi
-    echo "[elect_servers]" >>${targetHostInfo}
+    echo "[elect_servers]" >>${SCRIPT_DIR}/Exp/${targetHostInfo}
     for ((i = 1; i <= NodeNumber; i++)); do
-        echo "server${i} ansible_host=${NodesList[(($i - 1))]}" >>${targetHostInfo}
+        echo "server${i} ansible_host=${NodesList[(($i - 1))]}" >>${SCRIPT_DIR}/Exp/${targetHostInfo}
     done
-    echo >>${targetHostInfo}
-    echo "[elect_oss]" >>${targetHostInfo}
-    echo "oss ansible_host=${OSSServerNode}" >>${targetHostInfo}
-    echo >>${targetHostInfo}
-    echo "[elect_client]" >>${targetHostInfo}
-    echo "client ansible_host=${ClientNode}" >>${targetHostInfo}
+    echo >>${SCRIPT_DIR}/Exp/${targetHostInfo}
+    echo "[elect_oss]" >>${SCRIPT_DIR}/Exp/${targetHostInfo}
+    echo "oss ansible_host=${OSSServerNode}" >>${SCRIPT_DIR}/Exp/${targetHostInfo}
+    echo >>${SCRIPT_DIR}/Exp/${targetHostInfo}
+    echo "[elect_client]" >>${SCRIPT_DIR}/Exp/${targetHostInfo}
+    echo "client ansible_host=${ClientNode}" >>${SCRIPT_DIR}/Exp/${targetHostInfo}
     # random select the failure node from the total node list
     failure_nodes=($(shuf -i 1-${NodeNumber} -n 1))
-    echo >>${targetHostInfo}
-    echo "[elect_failure]" >>${targetHostInfo}
-    echo "server${failure_nodes} ansible_host=${NodesList[(($failure_nodes - 1))]}" >>${targetHostInfo}
-    
+    echo >>${SCRIPT_DIR}/Exp/${targetHostInfo}
+    echo "[elect_failure]" >>${SCRIPT_DIR}/Exp/${targetHostInfo}
+    echo "server${failure_nodes} ansible_host=${NodesList[(($failure_nodes - 1))]}" >>${SCRIPT_DIR}/Exp/${targetHostInfo}
+
     # Setup user ID for each playbook
-    sed -i "s/\(become_user: \)".*"/become_user: ${UserName}/" playbook/playbook-load.yaml
+    for playbook in "${playbookSet[@]}"; do
+        if [ ! -f ${playbook} ]; then
+            cp ${SCRIPT_DIR}/playbook/${playbook} ${SCRIPT_DIR}/Exp/${playbook}
+        else
+            rm -rf ${SCRIPT_DIR}/Exp/${playbook}
+            cp ${SCRIPT_DIR}/playbook/${playbook} ${SCRIPT_DIR}/Exp/${playbook}
+        fi
+        sed -i "s/\(become_user: \)".*"/become_user: ${UserName}/" ${SCRIPT_DIR}/Exp/${playbook}
+        sed -i "s|PATH_TO_ELECT|${PathToArtifact}|g" "${SCRIPT_DIR}/Exp/${playbook}"
+        sed -i "s|PATH_TO_DB_BACKUP|${PathToELECTExpDBBackup}|g" "${SCRIPT_DIR}/Exp/${playbook}"
+    done
 }
 
 function load {
@@ -308,7 +320,8 @@ function loadDataForEvaluation {
     storageSavingTarget=${7:-"0.6"}
     codingK=${8:-"4"}
     extraFlag=${9:-}
-
+    echo "The evaluation setting is ${scheme} (Loading), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}, storageSavingTarget is ${storageSavingTarget}, codingK is ${codingK}, extraFlag is ${extraFlag}."
+    exit
     # Gen params
     dataSizeOnEachNode=$(dataSizeEstimation KVNumber keylength fieldlength)
     initialDelayTime=$(initialDelayEstimation ${dataSizeOnEachNode} ${scheme})

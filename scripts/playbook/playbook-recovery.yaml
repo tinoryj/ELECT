@@ -8,7 +8,7 @@
     - name: CPU&Memory Monitor
       shell: |
         . /etc/profile &&
-        nohup bash PATH_TO_SCRIPTS/status/stats.sh {{ expName }} {{ stage }} &
+        nohup bash PATH_TO_ELECT/scripts/status/stats.sh {{ expName }} {{ stage }} &
       vars:
         expName: "SampleExpName"
         stage: "Recovery"
@@ -25,7 +25,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "SampleExpName"
         workload: "workload_template"
@@ -43,7 +43,7 @@
   tasks:
     - name: Full node recovery
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/Run/recovery.sh {{ mode }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/Run/recovery.sh {{ mode }}
       vars:
         mode: "raw"
       register: command_result
@@ -63,7 +63,7 @@
   tasks:
     - name: CPU&Memory Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/status/killMonitor.sh
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/killMonitor.sh
       register: command_result
       ignore_errors: true
 
@@ -74,7 +74,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_SCRIPTS/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "SampleExpName"
         workload: "workload_template"
