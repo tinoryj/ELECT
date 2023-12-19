@@ -1,11 +1,29 @@
 ---
+- name: Rebuild and start OSS file server
+  hosts: elect_oss
+  become: yes
+  become_user: elect
+  tasks:
+    - name: Rebuild and start OSS file server
+      shell: |
+        . /etc/profile &&
+        bash PATH_TO_ELECT/scripts/Run/start-oss.sh
+      register: command_result
+      ignore_errors: True
+    - name: Fail the play if the previous command did not succeed
+      fail: msg="the command failed"
+      when: "'FAILED' in command_result.stderr"
+    - name: Wait until all nodes are ready
+      pause:
+        seconds: 90
+
 - name: Startup with backuped data
   hosts: elect_servers
   become: yes
   become_user: elect
   tasks:
     - name: Startup with backuped data
-      command: bash PATH_TO_ELECT/scripts/Run/cold-startup.sh {{ configureFileDir }} {{ sourceFileDir }}
+      command: bash PATH_TO_ELECT/scripts/Run/restartNode.sh {{ configureFileDir }} {{ sourceFileDir }}
       vars:
         configureFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH/cassandra.yaml"
         sourceFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH/data"
@@ -36,9 +54,7 @@
   become_user: elect
   tasks:
     - name: Reload ELECT logs
-      command: bash PATH_TO_ELECT/scripts/Run/cold-startup-reload.sh {{ mode }}
-      vars:
-        mode: "raw"
+      command: bash PATH_TO_ELECT/scripts/Run/restartNodeReload.sh
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed

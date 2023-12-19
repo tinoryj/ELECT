@@ -5,13 +5,14 @@ source "${SCRIPT_DIR}/../Common.sh"
 func() {
 
     recordcount=$1
-    operationcount=$2
+    keylength=$2
+    valuelength=$3
     threads=$3
     workload=$4
     expName=$5
-    keyspace=$6
+    stage=$6
 
-    dirName="${expName}-${workload}-${keyspace}-${recordcount}-${operationcount}-${threads}-$(date +%s)-Log"
+    dirName="${expName}-Load-${workload}-KVNumber-${recordcount}-KeySize-${keylength}-ValueSize-${valuelength}-ClientNumber-${threads}-Stage-${stage}$(date +%s)-Log"
 
     cp -r ${PathToELECTPrototype}/logs ${PathToELECTLog}/$dirName
 }

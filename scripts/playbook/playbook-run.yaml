@@ -8,7 +8,7 @@
     - name: CPU&Memory Monitor
       shell: |
         . /etc/profile &&
-        nohup bash PATH_TO_ELECT/scripts/status/stats.sh {{ expName }} {{ stage }} &
+        nohup bash PATH_TO_ELECT/scripts/status/statsCPU_RAM.sh {{ expName }} {{ stage }} &
       vars:
         expName: "SampleExpName"
         stage: "Running"
@@ -25,7 +25,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ stage }} 
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh.sh {{ expName }} {{ stage }} 
       vars:
         expName: "SampleExpName"
         workload: "workload_template"
@@ -77,7 +77,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "Exp#1-Degraded-Run-Cassandra-DATAPATH"
         workload: "workload_template"

@@ -12,7 +12,7 @@ function generate_tokens {
     for line in "${lines[@]}"; do
         if [[ $line == *"initial_token:"* ]]; then
             token=$(echo $line | grep -oP '(?<=initial_token: )[-0-9]+')
-            tokens+=("$token") 
+            tokens+=("$token")
         fi
     done
     rm -rf ${SCRIPT_DIR}/token.txt
@@ -70,39 +70,33 @@ function load {
         mkdir -p ${PathToELECTResultSummary}/${targetScheme}
     fi
 
-    # Copy playbook
-    if [ -f "playbook-load.yaml" ]; then
-        rm -rf playbook-load.yaml
-    fi
-    cp ../playbook/playbook-load.yaml .
+    # Generate playbook
+    setupNodeInfo hosts.ini
     # Modify load playbook
     if [ ${targetScheme} == "cassandra" ]; then
-        sed -i "s/\(mode: \)".*"/mode: raw/" playbook-load.yaml
-        sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" playbook-load.yaml
-        sed -i "s/\(teeLevels: \)".*"/teeLevels: 9/" playbook-load.yaml
-        sed -i "s/\(initialDelay: \)".*"/initialDelay: 65536/" playbook-load.yaml
-        sed -i "s/\(concurrentEC: \)".*"/concurrentEC: 0/" playbook-load.yaml
+        sed -i "s/\(mode: \)".*"/mode: cassandra/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+        sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+        sed -i "s/\(teeLevels: \)".*"/teeLevels: 9/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+        sed -i "s/\(initialDelay: \)".*"/initialDelay: 65536/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+        sed -i "s/\(concurrentEC: \)".*"/concurrentEC: 0/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
     elif [ ${targetScheme} == "elect" ]; then
-        sed -i "s/\(mode: \)".*"/mode: elect/" playbook-load.yaml
-        sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" playbook-load.yaml
-        sed -i "s/\(teeLevels: \)".*"/teeLevels: ${teeLevels}/" playbook-load.yaml
-        sed -i "s/\(initialDelay: \)".*"/initialDelay: ${initialDelay}/" playbook-load.yaml
-        sed -i "s/\(target_saving: \)".*"/target_saving: ${storageSavingTarget}/" playbook-load.yaml
-        sed -i "s/\(concurrentEC: \)".*"/concurrentEC: ${concurrentEC}/" playbook-load.yaml
-        sed -i "s/\(data_block_num: \)".*"/data_block_num: ${ecK}/" playbook-load.yaml
+        sed -i "s/\(mode: \)".*"/mode: elect/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+        sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+        sed -i "s/\(teeLevels: \)".*"/teeLevels: ${teeLevels}/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+        sed -i "s/\(initialDelay: \)".*"/initialDelay: ${initialDelay}/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+        sed -i "s/\(target_saving: \)".*"/target_saving: ${storageSavingTarget}/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+        sed -i "s/\(data_block_num: \)".*"/data_block_num: ${ecK}/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+        sed -i "s/\(parity_block_num: \)".*"/parity_block_num: 2/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
     fi
 
-    sed -i "s/\(expName: \)".*"/expName: "${expName}-${targetScheme}-Load"/" playbook-load.yaml
-    sed -i "s/record_count:.*$/record_count: ${KVNumber}/" playbook-load.yaml
-    sed -i "s/key_length:.*$/key_length: ${keylength}/" playbook-load.yaml
-    sed -i "s/filed_length:.*$/filed_length: ${fieldlength}/" playbook-load.yaml
+    sed -i "s/\(expName: \)".*"/expName: "${expName}-${targetScheme}-Load"/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+    sed -i "s/record_count:.*$/record_count: ${KVNumber}/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+    sed -i "s/key_length:.*$/key_length: ${keylength}/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+    sed -i "s/filed_length:.*$/filed_length: ${fieldlength}/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+    sed -i "s/\(workload: \)".*"/workload: \"workloadLoad\"/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
+    sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" "${SCRIPT_DIR}/Exp/playbook-load.yaml
 
-    modifyWorkload "workloadLoad"
-
-    sed -i "s/\(workload: \)".*"/workload: \"workloadLoad\"/" playbook-load.yaml
-    sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" playbook-load.yaml
-
-    ansible-playbook -v -i hosts.ini playbook-load.yaml
+    ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-load.yaml
 
     ## Collect load logs
     for nodeIP in "${NodesList[@]}"; do
@@ -110,14 +104,6 @@ function load {
         scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Load-${nodeIP}
         ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
-}
-
-function modifyWorkload {
-    workload=$1
-    keylength=$2
-    fieldlength=$3
-    sed -i "s/\(keylength= \)".*"/keylength=${keylength}/" ./YCSB/workloads/${workload}
-    sed -i "s/\(fieldlength= \)".*"/fieldlength=${fieldlength}/" ./YCSB/workloads/${workload}
 }
 
 function flush {
@@ -131,15 +117,12 @@ function flush {
     fi
 
     # Copy playbook
-    if [ -f "playbook-flush.yaml" ]; then
-        rm -rf playbook-flush.yaml
-    fi
-    cp ../playbook/playbook-flush.yaml .
+    setupNodeInfo hosts.ini
     # Modify playbook
     sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Load"/" playbook-flush.yaml
     sed -i "s/\(workload: \)".*"/workload: \"workloadLoad\"/" playbook-flush.yaml
     sed -i "s/\(seconds: \)".*"/seconds: ${waitTime}/" playbook-flush.yaml
-    ansible-playbook -v -i hosts.ini playbook-flush.yaml
+    ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-flush.yaml
 }
 
 function backup {
@@ -157,25 +140,15 @@ function backup {
     fi
 
     # Copy playbook
-    if [ -f "playbook-backup.yaml" ]; then
-        rm -rf playbook-backup.yaml
-    fi
-    cp ../playbook/playbook-backup.yaml .
+    setupNodeInfo hosts.ini
     # Modify playbook
-    if [ ${targetScheme} == "cassandra" ]; then
-        sed -i "s/\(mode: \)".*"/mode: raw/" playbook-backup.yaml
-        sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" playbook-backup.yaml
-    elif [ ${targetScheme} == "elect" ]; then
-        sed -i "s/\(mode: \)".*"/mode: elect/" playbook-backup.yaml
-        sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" playbook-backup.yaml
-    fi
     sed -i "s/Scheme/${targetScheme}/g" playbook-backup.yaml
     if [ -z "${extraFlag}" ]; then
         sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" playbook-backup.yaml
     else
         sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-Flags=${extraFlag}g" playbook-backup.yaml
     fi
-    ansible-playbook -v -i hosts.ini playbook-backup.yaml
+    ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-backup.yaml
 }
 
 function startupFromBackup {
@@ -192,10 +165,7 @@ function startupFromBackup {
     fi
 
     # Copy playbook
-    if [ -f "playbook-startup.yaml" ]; then
-        rm -rf playbook-startup.yaml
-    fi
-    cp ../playbook/playbook-startup.yaml .
+    setupNodeInfo hosts.ini
     # Modify playbook
     sed -i "s/Scheme/${targetScheme}/g" playbook-startup.yaml
     if [ -z "${extraFlag}" ]; then
@@ -203,18 +173,15 @@ function startupFromBackup {
     else
         sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-Flags=${extraFlag}g" playbook-startup.yaml
     fi
-    ansible-playbook -v -i hosts.ini playbook-startup.yaml
+    ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-startup.yaml
 }
 
 function failnodes {
     echo "Fail node for degraded test"
     # Copy playbook
-    if [ -f "playbook-fail.yaml" ]; then
-        rm -rf playbook-fail.yaml
-    fi
-    cp ../playbook/playbook-fail.yaml .
+    setupNodeInfo hosts.ini
     # Modify playbook
-    ansible-playbook -v -i hosts.ini playbook-fail.yaml
+    ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-fail.yaml
 }
 
 function runExp {
@@ -238,11 +205,7 @@ function runExp {
     # Normal/Degraded Ops
     for workload in "${workloads[@]}"; do
         echo "Start running $workload on ${targetScheme} round $round"
-        modifyWorkload $workload
-        if [ -f "playbook-run.yaml" ]; then
-            rm -rf playbook-run.yaml
-        fi
-        cp ../playbook/playbook-run.yaml .
+        setupNodeInfo hosts.ini
         # Modify run palybook
         if [ ${targetScheme} == "cassandra" ]; then
             sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" playbook-run.yaml
@@ -260,7 +223,7 @@ function runExp {
             scanNumber=$((operationNumber / 10))
             sed -i "s/operation_count:.*$/operation_count: ${scanNumber}/" playbook-run.yaml
         fi
-        ansible-playbook -v -i hosts.ini playbook-run.yaml
+        ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-run.yaml
         ## Collect
         ## Collect running logs
         for nodeIP in "${NodesList[@]}"; do
@@ -336,9 +299,9 @@ function loadDataForEvaluation {
     codingK=${8:-"4"}
     extraFlag=${9:-}
     echo "The evaluation setting is ${scheme} (Loading), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}, storageSavingTarget is ${storageSavingTarget}, codingK is ${codingK}, extraFlag is ${extraFlag}."
-    exit
+
     # Gen params
-    dataSizeOnEachNode=$(dataSizeEstimation KVNumber keylength fieldlength)
+    dataSizeOnEachNode=$(dataSizeEstimation ${KVNumber} ${keylength} ${fieldlength})
     initialDelayTime=$(initialDelayEstimation ${dataSizeOnEachNode} ${scheme})
     waitFlushCompactionTime=$(waitFlushCompactionTimeEstimation ${dataSizeOnEachNode} ${scheme})
     teeLevels=$(treeSizeEstimation ${KVNumber} ${keylength} ${fieldlength})
@@ -401,10 +364,7 @@ function recovery {
     fi
 
     # Copy playbook
-    if [ -f "playbook-recovery.yaml" ]; then
-        rm -rf playbook-recovery.yaml
-    fi
-    cp ../playbook/playbook-recovery.yaml .
+    setupNodeInfo hosts.ini
 
     if [ ${targetScheme} == "cassandra" ]; then
         sed -i "s/\(mode: \)".*"/mode: raw/" playbook-recovery.yaml
@@ -413,7 +373,7 @@ function recovery {
     fi
     sed -i "s/\(seconds: \)".*"/seconds: 900/" playbook-recovery.yaml
 
-    ansible-playbook -v -i hosts.ini playbook-recovery.yaml
+    ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-recovery.yaml
 
     echo "Copy running data of ${targetScheme} back, ${recoveryNode}"
     scp elect@${recoveryNode}:${PathToELECTPrototype}/logs/recovery.log ${PathToELECTResultSummary}/"${targetScheme}"/"${expName}-Size-${KVNumber}-recovery-${runningRound}-${recoveryNode}"

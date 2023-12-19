@@ -26,6 +26,13 @@ find_ip_index() {
 given_ip=${my_ip}
 index=$(find_ip_index $given_ip)
 
+cd ${PathToYCSB} || exit
+nvm clean packages
+
+cd ${PathToColdTier} || exit
+make clean
+make
+
 if [ $index -ne -1 ]; then
     echo "This node is the $index node of ELECT cluster, update server configuration"
     selected_token=${tokens[$index]}
@@ -41,6 +48,7 @@ if [ $index -ne -1 ]; then
     sed -i "s/rpc_address:.*$/rpc_address: ${my_ip}/" ${PathToELECTPrototype}/conf/cassandra.yaml
     sed -i "s/listen_address:.*$/listen_address: ${my_ip}/" ${PathToELECTPrototype}/conf/cassandra.yaml
     sed -i "s/cold_tier_ip:.*$/cold_tier_ip: ${OSSServerNode}/" ${PathToELECTPrototype}/conf/cassandra.yaml
+    sed -i "s/cold_tier_port:.*$/cold_tier_port: ${OSSServerPort}/" ${PathToELECTPrototype}/conf/cassandra.yaml
     sed -i "s/rpc_address:.*$/rpc_address: ${my_ip}/" ${PathToELECTPrototype}/conf/cassandra.yaml
     nodes_string=$(
         IFS=,

@@ -8,7 +8,7 @@
     - name: CPU&Memory Monitor
       shell: |
         . /etc/profile &&
-        nohup bash PATH_TO_ELECT/scripts/status/stats.sh {{ expName }} {{ stage }} &
+        nohup bash PATH_TO_ELECT/scripts/status/statsCPU_RAM.sh {{ expName }} {{ stage }} &
       vars:
         expName: "SampleExpName"
         stage: "Recovery"
@@ -25,7 +25,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "SampleExpName"
         workload: "workload_template"
@@ -45,7 +45,7 @@
       shell: |
         . /etc/profile && bash PATH_TO_ELECT/scripts/Run/recovery.sh {{ mode }}
       vars:
-        mode: "raw"
+        mode: "elect"
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed
@@ -74,7 +74,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "SampleExpName"
         workload: "workload_template"

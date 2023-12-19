@@ -10,7 +10,7 @@ function setupCluster {
 
     cd ${PathToELECTPrototype} || exit
 
-    if [ $mode == "raw" ]; then
+    if [ $mode == "cassandra" ]; then
         echo "Create keyspace ycsbraw;"
         bin/cqlsh "$coordinator" -e "create keyspace ycsbraw WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 3 };
         USE ycsbraw;

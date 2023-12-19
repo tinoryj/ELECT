@@ -7,14 +7,7 @@
     - name: Rebuild and start OSS file server
       shell: |
         . /etc/profile &&
-        bash PATH_TO_ELECT/scripts/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
-      vars:
-        maxLevel: 9
-        initialDelay:  65536
-        target_saving: 0.6
-        data_block_num: 4
-        parity_block_num: 2
-        mode: "cassandra"
+        bash PATH_TO_ELECT/scripts/Run/start-oss.sh
       register: command_result
       ignore_errors: True
     - name: Fail the play if the previous command did not succeed
@@ -32,14 +25,14 @@
     - name: Execute script start-server.sh
       shell: |
         . /etc/profile &&
-        bash PATH_TO_ELECT/scripts/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
+        bash PATH_TO_ELECT/scripts/Run/start-server.sh {{ teeLevels }} {{ initialDelay }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
       vars:
-        maxLevel: 9
+        teeLevels: 9
         initialDelay:  65536
-        target_saving: 0.6
-        data_block_num: 4
-        parity_block_num: 2
-        mode: "cassandra"
+        target_saving: 0
+        data_block_num: 0
+        parity_block_num: 0
+        mode: "elect"
       register: command_result
       ignore_errors: True
     - name: Fail the play if the previous command did not succeed
@@ -66,12 +59,12 @@
   become_user: elect
   tasks:
     - name: Execute script start-client.sh
-      command: bash PATH_TO_ELECT/scripts/Run/start-client.sh {{ coordinator }} {{ sstable_size_in_mb }} {{ fanout_size }} {{ mode }}
+      command: bash PATH_TO_ELECT/scripts/Run/start-client.sh {{ coordinator }} {{ mode }}
       vars:
         coordinator: "172.27.96.1"
         sstable_size_in_mb: 4
         fanout_size: 10
-        mode: "raw"
+        mode: "elect"
       register: command_result
       ignore_errors: True
     - name: Fail the play if the previous command did not succeed
@@ -87,7 +80,7 @@
     - name: CPU&Memory Monitor
       shell: |
         . /etc/profile &&
-        nohup bash PATH_TO_ELECT/scripts/status/stats.sh {{ expName }} {{ stage }} > /home/elect/run.log 2>&1 &
+        nohup bash PATH_TO_ELECT/scripts/status/statsCPU_RAM.sh {{ expName }} {{ stage }} > /dev/null 2>&1 &
       vars:
         expName: "SampleExpName"
         stage: "Loading"
@@ -104,10 +97,10 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "SampleExpName"
-        workload: "workload_template"
+        workload: "workloadLoad"
         stage: "Before-loading"
       register: command_result
       ignore_errors: true
@@ -121,16 +114,15 @@
   become_user: elect
   tasks:
     - name: Execute script loadDB.sh
-      command: bash PATH_TO_ELECT/scripts/Run/loadDB.sh {{ record_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ trace }}
+      command: bash PATH_TO_ELECT/scripts/Run/loadDB.sh {{ record_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }}
       vars:
         record_count: 100000000
         key_length: 24
         filed_length: 1000
-        threads: 64
-        workload: "workloads/workload_template"
+        threads: 16
+        workload: "workloadLoad"
         expName: "SampleExpName"
         keyspace: "ycsb"
-        trace: "off"
       register: command_result
       ignore_errors: True
     - name: Fail the play if the previous command did not succeed
@@ -147,10 +139,10 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_ELECT/scripts/status/stateCapture.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "SampleExpName"
-        workload: "workload_template"
+        workload: "workloadLoad"
         stage: "After-Loading"
       register: command_result
       ignore_errors: true
@@ -176,14 +168,15 @@
   become_user: elect
   tasks:
     - name: copy logs
-      command: bash PATH_TO_ELECT/scripts/Run/copyLogs.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }}
+      command: bash PATH_TO_ELECT/scripts/Run/copyLogs.sh {{ record_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ stage }}
       vars:
         record_count: 10000000
-        operation_count: 10000000
-        threads: 64
-        workload: "workload_template"
-        expName: "Exp#1-Normal-Run-Cassandra-DATAPATH"
-        keyspace: "ycsb"
+        key_length: 24
+        filed_length: 1000
+        threads: 16
+        workload: "workloadLoad"
+        expName: "SampleExpName"
+        stage: "Loading"
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed

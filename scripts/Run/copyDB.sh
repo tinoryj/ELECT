@@ -1,6 +1,6 @@
 #!/bin/bash
 . /etc/profile
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../Common.sh"
 
 func() {
@@ -27,6 +27,8 @@ func() {
     sleep 10
 
     bin/nodetool drain
+
+    sleep 10
 
     kill -9 $(ps aux | grep CassandraDaemon | grep -v grep | awk 'NR == 1' | awk {'print $2'})
 
