@@ -13,7 +13,7 @@ PathToELECTExpDBBackup="/home/${UserName}/ELECTExpDBBackup" # The path to the ba
 PathToELECTLog="/home/${UserName}/ELECTLog" # The path to the log folder for storing the experiment logs; we assume all the nodes have the same path.
 PathToELECTResultSummary="/home/${UserName}/ELECTResules" # The path to the result summary folder for storing the final experiment results; we assume all the nodes have the same path. 
 
-PathToELECTPrototype="${PathToArtifact}/prototype"
+PathToELECTPrototype="${PathToArtifact}/Prototype"
 PathToYCSB="${PathToArtifact}/YCSB"
 PathToScripts="${PathToArtifact}/scripts"
 

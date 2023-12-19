@@ -18,7 +18,6 @@ for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
     ssh-copy-id -i ~/.ssh/id_rsa.pub ${UserName}@${nodeIP}
 done
 
-
 # Install packages
 printf  ${sudoPasswd} | sudo -S apt update 
 printf  ${sudoPasswd} | sudo -S apt install -y ant maven clang llvm python3 ansible python3-pip #libisal-dev openjdk-11-jdk openjdk-11-jre 
