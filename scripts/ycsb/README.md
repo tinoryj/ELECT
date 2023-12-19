@@ -36,7 +36,7 @@ Getting Started
     ```sh
     curl -O --location https://github.com/brianfrankcooper/YCSB/releases/download/0.17.0/ycsb-0.17.0.tar.gz
     tar xfvz ycsb-0.17.0.tar.gz
-    cd ycsb-0.17.0
+    cd scripts/ycsb-0.17.0
     ```
     
 2. Set up a database to benchmark. There is a README file under each binding 

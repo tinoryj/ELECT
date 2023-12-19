@@ -37,4 +37,4 @@ if [ ! -d "${PathToELECTResultSummary}" ]; then
     mkdir -p ${PathToELECTResultSummary}
 fi
 
-bash ${SCRIPT_DIR}/Run/update-server.sh
+bash ${SCRIPT_DIR}/run/update-server.sh

@@ -1,7 +1,7 @@
 #!/bin/bash
 . /etc/profile
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-source "${SCRIPT_DIR}/../Common.sh"
+source "${SCRIPT_DIR}/../common.sh"
 # Exp1: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP.
 
 ExpName="Exp2-operations"

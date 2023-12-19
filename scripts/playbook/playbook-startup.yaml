@@ -7,7 +7,7 @@
     - name: Rebuild and start OSS file server
       shell: |
         . /etc/profile &&
-        bash PATH_TO_ELECT/scripts/Run/start-oss.sh
+        bash PATH_TO_ELECT/scripts/run/start-oss.sh
       register: command_result
       ignore_errors: True
     - name: Fail the play if the previous command did not succeed
@@ -23,7 +23,7 @@
   become_user: elect
   tasks:
     - name: Startup with backuped data
-      command: bash PATH_TO_ELECT/scripts/Run/restartNode.sh {{ configureFileDir }} {{ sourceFileDir }}
+      command: bash PATH_TO_ELECT/scripts/run/restartNode.sh {{ configureFileDir }} {{ sourceFileDir }}
       vars:
         configureFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH/cassandra.yaml"
         sourceFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH/data"
@@ -54,7 +54,7 @@
   become_user: elect
   tasks:
     - name: Reload ELECT logs
-      command: bash PATH_TO_ELECT/scripts/Run/restartNodeReload.sh
+      command: bash PATH_TO_ELECT/scripts/run/restartNodeReload.sh
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed

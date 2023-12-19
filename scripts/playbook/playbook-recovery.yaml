@@ -43,7 +43,7 @@
   tasks:
     - name: Full node recovery
       shell: |
-        . /etc/profile && bash PATH_TO_ELECT/scripts/Run/recovery.sh {{ mode }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/run/recovery.sh {{ mode }}
       vars:
         mode: "elect"
       register: command_result

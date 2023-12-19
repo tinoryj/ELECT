@@ -42,7 +42,7 @@
   become_user: elect
   tasks:
     - name: Execute runDB.sh
-      command: bash PATH_TO_ELECT/scripts/Run/runDB.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ consistency }} {{ trace }}
+      command: bash PATH_TO_ELECT/scripts/run/runDB.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ consistency }} {{ trace }}
       vars:
         record_count: 10000000
         operation_count: 10000000
@@ -94,7 +94,7 @@
   become_user: elect
   tasks:
     - name: copy logs
-      command: bash PATH_TO_ELECT/scripts/Run/copyLogs.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }}
+      command: bash PATH_TO_ELECT/scripts/run/copyLogs.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }}
       vars:
         record_count: 10000000
         operation_count: 10000000

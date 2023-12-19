@@ -1,7 +1,7 @@
 #!/bin/bash
 . /etc/profile
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-source "${SCRIPT_DIR}/../Common.sh"
+source "${SCRIPT_DIR}/../common.sh"
 function runRecovery {
     mode=$1
     cd ${PathToELECTPrototype}

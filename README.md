@@ -4,10 +4,12 @@
 
 ELECT is a distributed tiered KV store that enables replication and erasure coding tiering. This repo contains the implementation of the ELECT prototype, YCSB benchmark tool, and evaluation scripts used in our USENIX FAST 2024 paper.
 
-* `./Prototype`: includes the implementation of the ELECT prototype.
-* `./YCSB`: includes the modified version of YCSB, which supports user-defined key and value sizes.
-* `./scripts`: includes the prototype setup and evaluation scripts.
-* `./ColdTier`: includes the simple in-cluster object storage implementation for ELECT evaluation.
+* `src/`: includes the implementation of the ELECT prototype as while as a simple object storage backend that can be deployed within a local cluster.
+* `scripts/`: includes the setup and evaluation scripts as while as our modified version of YCSB, which supports user-defined key and value sizes.
+
+## Artifact Evaluation Instructions
+
+Please refer to the [AE_INSTRUCTION.md](AE_INSTRUCTION.md) for details. We also include some scripts to reduce the overhead of environment setup.
 
 ## Prerequisites
 
@@ -17,11 +19,11 @@ As a distributed KV store, ELECT requires a cluster of machines to run. With the
 
 ### Dependencies
 
-* For Java project build (used for Prototype and YCSB): openjdk-11-jdk, openjdk-11-jre, ant, Maven.
-* For erasure-coding library build (used for Prototype via JNI): clang, llvm, libisal-dev.
+* For Java project build: openjdk-11-jdk, openjdk-11-jre, ant, Maven.
+* For erasure-coding library build: clang, llvm, libisal-dev.
 * For scripts: python3, ansible, python3-pip, cassandra-driver.
 
-The packages above can be directly installed via `apt` and `pip` package managers:
+The packages above can be directly installed via `apt-get` and `pip` package managers:
 
 ```shell 
 sudo apt-get install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip
@@ -73,7 +75,7 @@ ant -Duse.jdk11=true
 To avoid unstable access to Alibaba OSS (if cross-country), we use a server node within the same cluster as the cold tier to store the cold data. We use the `FileServer` tool to provide the file-based storage service. The `FileServer` tool is a simple file server that supports the following operations: `read`, and `write`. We provide the source code of the `FileServer` tool in `./ColdTier`. To build the `FileServer` tool, please run the following command:
 
 ```shell
-cd ColdTier
+cd src/coldTier
 make clean 
 make
 ```
@@ -187,7 +189,7 @@ We describe the detailed steps below.
 ### Run the file server at clod tier (~1 human-minutes + ~1 compute-minutes)
 
 ```shell
-cd ColdTier
+cd src/coldTier
 mkdir data # Create the data directories.
 nohup java FileServer ${port} >coldStorage.log 2>&1 & # ${port} should be replaced with the port number of the file server.
 ```
@@ -205,7 +207,7 @@ Server started on port: xxx
 After the `FileServer` is running correctly and configuring the cluster information in the `cassandra.yaml` file on each of the server nodes, we can run the ELECT cluster with the following command (on each server node):
 
 ```shell
-cd Prototype
+cd src/elect
 rm -rf data logs # Clean up the data and log directories.
 # Create the data directories.
 mkdir -p data/receivedParityHashes/
@@ -225,7 +227,7 @@ DEBUG [ScheduledTasks:1] 2023-12-13 18:45:25,030 MigrationCoordinator.java:264 -
 It will take about 1~2 minutes to fully set up the cluster. You can check the cluster status via the following command:
 
 ```shell
-cd Prototype
+cd src/elect
 bin/nodetool ring
 ```
 
@@ -251,7 +253,7 @@ After the ELECT cluster is set up, we can run the YCSB benchmark tool on the cli
 **Step 1:** Create the keyspace and set the replication factor for the YCSB benchmark.
 
 ```shell
-cd Prototype
+cd src/elect
 bin/cqlsh ${coordinator} -e "create keyspace ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 3 };
         USE ycsb;
         create table usertable0 (y_id varchar primary key, field0 varchar);
@@ -271,7 +273,7 @@ bin/cqlsh ${coordinator} -e "create keyspace ycsb WITH REPLICATION = {'class' : 
 **Step 2:** Load data into the ELECT cluster.
 
 ```shell
-cd YCSB
+cd scripts/ycsb
 bin/ycsb load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads ${threads} -s -P workloads/${workload}
 # The parameters:
 # ${NodesList}: the list of server nodes in the cluster. E.g., 192.168.0.1,192.168.0.2,192.168.0.3
@@ -283,7 +285,7 @@ bin/ycsb load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspa
 **Step 3:** Run benchmark with specific workloads.
 
 ```shell
-cd YCSB
+cd scripts/ycsb
 bin/ycsb run cassandra-cql -p hosts=${NodesList} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/${workload}
 # The parameters:
 # ${NodesList}: the list of server nodes in the cluster. E.g., 192.168.0.1,192.168.0.2,192.168.0.3

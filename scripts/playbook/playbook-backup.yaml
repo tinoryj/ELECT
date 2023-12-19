@@ -5,7 +5,7 @@
   become_user: elect
   tasks:
     - name: Copy files
-      command: bash PATH_TO_ELECT/scripts/Run/copyDB.sh {{ sourceFileDir }} {{ targetFileDir }} {{ configureFileDir }}
+      command: bash PATH_TO_ELECT/scripts/run/copyDB.sh {{ sourceFileDir }} {{ targetFileDir }} {{ configureFileDir }}
       vars:
         sourceFileDir: "PATH_TO_ELECT/Prototype/data"
         targetFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH"
