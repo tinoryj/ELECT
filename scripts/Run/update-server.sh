@@ -27,7 +27,7 @@ given_ip=${my_ip}
 index=$(find_ip_index $given_ip)
 
 cd ${PathToYCSB} || exit
-nvm clean packages
+mvn clean packages
 
 cd ${PathToColdTier} || exit
 make clean

@@ -10,7 +10,9 @@ We claim that the resultant numbers might differ from those in our paper due to 
 
 We provide scripts to set up the environment for the evaluation. The scripts are tested on Ubuntu 22.04 LTS. Note that the running time of the scripts depends on the node number, network bandwidth, and the performance of the cluster nodes.
 
-**Step 1:** Set up the cluster node info in `scripts/settings.sh` on each node. Please fill in the following variables in the script. Note that we assume all the nodes have the same configurations (e.g., same user name, same path to the artifact folder, same network interface name, etc.).
+**Step 1:** Set up and check the user account and sudo password on each node. We assume all the nodes have the same user name and password. We use will the user name and password to automatically setup the running environment. In additon, please also check whether each node have the same network interface name (for the given IP address). If not, please modify the `networkInterface` variable in `scripts/settings.sh` on each node.
+
+**Step 2:** Set up the cluster node info in `scripts/settings.sh` on each node. Please fill in the following variables in the script. Note that we assume all the nodes have the same configurations (e.g., same user name, same path to the artifact folder, same network interface name, etc.).
 
 ```shell
 NodesList=(192.168.0.21 192.168.0.22 192.168.0.23 192.168.0.25 192.168.0.26 192.168.0.28) # The IP addresses of the ELECT cluster nodes
@@ -26,7 +28,7 @@ PathToELECTLog="/home/${UserName}/ELECTLog" # The path to the log folder for sto
 PathToELECTResultSummary="/home/${UserName}/ELECTResules" # The path to the result summary folder for storing the final experiment results; we assume all the nodes have the same path. 
 ```
 
-**Step 2:** Run the following script on one of the nodes (we suggest running on the client node). This script will install the required packages, set up the environment variables, and set up the SSH connection between the nodes.
+**Step 3:** Run the following script on one of the nodes (we suggest running on the client node). This script will install the required packages, set up the environment variables, and set up the SSH connection between the nodes.
 
 ```shell
 bash scripts/setup.sh
