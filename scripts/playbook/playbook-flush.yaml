@@ -43,7 +43,7 @@
   tasks:
     - name: Force flush
       shell: |
-        . /etc/profile && cd PATH_TO_ELECT/Prototype && bin/nodetool flush
+        . /etc/profile && cd PATH_TO_ELECT/src/elect && bin/nodetool flush
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed

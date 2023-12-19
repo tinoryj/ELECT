@@ -7,9 +7,9 @@
     - name: Copy files
       command: bash PATH_TO_ELECT/scripts/run/copyDB.sh {{ sourceFileDir }} {{ targetFileDir }} {{ configureFileDir }}
       vars:
-        sourceFileDir: "PATH_TO_ELECT/Prototype/data"
+        sourceFileDir: "PATH_TO_ELECT/src/elect/data"
         targetFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH"
-        configureFileDir: "PATH_TO_ELECT/Prototype/conf/cassandra.yaml"
+        configureFileDir: "PATH_TO_ELECT/src/elect/conf/cassandra.yaml"
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed
