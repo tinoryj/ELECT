@@ -24,7 +24,7 @@ As a distributed KV store, ELECT requires a cluster of machines to run. With the
 The packages above can be directly installed via `apt` and `pip` package managers:
 
 ```shell 
-sudo apt install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip
+sudo apt-get install openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip
 pip install cassandra-driver
 ```
 

@@ -19,8 +19,8 @@ for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
 done
 
 # Install packages
-printf  ${sudoPasswd} | sudo -S apt update 
-printf  ${sudoPasswd} | sudo -S apt install -y ant maven clang llvm python3 ansible python3-pip #libisal-dev openjdk-11-jdk openjdk-11-jre 
+printf  ${sudoPasswd} | sudo -S apt-get update 
+printf  ${sudoPasswd} | sudo -S apt-get install -y ant maven clang llvm python3 ansible python3-pip #libisal-dev openjdk-11-jdk openjdk-11-jre 
 pip install cassandra-driver
 
 if [ ! -d "${PathToELECTResultSummary}" ]; then
