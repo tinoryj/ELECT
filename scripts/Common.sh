@@ -119,9 +119,9 @@ function flush {
     # Copy playbook
     setupNodeInfo hosts.ini
     # Modify playbook
-    sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Load"/" playbook-flush.yaml
-    sed -i "s/\(workload: \)".*"/workload: \"workloadLoad\"/" playbook-flush.yaml
-    sed -i "s/\(seconds: \)".*"/seconds: ${waitTime}/" playbook-flush.yaml
+    sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Load"/" ${PathToScripts}/Exp/playbook-flush.yaml
+    sed -i "s/\(workload: \)".*"/workload: \"workloadLoad\"/" ${PathToScripts}/Exp/playbook-flush.yaml
+    sed -i "s/\(seconds: \)".*"/seconds: ${waitTime}/" ${PathToScripts}/Exp/playbook-flush.yaml
     ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-flush.yaml
 }
 
@@ -142,11 +142,11 @@ function backup {
     # Copy playbook
     setupNodeInfo hosts.ini
     # Modify playbook
-    sed -i "s/Scheme/${targetScheme}/g" playbook-backup.yaml
+    sed -i "s/Scheme/${targetScheme}/g" ${PathToScripts}/Exp/playbook-backup.yaml
     if [ -z "${extraFlag}" ]; then
-        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" playbook-backup.yaml
+        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" ${PathToScripts}/Exp/playbook-backup.yaml
     else
-        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-Flags=${extraFlag}g" playbook-backup.yaml
+        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-Flags=${extraFlag}g" ${PathToScripts}/Exp/playbook-backup.yaml
     fi
     ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-backup.yaml
 }
@@ -169,9 +169,9 @@ function startupFromBackup {
     # Modify playbook
     sed -i "s/Scheme/${targetScheme}/g" playbook-startup.yaml
     if [ -z "${extraFlag}" ]; then
-        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" playbook-startup.yaml
+        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" ${PathToScripts}/Exp/playbook-startup.yaml
     else
-        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-Flags=${extraFlag}g" playbook-startup.yaml
+        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-Flags=${extraFlag}g" ${PathToScripts}/Exp/playbook-startup.yaml
     fi
     ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-startup.yaml
 }
@@ -208,20 +208,20 @@ function runExp {
         setupNodeInfo hosts.ini
         # Modify run palybook
         if [ ${targetScheme} == "cassandra" ]; then
-            sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" playbook-run.yaml
+            sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" ${PathToScripts}/Exp/playbook-run.yaml
         else
-            sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" playbook-run.yaml
+            sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" ${PathToScripts}/Exp/playbook-run.yaml
         fi
-        sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" playbook-run.yaml
-        sed -i "s/\(workload: \)".*"/workload: \"${workload}\"/" playbook-run.yaml
-        sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Run-${runningType}-Round-${round}"/" playbook-run.yaml
-        sed -i "s/record_count:.*$/record_count: ${KVNumber}/" playbook-run.yaml
-        sed -i "s/operation_count:.*$/operation_count: ${operationNumber}/" playbook-run.yaml
-        sed -i "s/\(consistency: \)".*"/consistency: ${consistency}/" playbook-run.yaml
+        sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" ${PathToScripts}/Exp/playbook-run.yaml
+        sed -i "s/\(workload: \)".*"/workload: \"${workload}\"/" ${PathToScripts}/Exp/playbook-run.yaml
+        sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Run-${runningType}-Round-${round}"/" ${PathToScripts}/Exp/playbook-run.yaml
+        sed -i "s/record_count:.*$/record_count: ${KVNumber}/" ${PathToScripts}/Exp/playbook-run.yaml
+        sed -i "s/operation_count:.*$/operation_count: ${operationNumber}/" ${PathToScripts}/Exp/playbook-run.yaml
+        sed -i "s/\(consistency: \)".*"/consistency: ${consistency}/" ${PathToScripts}/Exp/playbook-run.yaml
         if [ "${workload}" == "workloade" ] || [ "${workload}" == "workloadscan" ]; then
             # generate scanNumber = operationNumber / 10
             scanNumber=$((operationNumber / 10))
-            sed -i "s/operation_count:.*$/operation_count: ${scanNumber}/" playbook-run.yaml
+            sed -i "s/operation_count:.*$/operation_count: ${scanNumber}/" ${PathToScripts}/Exp/playbook-run.yaml
         fi
         ansible-playbook -v -i ${PathToScripts}/Exp/hosts.ini ${PathToScripts}/Exp/playbook-run.yaml
         ## Collect
