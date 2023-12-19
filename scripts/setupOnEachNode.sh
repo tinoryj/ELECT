@@ -1,4 +1,5 @@
 #!/bin/bash
+. /etc/profile
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 source "${SCRIPT_DIR}/settings.sh"
 
@@ -35,3 +36,5 @@ fi
 if [ ! -d "${PathToELECTResultSummary}" ]; then
     mkdir -p ${PathToELECTResultSummary}
 fi
+
+bash ${SCRIPT_DIR}/Run/update-server.sh

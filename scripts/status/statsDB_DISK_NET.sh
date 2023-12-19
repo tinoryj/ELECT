@@ -1,5 +1,8 @@
 #!/bin/bash
-source ../settings.sh
+. /etc/profile
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+source "${SCRIPT_DIR}/settings.sh"
+
 function statsDisk_Network_DB {
     expName=$1
     workload=$2

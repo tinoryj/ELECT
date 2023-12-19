@@ -25,12 +25,3 @@ gcc -I ${JAVA_HOME}/include/linux/ -I ${JAVA_HOME}/include/ -I /usr/includ \
     NativeRSEncoder.c NativeRSDecoder.c \
     -L/usr/lib -lisal
 echo "Complete generating libec.so!"
-
-# exit
-
-sudo mkdir -p /usr/lib
-sudo rm -rf /usr/lib/libec.so
-sudo cp libec.so /usr/lib
-ls /usr/lib | grep libec.so
-echo "Complete copy libec.so!"
-# g++ -I /usr/includ -Wall -g -fPIC -o test main.cpp erasure_coder.c dump.c NativeRSEncoder.c NativeRSDecoder.c -L/usr/lib -lisal

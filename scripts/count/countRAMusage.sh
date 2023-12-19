@@ -1,4 +1,5 @@
 #!/bin/bash
+. /etc/profile
 
 types=("normal" "degraded")
 roundNumber=5

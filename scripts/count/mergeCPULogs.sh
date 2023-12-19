@@ -1,4 +1,5 @@
 #!/bin/bash
+. /etc/profile
 
 ExpName="Exp4"
 SysName="elect"

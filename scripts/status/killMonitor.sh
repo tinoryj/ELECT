@@ -1,4 +1,5 @@
 #!/bin/bash
+. /etc/profile
 
 while true; do
     kill -9 $(ps aux | grep "statsCPU_RAM.sh" | grep -v grep | awk 'NR == 1' | awk '{print $2}')
