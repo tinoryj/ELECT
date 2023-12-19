@@ -4,18 +4,17 @@
   become: yes
   become_user: elect
   tasks:
-    - name: Execute script start-server.sh
+    - name: Rebuild and start OSS file server
       shell: |
         . /etc/profile &&
-        bash PATH_TO_ELECT/scripts/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ concurrentEC }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
+        bash PATH_TO_ELECT/scripts/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
       vars:
         maxLevel: 9
         initialDelay:  65536
-        concurrentEC: 64
         target_saving: 0.6
         data_block_num: 4
         parity_block_num: 2
-        mode: "raw"
+        mode: "cassandra"
       register: command_result
       ignore_errors: True
     - name: Fail the play if the previous command did not succeed
@@ -33,15 +32,14 @@
     - name: Execute script start-server.sh
       shell: |
         . /etc/profile &&
-        bash PATH_TO_ELECT/scripts/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ concurrentEC }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
+        bash PATH_TO_ELECT/scripts/Run/start-server.sh {{ maxLevel }} {{ initialDelay }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
       vars:
         maxLevel: 9
         initialDelay:  65536
-        concurrentEC: 64
         target_saving: 0.6
         data_block_num: 4
         parity_block_num: 2
-        mode: "raw"
+        mode: "cassandra"
       register: command_result
       ignore_errors: True
     - name: Fail the play if the previous command did not succeed

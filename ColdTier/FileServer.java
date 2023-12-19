@@ -63,7 +63,7 @@ public class FileServer {
                 String targetFilePath = objectInputStream.readUTF();
                 byte[] content = (byte[]) objectInputStream.readObject();
                 System.out.println("Upload file path: " + targetFilePath + ", content length: " + content.length);
-                File targetFile = new File(targetFilePath);
+                File targetFile = new File("data/" + targetFilePath);
                 try (FileOutputStream fileOutputStream = new FileOutputStream(targetFile)) {
                     fileOutputStream.write(content);
                 }
@@ -79,7 +79,7 @@ public class FileServer {
         private void handleDownload(ObjectInputStream objectInputStream, ObjectOutputStream objectOutputStream)
                 throws IOException {
             String originalFilePath = objectInputStream.readUTF();
-            File file = new File(originalFilePath);
+            File file = new File("data/" + originalFilePath);
             System.out.println("Download file path: " + originalFilePath + ", file exists: " + file.exists());
             if (file.exists()) {
                 byte[] content = Files.readAllBytes(file.toPath());

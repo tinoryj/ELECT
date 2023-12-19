@@ -1,6 +1,6 @@
 #!/bin/bash
 . /etc/profile
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../Common.sh"
 
 function startServerNode {
@@ -9,16 +9,16 @@ function startServerNode {
 
     maxLevel=$1
     initialDelay=$2
-    targetStorageSaving=$4
-    dataBlockNum=$5
-    parityBlockNum=$6
-    mode=$7
+    targetStorageSaving=$3
+    dataBlockNum=$4
+    parityBlockNum=$5
+    mode=$6
 
     cd ${PathToELECTPrototype}
-
     if [ -f conf/cassandra.yaml ]; then
         echo "Remove old conf/cassandra.yaml"
         rm conf/cassandra.yaml
+        cp ${PathToELECTPrototype}/../elect.yaml ${PathToELECTPrototype}/conf/cassandra.yaml
     fi
 
     rm -rf data logs
@@ -28,7 +28,7 @@ function startServerNode {
     mkdir -p data/tmp/
     mkdir -p logs
 
-    # varify value of maxLevel
+    # varify mode
     if [ ${mode} == "cassandra" ]; then
         sed -i "s/enable_migration:.*$/enable_migration: false/" conf/cassandra.yaml
         sed -i "s/enable_erasure_coding:.*$/enable_erasure_coding: false/" conf/cassandra.yaml
@@ -49,4 +49,4 @@ function startServerNode {
     nohup bin/cassandra >logs/debug.log 2>&1 &
 }
 
-func "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+startServerNode "$1" "$2" "$3" "$4" "$5" "$6"
