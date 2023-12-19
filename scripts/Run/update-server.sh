@@ -30,7 +30,7 @@ if [ $index -ne -1 ]; then
     echo "This node is the $index node of ELECT cluster, update server configuration"
     selected_token=${tokens[$index]}
     echo "selected_token: ${selected_token}"
-    exit
+
     cd ${PathToELECTPrototype}
     sed -i "s/initial_token:.*$/initial_token: ${selected_token}/" ${PathToELECTPrototype}/conf/cassandra.yaml
     tokens_string=$(
