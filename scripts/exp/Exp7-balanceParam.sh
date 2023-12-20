@@ -9,8 +9,8 @@ schemes=("cassandra" "elect")
 workloads=("workloadRead" "workloadWrite" "workloadScan" "workloadUpdate")
 runningTypes=("normal" "degraded")
 KVNumber=10000000
-keylength=24
-fieldlength=1000
+keyLength=24
+valueLength=1000
 operationNumber=1000000
 simulatedClientNumber=16
 RunningRoundNumber=1
@@ -23,7 +23,7 @@ for scheme in "${schemes[@]}"; do
     for storageSavingTarget in "${storageSavingTargetSet[@]}"; do
         echo "Start experiment of ${scheme} with storage saving target=${storageSavingTarget}"
         # Load data for evaluation
-        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${operationNumber}" "${simulatedClientNumber}" "${storageSavingTarget}"
+        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${storageSavingTarget}"
 
         # Run experiment
         doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${operationNumber}" "${simulatedClientNumber}" "${runningTypes[@]}" "${workloads[@]}" "${RunningRoundNumber}"

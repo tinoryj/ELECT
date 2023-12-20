@@ -9,8 +9,8 @@ schemes=("cassandra" "elect")
 workloads=("workloadRead")
 runningTypes=("normal" "degraded")
 KVNumber=10000000
-keylengthSet=(8 16 32 64 128)
-fieldlengthSet=(32 128 512 2048 8192)
+keyLengthSet=(8 16 32 64 128)
+valueLengthSet=(32 128 512 2048 8192)
 fixedKeylength=32
 fixedFieldlength=512
 operationNumber=1000000
@@ -22,17 +22,17 @@ setupNodeInfo ./hosts.ini
 # Run Exp
 for scheme in "${schemes[@]}"; do
     echo "Start experiment of ${scheme}"
-    for keylength in "${keylengthSet[@]}"; do
+    for keyLength in "${keyLengthSet[@]}"; do
         # Load data for evaluation
-        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keylength}" "${fixedFieldlength}" "${operationNumber}" "${simulatedClientNumber}"
+        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${fixedFieldlength}" "${operationNumber}" "${simulatedClientNumber}"
 
         # Run experiment
         doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${operationNumber}" "${simulatedClientNumber}" "${runningTypes[@]}" "${workloads[@]}" "${RunningRoundNumber}"
     done
 
-    for fieldlength in "${fieldlengthSet[@]}"; do
+    for valueLength in "${valueLengthSet[@]}"; do
         # Load data for evaluation
-        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${fixedKeylength}" "${fieldlength}" "${operationNumber}" "${simulatedClientNumber}"
+        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${fixedKeylength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}"
 
         # Run experiment
         doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${operationNumber}" "${simulatedClientNumber}" "${runningTypes[@]}" "${workloads[@]}" "${RunningRoundNumber}"

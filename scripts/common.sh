@@ -298,6 +298,7 @@ function loadDataForEvaluation {
     storageSavingTarget=${7:-"0.6"}
     codingK=${8:-"4"}
     extraFlag=${9:-}
+    
     echo "The evaluation setting is ${scheme} (Loading), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}, storageSavingTarget is ${storageSavingTarget}, codingK is ${codingK}, extraFlag is ${extraFlag}."
 
     # Gen params

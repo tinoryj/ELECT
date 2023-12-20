@@ -9,8 +9,8 @@ schemes=("cassandra" "elect")
 workloads=("workloadRead" "workloadWrite")
 runningTypes=("normal" "degraded")
 KVNumber=10000000
-keylength=24
-fieldlength=1000
+keyLength=24
+valueLength=1000
 operationNumber=1000000
 simulatedClientNumber=16
 RunningRoundNumber=1
@@ -24,7 +24,7 @@ for scheme in "${schemes[@]}"; do
     for erasureCodingK in "${erasureCodingKSet[@]}"; do
         echo "Start experiment of ${scheme} with erasure coding K=${erasureCodingK}"
         # Load data for evaluation
-        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${operationNumber}" "${simulatedClientNumber}" "${storageSavingTarget}" "${erasureCodingK}"
+        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${storageSavingTarget}" "${erasureCodingK}"
 
         # Run experiment
         doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${operationNumber}" "${simulatedClientNumber}" "${runningTypes[@]}" "${workloads[@]}" "${RunningRoundNumber}"

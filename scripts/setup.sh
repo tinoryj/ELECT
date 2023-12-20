@@ -3,26 +3,24 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/settings.sh"
 
-# SSH keygen on control node
-if [ ! -f ~/.ssh/id_rsa ]; then
-    ssh-keygen -q -t rsa -b 2048 -N "" -f ~/.ssh/id_rsa
-fi
 # SSH key-free connection from control node to all nodes
-
 for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
     if [ ${UserName} == "cc" ]; then
         scp ~/.ssh/config cc@${nodeIP}:~/.ssh/
         scp ~/.ssh/id_rsa cc@${nodeIP}:~/.ssh/
     else
         echo "Set SSH key-free connection to node ${nodeIP}"
+        # SSH keygen on control node
+        if [ ! -f ~/.ssh/id_rsa ]; then
+            ssh-keygen -q -t rsa -b 2048 -N "" -f ~/.ssh/id_rsa
+        fi
         ssh-keyscan -H ${nodeIP} >>~/.ssh/known_hosts
         ssh-copy-id -i ~/.ssh/id_rsa.pub ${UserName}@${nodeIP}
     fi
 done
 
 for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
-    ssh ${UserName}@${nodeIP} "rm -rf ${PathToArtifact}"
-    scp -r ${PathToArtifact} ${UserName}@${nodeIP}:~/
+    rsync -av --progress ${PathToArtifact} ${UserName}@${nodeIP}:~/
 done
 
 # Install packages

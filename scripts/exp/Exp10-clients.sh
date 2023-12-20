@@ -9,8 +9,8 @@ schemes=("cassandra" "elect")
 workloads=("workloadRead" "workloadWrite")
 runningTypes=("normal")
 KVNumber=10000000
-keylength=24
-fieldlength=1000
+keyLength=24
+valueLength=1000
 operationNumber=1000000
 simulatedClientNumberSet=(8 16 32 64 128 256)
 RunningRoundNumber=1
@@ -21,7 +21,7 @@ setupNodeInfo ./hosts.ini
 for scheme in "${schemes[@]}"; do
     echo "Start experiment of ${scheme}"
     # Load data for evaluation
-    loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
+    loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}"
 
     # Run experiment
     for simulatedClientNumber in "${simulatedClientNumberSet[@]}"; do

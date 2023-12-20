@@ -38,7 +38,7 @@ if [ $index -ne -1 ]; then
     selected_token=${tokens[$index]}
     echo "selected_token: ${selected_token}"
 
-    cd ${PathToELECTPrototype}
+    cd ${PathToELECTPrototype} || exit
     sed -i "s/initial_token:.*$/initial_token: ${selected_token}/" ${PathToELECTPrototype}/conf/cassandra.yaml
     tokens_string=$(
         IFS=,
@@ -72,7 +72,7 @@ if [ $index -ne -1 ]; then
     mkdir -p logs
     ant realclean && ant -Duse.jdk11=true
 
-    cd ${PathToELECTPrototype}/src/native/src/org/apache/cassandra/io/erasurecode/
+    cd ${PathToELECTPrototype}/src/native/src/org/apache/cassandra/io/erasurecode/ || exit
     ./genlib.sh
     rm -rf ${PathToELECTPrototype}/lib/sigar-bin/libec.so
     cp ${PathToELECTPrototype}/src/native/src/org/apache/cassandra/io/erasurecode/libec.so ${PathToELECTPrototype}/lib/sigar-bin
