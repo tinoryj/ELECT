@@ -25,9 +25,9 @@
     - name: Execute script start-server.sh
       shell: |
         . /etc/profile &&
-        bash PATH_TO_ELECT/scripts/run/start-server.sh {{ teeLevels }} {{ initialDelay }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
+        bash PATH_TO_ELECT/scripts/run/start-server.sh {{ treeLevels }} {{ initialDelay }} {{ target_saving }} {{ data_block_num }} {{ parity_block_num }} {{ mode }}
       vars:
-        teeLevels: 9
+        treeLevels: 9
         initialDelay:  65536
         target_saving: 0.6
         data_block_num: 4

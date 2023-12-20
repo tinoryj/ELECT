@@ -54,6 +54,60 @@ function setupNodeInfo {
     done
 }
 
+function treeSizeEstimation {
+    KVNumber=$1
+    keylength=$2
+    fieldlength=$3
+    initial_count=${SSTableSize}
+    ratio=${LSMTreeFanOutRatio}
+    target_count=$((KVNumber * (keylength + fieldlength) / NodeNumber / 1024 / 1024 / 4))
+
+    current_count=$initial_count
+    current_level=1
+
+    while [ $current_count -lt $target_count ]; do
+        current_count=$((current_count * ratio))
+        current_level=$((current_level + 1))
+    done
+    treeLevels=$((current_level))
+    echo ${treeLevels}
+}
+
+function dataSizeEstimation {
+    KVNumber=$1
+    keylength=$2
+    fieldlength=$3
+    dataSizeOnEachNode=$(echo "scale=2; $KVNumber * ($keylength + $fieldlength) / $NodeNumber / 1024 / 1024 / 1024 * 3" | bc)
+    echo ${dataSizeOnEachNode}
+}
+
+function initialDelayEstimation {
+    dataSizeOnEachNode=$1
+    scheme=$2
+    if [ "${scheme}" == "cassandra" ]; then
+        initialDelay=65536
+        echo ${initialDelay}
+    else
+        initialDellayLocal=$(echo "scale=2; $dataSizeOnEachNode * 8" | bc)
+        initialDellayLocalCeil=$(echo "scale=0; (${initialDellayLocal} + 0.5)/1" | bc)
+        echo ${initialDellayLocalCeil}
+    fi
+}
+
+function waitFlushCompactionTimeEstimation {
+    dataSizeOnEachNode=$1
+    scheme=$2
+    if [ "${scheme}" == "cassandra" ]; then
+        waitTime=$(echo "scale=2; $dataSizeOnEachNode * 500" | bc)
+        waitTimeCeil=$(echo "scale=0; (${waitTime} + 0.5)/1" | bc)
+        echo ${waitTimeCeil}
+    else
+        waitTime=$(echo "scale=2; ($dataSizeOnEachNode * 1024  / 4 / 3 / ($concurrentEC / 2)) * 80 + $dataSizeOnEachNode * 500" | bc)
+        waitTimeCeil=$(echo "scale=0; (${waitTime} + 0.5)/1" | bc)
+        echo ${waitTimeCeil}
+    fi
+}
+
 function load {
     expName=$1
     targetScheme=$2
@@ -72,18 +126,21 @@ function load {
 
     # Generate playbook
     setupNodeInfo hosts.ini
+    dataSizeOnEachNode=$(dataSizeEstimation ${KVNumber} ${keylength} ${fieldlength})
+    initialDelayTime=$(initialDelayEstimation ${dataSizeOnEachNode} ${targetScheme})
+    treeLevels=$(treeSizeEstimation ${KVNumber} ${keylength} ${fieldlength})
     # Modify load playbook
     if [ ${targetScheme} == "cassandra" ]; then
         sed -i "s/\(mode: \)".*"/mode: cassandra/" ${SCRIPT_DIR}/exp/playbook-load.yaml
         sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" ${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(teeLevels: \)".*"/teeLevels: 9/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(treeLevels: \)".*"/treeLevels: 9/" ${SCRIPT_DIR}/exp/playbook-load.yaml
         sed -i "s/\(initialDelay: \)".*"/initialDelay: 65536/" ${SCRIPT_DIR}/exp/playbook-load.yaml
         sed -i "s/\(concurrentEC: \)".*"/concurrentEC: 0/" ${SCRIPT_DIR}/exp/playbook-load.yaml
     elif [ ${targetScheme} == "elect" ]; then
         sed -i "s/\(mode: \)".*"/mode: elect/" ${SCRIPT_DIR}/exp/playbook-load.yaml
         sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" ${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(teeLevels: \)".*"/teeLevels: ${teeLevels}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(initialDelay: \)".*"/initialDelay: ${initialDelay}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(treeLevels: \)".*"/treeLevels: ${treeLevels}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(initialDelay: \)".*"/initialDelay: ${initialDelayTime}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
         sed -i "s/\(target_saving: \)".*"/target_saving: ${storageSavingTarget}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
         sed -i "s/\(data_block_num: \)".*"/data_block_num: ${ecK}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
         sed -i "s/\(parity_block_num: \)".*"/parity_block_num: 2/" ${SCRIPT_DIR}/exp/playbook-load.yaml
@@ -237,60 +294,6 @@ function runExp {
 
 }
 
-function treeSizeEstimation {
-    KVNumber=$1
-    keylength=$2
-    fieldlength=$3
-    initial_count=${SSTableSize}
-    ratio=${LSMTreeFanOutRatio}
-    target_count=$((KVNumber * (keylength + fieldlength) / NodeNumber / 1024 / 1024 / 4))
-
-    current_count=$initial_count
-    current_level=1
-
-    while [ $current_count -lt $target_count ]; do
-        current_count=$((current_count * ratio))
-        current_level=$((current_level + 1))
-    done
-    teeLevels=$((current_level))
-    echo ${teeLevels}
-}
-
-function dataSizeEstimation {
-    KVNumber=$1
-    keylength=$2
-    fieldlength=$3
-    dataSizeOnEachNode=$(echo "scale=2; $KVNumber * ($keylength + $fieldlength) / $NodeNumber / 1024 / 1024 / 1024 * 3" | bc)
-    echo ${dataSizeOnEachNode}
-}
-
-function initialDelayEstimation {
-    dataSizeOnEachNode=$1
-    scheme=$2
-    if [ "${scheme}" == "cassandra" ]; then
-        initialDelay=65536
-        echo ${initialDelay}
-    else
-        initialDellayLocal=$(echo "scale=2; $dataSizeOnEachNode * 8" | bc)
-        initialDellayLocalCeil=$(echo "scale=0; (${initialDellayLocal} + 0.5)/1" | bc)
-        echo ${initialDellayLocalCeil}
-    fi
-}
-
-function waitFlushCompactionTimeEstimation {
-    dataSizeOnEachNode=$1
-    scheme=$2
-    if [ "${scheme}" == "cassandra" ]; then
-        waitTime=$(echo "scale=2; $dataSizeOnEachNode * 500" | bc)
-        waitTimeCeil=$(echo "scale=0; (${waitTime} + 0.5)/1" | bc)
-        echo ${waitTimeCeil}
-    else
-        waitTime=$(echo "scale=2; ($dataSizeOnEachNode * 1024  / 4 / 3 / ($concurrentEC / 2)) * 80 + $dataSizeOnEachNode * 500" | bc)
-        waitTimeCeil=$(echo "scale=0; (${waitTime} + 0.5)/1" | bc)
-        echo ${waitTimeCeil}
-    fi
-}
-
 function loadDataForEvaluation {
     expName=$1
     scheme=$2
@@ -306,7 +309,7 @@ function loadDataForEvaluation {
     dataSizeOnEachNode=$(dataSizeEstimation ${KVNumber} ${keylength} ${fieldlength})
     initialDelayTime=$(initialDelayEstimation ${dataSizeOnEachNode} ${scheme})
     waitFlushCompactionTime=$(waitFlushCompactionTimeEstimation ${dataSizeOnEachNode} ${scheme})
-    teeLevels=$(treeSizeEstimation ${KVNumber} ${keylength} ${fieldlength})
+    treeLevels=$(treeSizeEstimation ${KVNumber} ${keylength} ${fieldlength})
 
     # Outpout params
     echo "Start experiment to Loading ${scheme}, expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}, storageSavingTarget is ${storageSavingTarget}, codingK is ${codingK}, extraFlag is ${extraFlag}. Estimation of data size on each node is ${dataSizeOnEachNode} GiB, initial delay is ${initialDelayTime}, flush and compaction wait time is ${waitFlushCompactionTime}."

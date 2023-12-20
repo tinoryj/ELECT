@@ -14,7 +14,7 @@ function startOSSNode {
         mkdir -p data
     fi
 
-    nohup java FileServer ${OSSServerPort} >>${PathToArtifact}/ColdTier/OSSLog.txt 2>&1 &
+    nohup java FileServer ${OSSServerPort} >>${PathToArtifact}/src/coldTier/OSSLog.txt 2>&1 &
 }
 
 startOSSNode
