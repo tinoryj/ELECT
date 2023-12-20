@@ -23,7 +23,7 @@ function statsDisk_Network_DB {
     echo "Bytes sent: $TX_BYTES" >>$NET_OUTPUT_FILE
 
     # Mount point
-    MOUNT_POINT="/mnt/ssd"
+    MOUNT_POINT="/"
 
     # File to store the results
     IO_OUTPUT_FILE="${PathToELECTLog}/${expName}_${workload}_${stage}_disk_io_total.txt"

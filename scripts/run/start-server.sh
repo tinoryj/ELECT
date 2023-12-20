@@ -13,6 +13,7 @@ function startServerNode {
     dataBlockNum=$4
     parityBlockNum=$5
     mode=$6
+    
     echo "treeLevels: ${treeLevels}, initialDelay: ${initialDelay}, targetStorageSaving: ${targetStorageSaving}, dataBlockNum: ${dataBlockNum}, parityBlockNum: ${parityBlockNum}, mode: ${mode}"
 
     cd ${PathToELECTPrototype}

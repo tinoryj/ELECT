@@ -29,9 +29,9 @@
       vars:
         teeLevels: 9
         initialDelay:  65536
-        target_saving: 0
-        data_block_num: 0
-        parity_block_num: 0
+        target_saving: 0.6
+        data_block_num: 4
+        parity_block_num: 2
         mode: "elect"
       register: command_result
       ignore_errors: True
