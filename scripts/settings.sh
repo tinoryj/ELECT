@@ -32,7 +32,7 @@ FullNodeList+=("${ClientNode}")
 networkInterface=""
 
 # Loop through each IP in the list
-for ip in "${NodesList[@]}"; do
+for ip in "${FullNodeList[@]}"; do
     # Check each IP against all local interfaces
     while IFS= read -r line; do
         iface_name=$(echo "$line" | awk '{print $2}')
