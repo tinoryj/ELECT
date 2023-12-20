@@ -6,7 +6,7 @@ source "${SCRIPT_DIR}/../common.sh"
 function startServerNode {
 
     kill -9 $(ps aux | grep CassandraDaemon | grep -v grep | awk 'NR == 1' | awk {'print $2'})
-
+    sleep 2
     treeLevels=$1
     initialDelay=$2
     targetStorageSaving=$3

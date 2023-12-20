@@ -102,7 +102,7 @@ function load {
     ## Collect load logs
     for nodeIP in "${NodesList[@]}"; do
         echo "Copy loading stats of loading for ${expName}-${targetScheme} back, current working on node ${nodeIP}"
-        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Load-${nodeIP}
+        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
         ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
 }
@@ -225,7 +225,7 @@ function runExp {
     ## Collect running logs
     for nodeIP in "${NodesList[@]}"; do
         echo "Copy loading stats of loading for ${expName}-${targetScheme} back, current working on node ${nodeIP}"
-        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Load-${nodeIP}
+        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
         ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
 

@@ -93,4 +93,4 @@ function statsDisk_Network_DB {
         }' >>"$DB_OUTPUT_FILE"
 }
 
-func "$1" "$2" "$3"
+statsDisk_Network_DB "$1" "$2" "$3"

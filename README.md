@@ -294,3 +294,13 @@ bin/ycsb run cassandra-cql -p hosts=${NodesList} -p cassandra.readconsistencylev
 # ${threads}: the number of threads (number of simulated clients) of the YCSB benchmark. E.g., 1, 2, 4, 8, 16, 32, 64
 # ${workload}: the workload file of the YCSB benchmark. E.g., workloads/workloada, workloads/workloadb, workloads/workloadc
 ```
+
+## Common problems
+
+### The ELECT cluster cannot be booted correctly
+
+Please check the system clock of all the nodes in the cluster. The system clock of all the nodes should be synchronized. You can use the following command to synchronize the system clock of all the nodes in the cluster.
+
+```shell
+sudo date 122015002023 # set the date to  2023-12-20-15:00
+```
