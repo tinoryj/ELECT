@@ -39,8 +39,9 @@ for ip in "${FullNodeList[@]}"; do
         iface_ip=$(echo $interface | cut -d ' ' -f 2 | cut -d '/' -f 1)
         
         # If the IP matches, save the interface name
-        if [ "$ip" == "$iface_ip" ]; then
+        if [ "$ip" == "$iface_ip" ] && [ "$iface_name" != "lo" ]; then
             networkInterface=$iface_name
+            echo $iface_name
             break 2
         fi
     done
