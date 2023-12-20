@@ -5,7 +5,7 @@ source "${SCRIPT_DIR}/../common.sh"
 # Exp8: YCSB core workloads, 3-way replication, (K+2,k) encoding, 60% target storage saving, 10M KV + 1M OP.
 
 ExpName="Exp8-ecParam"
-schemes=("cassandra" "elect")
+schemes=("elect")
 workloads=("workloadRead" "workloadWrite")
 runningTypes=("normal" "degraded")
 KVNumber=10000000

@@ -102,6 +102,9 @@ function load {
     ## Collect load logs
     for nodeIP in "${NodesList[@]}"; do
         echo "Copy loading stats of loading for ${expName}-${targetScheme} back, current working on node ${nodeIP}"
+        if [ ! -d ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP} ]; then
+            mkdir -p ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
+        fi
         scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
         ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
@@ -143,7 +146,7 @@ function backup {
     setupNodeInfo hosts.ini
     # Modify playbook
     sed -i "s/Scheme/${targetScheme}/g" ${PathToScripts}/exp/playbook-backup.yaml
-    sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" ${PathToScripts}/exp/playbook-backup.yaml
+    sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}/g" ${PathToScripts}/exp/playbook-backup.yaml
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-backup.yaml
 }
 
@@ -164,7 +167,7 @@ function startupFromBackup {
     setupNodeInfo hosts.ini
     # Modify playbook
     sed -i "s/Scheme/${targetScheme}/g" ${PathToScripts}/exp/playbook-startup.yaml
-    sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" ${PathToScripts}/exp/playbook-startup.yaml
+    sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}/g" ${PathToScripts}/exp/playbook-startup.yaml
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-startup.yaml
 }
 
@@ -225,6 +228,9 @@ function runExp {
     ## Collect running logs
     for nodeIP in "${NodesList[@]}"; do
         echo "Copy loading stats of loading for ${expName}-${targetScheme} back, current working on node ${nodeIP}"
+        if [ ! -d ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP} ]; then
+            mkdir -p ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
+        fi
         scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
         ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
