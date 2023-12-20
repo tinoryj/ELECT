@@ -1,7 +1,7 @@
 #!/bin/bash
 . /etc/profile
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-source "${SCRIPT_DIR}/settings.sh"
+source ${SCRIPT_DIR}/settings.sh"
 
 playbookSet=(playbook-load.yaml playbook-run.yaml playbook-flush.yaml playbook-backup.yaml playbook-startup.yaml playbook-fail.yaml playbook-recovery.yaml)
 
@@ -49,8 +49,8 @@ function setupNodeInfo {
             cp ${SCRIPT_DIR}/playbook/${playbook} ${SCRIPT_DIR}/exp/${playbook}
         fi
         sed -i "s/\(become_user: \)".*"/become_user: ${UserName}/" ${SCRIPT_DIR}/exp/${playbook}
-        sed -i "s|PATH_TO_ELECT|${PathToArtifact}|g" "${SCRIPT_DIR}/exp/${playbook}"
-        sed -i "s|PATH_TO_DB_BACKUP|${PathToELECTExpDBBackup}|g" "${SCRIPT_DIR}/exp/${playbook}"
+        sed -i "s|PATH_TO_ELECT|${PathToArtifact}|g" ${SCRIPT_DIR}/exp/${playbook}"
+        sed -i "s|PATH_TO_DB_BACKUP|${PathToELECTExpDBBackup}|g" ${SCRIPT_DIR}/exp/${playbook}"
     done
 }
 
@@ -74,27 +74,27 @@ function load {
     setupNodeInfo hosts.ini
     # Modify load playbook
     if [ ${targetScheme} == "cassandra" ]; then
-        sed -i "s/\(mode: \)".*"/mode: cassandra/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(teeLevels: \)".*"/teeLevels: 9/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(initialDelay: \)".*"/initialDelay: 65536/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(concurrentEC: \)".*"/concurrentEC: 0/" "${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(mode: \)".*"/mode: cassandra/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(teeLevels: \)".*"/teeLevels: 9/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(initialDelay: \)".*"/initialDelay: 65536/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(concurrentEC: \)".*"/concurrentEC: 0/" ${SCRIPT_DIR}/exp/playbook-load.yaml
     elif [ ${targetScheme} == "elect" ]; then
-        sed -i "s/\(mode: \)".*"/mode: elect/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(teeLevels: \)".*"/teeLevels: ${teeLevels}/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(initialDelay: \)".*"/initialDelay: ${initialDelay}/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(target_saving: \)".*"/target_saving: ${storageSavingTarget}/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(data_block_num: \)".*"/data_block_num: ${ecK}/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-        sed -i "s/\(parity_block_num: \)".*"/parity_block_num: 2/" "${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(mode: \)".*"/mode: elect/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(teeLevels: \)".*"/teeLevels: ${teeLevels}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(initialDelay: \)".*"/initialDelay: ${initialDelay}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(target_saving: \)".*"/target_saving: ${storageSavingTarget}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(data_block_num: \)".*"/data_block_num: ${ecK}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+        sed -i "s/\(parity_block_num: \)".*"/parity_block_num: 2/" ${SCRIPT_DIR}/exp/playbook-load.yaml
     fi
 
-    sed -i "s/\(expName: \)".*"/expName: "${expName}-${targetScheme}-Load"/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-    sed -i "s/record_count:.*$/record_count: ${KVNumber}/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-    sed -i "s/key_length:.*$/key_length: ${keylength}/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-    sed -i "s/filed_length:.*$/filed_length: ${fieldlength}/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-    sed -i "s/\(workload: \)".*"/workload: \"workloadLoad\"/" "${SCRIPT_DIR}/exp/playbook-load.yaml
-    sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" "${SCRIPT_DIR}/exp/playbook-load.yaml
+    sed -i "s/\(expName: \)".*"/expName: "${expName}-${targetScheme}-Load"/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+    sed -i "s/record_count:.*$/record_count: ${KVNumber}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+    sed -i "s/key_length:.*$/key_length: ${keylength}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+    sed -i "s/filed_length:.*$/filed_length: ${fieldlength}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+    sed -i "s/\(workload: \)".*"/workload: \"workloadLoad\"/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+    sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
 
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-load.yaml
 
@@ -305,7 +305,7 @@ function loadDataForEvaluation {
 
     # Outpout params
     echo "Start experiment to ${scheme} (Loading), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}. Estimation of data size on each node is ${dataSizeOnEachNode} GiB, initial delay is ${initialDelayTime}, flush and compaction wait time is ${waitFlushCompactionTime}."
-    ehco ""
+    echo ""
     echo "The total running time is estimated to be (( (${waitFlushCompactionTime} + ${KVNumber}/20000)/60 )) minutes."
 
     # Load

@@ -2,7 +2,7 @@
 . /etc/profile
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/settings.sh"
-
+setupMode=${1:-"update"}
 # SSH key-free connection from control node to all nodes
 for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
     if [ ${UserName} == "cc" ]; then
@@ -22,6 +22,10 @@ done
 for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
     rsync -av --progress ${PathToArtifact} ${UserName}@${nodeIP}:~/
 done
+
+if [ ! $setupMode == "full" ]; then
+    exit 0
+fi
 
 # Install packages
 if [ ! -z "${sudoPasswd}" ]; then
