@@ -32,19 +32,18 @@ FullNodeList+=("${ClientNode}")
 networkInterface=""
 
 # Loop through each IP in the list
-for ip in "${FullNodeList[@]}"; do
+for ip in "${NodesList[@]}"; do
     # Check each IP against all local interfaces
-    for interface in $(ip -o -4 addr list | awk '{print $2, $4}'); do
-        iface_name=$(echo $interface | awk '{print $1}')
-        iface_ip=$(echo $interface | awk '{print $2}' | cut -d'/' -f1)
-        echo $iface_name
-        echo $iface_ip
+    while IFS= read -r line; do
+        iface_name=$(echo "$line" | awk '{print $2}')
+        iface_ip=$(echo "$line" | awk '{print $4}' | cut -d'/' -f1)
+
         # If the IP matches, save the interface name
-        if [ "$ip" == "$iface_ip" ] && [ "$iface_name" != "lo" ]; then
+        if [[ "$ip" == "$iface_ip" ]]; then
             networkInterface=$iface_name
             break 2
         fi
-    done
+    done < <(ip -o -4 addr list)
 done
 
 # Output the result
