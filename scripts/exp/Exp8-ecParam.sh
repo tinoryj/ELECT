@@ -14,7 +14,7 @@ valueLength=1000
 operationNumber=1000000
 simulatedClientNumber=32
 RunningRoundNumber=1
-erasureCodingKSet=(4 5 6 7 8)
+erasureCodingKSet=(2 3 4)
 storageSavingTarget=0.6
 
 # Setup hosts
