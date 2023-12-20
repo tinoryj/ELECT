@@ -18,5 +18,5 @@ sed -i "s/operationcount=.*$/operationcount=${operationcount}/" workloads/"${wor
 
 file_name="${expName}-${workload}-KVNumber-${recordcount}-OPNumber-${operationcount}-ClientNumber-${threads}-Time-$(date +%s)"
 
-bin/ycsb run cassandra-cql -p hosts=${NodesList} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/"${workload}" >${PathToELECTResultSummary}/"${file_name}".log 2>&1
+bin/ycsb.sh run cassandra-cql -p hosts=${NodesList} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/"${workload}" >${PathToELECTResultSummary}/"${file_name}".log 2>&1
 

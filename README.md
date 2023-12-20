@@ -274,7 +274,7 @@ bin/cqlsh ${coordinator} -e "create keyspace ycsb WITH REPLICATION = {'class' : 
 
 ```shell
 cd scripts/ycsb
-bin/ycsb load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads ${threads} -s -P workloads/${workload}
+bin/ycsb.sh load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads ${threads} -s -P workloads/${workload}
 # The parameters:
 # ${NodesList}: the list of server nodes in the cluster. E.g., 192.168.0.1,192.168.0.2,192.168.0.3
 # ${keyspace}: the keyspace name of the YCSB benchmark. E.g., ycsb for ELECT and ycsbraw for raw Cassandra.
@@ -286,7 +286,7 @@ bin/ycsb load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspa
 
 ```shell
 cd scripts/ycsb
-bin/ycsb run cassandra-cql -p hosts=${NodesList} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/${workload}
+bin/ycsb.sh run cassandra-cql -p hosts=${NodesList} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/${workload}
 # The parameters:
 # ${NodesList}: the list of server nodes in the cluster. E.g., 192.168.0.1,192.168.0.2,192.168.0.3
 # ${consistency}: the read consistency level of the YCSB benchmark. E.g., ONE, TWO, ALL
