@@ -188,9 +188,12 @@ function runExp {
     runningType=$4
     KVNumber=$5
     operationNumber=$6
-    workload=$7
-    simulatedClientNumber=$8
-    consistency=$9
+    keylength=$7
+    fieldlength=$8
+    workload=$9
+    shift 9
+    simulatedClientNumber=$1
+    consistency=$2
 
     echo "Start run benchmark to ${targetScheme}, settings: expName is ${expName}, target scheme is ${targetScheme}, running mode is ${runningType}, KVNumber is ${KVNumber}, operationNumber is ${operationNumber}, workload is ${workload}, simulatedClientNumber is ${simulatedClientNumber}, consistency is ${consistency}."
 
@@ -213,6 +216,8 @@ function runExp {
     sed -i "s/\(workload: \)".*"/workload: \"${workload}\"/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Run-${runningType}-Round-${round}"/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/record_count:.*$/record_count: ${KVNumber}/" ${PathToScripts}/exp/playbook-run.yaml
+    sed -i "s/key_length:.*$/key_length: ${keylength}/" ${PathToScripts}/exp/playbook-run.yaml
+    sed -i "s/filed_length:.*$/filed_length: ${fieldlength}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/operation_count:.*$/operation_count: ${operationNumber}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/\(consistency: \)".*"/consistency: ${consistency}/" ${PathToScripts}/exp/playbook-run.yaml
     if [ "${workload}" == "workloade" ] || [ "${workload}" == "workloadscan" ]; then
@@ -305,7 +310,7 @@ function loadDataForEvaluation {
     # Outpout params
     echo "Start experiment to Loading ${scheme}, expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}, storageSavingTarget is ${storageSavingTarget}, codingK is ${codingK}, extraFlag is ${extraFlag}. Estimation of data size on each node is ${dataSizeOnEachNode} GiB, initial delay is ${initialDelayTime}, flush and compaction wait time is ${waitFlushCompactionTime}."
     echo ""
-    estimatedTotalRunningTime=$(( (${waitFlushCompactionTime} + ${KVNumber}/20000)/60 ))
+    estimatedTotalRunningTime=$(((${waitFlushCompactionTime} + ${KVNumber} / 20000) / 60))
     echo "The total running time is estimated to be ${estimatedTotalRunningTime} minutes."
 
     # Load
@@ -334,11 +339,11 @@ function doEvaluation {
     for ((round = 1; round <= RunningRoundNumber; round++)); do
         if [ "${runningMode}" == "normal" ]; then
             startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${readConsistency}"
-            runExp "${expName}" "${scheme}" "${round}" "${type}" "${KVNumber}" "${operationNumber}" "${workload}" "${simulatedClientNumber}" "${readConsistency}"
+            runExp "${expName}" "${scheme}" "${round}" "normal" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}"
         elif [ "${runningMode}" == "degraded" ]; then
             startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${readConsistency}"
             failnodes
-            runExp "${expName}" "${scheme}" "${round}" "${type}" "${KVNumber}" "${operationNumber}" "${workload}" "${simulatedClientNumber}" "${readConsistency}"
+            runExp "${expName}" "${scheme}" "${round}" "degraded" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}"
         fi
     done
 }
@@ -367,6 +372,6 @@ function recovery {
 
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-recovery.yaml
 
-    # echo Copy running logs of $targetScheme back form $recoveryNode"
-    # scp -r ${UserName}@${recoveryNode}:${PathToELECTPrototype}/logs/recovery.log ${PathToELECTResultSummary}/${targetScheme}/${expName}-Size-${KVNumber}-recovery-${runningRound}-${recoveryNode}
+    echo "Copy running logs of $targetScheme back form $recoveryNode"
+    scp -r ${UserName}@${recoveryNode}:${PathToELECTPrototype}/logs/recovery.log ${PathToELECTResultSummary}/${targetScheme}/${expName}-Size-${KVNumber}-recovery-${runningRound}-${recoveryNode}
 }

@@ -25,7 +25,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh {{ expName }} {{ stage }} 
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh {{ expName }} {{ stage }}
       vars:
         expName: "SampleExpName"
         workload: "workload_template"
@@ -42,16 +42,17 @@
   become_user: elect
   tasks:
     - name: Execute runDB.sh
-      command: bash PATH_TO_ELECT/scripts/run/runDB.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ consistency }} {{ trace }}
+      command: bash PATH_TO_ELECT/scripts/run/runDB.sh {{ record_count }} {{ operation_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ consistency }}
       vars:
         record_count: 10000000
         operation_count: 10000000
+        key_length: 24
+        filed_length: 1000
         threads: 64
         workload: "workload_template"
         expName: "Exp#1-Normal-Run-Cassandra-DATAPATH"
         keyspace: "ycsb"
         consistency: "ONE"
-        trace: "off"
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed
