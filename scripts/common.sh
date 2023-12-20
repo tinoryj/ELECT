@@ -132,7 +132,6 @@ function backup {
     KVNumber=$3
     keylength=$4
     fieldlength=$5
-    extraFlag=${9:-}
 
     echo "Start copy data of ${targetScheme} to backup, this will kill the online system!!!"
     # Make local results directory
@@ -144,11 +143,7 @@ function backup {
     setupNodeInfo hosts.ini
     # Modify playbook
     sed -i "s/Scheme/${targetScheme}/g" ${PathToScripts}/exp/playbook-backup.yaml
-    if [ -z "${extraFlag}" ]; then
-        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" ${PathToScripts}/exp/playbook-backup.yaml
-    else
-        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-Flags=${extraFlag}g" ${PathToScripts}/exp/playbook-backup.yaml
-    fi
+    sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" ${PathToScripts}/exp/playbook-backup.yaml
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-backup.yaml
 }
 
@@ -158,7 +153,7 @@ function startupFromBackup {
     KVNumber=$3
     keylength=$4
     fieldlength=$5
-    consistency=$9
+
     echo "Start copy data of ${targetScheme} back from backup"
     # Make local results directory
     if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
@@ -168,8 +163,8 @@ function startupFromBackup {
     # Copy playbook
     setupNodeInfo hosts.ini
     # Modify playbook
-    sed -i "s/Scheme/${targetScheme}/g" playbook-startup.yaml
-    sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-ReadConsistency=${consistency}g" ${PathToScripts}/exp/playbook-startup.yaml
+    sed -i "s/Scheme/${targetScheme}/g" ${PathToScripts}/exp/playbook-startup.yaml
+    sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" ${PathToScripts}/exp/playbook-startup.yaml
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-startup.yaml
 }
 
@@ -316,7 +311,7 @@ function loadDataForEvaluation {
     # Load
     load "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${simulatedClientNumber}" "${codingK}"
     flush "${expName}" "${scheme}" "${waitFlushCompactionTime}"
-    backup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${extraFlag}"
+    backup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
 }
 
 function doEvaluation {
@@ -338,10 +333,10 @@ function doEvaluation {
 
     for ((round = 1; round <= RunningRoundNumber; round++)); do
         if [ "${runningMode}" == "normal" ]; then
-            startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${readConsistency}"
+            startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
             runExp "${expName}" "${scheme}" "${round}" "normal" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}"
         elif [ "${runningMode}" == "degraded" ]; then
-            startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${readConsistency}"
+            startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
             failnodes
             runExp "${expName}" "${scheme}" "${round}" "degraded" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}"
         fi

@@ -30,7 +30,7 @@ PathToELECTResultSummary="/home/${UserName}/ELECTResules" # The path to the resu
 **Step 3:** Run the following script on one of the nodes (we suggest running on the client node). This script will install the required packages, set up the environment variables, and set up the SSH connection between the nodes.
 
 ```shell
-bash scripts/setup.sh
+bash scripts/setup.sh full
 ```
 
 ## Evaluations
@@ -41,7 +41,7 @@ Note: To reduce the influence of cloud storage location, hardware requirement, c
 * We replaced the Alibaba OSS with a server node within the same cluster as the higher tier to store the cold data.
 * We reduced the number of test cases in some evaluations, such as Exp#6,7,10.
 
-To simplify the reproduction process, we provide an `Ansible`-based script to run all the experiments. The script will automatically run the experiments and generate the result logs. The scripts will take about 9~10 days to finish all the experiments. We suggest **run the scripts of Exp#2 first**, which can reproduce the main results (i.e., achieve controllable storage saving compared with Cassandra; provide similar performance of different types of KV operations such as read, write, scan, and update) of our paper.
+To simplify the reproduction process, we provide an `Ansible`-based script to run all the experiments. The script will automatically run the experiments and generate the result logs. The scripts will take about 9~10 days to finish all the experiments. We suggest to **run the scripts of Exp#2 first**, which can reproduce the main results (i.e., achieve controllable storage saving compared with Cassandra; provide similar performance of different types of KV operations such as read, write, scan, and update) of our paper.
 
 ### Overall system analysis (Exp#1~5 in our paper)
 
