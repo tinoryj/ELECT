@@ -26,13 +26,6 @@ find_ip_index() {
 given_ip=${my_ip}
 index=$(find_ip_index $given_ip)
 
-cd ${PathToYCSB} || exit
-mvn clean package
-
-cd ${PathToColdTier} || exit
-make clean
-make
-
 if [ $index -ne -1 ]; then
     echo "This node is the $index node of ELECT cluster, update server configuration"
     selected_token=${tokens[$index]}
@@ -78,5 +71,11 @@ if [ $index -ne -1 ]; then
     rm -rf ${PathToELECTPrototype}/lib/sigar-bin/libec.so
     cp ${PathToELECTPrototype}/src/native/src/org/apache/cassandra/io/erasurecode/libec.so ${PathToELECTPrototype}/lib/sigar-bin
 else
-    echo "This node ${given_ip} is not in the ELECT cluster, exit"
+    echo "This node ${given_ip} is not in the ELECT cluster, compile YCSB and coldTier instead"
+    cd ${PathToYCSB} || exit
+    mvn clean package
+
+    cd ${PathToColdTier} || exit
+    make clean
+    make
 fi
