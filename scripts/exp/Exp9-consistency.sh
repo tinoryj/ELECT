@@ -1,6 +1,6 @@
 #!/bin/bash
 . /etc/profile
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../common.sh"
 # Exp9: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP. Vary read consistency level.
 
@@ -12,7 +12,7 @@ KVNumber=10000000
 keyLength=24
 valueLength=1000
 operationNumber=1000000
-simulatedClientNumber=16
+simulatedClientNumber=32
 RunningRoundNumber=1
 readConsistencySet=("ONE" "TWO" "ALL")
 
@@ -26,6 +26,11 @@ for scheme in "${schemes[@]}"; do
 
     # Run experiment
     for readConsistency in "${readConsistencySet[@]}"; do
-        doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${operationNumber}" "${simulatedClientNumber}" "${runningTypes[@]}" "${workloads[@]}" "${RunningRoundNumber}" "consistency=${readConsistency}"
+        for workload in "${workloads[@]}"; do
+            for runningMode in "${runningTypes[@]}"; do
+                # Run experiment
+                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}" "${readConsistency}"
+            done
+        done
     done
 done

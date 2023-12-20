@@ -157,7 +157,7 @@ function startupFromBackup {
     KVNumber=$3
     keylength=$4
     fieldlength=$5
-    extraFlag=${9:-}
+    consistency=$9
     echo "Start copy data of ${targetScheme} back from backup"
     # Make local results directory
     if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
@@ -168,11 +168,7 @@ function startupFromBackup {
     setupNodeInfo hosts.ini
     # Modify playbook
     sed -i "s/Scheme/${targetScheme}/g" playbook-startup.yaml
-    if [ -z "${extraFlag}" ]; then
-        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}g" ${PathToScripts}/exp/playbook-startup.yaml
-    else
-        sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-Flags=${extraFlag}g" ${PathToScripts}/exp/playbook-startup.yaml
-    fi
+    sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}-ReadConsistency=${consistency}g" ${PathToScripts}/exp/playbook-startup.yaml
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-startup.yaml
 }
 
@@ -191,11 +187,11 @@ function runExp {
     runningType=$4
     KVNumber=$5
     operationNumber=$6
-    workloads=$7
+    workload=$7
     simulatedClientNumber=$8
     consistency=$9
 
-    echo "Start run benchmark to ${targetScheme}, settings: expName is ${expName}, target scheme is ${targetScheme}, running mode is ${runningType}, KVNumber is ${KVNumber}, operationNumber is ${operationNumber}, workloads are ${workloads}, simulatedClientNumber is ${simulatedClientNumber}, consistency is ${consistency}."
+    echo "Start run benchmark to ${targetScheme}, settings: expName is ${expName}, target scheme is ${targetScheme}, running mode is ${runningType}, KVNumber is ${KVNumber}, operationNumber is ${operationNumber}, workload is ${workload}, simulatedClientNumber is ${simulatedClientNumber}, consistency is ${consistency}."
 
     # Make local results directory
     if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
@@ -203,35 +199,35 @@ function runExp {
     fi
 
     # Normal/Degraded Ops
-    for workload in "${workloads[@]}"; do
-        echo "Start running $workload on ${targetScheme} round $round"
-        setupNodeInfo hosts.ini
-        # Modify run palybook
-        if [ ${targetScheme} == "cassandra" ]; then
-            sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" ${PathToScripts}/exp/playbook-run.yaml
-        else
-            sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" ${PathToScripts}/exp/playbook-run.yaml
-        fi
-        sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" ${PathToScripts}/exp/playbook-run.yaml
-        sed -i "s/\(workload: \)".*"/workload: \"${workload}\"/" ${PathToScripts}/exp/playbook-run.yaml
-        sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Run-${runningType}-Round-${round}"/" ${PathToScripts}/exp/playbook-run.yaml
-        sed -i "s/record_count:.*$/record_count: ${KVNumber}/" ${PathToScripts}/exp/playbook-run.yaml
-        sed -i "s/operation_count:.*$/operation_count: ${operationNumber}/" ${PathToScripts}/exp/playbook-run.yaml
-        sed -i "s/\(consistency: \)".*"/consistency: ${consistency}/" ${PathToScripts}/exp/playbook-run.yaml
-        if [ "${workload}" == "workloade" ] || [ "${workload}" == "workloadscan" ]; then
-            # generate scanNumber = operationNumber / 10
-            scanNumber=$((operationNumber / 10))
-            sed -i "s/operation_count:.*$/operation_count: ${scanNumber}/" ${PathToScripts}/exp/playbook-run.yaml
-        fi
-        ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-run.yaml
-        ## Collect
-        ## Collect running logs
-        for nodeIP in "${NodesList[@]}"; do
-            echo "Copy loading stats of loading for ${expName}-${targetScheme} back, current working on node ${nodeIP}"
-            scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Load-${nodeIP}
-            ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
-        done
+
+    echo "Start running $workload on ${targetScheme} round $round"
+    setupNodeInfo hosts.ini
+    # Modify run palybook
+    if [ ${targetScheme} == "cassandra" ]; then
+        sed -i "s/\(keyspace: \)".*"/keyspace: ycsbraw/" ${PathToScripts}/exp/playbook-run.yaml
+    else
+        sed -i "s/\(keyspace: \)".*"/keyspace: ycsb/" ${PathToScripts}/exp/playbook-run.yaml
+    fi
+    sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" ${PathToScripts}/exp/playbook-run.yaml
+    sed -i "s/\(workload: \)".*"/workload: \"${workload}\"/" ${PathToScripts}/exp/playbook-run.yaml
+    sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Run-${runningType}-Round-${round}"/" ${PathToScripts}/exp/playbook-run.yaml
+    sed -i "s/record_count:.*$/record_count: ${KVNumber}/" ${PathToScripts}/exp/playbook-run.yaml
+    sed -i "s/operation_count:.*$/operation_count: ${operationNumber}/" ${PathToScripts}/exp/playbook-run.yaml
+    sed -i "s/\(consistency: \)".*"/consistency: ${consistency}/" ${PathToScripts}/exp/playbook-run.yaml
+    if [ "${workload}" == "workloade" ] || [ "${workload}" == "workloadscan" ]; then
+        # generate scanNumber = operationNumber / 10
+        scanNumber=$((operationNumber / 10))
+        sed -i "s/operation_count:.*$/operation_count: ${scanNumber}/" ${PathToScripts}/exp/playbook-run.yaml
+    fi
+    ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-run.yaml
+    ## Collect
+    ## Collect running logs
+    for nodeIP in "${NodesList[@]}"; do
+        echo "Copy loading stats of loading for ${expName}-${targetScheme} back, current working on node ${nodeIP}"
+        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Load-${nodeIP}
+        ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
+
 }
 
 function treeSizeEstimation {
@@ -298,7 +294,7 @@ function loadDataForEvaluation {
     storageSavingTarget=${7:-"0.6"}
     codingK=${8:-"4"}
     extraFlag=${9:-}
-    
+
     echo "The evaluation setting is ${scheme} (Loading), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}, storageSavingTarget is ${storageSavingTarget}, codingK is ${codingK}, extraFlag is ${extraFlag}."
 
     # Gen params
@@ -322,33 +318,28 @@ function doEvaluation {
     expName=$1
     scheme=$2
     KVNumber=$3
-    operationNumber=$4
-    simulatedClientNumber=$5
-    runningModes=$6
-    workloads=$7
+    keylength=$4
+    fieldlength=$5
+    operationNumber=$6
+    simulatedClientNumber=$7
     RunningRoundNumber=$8
-    extraFlag=${9:-}
+    runningMode=$9
+    shift 9
+    workload=$1
+    readConsistency=${2:-"ONE"}
 
     # Outpout params
-    echo "Start experiment to ${scheme} (Running), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, operationNumber is ${operationNumber}, simulatedClientNumber is ${simulatedClientNumber}. The experiment will run ${RunningRoundNumber} rounds."
-
-    readConsistency="ONE" # default read consistency level is ONE, can be changed by extraFlag to "TWO" and "ALL"
-    if [[ "${extraFlag}" == *"consistency"* ]]; then
-        readConsistency=$(echo "${extraFlag}" | awk -F'=' '{print $2}')
-        echo "Read consistency level is chanegd to ${readConsistency}"
-    fi
+    echo "Start experiment to ${scheme} (Running), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, operationNumber is ${operationNumber}, simulatedClientNumber is ${simulatedClientNumber}, running type is ${runningMode}, workload is ${workload}. The experiment will run ${RunningRoundNumber} rounds. The read consistency level is ${readConsistency}."
 
     for ((round = 1; round <= RunningRoundNumber; round++)); do
-        for type in "${runningModes[@]}"; do
-            if [ "${type}" == "normal" ]; then
-                startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${extraFlag}"
-                runExp "${expName}" "${scheme}" "${round}" "${type}" "${KVNumber}" "${operationNumber}" "${workloads}" "${simulatedClientNumber}" "${readConsistency}"
-            elif [ "${type}" == "degraded" ]; then
-                startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${extraFlag}"
-                failnodes
-                runExp "${expName}" "${scheme}" "${round}" "${type}" "${KVNumber}" "${operationNumber}" "${workloads}" "${simulatedClientNumber}" "${readConsistency}"
-            fi
-        done
+        if [ "${runningMode}" == "normal" ]; then
+            startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${readConsistency}"
+            runExp "${expName}" "${scheme}" "${round}" "${type}" "${KVNumber}" "${operationNumber}" "${workload}" "${simulatedClientNumber}" "${readConsistency}"
+        elif [ "${runningMode}" == "degraded" ]; then
+            startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${readConsistency}"
+            failnodes
+            runExp "${expName}" "${scheme}" "${round}" "${type}" "${KVNumber}" "${operationNumber}" "${workload}" "${simulatedClientNumber}" "${readConsistency}"
+        fi
     done
 }
 

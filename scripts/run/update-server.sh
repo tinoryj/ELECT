@@ -77,5 +77,5 @@ if [ $index -ne -1 ]; then
     rm -rf ${PathToELECTPrototype}/lib/sigar-bin/libec.so
     cp ${PathToELECTPrototype}/src/native/src/org/apache/cassandra/io/erasurecode/libec.so ${PathToELECTPrototype}/lib/sigar-bin
 else
-    echo "This node is not in the ELECT cluster, exit"
+    echo "This node ${given_ip} is not in the ELECT cluster, exit"
 fi

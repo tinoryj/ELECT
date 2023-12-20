@@ -1,6 +1,6 @@
 #!/bin/bash
 . /etc/profile
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../common.sh"
 # Exp7: YCSB core workloads, 3-way replication, (6,4) encoding, vary target storage saving, 10M KV + 1M OP.
 
@@ -12,7 +12,7 @@ KVNumber=10000000
 keyLength=24
 valueLength=1000
 operationNumber=1000000
-simulatedClientNumber=16
+simulatedClientNumber=32
 RunningRoundNumber=1
 storageSavingTargetSet=(0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9)
 
@@ -26,6 +26,11 @@ for scheme in "${schemes[@]}"; do
         loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${storageSavingTarget}"
 
         # Run experiment
-        doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${operationNumber}" "${simulatedClientNumber}" "${runningTypes[@]}" "${workloads[@]}" "${RunningRoundNumber}"
+        for workload in "${workloads[@]}"; do
+            for runningMode in "${runningTypes[@]}"; do
+                # Run experiment
+                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}"
+            done
+        done
     done
 done

@@ -2,7 +2,7 @@
 . /etc/profile
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../common.sh"
-# Exp1: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP, vary KV sizes.
+# Exp6: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP, vary KV sizes.
 
 ExpName="Exp6-kvSize"
 schemes=("cassandra" "elect")
@@ -14,7 +14,7 @@ valueLengthSet=(32 128 512 2048 8192)
 fixedKeylength=32
 fixedFieldlength=512
 operationNumber=1000000
-simulatedClientNumber=16
+simulatedClientNumber=32
 RunningRoundNumber=1
 
 # Setup hosts
@@ -27,7 +27,12 @@ for scheme in "${schemes[@]}"; do
         loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${fixedFieldlength}" "${operationNumber}" "${simulatedClientNumber}"
 
         # Run experiment
-        doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${operationNumber}" "${simulatedClientNumber}" "${runningTypes[@]}" "${workloads[@]}" "${RunningRoundNumber}"
+        for workload in "${workloads[@]}"; do
+            for runningMode in "${runningTypes[@]}"; do
+                # Run experiment
+                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}"
+            done
+        done
     done
 
     for valueLength in "${valueLengthSet[@]}"; do
@@ -35,6 +40,11 @@ for scheme in "${schemes[@]}"; do
         loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${fixedKeylength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}"
 
         # Run experiment
-        doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${operationNumber}" "${simulatedClientNumber}" "${runningTypes[@]}" "${workloads[@]}" "${RunningRoundNumber}"
+        for workload in "${workloads[@]}"; do
+            for runningMode in "${runningTypes[@]}"; do
+                # Run experiment
+                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}"
+            done
+        done
     done
 done
