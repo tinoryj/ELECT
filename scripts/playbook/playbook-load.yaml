@@ -97,7 +97,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "SampleExpName"
         workload: "workloadLoad"
@@ -139,7 +139,7 @@
   tasks:
     - name: Monitor
       shell: |
-        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh.sh {{ expName }} {{ workload }} {{ stage }}
+        . /etc/profile && bash PATH_TO_ELECT/scripts/status/statsDB_DISK_NET.sh {{ expName }} {{ workload }} {{ stage }}
       vars:
         expName: "SampleExpName"
         workload: "workloadLoad"
