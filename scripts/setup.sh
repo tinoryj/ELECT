@@ -43,6 +43,6 @@ FullNodeList+=("${OSSServerNode}")
 FullNodeList+=("${ClientNode}")
 
 for nodeIP in "${FullNodeList[@]}"; do
-    echo "Set up each nodes"
+    echo "Set up node ${nodeIP}"
     ssh ${UserName}@${nodeIP} "cd ${PathToScripts}; bash setupOnEachNode.sh"
 done
