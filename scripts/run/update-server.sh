@@ -56,7 +56,7 @@ if [ $index -ne -1 ]; then
     )
     sed -i "s/- seeds: \".*\"/- seeds: \"$nodes_string\"/" ${PathToELECTPrototype}/conf/cassandra.yaml
 
-    cp ${PathToELECTPrototype}/conf/cassandra.yaml ${PathToELECTPrototype}/../elect.yaml
+    cp ${PathToELECTPrototype}/conf/cassandra.yaml ${PathToELECTPrototype}/elect.yaml
 
     if [ ! -d "${PathToELECTPrototype}/lib" ]; then
         mkdir -p ${PathToELECTPrototype}/lib
