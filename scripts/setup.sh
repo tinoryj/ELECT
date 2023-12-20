@@ -2,7 +2,7 @@
 . /etc/profile
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/settings.sh"
-
+setupMode=${1:-"partial"}
 # SSH key-free connection from control node to all nodes
 for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
     if [ ${UserName} == "cc" ]; then
@@ -24,15 +24,16 @@ for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
 done
 
 # Install packages
-if [ ! -z "${sudoPasswd}" ]; then
-    printf ${sudoPasswd} | sudo -S apt-get update
-    printf ${sudoPasswd} | sudo -S apt-get install -y ant ant-optional maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
-else
-    sudo apt-get update
-    sudo apt-get install -y ant ant-optional maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
+if [ ${setupMode} == "full" ]; then
+    if [ ! -z "${sudoPasswd}" ]; then
+        printf ${sudoPasswd} | sudo -S apt-get update
+        printf ${sudoPasswd} | sudo -S apt-get install -y ant ant-optional maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
+    else
+        sudo apt-get update
+        sudo apt-get install -y ant ant-optional maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
+    fi
+    pip install cassandra-driver
 fi
-
-pip install cassandra-driver
 
 if [ ! -d "${PathToELECTResultSummary}" ]; then
     mkdir -p ${PathToELECTResultSummary}
@@ -44,5 +45,5 @@ FullNodeList+=("${ClientNode}")
 
 for nodeIP in "${FullNodeList[@]}"; do
     echo "Set up node ${nodeIP}"
-    ssh ${UserName}@${nodeIP} "cd ${PathToScripts}; bash setupOnEachNode.sh"
+    ssh ${UserName}@${nodeIP} "cd ${PathToScripts}; bash setupOnEachNode.sh ${setupMode}"
 done

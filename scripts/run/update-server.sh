@@ -2,7 +2,7 @@
 . /etc/profile
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../common.sh"
-
+setupMode=${1:-"partial"}
 kill -9 $(ps aux | grep CassandraDaemon | grep -v grep | awk 'NR == 1' | awk {'print $2'})
 
 my_ip=$(ip addr show ${networkInterface} | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)
@@ -49,9 +49,11 @@ if [ $index -ne -1 ]; then
         echo "${NodesList[*]}"
     )
     sed -i "s/- seeds: \".*\"/- seeds: \"$nodes_string\"/" ${PathToELECTPrototype}/conf/cassandra.yaml
-
     cp ${PathToELECTPrototype}/conf/cassandra.yaml ${PathToELECTPrototype}/elect.yaml
 
+fi
+
+if [ ${setupMode} == "full" ]; then
     if [ ! -d "${PathToELECTPrototype}/lib" ]; then
         mkdir -p ${PathToELECTPrototype}/lib
     fi
@@ -70,8 +72,7 @@ if [ $index -ne -1 ]; then
     ./genlib.sh
     rm -rf ${PathToELECTPrototype}/lib/sigar-bin/libec.so
     cp ${PathToELECTPrototype}/src/native/src/org/apache/cassandra/io/erasurecode/libec.so ${PathToELECTPrototype}/lib/sigar-bin
-else
-    echo "This node ${given_ip} is not in the ELECT cluster, compile YCSB and coldTier instead"
+
     cd ${PathToYCSB} || exit
     mvn clean package
 

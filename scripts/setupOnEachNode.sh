@@ -2,7 +2,7 @@
 . /etc/profile
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/settings.sh"
-
+setupMode=${1:-"partial"}
 if [ ! ${UserName} == "cc" ]; then
     # SSH keygen on control node
     if [ ! -f ~/.ssh/id_rsa ]; then
@@ -43,4 +43,4 @@ if [ ! -d "${PathToELECTResultSummary}" ]; then
     mkdir -p ${PathToELECTResultSummary}
 fi
 
-bash ${SCRIPT_DIR}/run/update-server.sh
+bash ${SCRIPT_DIR}/run/update-server.sh ${setupMode}

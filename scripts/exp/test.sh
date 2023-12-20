@@ -8,10 +8,10 @@ ExpName="Exp2-operations"
 schemes=("cassandra" "elect")
 workloads=("workloadRead" "workloadWrite" "workloadScan" "workloadUpdate")
 runningTypes=("normal" "degraded")
-KVNumber=1000000
+KVNumber=6000000
 keyLength=24
 valueLength=1000
-operationNumber=100000
+operationNumber=600000
 simulatedClientNumber=32
 RunningRoundNumber=1
 

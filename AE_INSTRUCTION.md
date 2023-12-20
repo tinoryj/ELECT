@@ -47,6 +47,15 @@ To simplify the reproduction process, we provide an `Ansible`-based script to ru
 
 #### Exp#1: Performance with YCSB core workloads
 
+* Running:
+
+```shell
+bash scripts/exp/Exp1-ycsb.sh
+```
+
+* Result:
+  
+
 #### Exp#2: Micro-benchmarks on KV operations
 
 #### Exp#3: Performance breakdown
