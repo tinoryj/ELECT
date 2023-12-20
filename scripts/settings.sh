@@ -42,6 +42,7 @@ for ip in "${FullNodeList[@]}"; do
         if [ "$ip" == "$iface_ip" ] && [ "$iface_name" != "lo" ]; then
             networkInterface=$iface_name
             echo $iface_name
+            echo $iface_ip
             break 2
         fi
     done
