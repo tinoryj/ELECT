@@ -35,14 +35,13 @@ networkInterface=""
 for ip in "${FullNodeList[@]}"; do
     # Check each IP against all local interfaces
     for interface in $(ip -o -4 addr list | awk '{print $2, $4}'); do
-        iface_name=$(echo $interface | awk '{print $2}')
-        iface_ip=$(echo $interface | awk '{print $4}' | cut -d'/' -f1)
-
+        iface_name=$(echo $interface | awk '{print $1}')
+        iface_ip=$(echo $interface | awk '{print $2}' | cut -d'/' -f1)
+        echo $iface_name
+        echo $iface_ip
         # If the IP matches, save the interface name
         if [ "$ip" == "$iface_ip" ] && [ "$iface_name" != "lo" ]; then
             networkInterface=$iface_name
-            echo $iface_name
-            echo $iface_ip
             break 2
         fi
     done
