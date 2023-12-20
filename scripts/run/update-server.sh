@@ -50,6 +50,7 @@ if [ $index -ne -1 ]; then
     sed -i "s/cold_tier_ip:.*$/cold_tier_ip: ${OSSServerNode}/" ${PathToELECTPrototype}/conf/cassandra.yaml
     sed -i "s/cold_tier_port:.*$/cold_tier_port: ${OSSServerPort}/" ${PathToELECTPrototype}/conf/cassandra.yaml
     sed -i "s/rpc_address:.*$/rpc_address: ${my_ip}/" ${PathToELECTPrototype}/conf/cassandra.yaml
+    sed -i "s/user_name:.*$/user_name: ${UserName}/" ${PathToELECTPrototype}/conf/cassandra.yaml
     nodes_string=$(
         IFS=,
         echo "${NodesList[*]}"

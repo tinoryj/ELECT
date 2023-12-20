@@ -585,9 +585,9 @@ stripe_update_frequency: 10
 max_send_sstables: 64
 cold_period: 1
 max_stripe_update_sstable: 4
-#max_concurrent_download: 5
-#user_name: elect
-#concurrent_recovery: 16
+max_concurrent_download: 16
+user_name: elect
+concurrent_recovery: 16
 enable_proxy: true
 
 

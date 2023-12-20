@@ -90,6 +90,7 @@ function load {
     fi
 
     sed -i "s/\(expName: \)".*"/expName: "${expName}-${targetScheme}-Load"/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+    sed -i "s/\(coordinator: \)".*"/coordinator: "${NodesList[0]}"/" ${SCRIPT_DIR}/exp/playbook-load.yaml
     sed -i "s/record_count:.*$/record_count: ${KVNumber}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
     sed -i "s/key_length:.*$/key_length: ${keylength}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
     sed -i "s/filed_length:.*$/filed_length: ${fieldlength}/" ${SCRIPT_DIR}/exp/playbook-load.yaml

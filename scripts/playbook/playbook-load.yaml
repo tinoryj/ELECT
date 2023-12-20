@@ -61,9 +61,7 @@
     - name: Execute script start-client.sh
       command: bash PATH_TO_ELECT/scripts/run/start-client.sh {{ coordinator }} {{ mode }}
       vars:
-        coordinator: "172.27.96.1"
-        sstable_size_in_mb: 4
-        fanout_size: 10
+        coordinator: "192.168.0.1"
         mode: "elect"
       register: command_result
       ignore_errors: True
