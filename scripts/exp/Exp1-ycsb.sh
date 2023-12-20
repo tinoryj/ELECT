@@ -18,6 +18,7 @@ RunningRoundNumber=1
 
 # Setup hosts
 setupNodeInfo hosts.ini
+
 # Run Exp
 for scheme in "${schemes[@]}"; do
     echo "Start experiment of ${scheme} (Loading)"

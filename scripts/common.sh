@@ -1,7 +1,7 @@
 #!/bin/bash
 . /etc/profile
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-source ${SCRIPT_DIR}/settings.sh"
+source ${SCRIPT_DIR}/settings.sh
 
 playbookSet=(playbook-load.yaml playbook-run.yaml playbook-flush.yaml playbook-backup.yaml playbook-startup.yaml playbook-fail.yaml playbook-recovery.yaml)
 
@@ -49,8 +49,8 @@ function setupNodeInfo {
             cp ${SCRIPT_DIR}/playbook/${playbook} ${SCRIPT_DIR}/exp/${playbook}
         fi
         sed -i "s/\(become_user: \)".*"/become_user: ${UserName}/" ${SCRIPT_DIR}/exp/${playbook}
-        sed -i "s|PATH_TO_ELECT|${PathToArtifact}|g" ${SCRIPT_DIR}/exp/${playbook}"
-        sed -i "s|PATH_TO_DB_BACKUP|${PathToELECTExpDBBackup}|g" ${SCRIPT_DIR}/exp/${playbook}"
+        sed -i "s|PATH_TO_ELECT|${PathToArtifact}|g" ${SCRIPT_DIR}/exp/${playbook}
+        sed -i "s|PATH_TO_DB_BACKUP|${PathToELECTExpDBBackup}|g" ${SCRIPT_DIR}/exp/${playbook}
     done
 }
 
@@ -295,8 +295,6 @@ function loadDataForEvaluation {
     codingK=${8:-"4"}
     extraFlag=${9:-}
 
-    echo "The evaluation setting is ${scheme} (Loading), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}, storageSavingTarget is ${storageSavingTarget}, codingK is ${codingK}, extraFlag is ${extraFlag}."
-
     # Gen params
     dataSizeOnEachNode=$(dataSizeEstimation ${KVNumber} ${keylength} ${fieldlength})
     initialDelayTime=$(initialDelayEstimation ${dataSizeOnEachNode} ${scheme})
@@ -304,9 +302,10 @@ function loadDataForEvaluation {
     teeLevels=$(treeSizeEstimation ${KVNumber} ${keylength} ${fieldlength})
 
     # Outpout params
-    echo "Start experiment to ${scheme} (Loading), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}. Estimation of data size on each node is ${dataSizeOnEachNode} GiB, initial delay is ${initialDelayTime}, flush and compaction wait time is ${waitFlushCompactionTime}."
+    echo "Start experiment to Loading ${scheme}, expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, simulatedClientNumber is ${simulatedClientNumber}, storageSavingTarget is ${storageSavingTarget}, codingK is ${codingK}, extraFlag is ${extraFlag}. Estimation of data size on each node is ${dataSizeOnEachNode} GiB, initial delay is ${initialDelayTime}, flush and compaction wait time is ${waitFlushCompactionTime}."
     echo ""
-    echo "The total running time is estimated to be (( (${waitFlushCompactionTime} + ${KVNumber}/20000)/60 )) minutes."
+    estimatedTotalRunningTime=$(( (${waitFlushCompactionTime} + ${KVNumber}/20000)/60 ))
+    echo "The total running time is estimated to be ${estimatedTotalRunningTime} minutes."
 
     # Load
     load "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${simulatedClientNumber}" "${codingK}"
@@ -329,7 +328,7 @@ function doEvaluation {
     readConsistency=${2:-"ONE"}
 
     # Outpout params
-    echo "Start experiment to ${scheme} (Running), expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, operationNumber is ${operationNumber}, simulatedClientNumber is ${simulatedClientNumber}, running type is ${runningMode}, workload is ${workload}. The experiment will run ${RunningRoundNumber} rounds. The read consistency level is ${readConsistency}."
+    echo "Start experiment to Running ${scheme}, expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, operationNumber is ${operationNumber}, simulatedClientNumber is ${simulatedClientNumber}, running type is ${runningMode}, workload is ${workload}. The experiment will run ${RunningRoundNumber} rounds. The read consistency level is ${readConsistency}."
 
     for ((round = 1; round <= RunningRoundNumber; round++)); do
         if [ "${runningMode}" == "normal" ]; then
@@ -367,6 +366,6 @@ function recovery {
 
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-recovery.yaml
 
-    echo "Copy running data of ${targetScheme} back, ${recoveryNode}"
-    scp elect@${recoveryNode}:${PathToELECTPrototype}/logs/recovery.log ${PathToELECTResultSummary}/"${targetScheme}"/"${expName}-Size-${KVNumber}-recovery-${runningRound}-${recoveryNode}"
+    # echo Copy running logs of $targetScheme back form $recoveryNode"
+    # scp -r ${UserName}@${recoveryNode}:${PathToELECTPrototype}/logs/recovery.log ${PathToELECTResultSummary}/${targetScheme}/${expName}-Size-${KVNumber}-recovery-${runningRound}-${recoveryNode}
 }
