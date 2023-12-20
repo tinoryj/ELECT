@@ -318,7 +318,7 @@ function loadDataForEvaluation {
     echo "The total running time is estimated to be ${estimatedTotalRunningTime} minutes."
 
     # Load
-    load "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${simulatedClientNumber}" "${codingK}"
+    load "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${simulatedClientNumber}" "${storageSavingTarget}" "${codingK}"
     flush "${expName}" "${scheme}" "${waitFlushCompactionTime}"
     backup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
 }

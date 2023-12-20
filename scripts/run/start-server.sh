@@ -34,7 +34,7 @@ function startServerNode {
     mkdir -p logs
 
     # varify mode
-    if [ ${mode} == "cassandra" ]; then
+    if [ "${mode}" = "cassandra" ]; then
         sed -i "s/enable_migration:.*$/enable_migration: false/" conf/cassandra.yaml
         sed -i "s/enable_erasure_coding:.*$/enable_erasure_coding: false/" conf/cassandra.yaml
     else
