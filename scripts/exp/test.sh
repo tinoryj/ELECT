@@ -4,14 +4,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../common.sh"
 # Exp2: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP.
 
-ExpName="Exp2-operations"
+ExpName="test"
 schemes=("cassandra" "elect")
 workloads=("workloadRead" "workloadWrite" "workloadScan" "workloadUpdate")
 runningTypes=("normal" "degraded")
-KVNumber=6000000
+KVNumber=300000
 keyLength=24
 valueLength=1000
-operationNumber=600000
+operationNumber=30000
 simulatedClientNumber=32
 RunningRoundNumber=1
 

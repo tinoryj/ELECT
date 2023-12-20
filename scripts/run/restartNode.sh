@@ -33,4 +33,4 @@ function restartNode {
     nohup bin/cassandra >logs/debug.log 2>&1 &
 }
 
-func "$1" "$2"
+restartNode "$1" "$2"

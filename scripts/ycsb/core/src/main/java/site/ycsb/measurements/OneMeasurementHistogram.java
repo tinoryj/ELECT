@@ -135,31 +135,31 @@ public class OneMeasurementHistogram extends OneMeasurement {
     for (int i = 0; i < buckets; i++) {
       opcounter += histogram[i];
       if ((!done25th) && ((double) opcounter) / ((double) operations) >= 0.25) {
-        exporter.write(getName(), "25thPercentileLatency(us)", i * 1000);
+        exporter.write(getName(), "25thPercentileLatency(us)", i);
         done25th = true;
       }
       if ((!done50th) && ((double) opcounter) / ((double) operations) >= 0.50) {
-        exporter.write(getName(), "50thPercentileLatency(us)", i * 1000);
+        exporter.write(getName(), "50thPercentileLatency(us)", i);
         done50th = true;
       }
       if ((!done75th) && ((double) opcounter) / ((double) operations) >= 0.75) {
-        exporter.write(getName(), "75thPercentileLatency(us)", i * 1000);
+        exporter.write(getName(), "75thPercentileLatency(us)", i);
         done75th = true;
       }
       if ((!done90th) && (((double) opcounter) / ((double) operations) >= 0.9)) {
-        exporter.write(getName(), "90thPercentileLatency(us)", i * 1000);
+        exporter.write(getName(), "90thPercentileLatency(us)", i);
         done90th = true;
       }
       if ((!done95th) && (((double) opcounter) / ((double) operations) >= 0.95)) {
-        exporter.write(getName(), "95thPercentileLatency(us)", i * 1000);
+        exporter.write(getName(), "95thPercentileLatency(us)", i);
         done95th = true;
       }
       if ((!done99th) && ((double) opcounter) / ((double) operations) >= 0.99) {
-        exporter.write(getName(), "99thPercentileLatency(us)", i * 1000);
+        exporter.write(getName(), "99thPercentileLatency(us)", i);
         done99th = true;
       }
       if (((double) opcounter) / ((double) operations) >= 0.999) {
-        exporter.write(getName(), "999thPercentileLatency(us)", i * 1000);
+        exporter.write(getName(), "999thPercentileLatency(us)", i);
         break;
       }
     }

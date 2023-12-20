@@ -95,14 +95,15 @@
   become_user: elect
   tasks:
     - name: copy logs
-      command: bash PATH_TO_ELECT/scripts/run/copyLogs.sh {{ record_count }} {{ operation_count }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }}
+      command: bash PATH_TO_ELECT/scripts/run/copyLogs.sh {{ record_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ stage }}
       vars:
         record_count: 10000000
-        operation_count: 10000000
+        key_length: 24
+        filed_length: 1000
         threads: 64
         workload: "workload_template"
         expName: "Exp#1-Normal-Run-Cassandra-DATAPATH"
-        keyspace: "ycsb"
+        stage: "Run"
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed
