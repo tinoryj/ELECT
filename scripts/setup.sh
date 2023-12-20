@@ -26,10 +26,10 @@ done
 # Install packages
 if [ ! -z "${sudoPasswd}" ]; then
     printf ${sudoPasswd} | sudo -S apt-get update
-    printf ${sudoPasswd} | sudo -S apt-get install -y ant maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
+    printf ${sudoPasswd} | sudo -S apt-get install -y ant ant-optional maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
 else
     sudo apt-get update
-    sudo apt-get install -y ant maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
+    sudo apt-get install -y ant ant-optional maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
 fi
 
 pip install cassandra-driver
