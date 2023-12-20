@@ -7,14 +7,14 @@ function startOSSNode {
 
     kill -9 $(ps aux | grep FileServer | grep -v grep | awk 'NR == 1' | awk {'print $2'})
 
-    cd ${PathToArtifacts}/src/coldTier || exit
+    cd ${PathToArtifact}/src/coldTier || exit
 
     # rm -rf data OSSLog.txt
     if [ ! -d "data" ]; then
         mkdir -p data
     fi
 
-    nohup java FileServer ${OSSServerPort} >>${PathToArtifacts}/ColdTier/OSSLog.txt 2>&1 &
+    nohup java FileServer ${OSSServerPort} >>${PathToArtifact}/ColdTier/OSSLog.txt 2>&1 &
 }
 
 startOSSNode
