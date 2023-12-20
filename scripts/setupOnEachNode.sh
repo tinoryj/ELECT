@@ -18,9 +18,13 @@ for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
 done
 
 # Install packages
-printf  ${sudoPasswd} | sudo -S apt-get-get update 
-printf  ${sudoPasswd} | sudo -S apt-get install -y openjdk-11-jdk openjdk-11-jre ant maven clang llvm libisal-dev python3 ansible python3-pip 
-pip install cassandra-driver
+if [ ! -z "${sudoPasswd}" ]; then
+    printf ${sudoPasswd} | sudo -S apt-get update
+    printf ${sudoPasswd} | sudo -S apt-get install -y ant maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
+else
+    sudo -S apt-get update
+    sudo -S apt-get install -y ant maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
+fi
 
 # Java configuration
 export _JAVA_OPTIONS='-Xmx12g -Xms2048m -XX:MaxDirectMemorySize=2048m'

@@ -1,8 +1,7 @@
 #!/bin/bash
 . /etc/profile
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/settings.sh"
-
 
 # SSH keygen on control node
 if [ ! -f ~/.ssh/id_rsa ]; then
@@ -10,7 +9,7 @@ if [ ! -f ~/.ssh/id_rsa ]; then
 fi
 # SSH key-free connection from control node to all nodes
 for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
-    ssh-keyscan -H ${nodeIP} >> ~/.ssh/known_hosts
+    ssh-keyscan -H ${nodeIP} >>~/.ssh/known_hosts
 done
 
 for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
@@ -18,9 +17,19 @@ for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
     ssh-copy-id -i ~/.ssh/id_rsa.pub ${UserName}@${nodeIP}
 done
 
+for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
+    rsync -av --progress ~/ELECT ${UserName}@${nodeIP}:~/
+done
+
 # Install packages
-printf  ${sudoPasswd} | sudo -S apt-get update 
-printf  ${sudoPasswd} | sudo -S apt-get install -y ant maven clang llvm python3 ansible python3-pip #libisal-dev openjdk-11-jdk openjdk-11-jre 
+if [ ! -z "${sudoPasswd}" ]; then
+    printf ${sudoPasswd} | sudo -S apt-get update
+    printf ${sudoPasswd} | sudo -S apt-get install -y ant maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
+else
+    sudo -S apt-get update
+    sudo -S apt-get install -y ant maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
+fi
+
 pip install cassandra-driver
 
 if [ ! -d "${PathToELECTResultSummary}" ]; then

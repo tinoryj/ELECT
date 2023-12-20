@@ -22,7 +22,6 @@ for scheme in "${schemes[@]}"; do
     # Load data for evaluation
     for KVNumber in "${KVNumberSet[@]}"; do
         loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${operationNumber}" "${simulatedClientNumber}"
-
         # Run experiment
         startupFromBackup "${ExpName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
         recovery "${ExpName}" "${scheme}" "${recoveryNode}" "${KVNumber}" "${RunningRoundNumber}"
