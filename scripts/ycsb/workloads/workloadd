@@ -64,7 +64,7 @@ fieldlength=1000
 readallfields=true
 
 # Should write all fields on update
-writeallfields=false
+writeallfields=true
 
 # The distribution used to choose the length of a field
 

@@ -34,3 +34,14 @@ function setupCluster {
 }
 
 setupCluster "$1" "$2"
+
+# -e "create keyspace ycsb WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor': 3 };
+#         USE ycsb;
+#         create table usertable0 (y_id varchar primary key, field0 varchar);
+#         ALTER TABLE usertable0 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': 4, 'fanout_size': 10 };
+#         ALTER TABLE usertable1 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': 4, 'fanout_size': 10 };
+#         ALTER TABLE usertable2 WITH compaction = { 'class': 'LeveledCompactionStrategy', 'sstable_size_in_mb': 4, 'fanout_size': 10 };
+#         ALTER TABLE ycsb.usertable0 WITH compression = {'enabled':'false'};
+#         ALTER TABLE ycsb.usertable1 WITH compression = {'enabled':'false'};
+#         ALTER TABLE ycsb.usertable2 WITH compression = {'enabled':'false'};
+#         consistency all;"
