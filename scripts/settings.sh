@@ -1,8 +1,7 @@
 #!/bin/bash
 . /etc/profile
 # Common params for all experiments
-
-NodesList=(10.31.0.180 10.31.0.182 10.31.0.184 10.31.0.188 10.31.0.189 10.31.0.190) # The IP addresses of the ELECT cluster nodes
+NodesList=(10.31.0.190 10.31.0.180 10.31.0.189 10.31.0.184 10.31.0.182 10.31.0.188) # The IP addresses of the ELECT cluster nodes
 OSSServerNode="10.31.0.186" # The IP address of the OSS server node
 OSSServerPort=8000 # The port number of the OSS server node
 ClientNode="10.31.0.183" # The IP address of the client node (it can be the local node running the scripts)
@@ -24,6 +23,7 @@ LSMTreeFanOutRatio=5
 concurrentEC=64
 defaultSimulatedClientNumber=16
 
+NodesList=($(printf "%s\n" "${NodesList[@]}" | sort -V))
 FullNodeList=("${NodesList[@]}")
 FullNodeList+=("${OSSServerNode}")
 FullNodeList+=("${ClientNode}")

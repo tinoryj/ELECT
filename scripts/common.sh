@@ -88,7 +88,7 @@ function initialDelayEstimation {
         initialDelay=65536
         echo ${initialDelay}
     else
-        initialDellayLocal=$(echo "scale=2; $dataSizeOnEachNode * 8" | bc)
+        initialDellayLocal=$(echo "scale=2; $dataSizeOnEachNode * 8 + 3" | bc)
         initialDellayLocalCeil=$(echo "scale=0; (${initialDellayLocal} + 0.5)/1" | bc)
         echo ${initialDellayLocalCeil}
     fi
