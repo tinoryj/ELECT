@@ -8,11 +8,11 @@ ExpName="test"
 schemes=("elect" "cassandra")
 workloads=("workloadRead" "workloadWrite" "workloadScan" "workloadUpdate")
 runningTypes=("normal" "degraded")
-KVNumber=300000
+KVNumber=600000
 keyLength=24
 valueLength=1000
-operationNumber=30000
-simulatedClientNumber=32
+operationNumber=60000
+simulatedClientNumber=16
 RunningRoundNumber=1
 
 # Setup hosts

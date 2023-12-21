@@ -3,6 +3,39 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../common.sh"
 
+echo "Check failed nodes"
+# Variable to store the IPs under [elect_failure]
+failure_ips=()
+# Flag to indicate whether the current section is [elect_failure]
+in_failure_section=false
+while read -r line; do
+    if [[ "$line" == "[elect_failure]" ]]; then
+        in_failure_section=true
+        continue
+    fi
+    if [[ "$in_failure_section" = true && "$line" == \[*\] ]]; then
+        break
+    fi
+    if [[ "$in_failure_section" = true ]]; then
+        ip=$(echo "$line" | awk -F'=' '{print $2}')
+        failure_ips+=("$ip")
+    fi
+done < "${PathToScripts}/exp/hosts.ini"
+echo "Failed IPs: ${failure_ips[*]}"
+copied_list=("${NodesList[@]}")
+# Remove the failure IPs from the ip_list
+for fail_ip in "${failure_ips[@]}"; do
+    for i in "${!copied_list[@]}"; do
+        if [[ "${copied_list[$i]}" = "$fail_ip" ]]; then
+            unset 'copied_list[i]'
+        fi
+    done
+done
+# Optionally, re-index the array
+ip_list=("${copied_list[@]}")
+# Print the resulting list
+echo "Remaining IPs: ${ip_list[*]}"
+
 recordcount=$1
 operationcount=$2
 key_length=$3
@@ -27,4 +60,4 @@ fi
 
 file_name="${expName}-Scheme-${mode}-${workload}-KVNumber-${recordcount}-OPNumber-${operationcount}-ClientNumber-${threads}-Time-$(date +%s)"
 
-bin/ycsb.sh run cassandra-cql -p hosts=${NodesList} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/"${workload}" >${PathToELECTResultSummary}/"${file_name}".log 2>&1
+bin/ycsb.sh run cassandra-cql -p hosts=${ip_list} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/"${workload}" >${PathToELECTResultSummary}/"${file_name}".log 2>&1

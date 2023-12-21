@@ -14,7 +14,7 @@ valueLengthSet=(32 128 512 2048 8192)
 fixedKeylength=32
 fixedFieldlength=512
 operationNumber=1000000
-simulatedClientNumber=32
+simulatedClientNumber=16
 RunningRoundNumber=1
 
 # Setup hosts

@@ -19,7 +19,7 @@ PathToScripts="${PathToArtifact}/scripts"
 PathToColdTier="${PathToArtifact}/src/coldTier"
 
 NodeNumber="${#NodesList[@]}"
-SSTableSize=4
+SSTableSize=2
 LSMTreeFanOutRatio=10
 concurrentEC=64
 defaultSimulatedClientNumber=16
