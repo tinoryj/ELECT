@@ -133,24 +133,19 @@ parity_nodes: 2 # The erasure coding parameter (n - k)
 target_storage_saving: 0.6 # The balance parameter (storage saving target) controls the approximate storage saving ratio of the cold tier.
 enable_migration: true # Enable the migration module to migrate cold data to the cold tier.
 enable_erasure_coding: true # Enable redundancy transitioning module to encode the cold data.
-# Manual settings to balance workload across different nodes.
+# Manual settings to achieve balanced workload across different nodes.
 initial_token: -9223372036854775808 # The initial token of the current node.
-token_ranges: -9223372036854775808,-6148914691236517376,-3074457345618258944,0,3074457345618257920,6148914691236515840 # The initial token ranges of all nodes in the cluster.
+token_ranges: -9223372036854775808,-6148914691236517376,-3074457345618258944,0,3074457345618257920,6148914691236515840 # The initial tokens of all nodes in the cluster.
 # Current node settings
 listen_address: 192.168.10.21 # IP address of the current node.
 rpc_address: 192.168.10.21 # IP address of the current node.
 cold_tier_ip: 192.168.10.21 # The IP address of the file server (cold tier).
 cold_tier_port: 8080 # The port of the file server (cold tier).
 seed_provider:
-  # Addresses of hosts that are deemed contact points.
-  # Cassandra nodes use this list of hosts to find each other and learn
-  # the topology of the ring. You must change this if you are running
-  # multiple nodes!
   - class_name: org.apache.cassandra.locator.SimpleSeedProvider
     parameters:
-      # ELECT: Put all the server nodes' IPs here.
-      # Ex: "<ip1>,<ip2>,<ip3>"
-      - seeds: "192.168.10.21,192.168.10.22,192.168.10.23,192.168.10.25,192.168.10.26,192.168.10.28" # IP address of all the server nodes.
+      # ELECT: Put all the server nodes' IPs here. Example: "<ip1>,<ip2>,<ip3>"
+      - seeds: "192.168.10.21,192.168.10.22,192.168.10.23,192.168.10.25,192.168.10.26,192.168.10.28"
 ```
 
 **Note that you can configure the prototype to run the raw Cassandra by setting `enable_migration` and `enable_erasure_coding` to `false`.**

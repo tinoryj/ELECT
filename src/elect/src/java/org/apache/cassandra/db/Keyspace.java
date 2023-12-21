@@ -337,7 +337,7 @@ public class Keyspace {
         createReplicationStrategy(metadata);
 
         this.metric = new KeyspaceMetrics(this);
-        this.viewManager = new ViewManager(this);
+        this.viewManager = new ViewManager(this);   
         for (TableMetadata cfm : metadata.tablesAndViews()) {
             logger.trace("Initializing {}.{}", getName(), cfm.name);
             initCf(schema.getTableMetadataRef(cfm.id), loadSSTables, cfm.keyspace);

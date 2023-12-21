@@ -6,6 +6,11 @@ Here are the detailed instructions to perform the same experiments in our paper.
 
 We claim that the resultant numbers might differ from those in our paper due to various factors (e.g., cluster sizes, machines, OS, software packages, etc.). Nevertheless, we expect ELECT to still achieve similar performance (in normal operations) with Cassandra while significantly reducing storage overhead (i.e., our main results).
 
+## Testbed access
+
+We provide two testbeds for the evaluation with properly setuped environment. 
+
+
 ## Environment setup (5 human-minutes + ~ 40 compute-minutes)
 
 We provide scripts to set up the environment for the evaluation. The scripts are tested on Ubuntu 22.04 LTS. Note that the running time of the scripts depends on the node number, network bandwidth, and the performance of the cluster nodes.
