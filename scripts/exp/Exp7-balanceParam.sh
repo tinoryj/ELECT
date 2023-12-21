@@ -12,7 +12,7 @@ KVNumber=10000000
 keyLength=24
 valueLength=1000
 operationNumber=1000000
-simulatedClientNumber=16
+simulatedClientNumber=${defaultSimulatedClientNumber}
 RunningRoundNumber=1
 storageSavingTargetSet=(0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9)
 

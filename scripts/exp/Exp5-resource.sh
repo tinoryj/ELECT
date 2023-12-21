@@ -12,7 +12,7 @@ KVNumber=10000000
 keyLength=24
 valueLength=1000
 operationNumber=1000000
-simulatedClientNumber=16
+simulatedClientNumber=${defaultSimulatedClientNumber}
 RunningRoundNumber=1
 
 # Setup hosts

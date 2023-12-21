@@ -10,7 +10,7 @@ KVNumberSet=(10000000 20000000 30000000)
 keyLength=24
 valueLength=1000
 operationNumber=1000000
-simulatedClientNumber=16
+simulatedClientNumber=${defaultSimulatedClientNumber}
 RunningRoundNumber=1
 recoveryNode=($(shuf -i 1-${NodeNumber} -n 1))
 

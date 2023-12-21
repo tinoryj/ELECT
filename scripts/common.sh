@@ -102,7 +102,7 @@ function waitFlushCompactionTimeEstimation {
         waitTimeCeil=$(echo "scale=0; (${waitTime} + 0.5)/1" | bc)
         echo ${waitTimeCeil}
     else
-        waitTime=$(echo "scale=2; ($dataSizeOnEachNode * 1024  / 4 / 3 / ($concurrentEC / 2)) * 80 + $dataSizeOnEachNode * 500" | bc)
+        waitTime=$(echo "scale=2; ($dataSizeOnEachNode * 1024  / 4 / 3 / ($concurrentEC / 2)) * 80 + $dataSizeOnEachNode * 500 + 240" | bc)
         waitTimeCeil=$(echo "scale=0; (${waitTime} + 0.5)/1" | bc)
         echo ${waitTimeCeil}
     fi
