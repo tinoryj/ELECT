@@ -121,7 +121,7 @@ cp -p build/tools/lib/stress.jar %{buildroot}/usr/share/%{username}/
 cp -p build/tools/lib/fqltool.jar %{buildroot}/usr/share/%{username}/
 
 # copy binaries
-mv bin/cassandra %{buildroot}/usr/sbin/
+mv bin/elect %{buildroot}/usr/sbin/
 cp -p bin/* %{buildroot}/usr/bin/
 cp -p tools/bin/* %{buildroot}/usr/bin/
 

@@ -1,1 +1,1 @@
-$ cd apache-cassandra-4.0.0/ && bin/cassandra
+$ cd apache-cassandra-4.0.0/ && bin/elect

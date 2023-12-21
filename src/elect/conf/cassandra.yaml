@@ -577,12 +577,12 @@ commitlog_segment_size: 32MiB
 # number of "concurrent_writes" is dependent on the number of cores in
 # your system; (8 * number_of_cores) is a good rule of thumb
 
-max_level_count: 9
+max_level_count: 2
 concurrent_ec: 64
-initial_delay: 15
+initial_delay: 1
 task_delay: 1
 stripe_update_frequency: 10
-max_send_sstables: 64
+max_send_sstables: 32
 cold_period: 1
 max_stripe_update_sstable: 4
 max_concurrent_download: 16

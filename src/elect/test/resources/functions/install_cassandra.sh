@@ -49,7 +49,7 @@ function install_cassandra() {
   # Ensure Cassandra starts on boot
   sed -i -e "s/exit 0//" /etc/rc.local
   cat >> /etc/rc.local <<EOF
-$CASSANDRA_HOME/bin/cassandra > /dev/null 2>&1 &
+$CASSANDRA_HOME/bin/elect > /dev/null 2>&1 &
 EOF
 
 }

@@ -29,7 +29,7 @@
         </ant>
         <property environment="env"/>
         <exec executable="sh">
-            <arg value="../build/dist/bin/cassandra"/>
+            <arg value="../build/dist/bin/elect"/>
             <arg value="-f"/>
         </exec>
     </target>
@@ -41,7 +41,7 @@
         <nbjpdastart addressproperty="nbjpdastart.address" name="Cassandra" transport="dt_socket"/>
         <exec executable="sh">
             <env key="JVM_OPTS" value="-Xdebug -Xnoagent -Xrunjdwp:transport=dt_socket,server=n,suspend=y,address=${nbjpdastart.address}"/>
-            <arg value="../build/dist/bin/cassandra"/>
+            <arg value="../build/dist/bin/elect"/>
             <arg value="-f"/>
         </exec>
     </target>
@@ -53,7 +53,7 @@
         <startprofiler freeform="true"/>
         <exec executable="sh">
             <env key="JVM_OPTS" value="-agentpath:${netbeans.home}/../profiler/lib/deployed/jdk16/mac/libprofilerinterface.jnilib=${netbeans.home}/../profiler/lib,5140"/>
-            <arg value="../build/dist/bin/cassandra"/>
+            <arg value="../build/dist/bin/elect"/>
             <arg value="-f"/>
         </exec>
     </target>

@@ -12,7 +12,7 @@ function runRecovery {
         du -s data/data/ycsbraw/ >> logs/recovery.log
         rm -rf data/data/ycsbraw/
 
-        nohup bin/cassandra >logs/debug.log 2>&1 &
+        nohup bin/elect >logs/debug.log 2>&1 &
 
         sleep 60
 

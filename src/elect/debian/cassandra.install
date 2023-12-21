@@ -11,7 +11,7 @@ conf/triggers/* etc/cassandra/triggers
 debian/cassandra.conf etc/security/limits.d
 debian/cassandra-sysctl.conf etc/sysctl.d
 bin/cassandra.in.sh usr/share/cassandra
-bin/cassandra usr/sbin
+bin/elect usr/sbin
 bin/nodetool usr/bin
 bin/sstableutil usr/bin
 bin/sstableloader usr/bin

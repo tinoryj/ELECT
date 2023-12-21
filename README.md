@@ -216,7 +216,7 @@ mkdir -p data/ECMetadata/
 mkdir -p data/tmp/
 mkdir -p logs
 # Run the cluster 
-nohup bin/cassandra >logs/debug.log 2>&1 &
+nohup bin/elect >logs/debug.log 2>&1 &
 ```
 
 ```shell
