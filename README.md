@@ -144,7 +144,7 @@ cold_tier_port: 8080 # The port of the file server (cold tier).
 seed_provider:
   - class_name: org.apache.cassandra.locator.SimpleSeedProvider
     parameters:
-      # ELECT: Put all the server nodes' IPs here. Example: "<ip1>,<ip2>,<ip3>"
+      # ELECT: Put all the server nodes' IPs here. Make sure these IPs are sorted from small to large. Example: "<ip1>,<ip2>,<ip3>"
       - seeds: "192.168.10.21,192.168.10.22,192.168.10.23,192.168.10.25,192.168.10.26,192.168.10.28"
 ```
 

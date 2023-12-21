@@ -8,8 +8,7 @@ We claim that the resultant numbers might differ from those in our paper due to 
 
 ## Testbed access
 
-We provide two testbeds for the evaluation with properly setuped environment. 
-
+We provide two testbeds for the evaluation with properly setuped environment. Since the repo will be made public, in order to ensure data security, we will provide the connection key and specific connection method of the two on the HotCRP website. Both testbeds contain 8 machines (6 ELECT server nodes, 1 object storage server node and 1 client node). When using both testbeds, please skip the next section "Environment setup".
 
 ## Environment setup (5 human-minutes + ~ 40 compute-minutes)
 
