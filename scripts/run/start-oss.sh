@@ -6,7 +6,7 @@ source "${SCRIPT_DIR}/../common.sh"
 function startOSSNode {
 
     kill -9 $(ps aux | grep FileServer | grep -v grep | awk 'NR == 1' | awk {'print $2'})
-
+    sleep 2
     cd ${PathToArtifact}/src/coldTier || exit
 
     # rm -rf data OSSLog.txt
