@@ -25,7 +25,7 @@
     - name: Startup with backuped data
       command: bash PATH_TO_ELECT/scripts/run/restartNode.sh {{ configureFileDir }} {{ sourceFileDir }}
       vars:
-        configureFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH/cassandra.yaml"
+        configureFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH/elect.yaml"
         sourceFileDir: "PATH_TO_DB_BACKUP/Scheme/DATAPATH/data"
       register: command_result
       ignore_errors: true

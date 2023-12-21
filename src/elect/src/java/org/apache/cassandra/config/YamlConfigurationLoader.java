@@ -62,7 +62,7 @@ public class YamlConfigurationLoader implements ConfigurationLoader
 {
     private static final Logger logger = LoggerFactory.getLogger(YamlConfigurationLoader.class);
 
-    private final static String DEFAULT_CONFIGURATION = "cassandra.yaml";
+    private final static String DEFAULT_CONFIGURATION = "elect.yaml";
     /**
      * This is related to {@link Config#PROPERTY_PREFIX} but is different to make sure Config properties updated via
      * system properties do not conflict with other system properties; the name "settings" matches system_views.settings.

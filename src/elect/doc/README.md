@@ -36,7 +36,7 @@ The source for the official documentation for Apache Cassandra can be found in
 the `modules/cassandra/pages` subdirectory. The documentation uses [antora](http://www.antora.org/)
 and is thus written in [asciidoc](http://asciidoc.org).
 
-To generate the asciidoc files for cassandra.yaml and the nodetool commands, run (from project root):
+To generate the asciidoc files for elect.yaml and the nodetool commands, run (from project root):
 ```bash
 ant gen-asciidoc
 ```

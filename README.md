@@ -122,7 +122,7 @@ ssh-copy-id node${i}
 
 ### Configuring ELECT (~20 human-minutes)
 
-The ELECT prototype requires to configure the cluster information before running. We provide an example configuration file `./Prototype/conf/cassandra.yaml`. Please modify the file according to your cluster settings and the instructions shown below (lines 11-34).
+The ELECT prototype requires to configure the cluster information before running. We provide an example configuration file `./Prototype/conf/elect.yaml`. Please modify the file according to your cluster settings and the instructions shown below (lines 11-34).
 
 ```shell
 cluster_name: 'ELECT Cluster'
@@ -204,7 +204,7 @@ Server started on port: xxx
 
 ### Run the ELECT cluster (~5 human-minutes + ~3 compute-minutes)
 
-After the `FileServer` is running correctly and configuring the cluster information in the `cassandra.yaml` file on each of the server nodes, we can run the ELECT cluster with the following command (on each server node):
+After the `FileServer` is running correctly and configuring the cluster information in the `elect.yaml` file on each of the server nodes, we can run the ELECT cluster with the following command (on each server node):
 
 ```shell
 cd src/elect

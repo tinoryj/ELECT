@@ -32,24 +32,24 @@ if [ $index -ne -1 ]; then
     echo "selected_token: ${selected_token}"
 
     cd ${PathToELECTPrototype} || exit
-    sed -i "s/initial_token:.*$/initial_token: ${selected_token}/" ${PathToELECTPrototype}/conf/cassandra.yaml
+    sed -i "s/initial_token:.*$/initial_token: ${selected_token}/" ${PathToELECTPrototype}/conf/elect.yaml
     tokens_string=$(
         IFS=,
         echo "${tokens[*]}"
     )
-    sed -i "s/token_ranges: \".*\"/token_ranges: ${tokens_string}/" ${PathToELECTPrototype}/conf/cassandra.yaml
-    sed -i "s/rpc_address:.*$/rpc_address: ${my_ip}/" ${PathToELECTPrototype}/conf/cassandra.yaml
-    sed -i "s/listen_address:.*$/listen_address: ${my_ip}/" ${PathToELECTPrototype}/conf/cassandra.yaml
-    sed -i "s/cold_tier_ip:.*$/cold_tier_ip: ${OSSServerNode}/" ${PathToELECTPrototype}/conf/cassandra.yaml
-    sed -i "s/cold_tier_port:.*$/cold_tier_port: ${OSSServerPort}/" ${PathToELECTPrototype}/conf/cassandra.yaml
-    sed -i "s/rpc_address:.*$/rpc_address: ${my_ip}/" ${PathToELECTPrototype}/conf/cassandra.yaml
-    sed -i "s/user_name:.*$/user_name: ${UserName}/" ${PathToELECTPrototype}/conf/cassandra.yaml
+    sed -i "s/token_ranges: \".*\"/token_ranges: ${tokens_string}/" ${PathToELECTPrototype}/conf/elect.yaml
+    sed -i "s/rpc_address:.*$/rpc_address: ${my_ip}/" ${PathToELECTPrototype}/conf/elect.yaml
+    sed -i "s/listen_address:.*$/listen_address: ${my_ip}/" ${PathToELECTPrototype}/conf/elect.yaml
+    sed -i "s/cold_tier_ip:.*$/cold_tier_ip: ${OSSServerNode}/" ${PathToELECTPrototype}/conf/elect.yaml
+    sed -i "s/cold_tier_port:.*$/cold_tier_port: ${OSSServerPort}/" ${PathToELECTPrototype}/conf/elect.yaml
+    sed -i "s/rpc_address:.*$/rpc_address: ${my_ip}/" ${PathToELECTPrototype}/conf/elect.yaml
+    sed -i "s/user_name:.*$/user_name: ${UserName}/" ${PathToELECTPrototype}/conf/elect.yaml
     nodes_string=$(
         IFS=,
         echo "${NodesList[*]}"
     )
-    sed -i "s/- seeds: \".*\"/- seeds: \"$nodes_string\"/" ${PathToELECTPrototype}/conf/cassandra.yaml
-    cp ${PathToELECTPrototype}/conf/cassandra.yaml ${PathToELECTPrototype}/elect.yaml
+    sed -i "s/- seeds: \".*\"/- seeds: \"$nodes_string\"/" ${PathToELECTPrototype}/conf/elect.yaml
+    cp ${PathToELECTPrototype}/conf/elect.yaml ${PathToELECTPrototype}/elect.yaml
 
 fi
 

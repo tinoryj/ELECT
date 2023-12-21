@@ -21,13 +21,13 @@ function restartNode {
     cp -r ${sourceDataDir} data
     chmod -R 775 data
 
-    if [ -f conf/cassandra.yaml ]; then
-        echo "Remove old conf/cassandra.yaml"
-        rm conf/cassandra.yaml
+    if [ -f conf/elect.yaml ]; then
+        echo "Remove old conf/elect.yaml"
+        rm conf/elect.yaml
     fi
 
     echo "Copy DB configuration back from ${sourceDataDir} to ${PathToELECTPrototype}/data"
-    cp ${configureFilePath} conf/cassandra.yaml
+    cp ${configureFilePath} conf/elect.yaml
 
     rm -rf logs
     mkdir -p logs

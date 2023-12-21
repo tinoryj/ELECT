@@ -28,7 +28,7 @@
 Memtable types and options are specified using memtable "configurations", which specify an implementation class
 and its parameters.
 
-The memtable configurations are defined in `cassandra.yaml`, using the following format:
+The memtable configurations are defined in `elect.yaml`, using the following format:
 
 ```yaml
 memtable:
@@ -185,7 +185,7 @@ store and reuse constructed factories to avoid wasting space for duplicate objec
 objects in Cassandra).
 
 At this time many of the configuration parameters for memtables are still configured using top-level parameters like
-`memtable_allocation_type` in `cassandra.yaml` and `memtable_flush_period_in_ms` in the table schema.
+`memtable_allocation_type` in `elect.yaml` and `memtable_flush_period_in_ms` in the table schema.
 
 ### Sample implementation
 
