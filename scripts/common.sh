@@ -162,7 +162,7 @@ function load {
         if [ ! -d ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP} ]; then
             mkdir -p ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
         fi
-        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
+        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Load-${nodeIP}
         ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
 }
@@ -294,7 +294,7 @@ function runExp {
         if [ ! -d ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP} ]; then
             mkdir -p ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
         fi
-        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTLog}/${targetScheme}/${ExpName}-Run-Workload-${workload}-ClientNumber-${simulatedClientNumber}-Consistency-${consistency}-Node-${nodeIP}
+        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Run-Workload-${workload}-ClientNumber-${simulatedClientNumber}-Consistency-${consistency}-Node-${nodeIP}
         ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
 
