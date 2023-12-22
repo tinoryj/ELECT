@@ -16,7 +16,6 @@ scheme=$2
 # threads=$9
 possibleOperationTypeSet=(READ INSERT SCAN UPDATE)
 benchmarkTypeSet=("AverageLatency" "99thPercentileLatency")
-# benchmarkTypeSet=("AverageLatency" "25thPercentileLatency" "50thPercentileLatency" "75thPercentileLatency" "90thPercentileLatency" "99thPercentileLatency")
 
 function calculate {
     values=("$@")
@@ -144,8 +143,8 @@ function processRunLogs {
 function processLoadResults {
     declare -A file_dict
     for file in "$search_dir"/*; do
-        if [[ $file =~ ${expName}-Load-Scheme-${scheme}-workload([^/]+)-KVNumber-([0-9]+)-KeySize-([0-9]+)-ValueSize-([0-9]+)-ClientNumber-([0-9]+)-Time-[0-9]+ ]]; then
-            key="scheme: ${scheme}, workload: ${BASH_REMATCH[1]}, KVNumber: ${BASH_REMATCH[2]}, KeySize: ${BASH_REMATCH[3]}, ValueSize: ${BASH_REMATCH[4]}, ClientNumber: ${BASH_REMATCH[5]}"
+        if [[ $file =~ ${expName}-Load-Scheme-${scheme}-workload([^/]+)-KVNumber-([0-9]+)-KeySize-([0-9]+)-ValueSize-([0-9]+)-CodingK-([0-9]+)-Saving-([0-9]+)-ClientNumber-([0-9]+)-Time-[0-9]+ ]]; then
+            key="scheme: ${scheme}, workload: ${BASH_REMATCH[1]}, KVNumber: ${BASH_REMATCH[2]}, KeySize: ${BASH_REMATCH[3]}, ValueSize: ${BASH_REMATCH[4]}, Coding K: ${BASH_REMATCH[5]}, Storage saving target: ${BASH_REMATCH[6]}, ClientNumber: ${BASH_REMATCH[7]}"
             file_dict[$key]+="$file "
             # echo "add file $file to category $key"
         fi
@@ -161,7 +160,7 @@ function processLoadResults {
 function processNormalResults {
     declare -A file_dict
     for file in "$search_dir"/*; do
-        if [[ $file =~ ${expName}-Run-normal-Scheme-${scheme}-workload([^/]+)-KVNumber-([0-9]+)-KeySize-([0-9]+)-ValueSize-([0-9]+)-ClientNumber-([0-9]+)-Time-[0-9]+ ]]; then
+        if [[ $file =~ ${expName}-Run-normal-Scheme-${scheme}-workload([^/]+)-KVNumber-([0-9]+)-OPNumber-([0-9]+)-KeySize-([0-9]+)-ValueSize-([0-9]+)-ClientNumber-([0-9]+)-Time-[0-9]+ ]]; then
             key="scheme: ${scheme}, workload: ${BASH_REMATCH[1]}, KVNumber: ${BASH_REMATCH[2]}, KeySize: ${BASH_REMATCH[3]}, ValueSize: ${BASH_REMATCH[4]}, ClientNumber: ${BASH_REMATCH[5]}"
             file_dict[$key]+="$file "
             # echo "add file $file to category $key"

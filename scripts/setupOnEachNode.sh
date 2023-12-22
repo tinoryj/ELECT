@@ -82,6 +82,8 @@ if [ ${setupMode} == "full" ]; then
     fi
 
     pip install cassandra-driver numpy scipy
+    rm -rf ${PathToELECTLog}
+    rm -rf ${PathToELECTExpDBBackup}
 fi
 
 # Java configuration
