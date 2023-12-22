@@ -5,9 +5,9 @@ source "${SCRIPT_DIR}/../common.sh"
 # Exp2: YCSB core workloads, 3-way replication, (6,4) encoding, 60% target storage saving, 10M KV + 1M OP.
 
 ExpName="Exp2-operations"
-schemes=("cassandra" "elect")
+schemes=("elect" "cassandra")
 workloads=("workloadRead" "workloadWrite" "workloadScan" "workloadUpdate")
-runningTypes=("normal" "degraded")
+runningTypes=("degraded" "normal")
 KVNumber=10000000
 keyLength=24
 valueLength=1000
