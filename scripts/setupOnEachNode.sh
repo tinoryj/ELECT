@@ -77,7 +77,6 @@ if [ ${setupMode} == "full" ]; then
         else
             echo "systemd-timesyncd is not active."
         fi
-
         TIME=$(curl -s "http://worldtimeapi.org/api/timezone/Etc/UTC" | jq -r '.datetime' | cut -d'.' -f1 | tr 'T' ' ')
         sudo timedatectl set-time "$TIME"
     fi

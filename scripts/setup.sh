@@ -52,8 +52,8 @@ if [ ${setupMode} == "full" ]; then
         else
             echo "systemd-timesyncd is not active."
         fi
-
-        echo "NTP services have been stopped and disabled."
+        TIME=$(curl -s "http://worldtimeapi.org/api/timezone/Etc/UTC" | jq -r '.datetime' | cut -d'.' -f1 | tr 'T' ' ')
+        printf ${sudoPasswd} | sudo -S timedatectl set-time "$TIME"
     else
         sudo apt-get update
         sudo apt-get install -y ant ant-optional maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
@@ -81,8 +81,8 @@ if [ ${setupMode} == "full" ]; then
         else
             echo "systemd-timesyncd is not active."
         fi
-
-        echo "NTP services have been stopped and disabled."
+        TIME=$(curl -s "http://worldtimeapi.org/api/timezone/Etc/UTC" | jq -r '.datetime' | cut -d'.' -f1 | tr 'T' ' ')
+        sudo timedatectl set-time "$TIME"
     fi
     pip install cassandra-driver numpy scipy
 fi
