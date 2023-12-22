@@ -4,12 +4,12 @@
 
 ELECT is a distributed tiered KV store that enables replication and erasure coding tiering. This repo contains the implementation of the ELECT prototype, YCSB benchmark tool, and evaluation scripts used in our USENIX FAST 2024 paper.
 
-* `src/`: includes the implementation of the ELECT prototype as while as a simple object storage backend that can be deployed within a local cluster.
-* `scripts/`: includes the setup and evaluation scripts as while as our modified version of YCSB, which supports user-defined key and value sizes.
+* `src/`: includes the implementation of the ELECT prototype and a simple object storage backend that can be deployed within a local cluster.
+* `scripts/`: includes the setup and evaluation scripts and our modified version of YCSB, which supports user-defined key and value sizes.
 
 ## Artifact Evaluation Instructions
 
-Please refer to the [AE_INSTRUCTION.md](AE_INSTRUCTION.md) for details. We also include some scripts to reduce the overhead of environment setup.
+Please refer to the [AE_INSTRUCTION.md](AE_INSTRUCTION.md) for details. We provide two testbeds with a settled system environment to run our evaluation scripts. Note that to ensure security, we will provide the connection key and specific connection method of the two testbeds on the HotCRP website.
 
 ## Prerequisites
 
@@ -43,7 +43,7 @@ mkdir -p ~/.m2
 cp ./scripts/env/settings.xml ~/.m2/
 ```
 
-### Prototype (5 human-minutes + ~ 40 compute-minutes)
+### Step 1: ELECT Prototype (5 human-minutes + ~ 40 compute-minutes)
 
 Since the prototype utilizes the Intel Isa-L library to achieve high-performance erasure coding, we need to build the EC library first:
 
@@ -70,9 +70,9 @@ ant realclean
 ant -Duse.jdk11=true
 ```
 
-### ColdTier (1 human-minutes + ~ 1 compute-minutes)
+### Step 2: The object storage backend (1 human-minutes + ~ 1 compute-minutes)
 
-To avoid unstable access to Alibaba OSS (if cross-country), we use a server node within the same cluster as the cold tier to store the cold data. We use the `FileServer` tool to provide the file-based storage service. The `FileServer` tool is a simple file server that supports the following operations: `read`, and `write`. We provide the source code of the `FileServer` tool in `./ColdTier`. To build the `FileServer` tool, please run the following command:
+To avoid unstable access to Alibaba OSS (if cross-country), we use a server node within the same cluster as the cold tier to store the cold data. We use the `OSSServer` tool to provide the file-based storage service. The `OSSServer` tool is a simple object storage server that supports the following operations: `read` and `write`. We provide the source code of the `OSSServer` tool in `src/coldTier/`. To build the `OSSServer` tool, please run the following command:
 
 ```shell
 cd src/coldTier
@@ -80,12 +80,12 @@ make clean
 make
 ```
 
-### YCSB (2 human-minutes + ~ 30 compute-minutes)
+### Step 3: YCSB benchmark tool (2 human-minutes + ~ 30 compute-minutes)
 
 We build the modified version of YCSB, which supports user-defined key and value sizes. The build procedure is similar to the original YCSB.
 
 ```shell
-cd ./YCSB
+cd scripts/ycsb
 mvn clean package
 ```
 
@@ -93,15 +93,15 @@ mvn clean package
 
 ### Cluster setup (~20 human-minutes)
 
-SSH key-free access is required between all nodes in the cluster.
+SSH key-free access is required between all nodes in the ELECT cluster.
 
-Step 1: Generate the SSH key pair on each node.
+**Step 1:** Generate the SSH key pair on each node.
 
 ```shell 
 ssh-keygen -q -t rsa -b 2048 -N "" -f ~/.ssh/id_rsa
 ```
 
-Step 2: Create an SSH configuration file. You can run the following command with the specific node IP, Port, and User to generate the configuration file. Note that you can run the command multiple times to add all the nodes to the configuration file.
+**Step 2:** Create an SSH configuration file. You can run the following command with the specific node IP, Port, and User to generate the configuration file. Note that you can run the command multiple times to add all the nodes to the configuration file.
 
 ```shell
 # Replace xxx with the correct IP, Port, and User information, and replace ${i} to the correct node ID.
@@ -114,7 +114,7 @@ Host node${i}
 EOT
 ```
 
-Step 3: Copy the SSH public key to all the nodes in the cluster.
+**Step 3:** Copy the SSH public key to all the nodes in the cluster.
 
 ```shell
 ssh-copy-id node${i}
@@ -133,14 +133,14 @@ parity_nodes: 2 # The erasure coding parameter (n - k)
 target_storage_saving: 0.6 # The balance parameter (storage saving target) controls the approximate storage saving ratio of the cold tier.
 enable_migration: true # Enable the migration module to migrate cold data to the cold tier.
 enable_erasure_coding: true # Enable redundancy transitioning module to encode the cold data.
-# Manual settings to achieve balanced workload across different nodes.
+# Manual settings to achieve a balanced workload across different nodes.
 initial_token: -9223372036854775808 # The initial token of the current node.
 token_ranges: -9223372036854775808,-6148914691236517376,-3074457345618258944,0,3074457345618257920,6148914691236515840 # The initial tokens of all nodes in the cluster.
 # Current node settings
 listen_address: 192.168.10.21 # IP address of the current node.
 rpc_address: 192.168.10.21 # IP address of the current node.
-cold_tier_ip: 192.168.10.21 # The IP address of the file server (cold tier).
-cold_tier_port: 8080 # The port of the file server (cold tier).
+cold_tier_ip: 192.168.10.21 # The IP address of the object storage server (cold tier).
+cold_tier_port: 8080 # The port of the object storage server (cold tier).
 seed_provider:
   - class_name: org.apache.cassandra.locator.SimpleSeedProvider
     parameters:
@@ -175,31 +175,32 @@ After getting the initial token for each node, please fill the generated number 
 ## Running 
 
 To test the ELECT prototype, we need to run the following steps:
-1. Run the file server at the clod tier.
+
+1. Run the object storage server as the clod tier.
 2. Run the ELECT cluster.
 3. Run the YCSB benchmark.
 
 We describe the detailed steps below.
 
-### Run the file server at clod tier (~1 human-minutes + ~1 compute-minutes)
+### Run the object storage server as the clod tier (~1 human minutes + ~1 compute-minutes)
 
 ```shell
 cd src/coldTier
 mkdir data # Create the data directories.
-nohup java FileServer ${port} >coldStorage.log 2>&1 & # ${port} should be replaced with the port number of the file server.
+nohup java OSSServer ${port} >coldStorage.log 2>&1 & # ${port} should be replaced with the port number of the object storage server.
 ```
 
-Note that the port of FileServer is the same as the `cold_tier_port` in the ELECT configuration file.
+Note that the port of OSSServer is the same as the `cold_tier_port` in the ELECT configuration file.
 
-If the file server is running correctly, you can see the following output in the log file (`coldStorage.log`):
+If the object storage server is running correctly, you can see the following output in the log file (`coldStorage.log`):
 
 ```shell
-Server started on port: xxx
+Server started on port: 8080
 ```
 
 ### Run the ELECT cluster (~5 human-minutes + ~3 compute-minutes)
 
-After the `FileServer` is running correctly and configuring the cluster information in the `elect.yaml` file on each of the server nodes, we can run the ELECT cluster with the following command (on each server node):
+After the `OSSServer` is running correctly and configuring the cluster information in the `elect.yaml` file on each of the server nodes, we can run the ELECT cluster with the following command (on each server node):
 
 ```shell
 cd src/elect
@@ -298,4 +299,16 @@ Please check the system clock of all the nodes in the cluster. The system clock 
 
 ```shell
 sudo date 122109122023 # set the date to  2023-12-20-15:00
+```
+
+### The read operation of ELECT cannot work correctly
+
+Please check the `seeds:` field in the configuration file. The current version of ELECT requires the seed nodes' IP in the configuration file to be sorted from small to large. For example:
+
+
+```shell
+# Wrong version:
+- seeds: "192.168.10.28,192.168.10.21,192.168.10.25"
+# Correct version:
+- seeds: "192.168.10.21,192.168.10.25,192.168.10.28"
 ```
