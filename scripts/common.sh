@@ -251,8 +251,9 @@ function runExp {
     shift 9
     simulatedClientNumber=$1
     consistency=$2
+    runningMode=$3
 
-    echo "Start run benchmark to ${targetScheme}, settings: expName is ${expName}, target scheme is ${targetScheme}, running mode is ${runningType}, KVNumber is ${KVNumber}, operationNumber is ${operationNumber}, workload is ${workload}, simulatedClientNumber is ${simulatedClientNumber}, consistency is ${consistency}."
+    echo "Start run benchmark to ${targetScheme}, settings: expName is ${expName}, target scheme is ${targetScheme}, running mode is ${runningType}, KVNumber is ${KVNumber}, operationNumber is ${operationNumber}, workload is ${workload}, simulatedClientNumber is ${simulatedClientNumber}, consistency is ${consistency}, running mode is ${runningMode}."
 
     # Make local results directory
     if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
@@ -277,6 +278,7 @@ function runExp {
     sed -i "s/filed_length:.*$/filed_length: ${fieldlength}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/operation_count:.*$/operation_count: ${operationNumber}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/\(consistency: \)".*"/consistency: ${consistency}/" ${PathToScripts}/exp/playbook-run.yaml
+    sed -i "s/\(runningMode: \)".*"/runningMode: ${runningMode}/" ${PathToScripts}/exp/playbook-run.yaml
     if [ "${workload}" == "workloade" ] || [ "${workload}" == "workloadscan" ]; then
         # generate scanNumber = operationNumber / 10
         scanNumber=$((operationNumber / 10))
@@ -345,11 +347,11 @@ function doEvaluation {
     for ((round = 1; round <= RunningRoundNumber; round++)); do
         if [ "${runningMode}" == "normal" ]; then
             startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
-            runExp "${expName}" "${scheme}" "${round}" "normal" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}"
+            runExp "${expName}" "${scheme}" "${round}" "normal" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}" "${runningMode}"
         elif [ "${runningMode}" == "degraded" ]; then
             startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
             failnodes
-            runExp "${expName}" "${scheme}" "${round}" "degraded" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}"
+            runExp "${expName}" "${scheme}" "${round}" "degraded" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}" "${runningMode}"
         fi
     done
 }

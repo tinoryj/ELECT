@@ -53,6 +53,7 @@
         expName: "Exp#1-Normal-Run-Cassandra-DATAPATH"
         keyspace: "ycsb"
         consistency: "ONE"
+        runningMode: "normal"
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed
