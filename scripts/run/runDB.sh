@@ -20,7 +20,7 @@ while read -r line; do
         ip=$(echo "$line" | awk -F'=' '{print $2}')
         failure_ips+=("$ip")
     fi
-done < "${PathToScripts}/exp/hosts.ini"
+done <"${PathToScripts}/exp/hosts.ini"
 echo "Failed IPs: ${failure_ips[*]}"
 copied_list=("${NodesList[@]}")
 # Remove the failure IPs from the ip_list
@@ -58,6 +58,6 @@ if [ "$keyspace" == "ycsb" ]; then
     mode="elect"
 fi
 
-file_name="${expName}-Scheme-${mode}-${workload}-KVNumber-${recordcount}-OPNumber-${operationcount}-ClientNumber-${threads}-Time-$(date +%s)"
+file_name="${expName}-Run-Scheme-${mode}-${workload}-KVNumber-${recordcount}-OPNumber-${operationcount}-KeySize-${key_length}-ValueSize-${field_length}-ClientNumber-${threads}-Time-$(date +%s)"
 
 bin/ycsb.sh run cassandra-cql -p hosts=${ip_list} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/"${workload}" >${PathToELECTResultSummary}/"${file_name}".log 2>&1

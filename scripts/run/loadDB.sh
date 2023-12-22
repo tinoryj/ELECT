@@ -1,6 +1,6 @@
 #!/bin/bash
 . /etc/profile
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../common.sh"
 func() {
     record_count=$1
@@ -16,7 +16,14 @@ func() {
     sed -i "s/recordcount=.*$/recordcount=${record_count}/" workloads/"${workload}"
     sed -i "s/keylength=.*$/keylength=${key_length}/" workloads/"${workload}"
     sed -i "s/fieldlength=.*$/fieldlength=${field_length}/" workloads/"${workload}"
-    file_name="${expName}-Load-${workload}-KVNumber-${record_count}-KeySize-${key_length}-ValueSize-${field_length}-ClientNumber-${threads}-$(date +%s)"
+    mode=""
+    if [ "$keyspace" == "ycsb" ]; then
+        mode="elect"
+    else
+        mode="cassandra"
+    fi
+    
+    file_name="${expName}-Load-Scheme-${mode}-${workload}-KVNumber-${recordcount}-KeySize-${key_length}-ValueSize-${field_length}-ClientNumber-${threads}-Time-$(date +%s)"
 
     bin/ycsb.sh load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads ${threads} -s -P workloads/"${workload}" >${PathToELECTResultSummary}/${file_name}.log 2>&1
 }

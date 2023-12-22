@@ -146,7 +146,7 @@ function load {
         sed -i "s/\(parity_block_num: \)".*"/parity_block_num: 2/" ${SCRIPT_DIR}/exp/playbook-load.yaml
     fi
 
-    sed -i "s/\(expName: \)".*"/expName: "${expName}-${targetScheme}-Load"/" ${SCRIPT_DIR}/exp/playbook-load.yaml
+    sed -i "s/\(expName: \)".*"/expName: "${expName}"/" ${SCRIPT_DIR}/exp/playbook-load.yaml
     sed -i "s/\(coordinator: \)".*"/coordinator: "${NodesList[0]}"/" ${SCRIPT_DIR}/exp/playbook-load.yaml
     sed -i "s/record_count:.*$/record_count: ${KVNumber}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
     sed -i "s/key_length:.*$/key_length: ${keylength}/" ${SCRIPT_DIR}/exp/playbook-load.yaml
@@ -192,6 +192,8 @@ function backup {
     KVNumber=$3
     keylength=$4
     fieldlength=$5
+    codingK=$6
+    storageSavingTarget=$7
 
     echo "Start copy data of ${targetScheme} to backup, this will kill the online system!!!"
     # Make local results directory
@@ -203,7 +205,7 @@ function backup {
     setupNodeInfo hosts.ini
     # Modify playbook
     sed -i "s/Scheme/${targetScheme}/g" ${PathToScripts}/exp/playbook-backup.yaml
-    sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}/g" ${PathToScripts}/exp/playbook-backup.yaml
+    sed -i "s/DATAPATH/${expName}-KVNumber-${KVNumber}-KeySize-${keylength}-ValueSize-${fieldlength}/g" ${PathToScripts}/exp/playbook-backup.yaml
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-backup.yaml
 }
 
@@ -224,7 +226,7 @@ function startupFromBackup {
     setupNodeInfo hosts.ini
     # Modify playbook
     sed -i "s/Scheme/${targetScheme}/g" ${PathToScripts}/exp/playbook-startup.yaml
-    sed -i "s/DATAPATH/${expName}-KV-${KVNumber}-Key-${keylength}-Value-${fieldlength}/g" ${PathToScripts}/exp/playbook-startup.yaml
+    sed -i "s/DATAPATH/${expName}-KVNumber-${KVNumber}-KeySize-${keylength}-ValueSize-${fieldlength}/g" ${PathToScripts}/exp/playbook-startup.yaml
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-startup.yaml
 }
 
@@ -269,7 +271,7 @@ function runExp {
     fi
     sed -i "s/\(threads: \)".*"/threads: ${simulatedClientNumber}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/\(workload: \)".*"/workload: \"${workload}\"/" ${PathToScripts}/exp/playbook-run.yaml
-    sed -i "s/\(expName: \)".*"/expName: "${ExpName}-${targetScheme}-Run-${runningType}-Round-${round}"/" ${PathToScripts}/exp/playbook-run.yaml
+    sed -i "s/\(expName: \)".*"/expName: "${ExpName}"/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/record_count:.*$/record_count: ${KVNumber}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/key_length:.*$/key_length: ${keylength}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/filed_length:.*$/filed_length: ${fieldlength}/" ${PathToScripts}/exp/playbook-run.yaml
@@ -320,7 +322,7 @@ function loadDataForEvaluation {
     # Load
     load "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${simulatedClientNumber}" "${storageSavingTarget}" "${codingK}"
     flush "${expName}" "${scheme}" "${waitFlushCompactionTime}"
-    backup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
+    backup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}" "${codingK}" "${storageSavingTarget}"
 }
 
 function doEvaluation {
