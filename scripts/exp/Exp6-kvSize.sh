@@ -30,7 +30,7 @@ for scheme in "${schemes[@]}"; do
         for workload in "${workloads[@]}"; do
             for runningMode in "${runningTypes[@]}"; do
                 # Run experiment
-                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}"
+                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}" "ONE"
             done
         done
     done
@@ -43,7 +43,7 @@ for scheme in "${schemes[@]}"; do
         for workload in "${workloads[@]}"; do
             for runningMode in "${runningTypes[@]}"; do
                 # Run experiment
-                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}"
+                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}" "ONE"
             done
         done
     done

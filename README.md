@@ -21,13 +21,13 @@ As a distributed KV store, ELECT requires a cluster of machines to run. With the
 
 * For Java project build: openjdk-11-jdk, openjdk-11-jre, ant, ant-optional Maven.
 * For erasure-coding library build: clang, llvm, libisal-dev.
-* For scripts: python3, ansible, python3-pip, cassandra-driver.
+* For scripts: python3, ansible, python3-pip, cassandra-driver, numpy, scipy.
 
 The packages above can be directly installed via `apt-get` and `pip` package managers:
 
 ```shell 
 sudo apt-get install openjdk-11-jdk openjdk-11-jre ant ant-optional maven clang llvm libisal-dev python3 ansible python3-pip
-pip install cassandra-driver
+pip install cassandra-driver numpy scipy
 ```
 
 Note that the dependencies for both ELECT and YCSB will be automatically installed via Maven during compilation.
@@ -43,7 +43,7 @@ mkdir -p ~/.m2
 cp ./scripts/env/settings.xml ~/.m2/
 ```
 
-### Step 1: ELECT Prototype (5 human-minutes + ~ 40 compute-minutes)
+### Step 1: ELECT prototype (5 human-minutes + ~ 40 compute-minutes)
 
 Since the prototype utilizes the Intel Isa-L library to achieve high-performance erasure coding, we need to build the EC library first:
 
@@ -52,7 +52,7 @@ Since the prototype utilizes the Intel Isa-L library to achieve high-performance
 export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
 export PATH=$JAVA_HOME/bin:$PATH
 # Build the JNI-based erasure coding library
-cd ./Prototype
+cd src/elect
 cd src/native/src/org/apache/cassandra/io/erasurecode/
 chmod +x genlib.sh 
 ./genlib.sh
@@ -64,7 +64,7 @@ Then, we can build the ELECT prototype:
 
 ```shell
 # Build with java 11
-cd ./Prototype
+cd src/elect
 mkdir build lib
 ant realclean
 ant -Duse.jdk11=true
@@ -122,7 +122,7 @@ ssh-copy-id node${i}
 
 ### Configuring ELECT (~20 human-minutes)
 
-The ELECT prototype requires to configure the cluster information before running. We provide an example configuration file `./Prototype/conf/elect.yaml`. Please modify the file according to your cluster settings and the instructions shown below (lines 11-34).
+The ELECT prototype requires to configure the cluster information before running. We provide an example configuration file `src/elect/conf/elect.yaml`. Please modify the file according to your cluster settings and the instructions shown below (lines 11-34).
 
 ```shell
 cluster_name: 'ELECT Cluster'
@@ -176,13 +176,13 @@ After getting the initial token for each node, please fill the generated number 
 
 To test the ELECT prototype, we need to run the following steps:
 
-1. Run the object storage server as the clod tier.
+1. Run the object storage server as the cold tier.
 2. Run the ELECT cluster.
 3. Run the YCSB benchmark.
 
 We describe the detailed steps below.
 
-### Run the object storage server as the clod tier (~1 human minutes + ~1 compute-minutes)
+### Run the object storage server as the cold tier (~1 human minutes + ~1 compute-minutes)
 
 ```shell
 cd src/coldTier

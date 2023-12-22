@@ -252,8 +252,9 @@ function runExp {
     simulatedClientNumber=$1
     consistency=$2
     runningMode=$3
+    extraFlag=${4:-}
 
-    echo "Start run benchmark to ${targetScheme}, settings: expName is ${expName}, target scheme is ${targetScheme}, running mode is ${runningType}, KVNumber is ${KVNumber}, operationNumber is ${operationNumber}, workload is ${workload}, simulatedClientNumber is ${simulatedClientNumber}, consistency is ${consistency}, running mode is ${runningMode}."
+    echo "Start run benchmark to ${targetScheme}, settings: expName is ${expName}, target scheme is ${targetScheme}, running mode is ${runningType}, KVNumber is ${KVNumber}, operationNumber is ${operationNumber}, workload is ${workload}, simulatedClientNumber is ${simulatedClientNumber}, consistency is ${consistency}, running mode is ${runningMode}. ExtraFlag is ${extraFlag}"
 
     # Make local results directory
     if [ ! -d ${PathToELECTResultSummary}/${targetScheme} ]; then
@@ -279,6 +280,7 @@ function runExp {
     sed -i "s/operation_count:.*$/operation_count: ${operationNumber}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/\(consistency: \)".*"/consistency: ${consistency}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/\(runningMode: \)".*"/runningMode: ${runningMode}/" ${PathToScripts}/exp/playbook-run.yaml
+    sed -i "s/\(extraFlag: \)".*"/extraFlag: ${extraFlag}/" ${PathToScripts}/exp/playbook-run.yaml
     if [ "${workload}" == "workloade" ] || [ "${workload}" == "workloadscan" ]; then
         # generate scanNumber = operationNumber / 10
         scanNumber=$((operationNumber / 10))
@@ -339,7 +341,8 @@ function doEvaluation {
     runningMode=$9
     shift 9
     workload=$1
-    readConsistency=${2:-"ONE"}
+    readConsistency=${2}
+    extraFlag=${3:-}
 
     # Outpout params
     echo "Start experiment to Running ${scheme}, expName is ${expName}; KVNumber is ${KVNumber}, keylength is ${keylength}, fieldlength is ${fieldlength}, operationNumber is ${operationNumber}, simulatedClientNumber is ${simulatedClientNumber}, running type is ${runningMode}, workload is ${workload}. The experiment will run ${RunningRoundNumber} rounds. The read consistency level is ${readConsistency}."
@@ -347,11 +350,11 @@ function doEvaluation {
     for ((round = 1; round <= RunningRoundNumber; round++)); do
         if [ "${runningMode}" == "normal" ]; then
             startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
-            runExp "${expName}" "${scheme}" "${round}" "normal" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}" "${runningMode}"
+            runExp "${expName}" "${scheme}" "${round}" "normal" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}" "${runningMode}" "${extraFlag}"
         elif [ "${runningMode}" == "degraded" ]; then
             startupFromBackup "${expName}" "${scheme}" "${KVNumber}" "${keylength}" "${fieldlength}"
             failnodes
-            runExp "${expName}" "${scheme}" "${round}" "degraded" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}" "${runningMode}"
+            runExp "${expName}" "${scheme}" "${round}" "degraded" "${KVNumber}" "${operationNumber}" "${keylength}" "${fieldlength}" "${workload}" "${simulatedClientNumber}" "${readConsistency}" "${runningMode}" "${extraFlag}"
         fi
     done
 }

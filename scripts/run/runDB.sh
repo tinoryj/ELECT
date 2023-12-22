@@ -47,6 +47,7 @@ keyspace=$8
 consistency=$9
 shift 9
 runningMode=$1
+extraFlags=${2:-}
 
 cd ${PathToYCSB} || exit
 
@@ -60,6 +61,10 @@ if [ "$keyspace" == "ycsb" ]; then
     mode="elect"
 fi
 
-file_name="${expName}-Run-${runningMode}-Scheme-${mode}-${workload}-KVNumber-${recordcount}-OPNumber-${operationcount}-KeySize-${key_length}-ValueSize-${field_length}-ClientNumber-${threads}-Time-$(date +%s)"
+file_name="${expName}-Run-${runningMode}-Scheme-${mode}-${workload}-KVNumber-${recordcount}-OPNumber-${operationcount}-KeySize-${key_length}-ValueSize-${field_length}-ClientNumber-${threads}-Consistency-${consistency}-Time-$(date +%s)"
+
+if [ ! -z "${extraFlag}" ]; then
+    file_name="${expName}-Run-${runningMode}-Scheme-${mode}-${workload}-KVNumber-${recordcount}-OPNumber-${operationcount}-KeySize-${key_length}-ValueSize-${field_length}-ClientNumber-${threads}-Consistency-${consistency}-ExtraFlag-${extraFlag}-Time-$(date +%s)"
+fi
 
 bin/ycsb.sh run cassandra-cql -p hosts=${ip_list} -p cassandra.readconsistencylevel=${consistency} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads $threads -s -P workloads/"${workload}" >${PathToELECTResultSummary}/"${file_name}".log 2>&1

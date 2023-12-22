@@ -22,8 +22,8 @@ func() {
     else
         mode="cassandra"
     fi
-    
-    file_name="${expName}-Load-Scheme-${mode}-${workload}-KVNumber-${recordcount}-KeySize-${key_length}-ValueSize-${field_length}-ClientNumber-${threads}-Time-$(date +%s)"
+
+    file_name="${expName}-Load-Scheme-${mode}-${workload}-KVNumber-${record_count}-KeySize-${key_length}-ValueSize-${field_length}-ClientNumber-${threads}-Time-$(date +%s)"
 
     bin/ycsb.sh load cassandra-cql -p hosts=${NodesList} -p cassandra.keyspace=${keyspace} -p cassandra.tracing="false" -threads ${threads} -s -P workloads/"${workload}" >${PathToELECTResultSummary}/${file_name}.log 2>&1
 }

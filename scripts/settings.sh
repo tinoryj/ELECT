@@ -47,6 +47,6 @@ for ip in "${FullNodeList[@]}"; do
 done
 
 # Output the result
-if [ ! -n "$networkInterface" ]; then
-    echo "ERROR no matching interface found for the given IPs. The node should not be used in the experiment."
-fi
+# if [ ! -n "$networkInterface" ]; then
+#     echo "ERROR no matching interface found for the given IPs. The node should not be used in the experiment."
+# fi

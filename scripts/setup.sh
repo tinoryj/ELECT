@@ -32,7 +32,7 @@ if [ ${setupMode} == "full" ]; then
         sudo apt-get update
         sudo apt-get install -y ant ant-optional maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre
     fi
-    pip install cassandra-driver
+    pip install cassandra-driver numpy scipy
 fi
 
 if [ ! -d "${PathToELECTResultSummary}" ]; then

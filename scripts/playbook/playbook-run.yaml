@@ -42,7 +42,7 @@
   become_user: elect
   tasks:
     - name: Execute runDB.sh
-      command: bash PATH_TO_ELECT/scripts/run/runDB.sh {{ record_count }} {{ operation_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ consistency }}
+      command: bash PATH_TO_ELECT/scripts/run/runDB.sh {{ record_count }} {{ operation_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ keyspace }} {{ consistency }} {{ runningMode }} {{ extraFlag }}
       vars:
         record_count: 10000000
         operation_count: 10000000
@@ -54,6 +54,7 @@
         keyspace: "ycsb"
         consistency: "ONE"
         runningMode: "normal"
+        extraFlag: ""
       register: command_result
       ignore_errors: true
     - name: Fail the play if the previous command did not succeed
