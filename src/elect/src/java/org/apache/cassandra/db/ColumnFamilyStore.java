@@ -719,7 +719,9 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean, Memtable.Owner
                                             sstable.descriptor, sstable.getSSTableHashID());
                                     StorageService.instance.migratedRawSSTablecount++;
                                     long startTime = System.currentTimeMillis();
-                                    StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename());
+                                    if(!StorageService.ossAccessObj.uploadFileToOSS(sstable.getFilename())){
+                                        logger.error("ELECT-ERROR: upload file ({}) to OSS failed!", sstable.getFilename());
+                                    }
                                     long timeCost = System.currentTimeMillis() - startTime;
                                     StorageService.instance.migratedRawSSTableTimeCost += timeCost;
                                     StorageService.instance.migratedSStables.add(sstable.getSSTableHashID());
