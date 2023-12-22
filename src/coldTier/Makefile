@@ -3,8 +3,8 @@ default: all
 all: build
 
 build:
-	javac FileServer.java
-	javac FileClient.java
+	javac OSSServer.java
+	javac OSSClientTest.java
 
 clean:
 	rm *.class

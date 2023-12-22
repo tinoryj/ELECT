@@ -3,7 +3,7 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-public class FileClient {
+public class OSSClientTest {
 
     private static final String HOST = "localhost";
     private static final int PORT = 1234;
@@ -65,7 +65,7 @@ public class FileClient {
     }
 
     public static void main(String[] args) {
-        FileClient client = new FileClient();
+        OSSClientTest client = new OSSClientTest();
         boolean uploadSuccess = client.uploadFileToOSS("server/file.txt", "Hello World".getBytes());
         System.out.println("Upload successful: " + uploadSuccess);
 

@@ -5,7 +5,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.nio.file.Files;
 
-public class FileServer {
+public class OSSServer {
 
     private static int PORT;
     private ExecutorService executorService = Executors.newFixedThreadPool(500);
@@ -99,7 +99,7 @@ public class FileServer {
     }
 
     public static void main(String[] args) {
-        FileServer server = new FileServer();
+        OSSServer server = new OSSServer();
         int port = Integer.parseInt(args[0]);
         server.setServerPort(port);
         server.startServer();
