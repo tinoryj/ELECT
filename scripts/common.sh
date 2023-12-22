@@ -288,7 +288,7 @@ function runExp {
         if [ ! -d ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP} ]; then
             mkdir -p ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
         fi
-        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
+        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTLog}/${targetScheme}/${ExpName}-Run-Workload-${workload}-ClientNumber-${simulatedClientNumber}-Consistency-${consistency}-Node-${nodeIP}
         ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
 
@@ -377,5 +377,5 @@ function recovery {
     ansible-playbook -v -i ${PathToScripts}/exp/hosts.ini ${PathToScripts}/exp/playbook-recovery.yaml
 
     echo "Copy running logs of $targetScheme back form $recoveryNode"
-    scp -r ${UserName}@${recoveryNode}:${PathToELECTPrototype}/logs/recovery.log ${PathToELECTResultSummary}/${targetScheme}/${expName}-Size-${KVNumber}-recovery-${runningRound}-${recoveryNode}
+    scp -r ${UserName}@${recoveryNode}:${PathToELECTPrototype}/logs/recovery.log ${PathToELECTResultSummary}/${targetScheme}/${expName}-Size-${KVNumber}-recovery-Round-${runningRound}-RecoverNode-${recoveryNode}
 }

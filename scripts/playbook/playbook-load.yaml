@@ -160,23 +160,23 @@
       register: command_result
       ignore_errors: true
 
-# - name: Backup Logs
-#   hosts: elect_servers
-#   become: yes
-#   become_user: elect
-#   tasks:
-#     - name: copy logs
-#       command: bash PATH_TO_ELECT/scripts/run/copyLogs.sh {{ record_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ stage }}
-#       vars:
-#         record_count: 10000000
-#         key_length: 24
-#         filed_length: 1000
-#         threads: 16
-#         workload: "workloadLoad"
-#         expName: "SampleExpName"
-#         stage: "Load"
-#       register: command_result
-#       ignore_errors: true
-#     - name: Fail the play if the previous command did not succeed
-#       fail: msg="the command failed"
-#       when: "'FAILED' in command_result.stderr"
+- name: Backup Logs
+  hosts: elect_servers
+  become: yes
+  become_user: elect
+  tasks:
+    - name: copy logs
+      command: bash PATH_TO_ELECT/scripts/run/copyLogs.sh {{ record_count }} {{ key_length }} {{ filed_length }} {{ threads }} {{ workload }} {{ expName }} {{ stage }}
+      vars:
+        record_count: 10000000
+        key_length: 24
+        filed_length: 1000
+        threads: 16
+        workload: "workloadLoad"
+        expName: "SampleExpName"
+        stage: "Load"
+      register: command_result
+      ignore_errors: true
+    - name: Fail the play if the previous command did not succeed
+      fail: msg="the command failed"
+      when: "'FAILED' in command_result.stderr"

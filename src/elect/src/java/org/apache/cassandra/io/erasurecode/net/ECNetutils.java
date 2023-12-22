@@ -90,7 +90,7 @@ public final class ECNetutils {
     private static final String scriptsDir = System.getProperty("user.dir") + "/scripts/";
     private static final String inMemoryDataBackupDir = System.getProperty("user.dir") + "/data/inMemoryData/";
     private static final String fullNodeRecoveryLogs = System.getProperty("user.dir") + "/logs/recovery.log";
-    private static final int MIGRATION_RETRY_COUNT = 5;
+    private static final int MIGRATION_RETRY_COUNT = 1000;
 
     public static class ByteObjectConversion {
         public static byte[] objectToByteArray(Serializable obj) throws IOException {
