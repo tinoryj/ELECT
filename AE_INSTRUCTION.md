@@ -1,3 +1,4 @@
+
 # Instructions to reproduce the evaluations of the paper
 
 Here are the detailed instructions to perform the same experiments in our paper.
@@ -11,7 +12,7 @@ We claim that the resultant numbers might differ from those in our paper due to 
 
 ## Testbed access
 
-We provide two testbeds for the evaluation with a properly setup environment. Since the repo will be made public, in order to ensure data security, we will provide the connection key and specific connection method of the two on the HotCRP website. Both testbeds contain 8 machines (6 ELECT server nodes, 1 object storage server node, and 1 client node). **When using both testbeds, please skip the next section, "Environment setup."**
+We provide a testbed on the Chameleon cloud for the evaluation with a properly set environment. The testbed contains 8 machines (6 ELECT server nodes, 1 object storage server node, and 1 client node). Since the repo will be made public, in order to ensure data security, we will provide the connection key and specific connection method on the HotCRP website. **When using both testbeds, you can skip the next section ("Environment setup").**
 
 ## Environment setup (5 human-minutes + ~ 40 compute-minutes)
 
@@ -44,7 +45,7 @@ bash scripts/setup.sh full
 
 This section describes how to reproduce the evaluations in our paper. The total running time to reproduce all evaluation results is about 7~8 days.
 
-To simplify the reproduction process, we provide an `Ansible`-based script to run all the experiments. The script will automatically run the experiments and generate the result logs. The scripts will take about 9~10 days to finish all the experiments. We suggest **running the scripts of Exp#2 first**, which can reproduce the main results (i.e., achieve controllable storage saving compared with Cassandra; provide similar performance of different types of KV operations such as read, write, scan, and update) of our paper.
+To simplify the reproduction process, we provide an `Ansible`-based script to run all the experiments. The script will automatically run the experiments and generate the result logs. The scripts will take about 9~10 days to finish all the experiments. **We suggest running the scripts of Exp#2 first, which can reproduce the main results (i.e., achieve controllable storage saving compared with Cassandra; provide similar performance of different types of KV operations such as read, write, scan, and update) of our paper**.
 
 ### Note on the experiment scripts
 
@@ -73,7 +74,7 @@ Only one round: 1369.53
 Only one round: 1883.00
 ```
 
-* If the running round number is between 1 to 5, the result will be output with the average, maximum, and minimum as the example shown below.
+* If the running round number is between 1 and 5, the result will be output with the average, maximum, and minimum as the example shown below.
 
 ```shell
 [Exp info] scheme: elect, workload: Write, KVNumber: 600000, OPNumber: 60000, KeySize: 24, ValueSize: 1000, ClientNumber: 16, ConsistencyLevel: ONE, ExtraFlag: 
@@ -132,7 +133,7 @@ bash scripts/exp/Exp2-operations.sh
 bash scripts/exp/Exp3-breakdown.sh
 ```
 
-#### Exp#4: Full-node recovery (1 human-minutes + ~ 8 compute-hours)
+#### Exp#4: Full-node recovery (1 human-minutes + ~ 14 compute-hours)
 
 * Running:
 
