@@ -6,7 +6,7 @@
   tasks:
     - name: Rebuild and start OSS file server
       shell: |
-        . /etc/profile &&
+        . /etc/profile && bash PATH_TO_ELECT/scripts/run/stop-oss.sh  &&
         bash PATH_TO_ELECT/scripts/run/start-oss.sh
       register: command_result
       ignore_errors: True

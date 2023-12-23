@@ -46,16 +46,25 @@ This section describes how to reproduce the evaluations in our paper. The total 
 
 To simplify the reproduction process, we provide an `Ansible`-based script to run all the experiments. The script will automatically run the experiments and generate the result logs. The scripts will take about 9~10 days to finish all the experiments. We suggest **running the scripts of Exp#2 first**, which can reproduce the main results (i.e., achieve controllable storage saving compared with Cassandra; provide similar performance of different types of KV operations such as read, write, scan, and update) of our paper.
 
+### Note on the experiment scripts
+
+These evaluation scripts require a long time to run. To avoid the interruption of the experiments, we suggest running the scripts in the background with `tmux`, `nohup`, `screen`, etc. In addition, please make sure that all scripts have been given execution permissions. You can do this according to the following example:
+
+```shell
+cd scripts
+find . -type f -name "*.sh" -exec chmod +x {} \;
+```
+
 ### Note on the evaluation results
 
-The summarized result of each evaluation will be stored in the `scripts/exp/` folder and named as `${ExpName}.log`. 
+The summarized result of each evaluation will be stored in the `scripts/exp/` folder and named `${ExpName}.log`. For example, the result of Exp#1 will be stored in `scripts/exp/Exp1-ycsb.log`.
 
 For the performance evaluation, the result will be summarized in different ways according to the running round number of the experiment (defined in each of the experiment scripts by the variable `RunningRoundNumber`). 
 
 * If the running round number is 1, the result will be directly output as in the example shown below.
 
 ```shell
-[Exp info] scheme: elect, workload: Read, KVNumber: 10000000, KeySize: 24, ValueSize: 1000, ClientNumber: 16, read consistency level: ONE
+[Exp info] scheme: elect, workload: Write, KVNumber: 600000, OPNumber: 60000, KeySize: 24, ValueSize: 1000, ClientNumber: 16, ConsistencyLevel: ONE, ExtraFlag: 
 Throughput (unit: op/s): 
 Only one round: 9992.38
 [READ] Average operation latency (unit: us):
@@ -67,7 +76,7 @@ Only one round: 1883.00
 * If the running round number is between 1 to 5, the result will be output with the average, maximum, and minimum as the example shown below.
 
 ```shell
-[Exp info] scheme: elect, workload: Read, KVNumber: 10000000, KeySize: 24, ValueSize: 1000, ClientNumber: 16, read consistency level: ONE
+[Exp info] scheme: elect, workload: Write, KVNumber: 600000, OPNumber: 60000, KeySize: 24, ValueSize: 1000, ClientNumber: 16, ConsistencyLevel: ONE, ExtraFlag: 
 Throughput (unit: op/s): 
 Average: 9992.38, Min:  9753.433208489389, Max:  10231.330379889298
 [READ] Average operation latency (unit: us):
@@ -79,7 +88,7 @@ Average: 1883.00, Min: 1823, Max: 1943
 * If the running round number is more than or equal to 5, the result will be output with the average and 95% student-t distribution confidence interval, as shown in the example below.
 
 ```shell
-[Exp info] scheme: elect, workload: Read, KVNumber: 1000000, KeySize: 24, ValueSize: 1000, ClientNumber: 16, read consistency level: ONE
+[Exp info] scheme: elect, workload: Write, KVNumber: 600000, OPNumber: 60000, KeySize: 24, ValueSize: 1000, ClientNumber: 16, ConsistencyLevel: ONE, ExtraFlag: 
 Throughput (unit: op/s): 
 Average: 31219.24; The 95% confidence interval: (30463.56, 31974.92)
 [READ] Average operation latency (unit: us):
@@ -91,10 +100,10 @@ Average: 1623.00; The 95% confidence interval: (1553.32, 1692.68)
 For the storage overhead evaluation, the result will be summarized based on the total, hot-tier, and cold-tier storage overhead. For example:
 
 ```shell
-[Exp info] scheme: elect, workload: Read, KVNumber: 100000000, KeySize: 24, ValueSize: 1000
-Total storage overhead (unit: GB): 185.9
-Hot-tier storage overhead (unit: GB): 134.1
-Cold-tier storage overhead (unit: GB): 51.8
+[Exp info] scheme: elect, KVNumber: 100000000, KeySize: 24, ValueSize: 1000
+Total storage overhead (unit: GB): 185.90
+Hot-tier storage overhead (unit: GB): 134.10
+Cold-tier storage overhead (unit: GB): 51.80
 ```
 
 ### Overall system analysis (Exp#1~5 in our paper)
