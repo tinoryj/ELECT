@@ -146,7 +146,7 @@ function processLoadResults {
         if [[ $file =~ ${expName}-Load-Scheme-${scheme}-workload([^/]+)-KVNumber-([0-9]+)-KeySize-([0-9]+)-ValueSize-([0-9]+)-CodingK-([0-9]+)-Saving-([0-9]+)-ClientNumber-([0-9]+)-Time-[0-9]+ ]]; then
             key="scheme: ${scheme}, workload: ${BASH_REMATCH[1]}, KVNumber: ${BASH_REMATCH[2]}, KeySize: ${BASH_REMATCH[3]}, ValueSize: ${BASH_REMATCH[4]}, Coding K: ${BASH_REMATCH[5]}, Storage saving target: ${BASH_REMATCH[6]}, ClientNumber: ${BASH_REMATCH[7]}"
             file_dict[$key]+="$file "
-            # echo "add file $file to category $key"
+            echo "add file $file to category $key"
         fi
     done
 
