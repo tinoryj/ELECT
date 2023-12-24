@@ -6,10 +6,9 @@ source "${SCRIPT_DIR}/../common.sh"
 
 ExpName="Exp4-recovery"
 schemes=("cassandra" "elect")
-KVNumberSet=(1000000 2000000 3000000)
+KVNumberSet=(10000000 20000000 30000000)
 keyLength=24
 valueLength=1000
-operationNumber=1000000
 simulatedClientNumber=${defaultSimulatedClientNumber}
 RunningRoundNumber=1
 
