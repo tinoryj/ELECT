@@ -31,3 +31,5 @@ for scheme in "${schemes[@]}"; do
         done
     done
 done
+
+# Generate the summarized results

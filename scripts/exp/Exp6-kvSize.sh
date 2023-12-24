@@ -48,3 +48,21 @@ for scheme in "${schemes[@]}"; do
         done
     done
 done
+
+# Generate the summarized results
+for scheme in "${schemes[@]}"; do
+    for keyLength in "${keyLengthSet[@]}"; do
+        echo "Storage usage of ${scheme} under key size = ${keyLength} and value size = ${fixedFieldlength}" >>${PathToScripts}/exp/${ExpName}.log
+        ${PathToScripts}/count/fetchStorage.sh "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${fixedFieldlength}" >>${PathToScripts}/exp/${ExpName}.log
+    done
+    for valueLength in "${valueLengthSet[@]}"; do
+        echo "Storage usage of ${scheme} under key size = ${fixedKeylength} and value size = ${valueLength}" >>${PathToScripts}/exp/${ExpName}.log
+        ${PathToScripts}/count/fetchStorage.sh "${ExpName}" "${scheme}" "${KVNumber}" "${fixedKeylength}" "${valueLength}" >>${PathToScripts}/exp/${ExpName}.log
+    done
+done
+
+for scheme in "${schemes[@]}"; do
+    ${PathToScripts}/count/fetchPerformance.sh all "${ExpName}" "${scheme}" >>${PathToScripts}/exp/${ExpName}.log
+done
+
+cat ${PathToScripts}/exp/${ExpName}.log

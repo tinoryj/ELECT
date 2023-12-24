@@ -8,8 +8,8 @@ targetScheme=$2
 KVNumber=$3
 keylength=$4
 fieldlength=$5
-codingK=$6
-storageSavingTarget=$7
+codingK=${6:-4}
+storageSavingTarget=${7:-0.6}
 
 # fetch hot-tier
 hotTier_storage_usage_values=()
