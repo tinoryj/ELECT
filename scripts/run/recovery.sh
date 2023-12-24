@@ -24,7 +24,7 @@ function runRecovery {
         echo "Repair Time Cost: $elapsed_time (ms)" >>logs/recovery.log
     else
         echo "Recovery data for elect;"
-        echo "Target recovery data size of cassandra:" >>logs/recovery.log
+        echo "Target recovery data size of elect:" >>logs/recovery.log
         du -s data/data/ycsb/ >>logs/recovery.log
         bin/nodetool recovery ycsb usertable0
     fi
