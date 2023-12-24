@@ -22,7 +22,7 @@ function runRecovery {
         elapsed_time=$((end_time - start_time))
         echo "Repair Time Cost: $elapsed_time (ms)" >> logs/recovery.log
     else
-        echo "Recovery data for elect/mslm;"
+        echo "Recovery data for elect;"
         bin/nodetool recovery ycsb usertable0
     fi
 }

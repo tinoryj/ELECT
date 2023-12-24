@@ -6,13 +6,12 @@ source "${SCRIPT_DIR}/../common.sh"
 
 ExpName="Exp4-recovery"
 schemes=("cassandra" "elect")
-KVNumberSet=(10000000 20000000 30000000)
+KVNumberSet=(1000000 2000000 3000000)
 keyLength=24
 valueLength=1000
 operationNumber=1000000
 simulatedClientNumber=${defaultSimulatedClientNumber}
 RunningRoundNumber=1
-recoveryNode=($(shuf -i 1-${NodeNumber} -n 1))
 
 # Setup hosts
 setupNodeInfo ./hosts.ini
@@ -24,6 +23,6 @@ for scheme in "${schemes[@]}"; do
         loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}"
         # Run experiment
         startupFromBackup "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}"
-        recovery "${ExpName}" "${scheme}" "${recoveryNode}" "${KVNumber}" "${RunningRoundNumber}"
+        recovery "${ExpName}" "${scheme}" "${KVNumber}" "${RunningRoundNumber}"
     done
 done
