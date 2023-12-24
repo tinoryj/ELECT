@@ -24,7 +24,7 @@ for scheme in "${schemes[@]}"; do
     for erasureCodingK in "${erasureCodingKSet[@]}"; do
         echo "Start experiment of ${scheme} with erasure coding K=${erasureCodingK}"
         # Load data for evaluation
-        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${storageSavingTarget}" "${erasureCodingK}"
+        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${simulatedClientNumber}" "${storageSavingTarget}" "${erasureCodingK}"
 
         # Run experiment
         for workload in "${workloads[@]}"; do

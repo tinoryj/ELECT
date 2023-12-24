@@ -24,26 +24,26 @@ for scheme in "${schemes[@]}"; do
     echo "Start experiment of ${scheme}"
     for keyLength in "${keyLengthSet[@]}"; do
         # Load data for evaluation
-        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${fixedFieldlength}" "${operationNumber}" "${simulatedClientNumber}"
+        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${fixedFieldlength}" "${simulatedClientNumber}"
 
         # Run experiment
         for workload in "${workloads[@]}"; do
             for runningMode in "${runningTypes[@]}"; do
                 # Run experiment
-                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}" "ONE"
+                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${fixedFieldlength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}" "ONE"
             done
         done
     done
 
     for valueLength in "${valueLengthSet[@]}"; do
         # Load data for evaluation
-        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${fixedKeylength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}"
+        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${fixedKeylength}" "${valueLength}" "${simulatedClientNumber}"
 
         # Run experiment
         for workload in "${workloads[@]}"; do
             for runningMode in "${runningTypes[@]}"; do
                 # Run experiment
-                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}" "ONE"
+                doEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${fixedKeylength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${RunningRoundNumber}" "${runningMode}" "${workload}" "ONE"
             done
         done
     done

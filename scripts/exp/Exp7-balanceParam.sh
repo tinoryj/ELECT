@@ -23,7 +23,7 @@ for scheme in "${schemes[@]}"; do
     for storageSavingTarget in "${storageSavingTargetSet[@]}"; do
         echo "Start experiment of ${scheme} with storage saving target=${storageSavingTarget}"
         # Load data for evaluation
-        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${storageSavingTarget}"
+        loadDataForEvaluation "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${simulatedClientNumber}" "${storageSavingTarget}"
 
         # Run experiment
         for workload in "${workloads[@]}"; do
