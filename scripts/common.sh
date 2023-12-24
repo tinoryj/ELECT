@@ -398,8 +398,10 @@ function recovery {
     echo "Target recovery node: ${recoveryNode}"
     if [ ${targetScheme} == "cassandra" ]; then
         sed -i "s/\(mode: \)".*"/mode: cassandra/" ${PathToScripts}/exp/playbook-recovery.yaml
+        sed -i "s/seconds:.*$/seconds: 90/" ${PathToScripts}/exp/playbook-recovery.yaml
     else
         sed -i "s/\(mode: \)".*"/mode: elect/" ${PathToScripts}/exp/playbook-recovery.yaml
+        sed -i "s/seconds:.*$/seconds: 1200/" ${PathToScripts}/exp/playbook-recovery.yaml
     fi
     sed -i "s/expName:.*$/expName: ${expName}/" ${PathToScripts}/exp/playbook-recovery.yaml
     sed -i "s/workload:.*$/workload: Recovery-${KVNumber}/" ${PathToScripts}/exp/playbook-recovery.yaml
