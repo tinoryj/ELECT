@@ -326,7 +326,7 @@ function loadDataForEvaluation {
         fi
         scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Load-${nodeIP}-Time-$(date +%s)
         ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
-        ssh ${UserName}@${OSSServerNode} "du -s --bytes ${PathToColdTier}/data > ${PathToELECTLog}/${ExpName}-${targetScheme}-OSSStorage.log"
+        ssh ${UserName}@${OSSServerNode} "du -s --bytes ${PathToColdTier}/data > ${PathToELECTLog}/${ExpName}-${targetScheme}-KVNumber-${record_count}-KeySize-${key_length}-ValueSize-${field_length}-CodingK-${codingK}-Saving-${storageSavingTarget}-OSSStorage.log"
         scp ${UserName}@${OSSServerNode}:${PathToELECTLog}/${ExpName}-${targetScheme}-OSSStorage.log ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-OSSStorage.log
     done
 }
