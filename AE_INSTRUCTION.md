@@ -122,7 +122,7 @@ Average: 1623.00; The 95% confidence interval: (1553.32, 1692.68)
 For the storage overhead evaluation, the result will be summarized based on the total, hot-tier, and cold-tier storage overhead. For example:
 
 ```shell
-[Exp info] scheme: elect, KVNumber: 100000000, KeySize: 24, ValueSize: 1000
+[Exp info] Scheme: elect, KVNumber: 100000000, KeySize: 24, ValueSize: 1000
 Total storage overhead (unit: GB): 185.90
 Hot-tier storage overhead (unit: GB): 134.10
 Cold-tier storage overhead (unit: GB): 51.80

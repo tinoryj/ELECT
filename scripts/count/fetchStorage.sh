@@ -51,6 +51,7 @@ while IFS= read -r line; do
 done <"$file_path"
 
 # fetch total storage overhead
+echo "[Exp info] Scheme: ${targetScheme}, KVNumber: ${KVNumber}, KeySize: ${keylength}, ValueSize: ${fieldlength}"
 if [ "$targetScheme" == "elect" ]; then
     echo -e "\033[31;1mTotal storage overhead (unit: GiB): $(echo "$coldTierStorage + $hotTierStorage" | bc -l)\033[0m"
     echo "Hot-tier storage overhead (unit: GiB): $hotTierStorage"
@@ -58,4 +59,3 @@ if [ "$targetScheme" == "elect" ]; then
 else
     echo -e "\033[31;1mTotal storage overhead (unit: GiB): $coldTierStorage\033[0m"
 fi
-
