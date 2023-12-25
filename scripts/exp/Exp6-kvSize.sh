@@ -58,13 +58,11 @@ for scheme in "${schemes[@]}"; do
     for keyLength in "${keyLengthSet[@]}"; do
         KVNumber=$(echo "1073741824 * ${dataSize} / (${keyLength} + ${fixedFieldlength})" | bc -l)
         KVNumber=$(echo "scale=0; (${KVNumber} + 0.5)/1" | bc)
-        echo "Storage usage of ${scheme} under key size = ${keyLength} and value size = ${fixedFieldlength}" >>${PathToScripts}/exp/${ExpName}.log
         ${PathToScripts}/count/fetchStorage.sh "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${fixedFieldlength}" >>${PathToScripts}/exp/${ExpName}.log
     done
     for valueLength in "${valueLengthSet[@]}"; do
         KVNumber=$(echo "1073741824 * ${dataSize} / (${fixedKeylength} + ${valueLength})" | bc -l)
         KVNumber=$(echo "scale=0; (${KVNumber} + 0.5)/1" | bc)
-        echo "Storage usage of ${scheme} under key size = ${fixedKeylength} and value size = ${valueLength}" >>${PathToScripts}/exp/${ExpName}.log
         ${PathToScripts}/count/fetchStorage.sh "${ExpName}" "${scheme}" "${KVNumber}" "${fixedKeylength}" "${valueLength}" >>${PathToScripts}/exp/${ExpName}.log
     done
 done

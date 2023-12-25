@@ -123,9 +123,9 @@ For the storage overhead evaluation, the result will be summarized based on the 
 
 ```shell
 [Exp info] Scheme: elect, KVNumber: 100000000, KeySize: 24, ValueSize: 1000
-Total storage overhead (unit: GB): 185.90
-Hot-tier storage overhead (unit: GB): 134.10
-Cold-tier storage overhead (unit: GB): 51.80
+Total storage overhead (unit: GiB): 185.90
+Hot-tier storage overhead (unit: GiB): 134.10
+Cold-tier storage overhead (unit: GiB): 51.80
 ```
 
 ### Overall system analysis (Exp#1~5 in our paper)
