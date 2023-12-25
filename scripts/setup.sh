@@ -26,6 +26,24 @@ done
 
 # Install packages
 if [ ${setupMode} == "full" ]; then
+    if [ ! -d "${PathToELECTExpDBBackup}" ]; then
+        mkdir -p ${PathToELECTExpDBBackup}
+    else
+        rm -rf ${PathToELECTExpDBBackup}/*
+    fi
+
+    if [ ! -d "${PathToELECTLog}" ]; then
+        mkdir -p ${PathToELECTLog}
+    else
+        rm -rf ${PathToELECTLog}/*
+    fi
+
+    if [ ! -d "${PathToELECTResultSummary}" ]; then
+        mkdir -p ${PathToELECTResultSummary}
+    else
+        rm -rf ${PathToELECTResultSummary}/*
+    fi
+
     if [ ! -z "${sudoPasswd}" ]; then
         printf ${sudoPasswd} | sudo -S apt-get update
         printf ${sudoPasswd} | sudo -S apt-get install -y ant ant-optional maven clang llvm python3 ansible python3-pip libisal-dev openjdk-11-jdk openjdk-11-jre bc
@@ -86,6 +104,14 @@ if [ ${setupMode} == "full" ]; then
         sudo timedatectl set-time "$TIME"
     fi
     pip install cassandra-driver numpy scipy
+fi
+
+if [ ! -d "${PathToELECTExpDBBackup}" ]; then
+    mkdir -p ${PathToELECTExpDBBackup}
+fi
+
+if [ ! -d "${PathToELECTLog}" ]; then
+    mkdir -p ${PathToELECTLog}
 fi
 
 if [ ! -d "${PathToELECTResultSummary}" ]; then

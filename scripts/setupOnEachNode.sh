@@ -20,6 +20,24 @@ if [ ${setupMode} == "full" ]; then
         done
     fi
 
+    if [ ! -d "${PathToELECTExpDBBackup}" ]; then
+        mkdir -p ${PathToELECTExpDBBackup}
+    else
+        rm -rf ${PathToELECTExpDBBackup}/*
+    fi
+
+    if [ ! -d "${PathToELECTLog}" ]; then
+        mkdir -p ${PathToELECTLog}
+    else
+        rm -rf ${PathToELECTLog}/*
+    fi
+
+    if [ ! -d "${PathToELECTResultSummary}" ]; then
+        mkdir -p ${PathToELECTResultSummary}
+    else
+        rm -rf ${PathToELECTResultSummary}/*
+    fi
+
     # Install packages
     if [ ! -z "${sudoPasswd}" ]; then
         printf ${sudoPasswd} | sudo -S apt-get update
