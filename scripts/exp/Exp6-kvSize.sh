@@ -54,6 +54,10 @@ for scheme in "${schemes[@]}"; do
 done
 
 # Generate the summarized results
+if [ ! -f "${PathToScripts}/exp/${ExpName}.log" ]; then
+    rm -rf "${PathToScripts}/exp/${ExpName}.log"
+fi
+
 for scheme in "${schemes[@]}"; do
     for keyLength in "${keyLengthSet[@]}"; do
         KVNumber=$(echo "1073741824 * ${dataSize} / (${keyLength} + ${fixedFieldlength})" | bc -l)

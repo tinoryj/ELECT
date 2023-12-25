@@ -95,7 +95,7 @@ Only one round: 1369.53
 Only one round: 1883.00
 ```
 
-* If the running round number is between 1 and 5, the result will be output with the average, maximum, and minimum as the example shown below.
+* If the running round number is between 1 and 5, the result will be output with the average, maximum, and minimum, as shown in the example below.
 
 ```shell
 [Exp info] scheme: elect, workload: Write, KVNumber: 600000, OPNumber: 60000, KeySize: 24, ValueSize: 1000, ClientNumber: 16, ConsistencyLevel: ONE, ExtraFlag: 
@@ -132,7 +132,7 @@ Cold-tier storage overhead (unit: GiB): 51.80
 
 #### Exp#1: Performance with YCSB core workloads (1 human minutes + ~ 20 compute-hours)
 
-* Running:
+*Running:*
 
 ```shell
 bash scripts/exp/Exp1-ycsb.sh
@@ -140,7 +140,7 @@ bash scripts/exp/Exp1-ycsb.sh
 
 #### Exp#2: Micro-benchmarks on KV operations (1 human-minutes + ~ 5 compute-hours)
 
-* Running:
+*Running:*
 
 ```shell
 bash scripts/exp/Exp2-operations.sh
@@ -148,7 +148,7 @@ bash scripts/exp/Exp2-operations.sh
 
 #### Exp#3: Performance breakdown (1 human-minutes + ~ 5 compute-hours)
 
-* Running:
+*Running:*
 
 ```shell
 bash scripts/exp/Exp3-breakdown.sh
@@ -156,15 +156,37 @@ bash scripts/exp/Exp3-breakdown.sh
 
 #### Exp#4: Full-node recovery (1 human-minutes + ~ 14 compute-hours)
 
-* Running:
+*Running:*
 
 ```shell
 bash scripts/exp/Exp4-recovery.sh
 ```
 
+*Results:* In addition to the summarized performance results, we present a detailed summary of the recovery time results in various formats. Depending on the number of running rounds conducted, the formats include options such as a single round summary (run experiment with one round), or more comprehensive data sets featuring average, maximum, and minimum values (run experiment with 2~4 rounds), as well as average values with a 95% Student-T distribution confidence interval (run experiment more than five rounds). These summaries are available in the `scripts/exp/` directory and can be found in the file named `Exp4-recovery.log`.
+
+* For ELECT, the recovery time is the time cost of retrieving the LSM-trees from the replication nodes and decoding the SSTables. The result will be output as in the example shown below.
+
+```shell
+[Exp info] scheme: elect, KVNumber: 6000000, KeySize: 24, ValueSize: 1000
+Total recovery time cost (unit: s):
+Average: 6653.00, Min: 6653, Max: 6653
+Recovery time cost for retrieve LSM-trees (unit: s):
+Average: 3442.00, Min: 3442, Max: 3442
+Recovery time cost for decode SSTables (unit: s):
+Average: 3211.00, Min: 3211, Max: 3211
+```
+
+* For Cassandra, the recovery time is the time cost of retrieving the SSTables from the replication only. The result will be output as in the example shown below.
+    
+```shell
+[Exp info] scheme: cassandra, KVNumber: 6000000, KeySize: 24, ValueSize: 1000
+Total recovery time cost (unit: s):
+Only one round: 7515.00
+```
+
 #### Exp#5: Resource usage (1 human-minutes + ~ 5 compute-hours)
 
-* Running:
+*Running:*
 
 ```shell
 bash scripts/exp/Exp5-resource.sh
@@ -174,7 +196,7 @@ bash scripts/exp/Exp5-resource.sh
 
 #### Exp#6: Impact of key and value sizes (1 human-minutes + ~ 40 compute-hours)
 
-* Running:
+*Running:*
 
 ```shell
 bash scripts/exp/Exp6-kvSize.sh
@@ -182,7 +204,7 @@ bash scripts/exp/Exp6-kvSize.sh
 
 #### Exp#7: Impact of storage-saving target (1 human-minutes + ~ 45 compute-hours)
 
-* Running:
+*Running:*
 
 ```shell
 bash scripts/exp/Exp7-balanceParam.sh
@@ -192,7 +214,7 @@ bash scripts/exp/Exp7-balanceParam.sh
 
 The original experiment requires at least 12 nodes (1 client node, 10 server nodes, and 1 storage node). For the provided testbeds, limited by the number of available nodes, we adapt the changing range of erasure code K from 4~8 to 2~4. This result is only used to verify ELECT's adaptability to different K values.
 
-* Running:
+*Running:*
 
 ```shell
 bash scripts/exp/Exp8-ecParam.sh
@@ -202,7 +224,7 @@ bash scripts/exp/Exp8-ecParam.sh
 
 #### Exp#9: Impact of read consistency level (1 human-minutes + ~ 5 compute-hours)
 
-* Running:
+*Running:*
 
 ```shell
 bash scripts/exp/Exp9-consistency.sh
@@ -210,7 +232,7 @@ bash scripts/exp/Exp9-consistency.sh
 
 #### Exp#10: Impact of number of clients (1 human minutes + ~ 5 compute-hours)
 
-* Running:
+*Running:*
 
 ```shell
 bash scripts/exp/Exp10-clients.sh

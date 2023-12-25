@@ -23,6 +23,7 @@ for currentIP in "${NodesList[@]}"; do
             while IFS= read -r line; do
                 hotTier_storage_usage_values+=("$line")
             done < <(awk '/Total storage usage:/{getline; print}' "$file")
+            break; # read only one file for each node
         fi
     done
 done
