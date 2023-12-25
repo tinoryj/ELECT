@@ -284,7 +284,7 @@ function runExp {
         if [ ! -d ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP} ]; then
             mkdir -p ${PathToELECTLog}/${targetScheme}/${ExpName}-Load-${nodeIP}
         fi
-        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Run-Workload-${workload}--KVNumber-${KVNumber}-OPNumber-${operationNumber}-KeySize-${keylength}-ValueSize-${fieldlength}-ClientNumber-${simulatedClientNumber}-Consistency-${consistency}-Node-${nodeIP}-Time-$(date +%s)
+        scp -r ${UserName}@${nodeIP}:${PathToELECTLog} ${PathToELECTResultSummary}/${targetScheme}/${ExpName}-Run-${runningType}-Workload-${workload}-KVNumber-${KVNumber}-OPNumber-${operationNumber}-KeySize-${keylength}-ValueSize-${fieldlength}-ClientNumber-${simulatedClientNumber}-Consistency-${consistency}-Node-${nodeIP}-Time-$(date +%s)
         ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTLog}'; mkdir -p '${PathToELECTLog}'"
     done
 
