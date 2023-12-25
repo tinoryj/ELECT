@@ -271,7 +271,7 @@ function runExp {
     sed -i "s/\(consistency: \)".*"/consistency: ${consistency}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/\(runningMode: \)".*"/runningMode: ${runningMode}/" ${PathToScripts}/exp/playbook-run.yaml
     sed -i "s/\(extraFlag: \)".*"/extraFlag: ${extraFlag}/" ${PathToScripts}/exp/playbook-run.yaml
-    if [ "${workload}" == "workloade" ] || [ "${workload}" == "workloadscan" ]; then
+    if [ "${workload}" == "workloade" ] || [ "${workload}" == "workloadScan" ]; then
         # generate scanNumber = operationNumber / 10
         scanNumber=$((operationNumber / 10))
         sed -i "s/operation_count:.*$/operation_count: ${scanNumber}/" ${PathToScripts}/exp/playbook-run.yaml

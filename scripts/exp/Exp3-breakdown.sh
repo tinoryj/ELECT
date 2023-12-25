@@ -6,7 +6,7 @@ source "${SCRIPT_DIR}/../common.sh"
 
 ExpName="Exp3-breakdown"
 schemes=("cassandra" "elect")
-workloads=("workloadRead" "workloadWrite" "workloadScan" "workloadUpdate")
+workloads=("workloadRead")
 runningTypes=("normal" "degraded")
 KVNumber=10000000
 keyLength=24
