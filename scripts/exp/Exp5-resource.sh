@@ -36,3 +36,12 @@ done
 if [ -f "${PathToScripts}/exp/${ExpName}.log" ]; then
     rm -rf "${PathToScripts}/exp/${ExpName}.log"
 fi
+
+outputTypeSet=("Load" "normal" "degraded")
+for scheme in "${schemes[@]}"; do
+    for outputType in "${outputTypeSet[@]}"; do
+        ${PathToScripts}/count/fetchResource.sh "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${outputType}" "ONE" "4" "0.6" "${workloads[@]}" >>${PathToScripts}/exp/${ExpName}.log
+    done
+done
+
+cat ${PathToScripts}/exp/${ExpName}.log

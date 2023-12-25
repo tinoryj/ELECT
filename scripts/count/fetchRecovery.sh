@@ -107,7 +107,7 @@ function processRecoveryResults {
         echo -e "\033[1m\033[34m[Exp info] scheme: ${targetScheme}, KVNumber: ${KVNumber}, KeySize: ${keylength}, ValueSize: ${fieldlength}\033[0m"
         echo -e "\033[31;1mTotal recovery time cost (unit: s):\033[0m"
         calculate "${totalRecoveryTimeCostListForELECT[@]}"
-        echo -e "\033[31;1mRecovery time cost for retrieve LSM-trees (unit: s):\033[0m"
+        echo -e "\033[31;1mRecovery time cost for retrieving LSM-trees (unit: s):\033[0m"
         calculate "${totalRetrieveCostListForELECT[@]}"
         echo -e "\033[31;1mRecovery time cost for decode SSTables (unit: s):\033[0m"
         calculate "${totalDecodeTimeCostListForELECT[@]}"

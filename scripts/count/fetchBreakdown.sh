@@ -122,7 +122,7 @@ function fetchContent {
     if [ "${opType}" == "Load" ]; then
         file=${filedir}/${expName}-${targetScheme}-Load_workloadLoad_After-flush-compaction_db_stats.txt
     elif [ "${opType}" == "read" ]; then
-        file=${filedir}/${expName}_workloadRead_After-normal-run_db_stats.txt
+        file=${filedir}/${expName}_workloadRead_After-run_db_stats.txt
     fi
     fileContent=$(cat "${file}")
 
