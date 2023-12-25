@@ -33,6 +33,6 @@ for scheme in "${schemes[@]}"; do
 done
 
 # Generate the summarized results
-if [ ! -f "${PathToScripts}/exp/${ExpName}.log" ]; then
+if [ -f "${PathToScripts}/exp/${ExpName}.log" ]; then
     rm -rf "${PathToScripts}/exp/${ExpName}.log"
 fi

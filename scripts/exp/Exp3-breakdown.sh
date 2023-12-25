@@ -33,6 +33,16 @@ for scheme in "${schemes[@]}"; do
 done
 
 # Generate the summarized results
-if [ ! -f "${PathToScripts}/exp/${ExpName}.log" ]; then
+if [ -f "${PathToScripts}/exp/${ExpName}.log" ]; then
     rm -rf "${PathToScripts}/exp/${ExpName}.log"
 fi
+
+outputTypeSet=("write" "normal" "degraded")
+for scheme in "${schemes[@]}"; do
+    echo "Breakdown of ${scheme}" >>"${PathToScripts}/exp/${ExpName}.log"
+    for outputType in "${outputTypeSet[@]}"; do
+        ${PathToScripts}/count/fetchBreakdown.sh "${ExpName}" "${scheme}" "${KVNumber}" "${keyLength}" "${valueLength}" "${operationNumber}" "${simulatedClientNumber}" "${outputType}" "ONE" >> ${PathToScripts}/exp/${ExpName}.log
+    done
+done
+
+cat ${PathToScripts}/exp/${ExpName}.log

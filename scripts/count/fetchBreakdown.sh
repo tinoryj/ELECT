@@ -2,7 +2,7 @@
 . /etc/profile
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 source "${SCRIPT_DIR}/../common.sh"
-PathToELECTResultSummary=/home/tinoryj/Projects/ELECT/scripts/count/results
+# PathToELECTResultSummary=${PathToScripts}/count/results
 
 expName=$1
 targetScheme=$2
@@ -10,8 +10,12 @@ KVNumber=$3
 keylength=$4
 fieldlength=$5
 OPNumber=$6
-# codingK=${6:-4}
-# storageSavingTarget=${7:-0.6}
+ClientNumber=$7
+outputType=$8
+ConsistencyLevel=${9:-"ONE"}
+shift 9
+codingK=${1:-4}
+storageSavingTarget=${2:-0.6}
 
 function calculate {
     values=("$@")
@@ -75,9 +79,52 @@ readMigratedParityTimeCostList=()
 retrieveLsmTreeTimeCostList=()
 recoveryLsmTreeTimeCostList=()
 
+WALSumList=()
+memtableSumList=()
+flushSumList=()
+compactionSumList=()
+transitioningSumList=()
+migrationSumList=()
+recoverySumList=()
+readCacheSumList=()
+readMemtableSumList=()
+readSSTableSumList=()
+
+function clearBuffer {
+    memtableTimeCostList=()
+    commitLogTimeCostList=()
+    flushTimeCostList=()
+    compactionTimeCostList=()
+    rewriteTimeCostList=()
+    ecsstableCompactionTimeCostList=()
+    encodingTimeCostList=()
+    migrateRawSSTableTimeCostList=()
+    migrateRawSSTableSendTimeCostList=()
+    migrateParityCodeTimeCostList=()
+    readIndexTimeCostList=()
+    readCacheTimeCostList=()
+    readMemtableTimeCostList=()
+    readSSTableTimeCostList=()
+    readMigratedRawDataTimeCostList=()
+    waitForMigrationTimeCostList=()
+    waitForRecoveryTimeCostList=()
+    retrieveTimeCostList=()
+    decodingTimeCostList=()
+    readMigratedParityTimeCostList=()
+    retrieveLsmTreeTimeCostList=()
+    recoveryLsmTreeTimeCostList=()
+}
+
 function fetchContent {
-    file=$1
-    fileContent=$(${file})
+    filedir=$1
+    opType=$2
+    file=""
+    if [ "${opType}" == "Load" ]; then
+        file=${filedir}/${expName}-${targetScheme}-Load_workloadLoad_After-flush-compaction_db_stats.txt
+    elif [ "${opType}" == "read" ]; then
+        file=${filedir}/${expName}_workloadRead_After-normal-run_db_stats.txt
+    fi
+    fileContent=$(cat "${file}")
 
     memtableTimeCost=$(echo "$fileContent" | grep -oP 'Memtable time cost: \K[0-9]+')
     commitLogTimeCost=$(echo "$fileContent" | grep -oP 'CommitLog time cost: \K[0-9]+')
@@ -130,8 +177,8 @@ function fetchContent {
     recoveryLsmTreeTimeCostList+=(${recoveryLsmTreeTimeCost})
 }
 
-function calculateWithDataSizeForMS {
-    totalDataSizeInMiB=$(echo "scale=2; ${KVNumber} * (${keylength} + ${fieldlength}) / 1024 / 1024" | bc -l)
+function calculateWithOperationDataSizeForMS {
+    totalDataSizeInMiB=$(echo "scale=2; ${OPNumber} * (${keylength} + ${fieldlength}) / 1024 / 1024" | bc -l)
     targetArray=("$@")
     newArray=()
     arrayLength=${#targetArray[@]}
@@ -142,8 +189,8 @@ function calculateWithDataSizeForMS {
     calculate "${newArray[@]}"
 }
 
-function calculateWithDataSizeForNS {
-    totalDataSizeInMiB=$(echo "scale=2; ${KVNumber} * (${keylength} + ${fieldlength}) / 1024 / 1024" | bc -l)
+function calculateWithOperationDataSizeForNS {
+    totalDataSizeInMiB=$(echo "scale=2; ${OPNumber} * (${keylength} + ${fieldlength}) / 1024 / 1024" | bc -l)
     targetArray=("$@")
     newArray=()
     arrayLength=${#targetArray[@]}
@@ -154,8 +201,8 @@ function calculateWithDataSizeForNS {
     calculate "${newArray[@]}"
 }
 
-function calculateWithDataSizeForUS {
-    totalDataSizeInMiB=$(echo "scale=2; ${KVNumber} * (${keylength} + ${fieldlength}) / 1024 / 1024" | bc -l)
+function calculateWithOperationDataSizeForUS {
+    totalDataSizeInMiB=$(echo "scale=2; ${OPNumber} * (${keylength} + ${fieldlength}) / 1024 / 1024" | bc -l)
     targetArray=("$@")
     newArray=()
     arrayLength=${#targetArray[@]}
@@ -166,90 +213,193 @@ function calculateWithDataSizeForUS {
     calculate "${newArray[@]}"
 }
 
-function generateForELECT {
-    filePathList=("$@")
-    for file in "${filePathList[@]}"; do
-        fetchContent "${file}"
+function sumArray {
+    local targetArray=("$@")
+    local sum=0
+    for item in "${targetArray[@]}"; do
+        sum=$((sum + item))
     done
-
-    echo -e "\033[1m\033[34m[Breakdown info for Write] scheme: ${targetScheme}, KVNumber: ${KVNumber}, KeySize: ${keylength}, ValueSize: ${fieldlength}\033[0m"
-    echo -e "WAL (unit: ms/MiB):"
-    calculateWithDataSizeForMS "${commitLogTimeCostList[@]}"
-    echo -e "MemTable (unit: ms/MiB):"
-    calculateWithDataSizeForMS "${memtableTimeCostList[@]}"
-    echo -e "Flushing (unit: ms/MiB):"
-    calculateWithDataSizeForMS "${flushTimeCostList[@]}"
-    echo -e "Compaction (unit: ms/MiB):"
-    calculateWithDataSizeForMS "${compactionTimeCostList[@]}"
-    echo -e "Transitioning (unit: ms/MiB):"
-    transitioningArray=()
-    arrayLengthTransition=${#rewriteTimeCostList[@]}
-    for ((i = 0; i < $arrayLengthTransition; i++)); do
-        sum=$(echo "scale=2; ${rewriteTimeCostList[i]} + ${ecsstableCompactionTimeCostList[i]} + ${encodingTimeCostList[i]}" | bc -l)
-        transitioningArray+=($sum)
-    done
-    calculateWithDataSizeForMS "${transitioningArray[@]}"
-    echo -e "Migration (unit: ms/MiB):"
-    migrationArray=()
-    arrayLengthMigration=${#migrateRawSSTableTimeCostList[@]}
-    for ((i = 0; i < $arrayLengthMigration; i++)); do
-        sum=$(echo "scale=2; ${migrateRawSSTableTimeCostList[i]} + ${migrateParityCodeTimeCostList[i]}" | bc -l)
-        migrationArray+=($sum)
-    done
-    calculateWithDataSizeForMS "${migrationArray[@]}"
-
-    echo -e "\033[1m\033[34m[Breakdown info for normal Read] scheme: ${targetScheme}, KVNumber: ${KVNumber}, OPNumber: ${OPNumber} KeySize: ${keylength}, ValueSize: ${fieldlength}\033[0m"
-
-    echo -e "Cache (unit: ms/MiB):"
-    calculateWithDataSizeForNS "${readCacheTimeCostList[@]}"
-    echo -e "MemTable (unit: ms/MiB):"
-    calculateWithDataSizeForMS "${readMemtableTimeCostList[@]}"
-    echo -e "SSTables (unit: ms/MiB):"
-    calculateWithDataSizeForMS "${readSSTableTimeCostList[@]}"
-
-    echo -e "\033[1m\033[34m[Breakdown info for degraded Read] scheme: ${targetScheme}, KVNumber: ${KVNumber}, OPNumber: ${OPNumber} KeySize: ${keylength}, ValueSize: ${fieldlength}\033[0m"
-
-    echo -e "Cache (unit: ms/MiB):"
-    calculateWithDataSizeForNS "${readCacheTimeCostList[@]}"
-    echo -e "MemTable (unit: ms/MiB):"
-    calculateWithDataSizeForMS "${readMemtableTimeCostList[@]}"
-    echo -e "SSTables (unit: ms/MiB):"
-    calculateWithDataSizeForMS "${readSSTableTimeCostList[@]}"
-    echo -e "Recovery (unit: ms/MiB):"
-    calculateWithDataSizeForUS "${waitForRecoveryTimeCostList[@]}"
+    echo $sum
 }
 
-function generateForCassandra {
-    filePathList=("$@")
-    for file in "${filePathList[@]}"; do
-        fetchContent "${file}"
-    done
-}
-
-function processRecoveryResults {
-    file_dict=()
-    for file in "$PathToELECTResultSummary"/*; do
-        if [[ $file =~ ${expName}-Scheme-${targetScheme}-Size-${KVNumber}-recovery-Round-[0-9]+-RecoverNode-[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-Time-[0-9]+ ]]; then
-            file_dict+=("$file")
+function processBreakdownResultsForLoad {
+    declare -A files_by_node=()
+    for file in "${PathToELECTResultSummary}/${targetScheme}"/*; do
+        if [[ -d $file ]]; then
+            if [[ $file =~ ${expName}-Load-KVNumber-${KVNumber}-KeySize-${keylength}-ValueSize-${fieldlength}-CodingK-${codingK}-Saving-${storageSavingTarget}-Node-([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)-Time-[0-9]+ ]]; then
+                nodeID=${BASH_REMATCH[1]}
+                files_by_node[$nodeID]+="${file} "
+            fi
         fi
     done
-    # echo "${file_dict[@]}"
-    if [ "$targetScheme" == "elect" ]; then
-        generateForELECT "${file_dict[@]}"
-        echo -e "\033[1m\033[34m[Exp info] scheme: ${targetScheme}, KVNumber: ${KVNumber}, KeySize: ${keylength}, ValueSize: ${fieldlength}\033[0m"
-        echo -e "\033[31;1mTotal recovery time cost (unit: s):\033[0m"
-        calculate "${totalRecoveryTimeCostListForELECT[@]}"
-        echo -e "\033[31;1mRecovery time cost for retrieve LSM-trees (unit: s):\033[0m"
-        calculate "${totalRetrieveCostListForELECT[@]}"
-        echo -e "\033[31;1mRecovery time cost for decode SSTables (unit: s):\033[0m"
-        calculate "${totalDecodeTimeCostListForELECT[@]}"
-    else
-        generateForCassandra "${file_dict[@]}"
-        echo -e "\033[1m\033[34m[Exp info] scheme: ${targetScheme}, KVNumber: ${KVNumber}, KeySize: ${keylength}, ValueSize: ${fieldlength}\033[0m"
-        echo -e "\033[31;1mTotal recovery time cost (unit: s):\033[0m"
-        calculate "${totalRepairCostListForCassandra[@]}"
+    runningRoundNumber=0
+    for nodeID in "${!files_by_node[@]}"; do
+        # echo "NodeID: $nodeID, Files: ${files_by_node[$nodeID]}"
+        IFS=' ' read -r -a files_array <<<"${files_by_node[$nodeID]}"
+        runningRoundNumber=${#files_array[@]}
+    done
+    for i in $(seq 0 $((runningRoundNumber - 1))); do
+        declare -a ith_files=()
+        for nodeID in "${!files_by_node[@]}"; do
+            IFS=' ' read -r -a files_array <<<"${files_by_node[$nodeID]}"
+            if [ $i -lt ${#files_array[@]} ]; then
+                ith_files+=("${files_array[i]}")
+            else
+                ith_files+=("")
+            fi
+        done
+        # echo "${i}-th round: ${ith_files[*]}"
+        for file in "${ith_files[@]}"; do
+            fetchContent "${file}" "Load"
+        done
+        WALSumList+=("$(sumArray "${commitLogTimeCostList[@]}")")
+        memtableSumList+=("$(sumArray "${memtableTimeCostList[@]}")")
+        flushSumList+=("$(sumArray "${flushTimeCostList[@]}")")
+        compactionSumList+=("$(sumArray "${compactionTimeCostList[@]}")")
+        transitioningArray=()
+        arrayLengthTransition=${#rewriteTimeCostList[@]}
+        for ((i = 0; i < $arrayLengthTransition; i++)); do
+            sum=$(echo "scale=2; ${rewriteTimeCostList[i]} + ${ecsstableCompactionTimeCostList[i]} + ${encodingTimeCostList[i]}" | bc -l)
+            transitioningArray+=($sum)
+        done
+        transitioningSumList+=("$(sumArray "${transitioningArray[@]}")")
+        migrationArray=()
+        arrayLengthMigration=${#migrateRawSSTableTimeCostList[@]}
+        for ((i = 0; i < $arrayLengthMigration; i++)); do
+            sum=$(echo "scale=2; ${migrateRawSSTableTimeCostList[i]} + ${migrateParityCodeTimeCostList[i]}" | bc -l)
+            migrationArray+=($sum)
+        done
+        migrationSumList+=("$(sumArray "${migrationArray[@]}")")
+        clearBuffer
+    done
+    # output
+    echo -e "\033[1m\033[34m[Breakdown info for Write] scheme: ${targetScheme}, KVNumber: ${KVNumber}, KeySize: ${keylength}, ValueSize: ${fieldlength}\033[0m"
+    echo -e "\033[31;1mWAL (unit: ms/MiB):\033[0m"
+    calculateWithOperationDataSizeForMS "${WALSumList[@]}"
+    echo -e "\033[31;1mMemTable (unit: ms/MiB):\033[0m"
+    calculateWithOperationDataSizeForMS "${memtableSumList[@]}"
+    echo -e "\033[31;1mFlushing (unit: ms/MiB):\033[0m"
+    calculateWithOperationDataSizeForMS "${flushSumList[@]}"
+    echo -e "\033[31;1mCompaction (unit: ms/MiB):\033[0m"
+    calculateWithOperationDataSizeForMS "${compactionSumList[@]}"
+    if [ "${targetScheme}" == "elect" ]; then
+        echo -e "\033[31;1mTransitioning (unit: ms/MiB):\033[0m"
+        calculateWithOperationDataSizeForMS "${transitioningSumList[@]}"
+        echo -e "\033[31;1mMigration (unit: ms/MiB):\033[0m"
+        calculateWithOperationDataSizeForMS "${migrationSumList[@]}"
     fi
 }
 
-processRecoveryResults
-echo ""
+function processBreakdownResultsForNormalRead {
+    declare -A files_by_node=()
+    for file in "${PathToELECTResultSummary}/${targetScheme}"/*; do
+        if [[ -d $file ]]; then
+            if [[ $file =~ ${expName}-Run-normal-Workload-workloadRead-KVNumber-${KVNumber}-OPNumber-${OPNumber}-KeySize-${keylength}-ValueSize-${fieldlength}-ClientNumber-${ClientNumber}-Consistency-${ConsistencyLevel}-Node-([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)-Time-[0-9]+ ]]; then
+                nodeID=${BASH_REMATCH[1]}
+                files_by_node[$nodeID]+="${file} "
+            fi
+        fi
+    done
+    runningRoundNumber=0
+    for nodeID in "${!files_by_node[@]}"; do
+        # echo "NodeID: $nodeID, Files: ${files_by_node[$nodeID]}"
+        IFS=' ' read -r -a files_array <<<"${files_by_node[$nodeID]}"
+        runningRoundNumber=${#files_array[@]}
+    done
+
+    for i in $(seq 0 $((runningRoundNumber - 1))); do
+        declare -a ith_files=()
+        for nodeID in "${!files_by_node[@]}"; do
+            IFS=' ' read -r -a files_array <<<"${files_by_node[$nodeID]}"
+            if [ $i -lt ${#files_array[@]} ]; then
+                ith_files+=("${files_array[i]}")
+            else
+                ith_files+=("")
+            fi
+        done
+        # echo "${i}-th round: ${ith_files[*]}"
+        for file in "${ith_files[@]}"; do
+            fetchContent "${file}" "read"
+        done
+        readCacheSumList+=("$(sumArray "${readCacheTimeCostList[@]}")")
+        readMemtableSumList+=("$(sumArray "${readMemtableTimeCostList[@]}")")
+        readSSTableSumList+=("$(sumArray "${readSSTableTimeCostList[@]}")")
+        clearBuffer
+    done
+    # output
+    echo -e "\033[1m\033[34m[Breakdown info for normal Read] scheme: ${targetScheme}, KVNumber: ${KVNumber}, OPNumber: ${OPNumber} KeySize: ${keylength}, ValueSize: ${fieldlength}\033[0m"
+    echo -e "\033[31;1mCache (unit: ms/MiB):\033[0m"
+    calculateWithOperationDataSizeForNS "${readCacheSumList[@]}"
+    echo -e "\033[31;1mMemTable (unit: ms/MiB):\033[0m"
+    calculateWithOperationDataSizeForMS "${readMemtableSumList[@]}"
+    echo -e "\033[31;1mSSTables (unit: ms/MiB):\033[0m"
+    calculateWithOperationDataSizeForMS "${readSSTableSumList[@]}"
+}
+
+function processBreakdownResultsForDegradedRead {
+    declare -A files_by_node=()
+    for file in "${PathToELECTResultSummary}/${targetScheme}"/*; do
+        if [[ -d $file ]]; then
+            if [[ $file =~ ${expName}-Run-degraded-Workload-workloadRead-KVNumber-${KVNumber}-OPNumber-${OPNumber}-KeySize-${keylength}-ValueSize-${fieldlength}-ClientNumber-${ClientNumber}-Consistency-${ConsistencyLevel}-Node-([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)-Time-[0-9]+ ]]; then
+                nodeID=${BASH_REMATCH[1]}
+                files_by_node[$nodeID]+="${file} "
+            fi
+        fi
+    done
+    runningRoundNumber=0
+    for nodeID in "${!files_by_node[@]}"; do
+        # echo "NodeID: $nodeID, Files: ${files_by_node[$nodeID]}"
+        IFS=' ' read -r -a files_array <<<"${files_by_node[$nodeID]}"
+        runningRoundNumber=${#files_array[@]}
+    done
+
+    for i in $(seq 0 $((runningRoundNumber - 1))); do
+        declare -a ith_files=()
+        for nodeID in "${!files_by_node[@]}"; do
+            IFS=' ' read -r -a files_array <<<"${files_by_node[$nodeID]}"
+            if [ $i -lt ${#files_array[@]} ]; then
+                ith_files+=("${files_array[i]}")
+            else
+                ith_files+=("")
+            fi
+        done
+        # echo "${i}-th round: ${ith_files[*]}"
+        for file in "${ith_files[@]}"; do
+            fetchContent "${file}" "read"
+        done
+        readCacheSumList+=("$(sumArray "${readCacheTimeCostList[@]}")")
+        readMemtableSumList+=("$(sumArray "${readMemtableTimeCostList[@]}")")
+        newReadSSTArray=()
+        arrayLength=${#readSSTableTimeCostList[@]}
+        for ((index = 0; index < $arrayLength; index++)); do
+            sum=$(echo "scale=2; ${readSSTableTimeCostList[index]} * 1000 - ${waitForRecoveryTimeCostList[index]}" | bc -l)
+            newReadSSTArray+=($sum)
+        done
+        readSSTableSumList+=("$(sumArray "${newReadSSTArray[@]}")")
+        recoverySumList+=("$(sumArray "${waitForRecoveryTimeCostList[@]}")")
+        clearBuffer
+    done
+    # output
+    echo -e "\033[1m\033[34m[Breakdown info for degraded Read] scheme: ${targetScheme}, KVNumber: ${KVNumber}, OPNumber: ${OPNumber} KeySize: ${keylength}, ValueSize: ${fieldlength}\033[0m"
+    echo -e "\033[31;1mCache (unit: ms/MiB):\033[0m"
+    calculateWithOperationDataSizeForNS "${readCacheSumList[@]}"
+    echo -e "\033[31;1mMemTable (unit: ms/MiB):\033[0m"
+    calculateWithOperationDataSizeForMS "${readMemtableSumList[@]}"
+    echo -e "\033[31;1mSSTables (unit: ms/MiB):\033[0m"
+    calculateWithOperationDataSizeForUS "${readSSTableSumList[@]}"
+    if [ "${targetScheme}" == "elect" ]; then
+        echo -e "\033[31;1mRecovery (unit: ms/MiB):\033[0m"
+        calculateWithOperationDataSizeForUS "${recoverySumList[@]}"
+    fi
+}
+
+if [ "${outputType}" == "write" ]; then
+    processBreakdownResultsForLoad
+    echo ""
+elif [ "${outputType}" == "normal" ]; then
+    processBreakdownResultsForNormalRead
+    echo ""
+elif [ "${outputType}" == "degraded" ]; then
+    processBreakdownResultsForDegradedRead
+    echo ""
+fi
