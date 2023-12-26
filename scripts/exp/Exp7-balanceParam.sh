@@ -35,6 +35,8 @@ for scheme in "${schemes[@]}"; do
     done
 done
 
+copyRunningLogs
+
 # Generate the summarized results
 if [ -f "${PathToScripts}/exp/${ExpName}.log" ]; then
     rm -rf "${PathToScripts}/exp/${ExpName}.log"

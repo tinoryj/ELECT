@@ -35,6 +35,8 @@ for scheme in "${schemes[@]}"; do
     recovery "${ExpName}" "${scheme}" "${KVNumber}" "${RunningRoundNumber}"
 done
 
+copyRunningLogs
+
 # Generate the summarized results
 if [ -f "${PathToScripts}/exp/${ExpName}.log" ]; then
     rm -rf "${PathToScripts}/exp/${ExpName}.log"

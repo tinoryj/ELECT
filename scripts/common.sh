@@ -416,3 +416,8 @@ function recovery {
     echo "Copy running logs of $targetScheme back form $recoveryNode"
     scp -r ${UserName}@${recoveryNode}:${PathToELECTPrototype}/logs/recovery.log ${PathToELECTResultSummary}/${expName}-Scheme-${targetScheme}-Size-${KVNumber}-recovery-Round-${runningRound}-RecoverNode-${recoveryNode}-Time-$(date +%s).log
 }
+
+function copyRunningLogs {
+    scp -r ${UserName}@${ClientNode}:"${PathToELECTResultSummary}/" "${PathToLocalDirectory}/"
+    ssh ${UserName}@${ClientNode} "rm -rf '${PathToELECTResultSummary}'; mkdir -p '${PathToELECTResultSummary}'"
+}
