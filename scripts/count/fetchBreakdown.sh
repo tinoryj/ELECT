@@ -395,7 +395,7 @@ function processBreakdownResultsForDegradedRead {
     fi
 }
 
-if [ "${outputType}" == "write" ]; then
+if [ "${outputType}" == "Load" ]; then
     processBreakdownResultsForLoad
     echo ""
 elif [ "${outputType}" == "normal" ]; then
