@@ -21,7 +21,7 @@ for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
 done
 
 for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
-    rsync -av --progress ${PathToArtifact} ${UserName}@${nodeIP}:~/
+    rsync -av --progress ${PathToArtifact} ${UserName}@${nodeIP}:${PathToArtifact}
 done
 
 # Install packages
