@@ -10,7 +10,7 @@ sudoPasswd="yjren" # The sudo password of all the previous nodes; we use this to
 PathToArtifact="/mnt/ssd/ELECT" # The path to the artifact folder; we assume all the nodes have the same path.
 PathToELECTExpDBBackup="/mnt/ssd/ELECTExpDBBackup" # The path to the backup folder for storing the loaded DB content; we assume all the nodes have the same path.
 PathToELECTLog="/mnt/ssd/ELECTLogs" # The path to the log folder for storing the experiment logs; we assume all the nodes have the same path.
-PathToELECTResultSummary="/home/${UserName}/ELECTResults" # The path to the result summary folder for storing the final experiment results; we assume all the nodes have the same path. 
+PathToELECTResultSummary="/mnt/ssd/ELECTResults" # The path to the result summary folder for storing the final experiment results; we assume all the nodes have the same path. 
 
 PathToELECTPrototype="${PathToArtifact}/src/elect"
 PathToYCSB="${PathToArtifact}/scripts/ycsb"
