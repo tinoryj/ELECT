@@ -418,6 +418,6 @@ function recovery {
 }
 
 function copyRunningLogs {
-    scp -r ${UserName}@${ClientNode}:"${PathToELECTResultSummary}/" "${PathToLocalDirectory}/"
-    ssh ${UserName}@${ClientNode} "rm -rf '${PathToELECTResultSummary}'; mkdir -p '${PathToELECTResultSummary}'"
+    rsync -av --progress ${UserName}@${ClientNode}:"${PathToELECTResultSummary}/*" "${PathToELECTResultSummary}/"
+    # ssh ${UserName}@${ClientNode} "rm -rf '${PathToELECTResultSummary}'; mkdir -p '${PathToELECTResultSummary}'"
 }
