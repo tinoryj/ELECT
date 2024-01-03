@@ -421,3 +421,10 @@ function copyRunningLogs {
     rsync -av --progress ${UserName}@${ClientNode}:"${PathToELECTResultSummary}/*" "${PathToELECTResultSummary}/"
     # ssh ${UserName}@${ClientNode} "rm -rf '${PathToELECTResultSummary}'; mkdir -p '${PathToELECTResultSummary}'"
 }
+
+function cleanUp {
+     for nodeIP in "${NodesList[@]}"; do
+        echo "Delete old DB backup to free storage sapce, current working on node ${nodeIP}"
+        ssh ${UserName}@${nodeIP} "rm -rf '${PathToELECTExpDBBackup}'; mkdir -p '${PathToELECTExpDBBackup}'"
+    done
+}
