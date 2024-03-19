@@ -180,8 +180,8 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
                         }
                         this.hashID = sb.toString();
                     }
-
-                    logger.debug("[ELECT]: generated hash value for current SSTable is {}, hash length is {}", this.hashID, this.hashID.length());
+                    logger.debug("[ELECT]: generated hash value for current SSTable is {}, hash length is {}",
+                            this.hashID, this.hashID.length());
                 } catch (NoSuchAlgorithmException e) {
                     this.hashID = null;
                     // logger.debug("[ELECT]: Could not generated hash value for current SSTable =
@@ -198,15 +198,6 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
         return true;
     }
 
-    // public Boolean setIsReplicationTransferredToErasureCodingFlag(boolean isReplicationTransferToErasureCoding) {
-    //     this.isReplicationTransferToErasureCoding = isReplicationTransferToErasureCoding;
-    //     return true;
-    // }
-
-    // public Boolean setIsDataMigrateToCloudFlag(boolean isDataMigrateToCloud) {
-    //     this.isDataMigrateToCloud = isDataMigrateToCloud;
-    //     return true;
-    // }
 
     /**
      * @param gcBefore gc time in seconds
@@ -262,7 +253,8 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
 
     public StatsMetadata setIsTransferredToErasureCoding(final boolean newIsReplicationTransferToErasureCoding) {
 
-        logger.debug("ELECT-Debug: setIsTransferredToErasureCoding is StatsMetadata ({})", newIsReplicationTransferToErasureCoding);
+        logger.debug("ELECT-Debug: setIsTransferredToErasureCoding is StatsMetadata ({})",
+                newIsReplicationTransferToErasureCoding);
 
         return new StatsMetadata(estimatedPartitionSize,
                 estimatedCellPerPartitionCount,

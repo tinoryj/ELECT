@@ -6,8 +6,8 @@ setupMode=${1:-"partial"}
 # SSH key-free connection from control node to all nodes
 for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
     if [ ${UserName} == "cc" ]; then
+        cp ${PathToSSHPrivateKeyFile} ~/.ssh/
         ssh-keyscan -H ${nodeIP} >>~/.ssh/known_hosts
-        scp ~/.ssh/config cc@${nodeIP}:~/.ssh/
         scp ~/.ssh/id_rsa cc@${nodeIP}:~/.ssh/
     else
         echo "Set SSH key-free connection to node ${nodeIP}"
@@ -21,8 +21,11 @@ for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
 done
 
 for nodeIP in "${NodesList[@]}" "${OSSServerNode}" "${ClientNode}"; do
-    rsync -av --progress ${PathToArtifact} ${UserName}@${nodeIP}:/mnt/ssd/
+    echo "Sending artifacts to ${nodeIP}"
+    rsync -av --progress ${PathToArtifact} ${UserName}@${nodeIP}:${PathToArtifact} &
 done
+
+wait
 
 # Install packages
 if [ ${setupMode} == "full" ]; then
@@ -124,5 +127,7 @@ FullNodeList+=("${ClientNode}")
 
 for nodeIP in "${FullNodeList[@]}"; do
     echo "Set up node ${nodeIP}"
-    ssh ${UserName}@${nodeIP} "cd ${PathToScripts}; bash setupOnEachNode.sh ${setupMode}"
+    ssh ${UserName}@${nodeIP} "cd ${PathToScripts}; bash setupOnEachNode.sh ${setupMode}" &
 done
+
+wait # Wait until all nodes are done.

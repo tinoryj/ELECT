@@ -601,7 +601,7 @@ task_delay: 1
 stripe_update_frequency: 10
 max_send_sstables: 32
 cold_period: 1
-max_stripe_update_sstable: 2
+max_stripe_update_sstable: 4
 max_concurrent_download: 16
 user_name: elect
 concurrent_recovery: 16
