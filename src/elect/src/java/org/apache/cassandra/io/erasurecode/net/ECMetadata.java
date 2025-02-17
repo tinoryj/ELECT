@@ -430,5 +430,41 @@ public class ECMetadata implements Serializable {
 
     }
 
+    // public static byte[] readBytesFromFile(String fileName) throws IOException
+    // {
+    // // String fileName = descriptor.filenameFor(Component.DATA);
+    // File file = new File(fileName);
+    // long fileLength = file.length();
+    // FileInputStream fileStream = new FileInputStream(fileName);
+    // byte[] buffer = new byte[(int)fileLength];
+    // int offset = 0;
+    // int numRead = 0;
+    // while (offset < buffer.length && (numRead = fileStream.read(buffer, offset,
+    // buffer.length - offset)) >= 0) {
+    // offset += numRead;
+    // }
+    // if (offset != buffer.length) {
+    // throw new IOException(String.format("Could not read %s, only read %d bytes",
+    // fileName, offset));
+    // }
+    // fileStream.close();
+    // logger.debug("ELECT-Debug: read file {} successfully!", fileName);
+    // return buffer;
+    // // return ByteBuffer.wrap(buffer);
+    // }
 
+    // public static Object byteArrayToObject(byte[] bytes) throws Exception {
+    // ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+    // ObjectInputStream ois = new ObjectInputStream(bis);
+    // Object obj = ois.readObject();
+    // bis.close();
+    // ois.close();
+    // return obj;
+    // }
+    public static void main(String[] args) throws Exception {
+        String ecMetadataFile = "/home/tinoryj/nb-2004-big-EC.db";
+        byte[] ecMetadataInBytes = ECNetutils.readBytesFromFile(ecMetadataFile);
+        ECMetadataContent ecMetadata = (ECMetadataContent) ByteObjectConversion.byteArrayToObject(ecMetadataInBytes);
+        logger.debug("ELECT-Debug: [Debug recovery] read ecmetadata ({}) for old sstable ({})", ecMetadata.stripeId);
+    }
 }

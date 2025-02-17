@@ -496,9 +496,9 @@ public class BigTableWriter extends SSTableWriter {
                         }
                         hashID = sb.toString();
                     }
-                    logger.debug(
-                            "[ELECT]: generated hash value for current SSTable is {}, hash length is {}, file length is ({})",
-                            hashID, hashID.length(), dataFileSize);
+                    // logger.debug("[ELECT]: generated hash value for current SSTable is {}, hash
+                    // length is {}, file length is ({})",
+                    // hashID, hashID.length(), dataFileSize);
                 } catch (NoSuchAlgorithmException e) {
                     hashID = null;
                     logger.error("[ELECT-ERROR]: Could not generated hash value for current SSTable = {}",

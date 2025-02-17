@@ -198,6 +198,17 @@ public class StatsMetadata extends MetadataComponent implements Serializable {
         return true;
     }
 
+    // public Boolean setIsReplicationTransferredToErasureCodingFlag(boolean
+    // isReplicationTransferToErasureCoding) {
+    // this.isReplicationTransferToErasureCoding =
+    // isReplicationTransferToErasureCoding;
+    // return true;
+    // }
+
+    // public Boolean setIsDataMigrateToCloudFlag(boolean isDataMigrateToCloud) {
+    // this.isDataMigrateToCloud = isDataMigrateToCloud;
+    // return true;
+    // }
 
     /**
      * @param gcBefore gc time in seconds
